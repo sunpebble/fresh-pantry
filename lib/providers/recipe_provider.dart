@@ -2,24 +2,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/recipe.dart';
 import '../models/ingredient.dart';
 import '../data/mock_data.dart';
+import '../data/food_knowledge.dart';
 import '../services/themealdb_service.dart';
 import 'inventory_provider.dart';
 
-/// All available recipes — fetches from TheMealDB, falls back to mock data
+/// All available recipes — mock recipes + TheMealDB results
 final recipesProvider = FutureProvider<List<Recipe>>((ref) async {
   final inventory = ref.watch(inventoryProvider);
-  if (inventory.isEmpty) return List.from(MockData.recipes);
 
-  // Use first few inventory item names to search for relevant recipes
-  final searchTerms = inventory
+  // Always start with mock Chinese recipes
+  final allRecipes = List<Recipe>.from(MockData.recipes);
+  final seenIds = allRecipes.map((r) => r.id).toSet();
+
+  if (inventory.isEmpty) return allRecipes;
+
+  // Translate Chinese ingredient names to English for TheMealDB search
+  final englishTerms = inventory
       .take(3)
-      .map((i) => i.name)
+      .map((i) => FoodKnowledge.englishName(i.name))
+      .whereType<String>()
+      .toSet() // deduplicate (e.g. multiple egg items)
       .toList();
 
-  final allRecipes = <Recipe>[];
-  final seenIds = <String>{};
-
-  for (final term in searchTerms) {
+  for (final term in englishTerms) {
     final results = await TheMealDbService.searchByName(term);
     for (final recipe in results) {
       if (seenIds.add(recipe.id)) {
@@ -27,9 +32,6 @@ final recipesProvider = FutureProvider<List<Recipe>>((ref) async {
       }
     }
   }
-
-  // If API returned nothing, fall back to mock data
-  if (allRecipes.isEmpty) return List.from(MockData.recipes);
 
   return allRecipes;
 });
