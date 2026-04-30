@@ -52,62 +52,58 @@ class BottomNavBar extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children:
-                    _items.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final item = entry.value;
-                      final isSelected = index == currentIndex;
-
-                      return Semantics(
-                        selected: isSelected,
-                        button: true,
-                        label: item.label,
-                        child: GestureDetector(
-                          onTap: () => ref.navigateToTab(index),
-                          behavior: HitTestBehavior.opaque,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isSelected ? 16 : 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  isSelected
-                                      ? AppColors.primaryContainer
-                                      : Colors.transparent,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  item.icon,
+                children: [
+                  for (final (index, item) in _items.indexed)
+                    Semantics(
+                      selected: index == currentIndex,
+                      button: true,
+                      label: item.label,
+                      child: GestureDetector(
+                        onTap: () => ref.navigateToTab(index),
+                        behavior: HitTestBehavior.opaque,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: index == currentIndex ? 16 : 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                index == currentIndex
+                                    ? AppColors.primaryContainer
+                                    : Colors.transparent,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                item.icon,
+                                color:
+                                    index == currentIndex
+                                        ? Colors.white
+                                        : AppColors.outline,
+                                size: 24,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                item.label.toUpperCase(),
+                                style: GoogleFonts.manrope(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
                                   color:
-                                      isSelected
+                                      index == currentIndex
                                           ? Colors.white
                                           : AppColors.outline,
-                                  size: 24,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  item.label.toUpperCase(),
-                                  style: GoogleFonts.manrope(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5,
-                                    color:
-                                        isSelected
-                                            ? Colors.white
-                                            : AppColors.outline,
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                      );
-                    }).toList(),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),

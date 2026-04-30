@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fresh_pantry/models/recipe.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
+import 'package:fresh_pantry/utils/json_object_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const customRecipesStorageKey = 'custom_recipes';
@@ -24,13 +25,7 @@ class CustomRecipeNotifier extends Notifier<List<Recipe>> {
     }
 
     try {
-      final decoded = json.decode(saved);
-      if (decoded is! List<dynamic>) {
-        return const [];
-      }
-
-      return decoded
-          .whereType<Map<String, dynamic>>()
+      return decodeJsonObjectList(saved)
           .map(Recipe.fromJson)
           .where((recipe) => recipe.id.isNotEmpty && recipe.name.isNotEmpty)
           .toList();

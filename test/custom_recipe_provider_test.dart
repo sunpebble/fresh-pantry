@@ -124,6 +124,26 @@ void main() {
 
       expect(container.read(customRecipesProvider), isEmpty);
     });
+
+    test('loads valid recipes when persisted list has bad rows', () async {
+      SharedPreferences.setMockInitialValues({
+        customRecipesStorageKey: json.encode([
+          _recipe('r1').toJson(),
+          42,
+          {'id': 'r2', 'name': '黑椒鸡胸'},
+        ]),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+
+      expect(container.read(customRecipesProvider).map((recipe) => recipe.id), [
+        'r1',
+        'r2',
+      ]);
+    });
   });
 }
 

@@ -92,10 +92,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   ) {
     final inventoryNames = inventory.map((i) => i.name.toLowerCase()).toSet();
     return recipe.ingredients.where((ing) {
+      final ingredientName = ing.name.toLowerCase();
       return !inventoryNames.any(
         (name) =>
-            name.contains(ing.name.toLowerCase()) ||
-            ing.name.toLowerCase().contains(name),
+            name.contains(ingredientName) || ingredientName.contains(name),
       );
     }).toList();
   }
@@ -340,71 +340,67 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   const SizedBox(height: 20),
                 ] else
                   const SizedBox(height: 12),
-                ...widget.recipe.steps.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final isCompleted = _completedSteps.contains(index);
-                  return Padding(
-                    key: ValueKey('step_$index'),
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: GestureDetector(
-                      onTap: () => _toggleStep(index),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color:
-                                  isCompleted
-                                      ? AppColors.primary
-                                      : AppColors.primaryFixed,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            alignment: Alignment.center,
-                            child:
-                                isCompleted
-                                    ? const Icon(
-                                      Icons.check,
-                                      size: 16,
-                                      color: AppColors.onPrimary,
-                                    )
-                                    : Text(
-                                      '${index + 1}',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Text(
-                              entry.value,
-                              style: GoogleFonts.manrope(
-                                fontSize: 15,
-                                color:
-                                    isCompleted
-                                        ? AppColors.onSurfaceVariant
-                                        : AppColors.onSurface,
-                                height: 1.5,
-                                decoration:
-                                    isCompleted
-                                        ? TextDecoration.lineThrough
-                                        : null,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
+                for (final (index, step) in widget.recipe.steps.indexed)
+                  _buildStepRow(index, step),
               ]),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStepRow(int index, String step) {
+    final isCompleted = _completedSteps.contains(index);
+    return Padding(
+      key: ValueKey('step_$index'),
+      padding: const EdgeInsets.only(bottom: 16),
+      child: GestureDetector(
+        onTap: () => _toggleStep(index),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: isCompleted ? AppColors.primary : AppColors.primaryFixed,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              alignment: Alignment.center,
+              child:
+                  isCompleted
+                      ? const Icon(
+                        Icons.check,
+                        size: 16,
+                        color: AppColors.onPrimary,
+                      )
+                      : Text(
+                        '${index + 1}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                step,
+                style: GoogleFonts.manrope(
+                  fontSize: 15,
+                  color:
+                      isCompleted
+                          ? AppColors.onSurfaceVariant
+                          : AppColors.onSurface,
+                  height: 1.5,
+                  decoration: isCompleted ? TextDecoration.lineThrough : null,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -414,49 +410,57 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     Recipe recipe,
   ) {
     final inventoryNames = inventory.map((i) => i.name).toSet();
-    return recipe.ingredients.asMap().entries.map((entry) {
-      final index = entry.key;
-      final ing = entry.value;
-      final available = inventoryNames.any(
-        (name) => name.contains(ing.name) || ing.name.contains(name),
-      );
-      return Padding(
-        key: ValueKey('ingredient_$index'),
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Row(
-          children: [
-            Icon(
-              available ? Icons.check_circle : Icons.circle_outlined,
-              size: 20,
-              color: available ? AppColors.primary : AppColors.onSurfaceVariant,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                '${ing.name} (${ing.amount})',
-                style: GoogleFonts.manrope(
-                  fontSize: 15,
-                  color:
-                      available
-                          ? AppColors.onSurface
-                          : AppColors.onSurfaceVariant,
-                  decoration: available ? null : TextDecoration.lineThrough,
-                ),
+    return [
+      for (final (index, ingredient) in recipe.ingredients.indexed)
+        _buildIngredientRow(index, ingredient, inventoryNames),
+    ];
+  }
+
+  Widget _buildIngredientRow(
+    int index,
+    RecipeIngredient ingredient,
+    Set<String> inventoryNames,
+  ) {
+    final available = inventoryNames.any(
+      (name) =>
+          name.contains(ingredient.name) || ingredient.name.contains(name),
+    );
+    return Padding(
+      key: ValueKey('ingredient_$index'),
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(
+            available ? Icons.check_circle : Icons.circle_outlined,
+            size: 20,
+            color: available ? AppColors.primary : AppColors.onSurfaceVariant,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '${ingredient.name} (${ingredient.amount})',
+              style: GoogleFonts.manrope(
+                fontSize: 15,
+                color:
+                    available
+                        ? AppColors.onSurface
+                        : AppColors.onSurfaceVariant,
+                decoration: available ? null : TextDecoration.lineThrough,
               ),
             ),
-            if (available)
-              Text(
-                '库存中',
-                style: GoogleFonts.manrope(
-                  fontSize: 12,
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                ),
+          ),
+          if (available)
+            Text(
+              '库存中',
+              style: GoogleFonts.manrope(
+                fontSize: 12,
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
               ),
-          ],
-        ),
-      );
-    }).toList();
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _buildChip(IconData icon, String label) {

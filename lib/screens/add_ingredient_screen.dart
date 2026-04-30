@@ -54,6 +54,12 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
     IconType.fridge: Icons.kitchen,
     IconType.pantry: Icons.shelves,
   };
+  static const _decimalKeyboardType = TextInputType.numberWithOptions(
+    decimal: true,
+  );
+  static final _decimalInputFormatters = <TextInputFormatter>[
+    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+  ];
 
   bool get _isEditing => widget.initialIngredient != null;
 
@@ -203,7 +209,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
         _autoFilled = true;
       });
       _lookupImage(name);
-    } else if (defaults == null) {
+    } else {
       setState(() {
         _autoFilled = false;
         _suggestedShelfDays = null;
@@ -478,9 +484,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
                   child: _buildFilledInput(
                     controller: _quantityController,
                     hintText: '1',
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
+                    keyboardType: _decimalKeyboardType,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -511,57 +515,52 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children:
-          items.map((item) {
-            return GestureDetector(
-              onTap: () {
-                _nameController.text = item.name;
-                setState(() {
-                  _selectedCategory = FoodCategories.dropdownValue(
-                    item.category,
-                  );
-                  _selectedStorage = item.storage;
-                  _selectedUnit = item.unit;
-                  if (item.shelfLifeDays != null) {
-                    _setShelfDays(item.shelfLifeDays!);
-                  }
-                  _autoFilled = true;
-                  _categoryManuallySelected = false;
-                  _storageManuallySelected = false;
-                  _shelfLifeManuallySelected = false;
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryFixed,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _storageIcons[item.storage],
-                      size: 14,
+      children: [
+        for (final item in items)
+          GestureDetector(
+            onTap: () {
+              _nameController.text = item.name;
+              setState(() {
+                _selectedCategory = FoodCategories.dropdownValue(item.category);
+                _selectedStorage = item.storage;
+                _selectedUnit = item.unit;
+                if (item.shelfLifeDays != null) {
+                  _setShelfDays(item.shelfLifeDays!);
+                }
+                _autoFilled = true;
+                _categoryManuallySelected = false;
+                _storageManuallySelected = false;
+                _shelfLifeManuallySelected = false;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.primaryFixed,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _storageIcons[item.storage],
+                    size: 14,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    item.name,
+                    style: GoogleFonts.manrope(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                       color: AppColors.primary,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      item.name,
-                      style: GoogleFonts.manrope(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            );
-          }).toList(),
+            ),
+          ),
+      ],
     );
   }
 
@@ -582,10 +581,10 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
           ),
           style: GoogleFonts.manrope(fontSize: 14, color: AppColors.onSurface),
           dropdownColor: AppColors.surfaceContainerLowest,
-          items:
-              _categoryOptions
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                  .toList(),
+          items: [
+            for (final category in _categoryOptions)
+              DropdownMenuItem(value: category, child: Text(category)),
+          ],
           onChanged:
               (v) => setState(() {
                 _selectedCategory = v!;
@@ -613,25 +612,23 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
           ),
           style: GoogleFonts.manrope(fontSize: 14, color: AppColors.onSurface),
           dropdownColor: AppColors.surfaceContainerLowest,
-          items:
-              IconType.values
-                  .map(
-                    (t) => DropdownMenuItem(
-                      value: t,
-                      child: Row(
-                        children: [
-                          Icon(
-                            _storageIcons[t],
-                            size: 16,
-                            color: AppColors.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(_storageLabels[t]!),
-                        ],
-                      ),
+          items: [
+            for (final type in IconType.values)
+              DropdownMenuItem(
+                value: type,
+                child: Row(
+                  children: [
+                    Icon(
+                      _storageIcons[type],
+                      size: 16,
+                      color: AppColors.onSurfaceVariant,
                     ),
-                  )
-                  .toList(),
+                    const SizedBox(width: 6),
+                    Text(_storageLabels[type]!),
+                  ],
+                ),
+              ),
+          ],
           onChanged:
               (v) => setState(() {
                 _selectedStorage = v!;
@@ -659,10 +656,10 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
           ),
           style: GoogleFonts.manrope(fontSize: 14, color: AppColors.onSurface),
           dropdownColor: AppColors.surfaceContainerLowest,
-          items:
-              _unitOptions
-                  .map((u) => DropdownMenuItem(value: u, child: Text(u)))
-                  .toList(),
+          items: [
+            for (final unit in _unitOptions)
+              DropdownMenuItem(value: unit, child: Text(unit)),
+          ],
           onChanged: (v) => setState(() => _selectedUnit = v!),
         ),
       ),
@@ -670,6 +667,9 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
   }
 
   Widget _buildExpirationSection() {
+    final computedFreshness = _computedFreshness;
+    final expiryLabel = _expiryLabel;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -691,22 +691,22 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
                   ),
                   decoration: BoxDecoration(
                     color:
-                        _computedFreshness > 0.5
+                        computedFreshness > 0.5
                             ? AppColors.primaryFixed
-                            : _computedFreshness > 0.2
+                            : computedFreshness > 0.2
                             ? AppColors.secondaryContainer
                             : AppColors.errorContainer,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    _expiryLabel,
+                    expiryLabel,
                     style: GoogleFonts.manrope(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color:
-                          _computedFreshness > 0.5
+                          computedFreshness > 0.5
                               ? AppColors.primary
-                              : _computedFreshness > 0.2
+                              : computedFreshness > 0.2
                               ? AppColors.onSecondaryContainer
                               : AppColors.onErrorContainer,
                     ),
@@ -721,9 +721,8 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              ...FoodKnowledge.shelfLifePresets.map(
-                (days) => _buildShelfDayChip(days),
-              ),
+              for (final days in FoodKnowledge.shelfLifePresets)
+                _buildShelfDayChip(days),
               _buildCustomDateChip(),
             ],
           ),
@@ -772,7 +771,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            GradientFreshnessMeter(percent: _computedFreshness),
+            GradientFreshnessMeter(percent: computedFreshness),
           ],
         ],
       ),
@@ -1022,13 +1021,8 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
               controller: controller,
               keyboardType: keyboardType,
               inputFormatters:
-                  keyboardType ==
-                          const TextInputType.numberWithOptions(decimal: true)
-                      ? [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'^\d*\.?\d*'),
-                        ),
-                      ]
+                  keyboardType == _decimalKeyboardType
+                      ? _decimalInputFormatters
                       : null,
               style: GoogleFonts.manrope(
                 fontSize: fontSize,

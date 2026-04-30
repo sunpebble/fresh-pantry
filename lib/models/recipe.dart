@@ -102,8 +102,8 @@ class Recipe {
       'cookingMinutes': cookingMinutes,
       'description': description,
       'ingredients': ingredients.map((e) => e.toJson()).toList(),
-      'steps': steps,
-      'tags': tags,
+      'steps': List<String>.from(steps),
+      'tags': List<String>.from(tags),
       'imageUrl': imageUrl,
     };
   }
@@ -164,10 +164,12 @@ class ScoredRecipe {
           runtimeType == other.runtimeType &&
           recipe == other.recipe &&
           score == other.score &&
-          matchedCount == other.matchedCount;
+          matchedCount == other.matchedCount &&
+          expiringMatchedCount == other.expiringMatchedCount;
 
   @override
-  int get hashCode => Object.hash(recipe, score, matchedCount);
+  int get hashCode =>
+      Object.hash(recipe, score, matchedCount, expiringMatchedCount);
 
   ScoredRecipe copyWith({
     Recipe? recipe,

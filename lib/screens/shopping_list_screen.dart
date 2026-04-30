@@ -173,15 +173,14 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    ...groupedItems.entries.map(
-                      (entry) => _buildCategorySection(
+                    for (final entry in groupedItems.entries)
+                      _buildCategorySection(
                         context,
                         entry.key,
                         entry.value,
                         _collapsedCategories.contains(entry.key),
                         ref,
                       ),
-                    ),
                     SmartPlannerCard(
                       title: '再买2样食材，就能完成您的卡博纳拉意面食谱。',
                       recipeName: '卡博纳拉意面',
@@ -373,23 +372,20 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
                     : Column(
                       children: [
                         const SizedBox(height: 12),
-                        ...items.asMap().entries.map(
-                          (e) => SwipeRevealDeleteAction(
-                            key: ValueKey('shop_swipe_${e.value.id}'),
+                        for (final item in items)
+                          SwipeRevealDeleteAction(
+                            key: ValueKey('shop_swipe_${item.id}'),
                             deleteButtonKey: ValueKey(
-                              'shopping_swipe_delete_${e.value.id}',
+                              'shopping_swipe_delete_${item.id}',
                             ),
                             onDelete:
-                                () =>
-                                    _deleteShoppingItem(context, ref, e.value),
+                                () => _deleteShoppingItem(context, ref, item),
                             child: ShoppingItemTile(
-                              key: ValueKey(e.value.id),
-                              item: e.value,
-                              onTap:
-                                  () => _onItemChecked(context, ref, e.value),
+                              key: ValueKey(item.id),
+                              item: item,
+                              onTap: () => _onItemChecked(context, ref, item),
                             ),
                           ),
-                        ),
                       ],
                     ),
           ),

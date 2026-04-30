@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-class RecipeImage extends StatelessWidget {
+class RecipeImage extends StatefulWidget {
   const RecipeImage({
     super.key,
     required this.imageSource,
@@ -22,36 +22,61 @@ class RecipeImage extends StatelessWidget {
   final String? semanticLabel;
 
   @override
+  State<RecipeImage> createState() => _RecipeImageState();
+}
+
+class _RecipeImageState extends State<RecipeImage> {
+  String? _decodedDataSource;
+  Uint8List? _decodedDataBytes;
+
+  @override
+  void didUpdateWidget(covariant RecipeImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageSource != widget.imageSource) {
+      _decodedDataSource = null;
+      _decodedDataBytes = null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final source = imageSource?.trim();
+    final source = widget.imageSource?.trim();
     if (source == null || source.isEmpty) {
-      return fallback;
+      return widget.fallback;
     }
 
     if (_isDataImage(source)) {
-      final bytes = _decodeDataImage(source);
+      final bytes = _dataImageBytes(source);
       if (bytes == null) {
-        return fallback;
+        return widget.fallback;
       }
 
       return Image.memory(
         bytes,
-        width: width,
-        height: height,
-        fit: fit,
-        semanticLabel: semanticLabel,
-        errorBuilder: (_, _, _) => fallback,
+        width: widget.width,
+        height: widget.height,
+        fit: widget.fit,
+        semanticLabel: widget.semanticLabel,
+        errorBuilder: (_, _, _) => widget.fallback,
       );
     }
 
     return Image.network(
       source,
-      width: width,
-      height: height,
-      fit: fit,
-      semanticLabel: semanticLabel,
-      errorBuilder: (_, _, _) => fallback,
+      width: widget.width,
+      height: widget.height,
+      fit: widget.fit,
+      semanticLabel: widget.semanticLabel,
+      errorBuilder: (_, _, _) => widget.fallback,
     );
+  }
+
+  Uint8List? _dataImageBytes(String source) {
+    if (_decodedDataSource != source) {
+      _decodedDataSource = source;
+      _decodedDataBytes = _decodeDataImage(source);
+    }
+    return _decodedDataBytes;
   }
 }
 

@@ -8,6 +8,36 @@ import '../services/themealdb_service.dart';
 import 'custom_recipe_provider.dart';
 import 'inventory_provider.dart';
 
+Set<String> _inventoryNameSet(Iterable<Ingredient> inventory) {
+  return inventory
+      .map((item) => item.name.trim().toLowerCase())
+      .where((name) => name.isNotEmpty)
+      .toSet();
+}
+
+bool _recipeIngredientMatchesInventory(
+  RecipeIngredient ingredient,
+  Set<String> inventoryNames,
+) {
+  final ingredientName = ingredient.name.trim().toLowerCase();
+  if (ingredientName.isEmpty) return false;
+
+  return inventoryNames.any(
+    (name) => name.contains(ingredientName) || ingredientName.contains(name),
+  );
+}
+
+int _matchedIngredientCountForNames(Set<String> inventoryNames, Recipe recipe) {
+  if (inventoryNames.isEmpty || recipe.ingredients.isEmpty) return 0;
+
+  return recipe.ingredients
+      .where(
+        (ingredient) =>
+            _recipeIngredientMatchesInventory(ingredient, inventoryNames),
+      )
+      .length;
+}
+
 /// All available recipes — mock recipes + TheMealDB results
 final recipesProvider = FutureProvider<List<Recipe>>((ref) async {
   final inventory = ref.watch(inventoryProvider);
@@ -66,24 +96,15 @@ final recommendedRecipesProvider = Provider<List<Recipe>>((ref) {
 
   if (inventory.isEmpty) return [];
 
-  final inventoryNames = inventory.map((i) => i.name.toLowerCase()).toSet();
+  final inventoryNames = _inventoryNameSet(inventory);
 
   // Score each recipe by how many ingredients are available
   final scored =
       recipes.map((recipe) {
-        if (recipe.ingredients.isEmpty) {
+        final matched = _matchedIngredientCountForNames(inventoryNames, recipe);
+        if (matched == 0 || recipe.ingredients.isEmpty) {
           return (recipe: recipe, score: 0.0);
         }
-        final matched =
-            recipe.ingredients
-                .where(
-                  (ing) => inventoryNames.any(
-                    (name) =>
-                        name.contains(ing.name.toLowerCase()) ||
-                        ing.name.toLowerCase().contains(name),
-                  ),
-                )
-                .length;
         return (recipe: recipe, score: matched / recipe.ingredients.length);
       }).toList();
 
@@ -94,14 +115,5 @@ final recommendedRecipesProvider = Provider<List<Recipe>>((ref) {
 
 /// Count of matching inventory items for a recipe
 int matchedIngredientCount(List<Ingredient> inventory, Recipe recipe) {
-  final inventoryNames = inventory.map((i) => i.name.toLowerCase()).toSet();
-  return recipe.ingredients
-      .where(
-        (ing) => inventoryNames.any(
-          (name) =>
-              name.contains(ing.name.toLowerCase()) ||
-              ing.name.toLowerCase().contains(name),
-        ),
-      )
-      .length;
+  return _matchedIngredientCountForNames(_inventoryNameSet(inventory), recipe);
 }

@@ -32,6 +32,7 @@ class DashboardScreen extends ConsumerWidget {
     final recentItems = ref.watch(recentAdditionsProvider);
     final recommendedRecipes = ref.watch(recommendedRecipesProvider);
     final storageAreas = ref.watch(storageAreasProvider);
+    final now = DateTime.now();
     final quickActions = Column(
       children: [
         IntrinsicHeight(
@@ -94,7 +95,7 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             // ── Greeting ──
             Text(
-              dashboardGreetingFor(DateTime.now()),
+              dashboardGreetingFor(now),
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 30,
                 fontWeight: FontWeight.w800,
@@ -104,7 +105,7 @@ class DashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              dashboardSubtitleFor(DateTime.now()),
+              dashboardSubtitleFor(now),
               style: GoogleFonts.manrope(
                 fontSize: 16,
                 color: AppColors.onSurfaceVariant,
@@ -182,44 +183,43 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  ...expiringItems.asMap().entries.map(
-                    (e) => Padding(
-                      key: ValueKey('alert_${e.key}'),
+                  for (final (index, item) in expiringItems.indexed)
+                    Padding(
+                      key: ValueKey('alert_$index'),
                       padding: const EdgeInsets.only(bottom: 12),
                       child: AlertCard(
-                        key: ValueKey('alert_card_${e.key}'),
-                        icon: _iconForCategory(e.value.category),
+                        key: ValueKey('alert_card_$index'),
+                        icon: _iconForCategory(item.category),
                         iconColor:
-                            e.value.state == FreshnessState.expired
+                            item.state == FreshnessState.expired
                                 ? AppColors.secondary
                                 : AppColors.primary,
-                        name: e.value.name,
-                        subtitle: e.value.expiryLabel ?? '即将过期',
-                        storageTag: _storageLabel(e.value.storage),
-                        badge: e.value.expiryLabel ?? '即将过期',
+                        name: item.name,
+                        subtitle: item.expiryLabel ?? '即将过期',
+                        storageTag: _storageLabel(item.storage),
+                        badge: item.expiryLabel ?? '即将过期',
                         badgeBg:
-                            e.value.state == FreshnessState.expired
+                            item.state == FreshnessState.expired
                                 ? AppColors.secondaryContainer
                                 : AppColors.surfaceContainerHigh,
                         badgeText:
-                            e.value.state == FreshnessState.expired
+                            item.state == FreshnessState.expired
                                 ? AppColors.onSecondaryContainer
                                 : AppColors.onSurfaceVariant,
                         onConsume: () {
                           final idx = inventoryIndexOf(
                             ref.read(inventoryProvider),
-                            e.value,
+                            item,
                           );
                           if (idx >= 0) {
                             ref.read(inventoryProvider.notifier).remove(idx);
                           }
                         },
                         onAddToCart: () {
-                          _addToShoppingList(context, ref, e.value);
+                          _addToShoppingList(context, ref, item);
                         },
                       ),
                     ),
-                  ),
                   if (expiringItems.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -299,16 +299,15 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 20),
-            ...storageAreas.toList().asMap().entries.map(
-              (e) => Padding(
-                key: ValueKey('storage_${e.key}'),
+            for (final (index, area) in storageAreas.indexed)
+              Padding(
+                key: ValueKey('storage_$index'),
                 padding: const EdgeInsets.only(bottom: 16),
                 child: StorageSummaryCard(
-                  key: ValueKey('storage_card_${e.key}'),
-                  area: e.value,
+                  key: ValueKey('storage_card_$index'),
+                  area: area,
                 ),
               ),
-            ),
             const SizedBox(height: 24),
 
             // ── Recent Additions ──
@@ -321,12 +320,8 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
-            ...recentItems.toList().asMap().entries.map(
-              (e) => RecentAdditionItem(
-                key: ValueKey('recent_${e.key}'),
-                item: e.value,
-              ),
-            ),
+            for (final (index, item) in recentItems.indexed)
+              RecentAdditionItem(key: ValueKey('recent_$index'), item: item),
             const SizedBox(height: 24),
 
             // ── Curator's Tip ──

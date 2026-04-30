@@ -6,6 +6,7 @@ import '../models/shopping_item.dart';
 import '../data/food_categories.dart';
 import '../data/food_knowledge.dart';
 import '../data/mock_data.dart';
+import '../utils/json_object_list.dart';
 import 'storage_service_provider.dart';
 
 const _kShoppingKey = 'shopping_items';
@@ -36,6 +37,7 @@ List<ShoppingItem> _deduplicateShoppingItems(Iterable<ShoppingItem> items) {
 /// Shopping list state with local persistence
 class ShoppingNotifier extends Notifier<List<ShoppingItem>> {
   late final SharedPreferences _prefs;
+  Future<void> _pendingPersistence = Future.value();
 
   @override
   List<ShoppingItem> build() {
@@ -49,19 +51,27 @@ class ShoppingNotifier extends Notifier<List<ShoppingItem>> {
       return kDebugMode ? List.from(MockData.shoppingItems) : [];
     }
     try {
-      final List<dynamic> jsonList = json.decode(jsonString) as List<dynamic>;
-      final items = jsonList
-          .map((e) => ShoppingItem.fromJson(e as Map<String, dynamic>))
-          .map(_normalizeShoppingItemCategory);
+      final items = decodeJsonObjectList(
+        jsonString,
+      ).map(ShoppingItem.fromJson).map(_normalizeShoppingItemCategory);
       return _deduplicateShoppingItems(items);
     } catch (_) {
       return kDebugMode ? List.from(MockData.shoppingItems) : [];
     }
   }
 
-  Future<void> _save() async {
-    final jsonString = json.encode(state.map((e) => e.toJson()).toList());
-    await _prefs.setString(_kShoppingKey, jsonString);
+  Future<void> _save(List<ShoppingItem> items) async {
+    final jsonString = json.encode(items.map((e) => e.toJson()).toList());
+    final saved = await _prefs.setString(_kShoppingKey, jsonString);
+    if (!saved) {
+      throw StateError('Failed to save shopping items');
+    }
+  }
+
+  Future<void> _queueSave(List<ShoppingItem> items) {
+    final next = _pendingPersistence.then((_) => _save(items));
+    _pendingPersistence = next.catchError((_) {});
+    return next;
   }
 
   Future<bool> add(ShoppingItem item) async {
@@ -72,25 +82,38 @@ class ShoppingNotifier extends Notifier<List<ShoppingItem>> {
       return false;
     }
 
-    state = [...state, normalizedItem];
-    await _save();
+    final updated = [...state, normalizedItem];
+    state = updated;
+    await _queueSave(updated);
     return true;
   }
 
   Future<void> remove(String id) async {
-    state = state.where((item) => item.id != id).toList();
-    await _save();
+    final updated = state.where((item) => item.id != id).toList();
+    if (updated.length == state.length) {
+      return;
+    }
+
+    state = updated;
+    await _queueSave(updated);
   }
 
   Future<void> toggleCheck(String id) async {
-    state =
+    var changed = false;
+    final updated =
         state.map((item) {
           if (item.id == id) {
+            changed = true;
             return item.copyWith(isChecked: !item.isChecked);
           }
           return item;
         }).toList();
-    await _save();
+    if (!changed) {
+      return;
+    }
+
+    state = updated;
+    await _queueSave(updated);
   }
 
   Future<bool> addFromSuggestion(String name) async {

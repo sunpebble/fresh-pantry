@@ -127,6 +127,30 @@ void main() {
       ]);
     });
 
+    test(
+      'loads valid inventory rows when persisted list has bad rows',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'inventory_items': json.encode([
+            _ingredient('番茄').toJson(),
+            'bad row',
+            {'name': '牛奶', 'quantity': '1'},
+          ]),
+          'add_history': json.encode({}),
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final container = ProviderContainer(
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        );
+        addTearDown(container.dispose);
+
+        expect(container.read(inventoryProvider).map((item) => item.name), [
+          '番茄',
+          '牛奶',
+        ]);
+      },
+    );
+
     test('shows newly added items first in recent additions', () async {
       SharedPreferences.setMockInitialValues({
         'inventory_items': '[]',
@@ -375,6 +399,29 @@ void main() {
 
       expect(container.read(shoppingProvider).map((item) => item.name), ['牛奶']);
     });
+
+    test(
+      'loads valid shopping rows when persisted list has bad rows',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'shopping_items': json.encode([
+            _shoppingItem('si_1', '牛奶').toJson(),
+            42,
+            {'id': 'si_2', 'name': '鸡蛋'},
+          ]),
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final container = ProviderContainer(
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        );
+        addTearDown(container.dispose);
+
+        expect(container.read(shoppingProvider).map((item) => item.name), [
+          '牛奶',
+          '鸡蛋',
+        ]);
+      },
+    );
   });
 
   group('ShoppingNotifier.add', () {
@@ -538,6 +585,26 @@ void main() {
       final recommended = container.read(recommendedRecipesProvider);
 
       expect(recommended.map((recipe) => recipe.id), ['custom-match']);
+    });
+
+    test('does not match recipes from blank inventory names', () async {
+      final recipes = [
+        _recipe('match', '番茄炒蛋', ['鸡蛋']),
+      ];
+      final container = await _containerWithInventory([
+        _ingredient('   '),
+      ], recipes: recipes);
+      addTearDown(container.dispose);
+      await container.read(recipesProvider.future);
+
+      expect(container.read(recommendedRecipesProvider), isEmpty);
+      expect(
+        matchedIngredientCount(
+          container.read(inventoryProvider),
+          recipes.single,
+        ),
+        0,
+      );
     });
   });
 }

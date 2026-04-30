@@ -35,16 +35,14 @@ class CategoryChips extends StatelessWidget {
         child: Row(
           children: [
             const SizedBox(width: 24),
-            ...fixedCategories.expand(
-              (category) => [
-                _CategoryChip(
-                  category: category,
-                  isSelected: category == selectedCategory,
-                  onSelected: onSelected,
-                ),
-                const SizedBox(width: 8),
-              ],
-            ),
+            for (final category in fixedCategories) ...[
+              _CategoryChip(
+                category: category,
+                isSelected: category == selectedCategory,
+                onSelected: onSelected,
+              ),
+              const SizedBox(width: 8),
+            ],
             if (scrollableCategories.isNotEmpty) ...[
               Expanded(
                 child: _ScrollableCategoryChips(
