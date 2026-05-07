@@ -183,7 +183,6 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
                       ),
                     SmartPlannerCard(
                       title: '再买2样食材，就能完成您的卡博纳拉意面食谱。',
-                      recipeName: '卡博纳拉意面',
                       onViewRecipe: () => _openPlannerRecipe(context),
                     ),
                   ]),

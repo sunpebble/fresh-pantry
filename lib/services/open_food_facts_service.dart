@@ -12,12 +12,10 @@ import '../models/storage_area.dart';
 /// Result returned from Open Food Facts name search.
 class FoodSearchResult {
   final String productName;
-  final String? category;
   final String? imageUrl;
 
   const FoodSearchResult({
     required this.productName,
-    this.category,
     this.imageUrl,
   });
 }
@@ -110,7 +108,7 @@ class OpenFoodFactsService {
         '$_searchUrl'
         '?search_terms=${Uri.encodeComponent(name)}'
         '&search_simple=1&action=process&json=1&page_size=$_maxSearchResults'
-        '&fields=product_name,categories_tags,image_front_small_url',
+        '&fields=product_name,image_front_small_url',
       );
       final response = await _fetch(uri);
 
@@ -129,13 +127,10 @@ class OpenFoodFactsService {
       final productName = _asString(product['product_name']);
       if (productName == null || productName.trim().isEmpty) return null;
 
-      final categoriesTags = _asList(product['categories_tags']);
-      final category = _resolveCategory(categoriesTags);
       final imageUrl = _asString(product['image_front_small_url']);
 
       return FoodSearchResult(
         productName: productName.trim(),
-        category: category,
         imageUrl: imageUrl,
       );
     } on TimeoutException catch (e, stack) {

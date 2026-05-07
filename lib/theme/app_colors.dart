@@ -7,7 +7,6 @@ class AppColors {
   static const onPrimary = Color(0xFFFFFFFF);
   static const onPrimaryContainer = Color(0xFFA8E7C5);
   static const primaryFixed = Color(0xFFB1F0CE);
-  static const primaryFixedDim = Color(0xFF95D4B3);
 
   // Secondary
   static const secondary = Color(0xFF9B4500);
@@ -15,14 +14,12 @@ class AppColors {
   static const onSecondary = Color(0xFFFFFFFF);
   static const onSecondaryContainer = Color(0xFF672C00);
   static const secondaryFixed = Color(0xFFFFDBC9);
-  static const secondaryFixedDim = Color(0xFFFFB68D);
 
   // Tertiary
   static const tertiary = Color(0xFF5B4400);
   static const tertiaryContainer = Color(0xFF785B00);
   static const onTertiary = Color(0xFFFFFFFF);
   static const onTertiaryContainer = Color(0xFFFFD570);
-  static const tertiaryFixed = Color(0xFFFFDF98);
   static const tertiaryFixedDim = Color(0xFFF3BF2F);
 
   // Error

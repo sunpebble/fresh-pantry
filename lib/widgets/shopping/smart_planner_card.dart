@@ -4,13 +4,11 @@ import '../../theme/app_theme.dart';
 
 class SmartPlannerCard extends StatelessWidget {
   final String title;
-  final String recipeName;
   final VoidCallback? onViewRecipe;
 
   const SmartPlannerCard({
     super.key,
     required this.title,
-    required this.recipeName,
     this.onViewRecipe,
   });
 
