@@ -110,24 +110,32 @@ int _matchedIngredientCountForNames(Set<String> inventoryNames, Recipe recipe) {
 }
 
 /// All available recipes — mock recipes + TheMealDB results
+///
+/// Uses `.select` so unrelated inventory mutations (expiry refresh, freshness
+/// recalculation, addedAt timestamps) don't trigger a recipe refetch. The only
+/// dependency is the first three ingredient names, translated to English.
 final recipesProvider = FutureProvider<List<Recipe>>((ref) async {
-  final inventory = ref.watch(inventoryProvider);
+  final englishTerms = ref.watch(
+    inventoryProvider.select(
+      (items) =>
+          items
+              .take(3)
+              .map((i) => FoodKnowledge.englishName(i.name))
+              .whereType<String>()
+              .toSet() // deduplicate (e.g. multiple egg items)
+              .toList(growable: false),
+    ),
+  );
+  final inventoryEmpty = ref.watch(
+    inventoryProvider.select((items) => items.isEmpty),
+  );
   final recipeSearchRepository = ref.watch(recipeSearchRepositoryProvider);
 
   // Always start with mock Chinese recipes
   final allRecipes = List<Recipe>.from(MockData.recipes);
   final seenIds = allRecipes.map((r) => r.id).toSet();
 
-  if (inventory.isEmpty) return allRecipes;
-
-  // Translate Chinese ingredient names to English for TheMealDB search
-  final englishTerms =
-      inventory
-          .take(3)
-          .map((i) => FoodKnowledge.englishName(i.name))
-          .whereType<String>()
-          .toSet() // deduplicate (e.g. multiple egg items)
-          .toList();
+  if (inventoryEmpty) return allRecipes;
 
   for (final term in englishTerms) {
     try {
