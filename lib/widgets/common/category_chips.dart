@@ -134,12 +134,13 @@ class _CategoryChip extends StatelessWidget {
           ),
           child: Text(
             category,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               height: 1.0,
-              color:
-                  isSelected ? AppColors.onPrimary : AppColors.onSurfaceVariant,
+              color: isSelected
+                  ? AppColors.onPrimary
+                  : AppColors.onSurfaceVariant,
             ),
           ),
         ),

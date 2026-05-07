@@ -56,7 +56,7 @@ class FreshnessMeter extends StatelessWidget {
             children: [
               Text(
                 '新鲜度指标',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.5,
@@ -65,7 +65,7 @@ class FreshnessMeter extends StatelessWidget {
               ),
               Text(
                 _label.toUpperCase(),
-                style: TextStyle(
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.5,

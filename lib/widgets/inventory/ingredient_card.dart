@@ -75,7 +75,9 @@ class IngredientCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             ingredient.name,
-                            style: TextStyle(
+                            style: Theme.of(
+                              context,
+                            ).textTheme.titleMedium?.copyWith(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
                               color: AppColors.onSurface.withValues(
