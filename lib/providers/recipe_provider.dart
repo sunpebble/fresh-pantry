@@ -8,6 +8,7 @@ import '../models/ingredient.dart';
 import '../data/mock_data.dart';
 import '../data/food_knowledge.dart';
 import '../services/themealdb_service.dart';
+import '../utils/normalize_cache_key.dart';
 import 'custom_recipe_provider.dart';
 import 'inventory_provider.dart';
 import 'storage_service_provider.dart';
@@ -39,7 +40,7 @@ final recipeSearchRepositoryProvider = Provider<RecipeSearchRepository>((ref) {
 });
 
 String recipeSearchCacheKeyFor(String term) {
-  return 'name:${term.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ')}';
+  return 'name:${normalizeCacheKey(term)}';
 }
 
 class RecipeSearchRepository {

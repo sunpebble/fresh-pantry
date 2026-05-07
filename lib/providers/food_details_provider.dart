@@ -9,6 +9,7 @@ import '../models/food_details.dart';
 import '../models/ingredient.dart';
 import '../models/storage_area.dart';
 import '../services/open_food_facts_service.dart';
+import '../utils/normalize_cache_key.dart';
 import '../utils/storage_labels.dart';
 import 'storage_service_provider.dart';
 
@@ -53,7 +54,7 @@ final foodDetailsProvider = FutureProvider.family<FoodDetails, Ingredient>((
 String foodDetailsCacheKeyFor(Ingredient ingredient) {
   final barcode = ingredient.barcode?.trim();
   if (barcode != null && barcode.isNotEmpty) return 'barcode:$barcode';
-  return 'name:${_normalizeCacheName(ingredient.name)}';
+  return 'name:${normalizeCacheKey(ingredient.name)}';
 }
 
 class FoodDetailsRepository {
@@ -166,6 +167,3 @@ String? _fallbackImageUrl(Ingredient ingredient) {
   return 'https://www.themealdb.com/images/ingredients/$slug.png';
 }
 
-String _normalizeCacheName(String name) {
-  return name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
-}
