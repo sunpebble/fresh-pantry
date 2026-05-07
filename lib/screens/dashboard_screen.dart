@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../models/ingredient.dart';
-import '../models/shopping_item.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/shopping_provider.dart';
 import '../providers/navigation_provider.dart';
@@ -360,14 +359,7 @@ class DashboardScreen extends ConsumerWidget {
   ) async {
     final added = await ref
         .read(shoppingProvider.notifier)
-        .add(
-          ShoppingItem(
-            id: 'si_${DateTime.now().millisecondsSinceEpoch}',
-            name: item.name,
-            detail: '${item.quantity} ${item.unit}',
-            category: item.category ?? '其他',
-          ),
-        );
+        .addFromIngredient(item);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(

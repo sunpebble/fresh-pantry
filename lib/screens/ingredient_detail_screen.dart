@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../models/food_details.dart';
 import '../models/ingredient.dart';
-import '../models/shopping_item.dart';
 import '../providers/food_details_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/shopping_provider.dart';
@@ -61,19 +60,10 @@ class _IngredientDetailScreenState
     return inventoryIndexOf(ref.read(inventoryProvider), item);
   }
 
-  ShoppingItem _shoppingItemFor(Ingredient item) {
-    return ShoppingItem(
-      id: 'si_${DateTime.now().millisecondsSinceEpoch}',
-      name: item.name,
-      detail: '${item.quantity} ${item.unit}',
-      category: item.category ?? '其他',
-    );
-  }
-
   Future<void> _addToShoppingList(Ingredient item) async {
     final added = await ref
         .read(shoppingProvider.notifier)
-        .add(_shoppingItemFor(item));
+        .addFromIngredient(item);
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(

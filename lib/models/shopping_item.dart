@@ -1,3 +1,5 @@
+import 'ingredient.dart';
+
 class ShoppingItem {
   final String id;
   final String name;
@@ -14,6 +16,22 @@ class ShoppingItem {
     required this.category,
     this.isChecked = false,
   });
+
+  /// Build a ShoppingItem from an Ingredient. Uses `id` if provided,
+  /// otherwise generates a fresh one. Mirrors the existing `_shoppingItemFor`
+  /// implementations in dashboard/inventory/ingredient_detail screens.
+  factory ShoppingItem.fromIngredient(
+    Ingredient ingredient, {
+    String? id,
+  }) {
+    return ShoppingItem(
+      id: id ?? 'si_${DateTime.now().millisecondsSinceEpoch}',
+      name: ingredient.name,
+      detail: '${ingredient.quantity} ${ingredient.unit}',
+      imageUrl: ingredient.imageUrl.isEmpty ? null : ingredient.imageUrl,
+      category: ingredient.category ?? '其他',
+    );
+  }
 
   @override
   bool operator ==(Object other) =>

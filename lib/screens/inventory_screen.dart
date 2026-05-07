@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/ingredient.dart';
-import '../models/shopping_item.dart';
 import '../theme/app_theme.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/shopping_provider.dart';
@@ -28,19 +27,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     return inventoryIndexOf(ref.read(inventoryProvider), item);
   }
 
-  ShoppingItem _shoppingItemFor(Ingredient item) {
-    return ShoppingItem(
-      id: 'si_${DateTime.now().millisecondsSinceEpoch}',
-      name: item.name,
-      detail: '${item.quantity} ${item.unit}',
-      category: item.category ?? '其他',
-    );
-  }
-
   Future<void> _addToShoppingList(Ingredient item) async {
     final added = await ref
         .read(shoppingProvider.notifier)
-        .add(_shoppingItemFor(item));
+        .addFromIngredient(item);
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/ingredient.dart';
 import '../models/shopping_item.dart';
 import '../data/food_categories.dart';
 import '../data/food_knowledge.dart';
@@ -139,6 +140,12 @@ class ShoppingNotifier extends Notifier<List<ShoppingItem>> {
 
     state = updated;
     await _queueSave(updated);
+  }
+
+  /// Build a ShoppingItem from the given inventory item and add it.
+  /// Returns true if added, false if a duplicate name was found.
+  Future<bool> addFromIngredient(Ingredient ingredient) {
+    return add(ShoppingItem.fromIngredient(ingredient));
   }
 
   Future<bool> addFromSuggestion(String name) async {
