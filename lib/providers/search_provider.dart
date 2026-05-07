@@ -40,9 +40,19 @@ final filteredShoppingProvider = Provider<List<ShoppingItem>>((ref) {
 });
 
 /// Online food details for the current search keyword.
-final searchFoodDetailsProvider = FutureProvider<FoodDetails?>((ref) async {
+///
+/// `autoDispose` keeps the cache lean once the search overlay is closed.
+/// A 300ms debounce window swallows rapid keystrokes — if the keyword changes
+/// while we're waiting, the provider re-runs and `ref.mounted` short-circuits
+/// the stale invocation before any network work happens.
+final searchFoodDetailsProvider = FutureProvider.autoDispose<FoodDetails?>((
+  ref,
+) async {
   final keyword = ref.watch(searchProvider).trim();
   if (keyword.length < 2) return null;
+
+  await Future<void>.delayed(const Duration(milliseconds: 300));
+  if (!ref.mounted) return null;
 
   final defaults = FoodKnowledge.lookup(keyword);
   final ingredient = Ingredient(
