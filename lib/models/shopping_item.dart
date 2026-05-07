@@ -1,3 +1,4 @@
+import '../data/food_categories.dart';
 import 'ingredient.dart';
 
 class ShoppingItem {
@@ -32,7 +33,7 @@ class ShoppingItem {
       name: ingredient.name,
       detail: '${ingredient.quantity} ${ingredient.unit}',
       imageUrl: ingredient.imageUrl.isEmpty ? null : ingredient.imageUrl,
-      category: ingredient.category ?? '其他',
+      category: ingredient.category ?? FoodCategories.other,
     );
   }
 
@@ -81,7 +82,7 @@ class ShoppingItem {
       name: json['name'] as String? ?? '',
       detail: json['detail'] as String? ?? '',
       imageUrl: json['imageUrl'] as String?,
-      category: json['category'] as String? ?? '其他',
+      category: json['category'] as String? ?? FoodCategories.other,
       isChecked: json['isChecked'] as bool? ?? false,
     );
   }
