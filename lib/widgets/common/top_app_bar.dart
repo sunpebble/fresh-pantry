@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/navigation_provider.dart';
+import '../../screens/ai_settings_screen.dart';
 
 class TopAppBar extends ConsumerWidget {
   const TopAppBar({super.key});
@@ -40,17 +41,25 @@ class TopAppBar extends ConsumerWidget {
               ),
             ],
           ),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(999)),
-            child: IconButton(
-              icon: const Icon(Icons.search, color: AppColors.primary),
-              tooltip: '搜索',
-              onPressed: () {
-                ref.read(searchActiveProvider.notifier).state = true;
-              },
-            ),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.settings_outlined, color: AppColors.primary),
+                tooltip: 'AI 设置',
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AiSettingsScreen()),
+                  );
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.search, color: AppColors.primary),
+                tooltip: '搜索',
+                onPressed: () {
+                  ref.read(searchActiveProvider.notifier).state = true;
+                },
+              ),
+            ],
           ),
         ],
       ),
