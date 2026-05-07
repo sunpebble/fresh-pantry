@@ -44,12 +44,10 @@ final foodDetailsRepositoryProvider = Provider<FoodDetailsRepository>((ref) {
   );
 });
 
-final foodDetailsProvider = FutureProvider.family<FoodDetails, Ingredient>((
-  ref,
-  ingredient,
-) {
-  return ref.watch(foodDetailsRepositoryProvider).detailsFor(ingredient);
-});
+final foodDetailsProvider = FutureProvider.autoDispose
+    .family<FoodDetails, Ingredient>((ref, ingredient) {
+      return ref.watch(foodDetailsRepositoryProvider).detailsFor(ingredient);
+    });
 
 String foodDetailsCacheKeyFor(Ingredient ingredient) {
   final barcode = ingredient.barcode?.trim();
