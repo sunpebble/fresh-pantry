@@ -41,10 +41,7 @@ ShoppingItem _withUniqueShoppingItemId(
   Set<String> existingIds,
 ) {
   final trimmedId = item.id.trim();
-  final baseId =
-      trimmedId.isEmpty
-          ? 'si_${DateTime.now().microsecondsSinceEpoch}'
-          : trimmedId;
+  final baseId = trimmedId.isEmpty ? ShoppingItem.newId() : trimmedId;
   var candidateId = baseId;
   var suffix = 2;
 
@@ -153,7 +150,7 @@ class ShoppingNotifier extends Notifier<List<ShoppingItem>> {
     if (trimmedName.isEmpty) return false;
 
     final newItem = ShoppingItem(
-      id: 'si_${DateTime.now().millisecondsSinceEpoch}',
+      id: ShoppingItem.newId(),
       name: trimmedName,
       detail: '',
       category: FoodKnowledge.categoryFor(trimmedName),

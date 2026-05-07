@@ -60,7 +60,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           .read(shoppingProvider.notifier)
           .add(
             ShoppingItem(
-              id: 'si_${DateTime.now().millisecondsSinceEpoch}_${ing.name}',
+              id: '${ShoppingItem.newId()}_${ing.name}',
               name: ing.name,
               detail: ing.amount,
               category: FoodKnowledge.categoryFor(ing.name),

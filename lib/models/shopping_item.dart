@@ -17,6 +17,9 @@ class ShoppingItem {
     this.isChecked = false,
   });
 
+  /// Generate a fresh shopping item id with the canonical `si_<ms>` format.
+  static String newId() => 'si_${DateTime.now().millisecondsSinceEpoch}';
+
   /// Build a ShoppingItem from an Ingredient. Uses `id` if provided,
   /// otherwise generates a fresh one. Mirrors the existing `_shoppingItemFor`
   /// implementations in dashboard/inventory/ingredient_detail screens.
@@ -25,7 +28,7 @@ class ShoppingItem {
     String? id,
   }) {
     return ShoppingItem(
-      id: id ?? 'si_${DateTime.now().millisecondsSinceEpoch}',
+      id: id ?? ShoppingItem.newId(),
       name: ingredient.name,
       detail: '${ingredient.quantity} ${ingredient.unit}',
       imageUrl: ingredient.imageUrl.isEmpty ? null : ingredient.imageUrl,
