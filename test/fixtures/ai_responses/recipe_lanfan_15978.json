@@ -1,0 +1,19 @@
+{
+  "name": "番茄牛腩面",
+  "category": "家常",
+  "cookingMinutes": 60,
+  "difficulty": 3,
+  "description": "经典家常做法",
+  "imageUrl": "https://example.com/cover.jpg",
+  "ingredients": [
+    {"name": "番茄", "amount": "2 个"},
+    {"name": "牛腩", "amount": "500 g"},
+    {"name": "面条", "amount": "200 g"}
+  ],
+  "steps": [
+    "牛腩切块焯水",
+    "番茄切块炒出沙",
+    "加水炖煮 40 分钟",
+    "下面条煮熟"
+  ]
+}
