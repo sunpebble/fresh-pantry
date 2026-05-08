@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -172,6 +173,31 @@ void main() {
     },
   );
 
+  test('lookupDetails returns null when the network call times out', () async {
+    final client = _ThrowingHttpClient(TimeoutException('search timed out'));
+
+    final details = await OpenFoodFactsService.lookupDetails(
+      name: '牛奶',
+      client: client,
+    );
+
+    expect(details, isNull);
+    expect(client.requests, isNotEmpty);
+  });
+
+  test('lookupDetails returns null on malformed JSON responses', () async {
+    final client = _FakeHttpClient(
+      http.Response('this is { not valid json', 200),
+    );
+
+    final details = await OpenFoodFactsService.lookupDetails(
+      name: '牛奶',
+      client: client,
+    );
+
+    expect(details, isNull);
+  });
+
   test(
     'lookupDetails does not expose package quantity in descriptions',
     () async {
@@ -235,5 +261,18 @@ class _FakeHttpClient extends http.BaseClient {
       request: request,
       reasonPhrase: response.reasonPhrase,
     );
+  }
+}
+
+class _ThrowingHttpClient extends http.BaseClient {
+  _ThrowingHttpClient(this.error);
+
+  final Object error;
+  final List<http.BaseRequest> requests = [];
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    requests.add(request);
+    throw error;
   }
 }
