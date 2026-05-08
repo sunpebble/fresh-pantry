@@ -425,11 +425,39 @@ class _CustomRecipeFormScreenState
           ),
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.all(AppSpacing.lg),
-        child: FilledButton(
-          onPressed: _isSaving ? null : _saveRecipe,
-          child: const Text('保存食谱'),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(
+            top: BorderSide(color: AppColors.outlineVariant),
+          ),
+        ),
+        child: SafeArea(
+          minimum: const EdgeInsets.all(AppSpacing.lg),
+          child: FilledButton(
+            onPressed: _isSaving ? null : _saveRecipe,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(double.infinity, 48),
+            ),
+            child: _isSaving
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(AppColors.onPrimary),
+                        ),
+                      ),
+                      SizedBox(width: AppSpacing.sm),
+                      Text('保存中…'),
+                    ],
+                  )
+                : const Text('保存食谱'),
+          ),
         ),
       ),
     );

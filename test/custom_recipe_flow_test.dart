@@ -359,7 +359,11 @@ void main() {
       '煮面后拌入葱油',
     );
     await tester.tap(find.text('保存食谱'));
-    await tester.pumpAndSettle();
+    // pumpAndSettle would hang while CircularProgressIndicator animates.
+    // pump() resolves microtasks; the notifier completes synchronously in
+    // tests, so a single extra pump is enough for Navigator.pop to fire.
+    await tester.pump();
+    await tester.pump();
 
     final saved = json.decode(prefs.getString(customRecipesStorageKey)!);
     expect(saved.single['name'], '葱油拌面');
@@ -466,7 +470,10 @@ void main() {
       '煮面后拌入葱油',
     );
     await tester.tap(find.text('保存食谱'));
-    await tester.pumpAndSettle();
+    // pumpAndSettle hangs on CircularProgressIndicator animation; pump() is
+    // sufficient since the notifier completes synchronously in tests.
+    await tester.pump();
+    await tester.pump();
 
     final saved = json.decode(prefs.getString(customRecipesStorageKey)!);
     expect(saved.single['imageUrl'], coverImage);
@@ -642,16 +649,20 @@ void main() {
     // After the first tap, _isSaving flips to true and the FilledButton's
     // onPressed must be null so the second tap is a no-op.
     await tester.pump();
-    final saveButton = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, '保存食谱'),
-    );
+    // While saving, the button child switches to the spinner row ('保存中…'),
+    // so find by type rather than text.
+    final saveButton = tester.widget<FilledButton>(find.byType(FilledButton));
     expect(
       saveButton.onPressed,
       isNull,
       reason: 'save button should be disabled while saving is in progress',
     );
-    await tester.tap(find.text('保存食谱'), warnIfMissed: false);
-    await tester.pumpAndSettle();
+    // Second tap targets the disabled button directly (text is now '保存中…').
+    await tester.tap(find.byType(FilledButton));
+    // pumpAndSettle hangs on CircularProgressIndicator animation; pump() is
+    // sufficient since the notifier completes synchronously in tests.
+    await tester.pump();
+    await tester.pump();
 
     final saved = json.decode(prefs.getString(customRecipesStorageKey)!);
     expect(saved, hasLength(1));
