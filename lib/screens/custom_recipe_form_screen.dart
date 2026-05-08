@@ -305,6 +305,7 @@ class _CustomRecipeFormScreenState
                   iconBackgroundColor: AppColors.secondaryFixed,
                   iconForegroundColor: AppColors.secondary,
                   countLabel: '${_ingredientControllers.length} 项',
+                  hasError: _ingredientsError != null,
                   child: Column(
                     children: [
                       if (_ingredientsError != null)
@@ -420,6 +421,7 @@ class _CustomRecipeFormScreenState
                   iconBackgroundColor: AppColors.secondaryFixed,
                   iconForegroundColor: AppColors.secondary,
                   countLabel: '${_stepEntries.length} 步',
+                  hasError: _stepsError != null,
                   child: Column(
                     children: [
                       if (_stepsError != null)

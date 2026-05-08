@@ -10,6 +10,7 @@ class RecipeFormCard extends StatelessWidget {
     this.countLabel,
     this.iconBackgroundColor,
     this.iconForegroundColor,
+    this.hasError = false,
   });
 
   final IconData icon;
@@ -18,6 +19,7 @@ class RecipeFormCard extends StatelessWidget {
   final String? countLabel;
   final Color? iconBackgroundColor;
   final Color? iconForegroundColor;
+  final bool hasError;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,10 @@ class RecipeFormCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.outlineVariant),
+        border: Border.all(
+          color: hasError ? AppColors.error : AppColors.outlineVariant,
+          width: hasError ? 1.5 : 1.0,
+        ),
       ),
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
