@@ -8,9 +8,11 @@ import 'package:fresh_pantry/app.dart';
 import 'package:fresh_pantry/models/ingredient.dart';
 import 'package:fresh_pantry/models/recipe.dart';
 import 'package:fresh_pantry/models/storage_area.dart';
+import 'package:fresh_pantry/providers/ai_draft_provider.dart';
 import 'package:fresh_pantry/providers/custom_recipe_provider.dart';
 import 'package:fresh_pantry/providers/navigation_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
+import 'package:fresh_pantry/services/share_intent_service.dart';
 import 'package:fresh_pantry/screens/custom_recipe_form_screen.dart';
 import 'package:fresh_pantry/screens/dashboard_screen.dart';
 import 'package:fresh_pantry/screens/my_recipes_screen.dart';
@@ -120,7 +122,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
+        ],
         child: MaterialApp(
           home: Builder(
             builder: (context) {

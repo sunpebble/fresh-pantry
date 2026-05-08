@@ -34,4 +34,14 @@ void main() {
       expect(await d.peek(), 'https://x/r/1');
     });
   });
+
+  group('extractUrl', () {
+    test('returns null for plain text', () {
+      expect(extractUrl('no link here'), isNull);
+    });
+    test('grabs first URL from mixed text', () {
+      expect(extractUrl('看 https://lanfanapp.com/recipe/15978 这个'),
+          'https://lanfanapp.com/recipe/15978');
+    });
+  });
 }

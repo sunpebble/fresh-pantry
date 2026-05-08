@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fresh_pantry/models/draft_field.dart';
@@ -58,5 +60,39 @@ void main() {
     await n.runRecipeFromUrl('https://x', parser: (u) async => _stubRecipeDraft(u));
     n.clear();
     expect(container.read(aiDraftProvider), const AiDraftState.idle());
+  });
+
+  test('concurrent runRecipeFromUrl drops second call while first is in flight', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final n = container.read(aiDraftProvider.notifier);
+
+    var firstCalls = 0;
+    var secondCalls = 0;
+    final firstCompleter = Completer<RecipeDraft>();
+
+    // Start first; it never completes until we tell it to.
+    final f1 = n.runRecipeFromUrl(
+      'https://first',
+      parser: (u) async {
+        firstCalls++;
+        return firstCompleter.future;
+      },
+    );
+    // Start second while first is in flight; should be a no-op.
+    await n.runRecipeFromUrl(
+      'https://second',
+      parser: (u) async {
+        secondCalls++;
+        return _stubRecipeDraft(u);
+      },
+    );
+    expect(firstCalls, 1);
+    expect(secondCalls, 0); // dropped
+
+    // Complete the first.
+    firstCompleter.complete(_stubRecipeDraft('https://first'));
+    await f1;
+    expect(container.read(aiDraftProvider).recipeDraft?.sourceUrl, 'https://first');
   });
 }

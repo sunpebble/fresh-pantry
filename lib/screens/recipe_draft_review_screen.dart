@@ -129,32 +129,11 @@ class RecipeDraftReviewScreen extends ConsumerWidget {
   void _patch(WidgetRef ref, RecipeDraft next) =>
       ref.read(aiDraftProvider.notifier).updateRecipeDraft(next);
 
-  static Widget _stringEditor(String initial, void Function(String) save) {
-    final controller = TextEditingController(text: initial);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        TextField(controller: controller, autofocus: true),
-        const SizedBox(height: 8),
-        FilledButton(onPressed: () => save(controller.text.trim()), child: const Text('保存')),
-      ],
-    );
-  }
+  static Widget _stringEditor(String initial, void Function(String) save) =>
+      _StringEditor(initial: initial, onSave: save);
 
-  static Widget _intEditor(int initial, void Function(int) save) {
-    final controller = TextEditingController(text: initial.toString());
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        TextField(controller: controller, keyboardType: TextInputType.number, autofocus: true),
-        const SizedBox(height: 8),
-        FilledButton(
-          onPressed: () => save(int.tryParse(controller.text.trim()) ?? initial),
-          child: const Text('保存'),
-        ),
-      ],
-    );
-  }
+  static Widget _intEditor(int initial, void Function(int) save) =>
+      _IntEditor(initial: initial, onSave: save);
 }
 
 extension on RecipeDraft {
@@ -179,4 +158,76 @@ extension on RecipeDraft {
         ingredients: ingredients ?? this.ingredients,
         steps: steps ?? this.steps,
       );
+}
+
+class _StringEditor extends StatefulWidget {
+  const _StringEditor({required this.initial, required this.onSave});
+  final String initial;
+  final void Function(String) onSave;
+  @override
+  State<_StringEditor> createState() => _StringEditorState();
+}
+
+class _StringEditorState extends State<_StringEditor> {
+  late final TextEditingController _controller;
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initial);
+  }
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(controller: _controller, autofocus: true),
+        const SizedBox(height: 8),
+        FilledButton(
+          onPressed: () => widget.onSave(_controller.text.trim()),
+          child: const Text('保存'),
+        ),
+      ],
+    );
+  }
+}
+
+class _IntEditor extends StatefulWidget {
+  const _IntEditor({required this.initial, required this.onSave});
+  final int initial;
+  final void Function(int) onSave;
+  @override
+  State<_IntEditor> createState() => _IntEditorState();
+}
+
+class _IntEditorState extends State<_IntEditor> {
+  late final TextEditingController _controller;
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initial.toString());
+  }
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(controller: _controller, keyboardType: TextInputType.number, autofocus: true),
+        const SizedBox(height: 8),
+        FilledButton(
+          onPressed: () => widget.onSave(int.tryParse(_controller.text.trim()) ?? widget.initial),
+          child: const Text('保存'),
+        ),
+      ],
+    );
+  }
 }

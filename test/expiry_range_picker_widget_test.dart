@@ -7,8 +7,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fresh_pantry/app.dart';
+import 'package:fresh_pantry/providers/ai_draft_provider.dart';
 import 'package:fresh_pantry/providers/navigation_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
+import 'package:fresh_pantry/services/share_intent_service.dart';
 
 void main() {
   setUpAll(() {
@@ -29,6 +31,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           navigationProvider.overrideWith((ref) => 2),
         ],
         child: const FreshPantryApp(),
@@ -61,6 +64,7 @@ void main() {
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
             navigationProvider.overrideWith((ref) => 2),
           ],
           child: const FreshPantryApp(),
@@ -93,6 +97,7 @@ void main() {
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
             navigationProvider.overrideWith((ref) => 2),
           ],
           child: const FreshPantryApp(),
@@ -133,6 +138,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           navigationProvider.overrideWith((ref) => 2),
         ],
         child: const FreshPantryApp(),
@@ -173,6 +179,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           navigationProvider.overrideWith((ref) => 2),
         ],
         child: const FreshPantryApp(),
@@ -212,6 +219,7 @@ void main() {
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
             navigationProvider.overrideWith((ref) => 2),
           ],
           child: const FreshPantryApp(),
@@ -260,6 +268,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           navigationProvider.overrideWith((ref) => 2),
         ],
         child: const FreshPantryApp(),
@@ -287,6 +296,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           navigationProvider.overrideWith((ref) => 2),
         ],
         child: const FreshPantryApp(),

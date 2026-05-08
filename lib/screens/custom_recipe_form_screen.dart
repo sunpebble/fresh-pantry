@@ -28,11 +28,13 @@ class CustomRecipeFormScreen extends ConsumerStatefulWidget {
     this.recipe,
     this.pickCoverImage,
     this.urlParserOverride,
+    this.prefilledUrl,
   });
 
   final Recipe? recipe;
   final CoverImagePicker? pickCoverImage;
   final Future<RecipeDraft> Function(String url)? urlParserOverride;
+  final String? prefilledUrl;
 
   @override
   ConsumerState<CustomRecipeFormScreen> createState() =>
@@ -61,6 +63,9 @@ class _CustomRecipeFormScreenState
     final recipe = widget.recipe;
 
     _urlController = TextEditingController();
+    if (widget.prefilledUrl != null && widget.prefilledUrl!.isNotEmpty) {
+      _urlController.text = widget.prefilledUrl!;
+    }
     _nameController = TextEditingController(text: recipe?.name ?? '');
     _categoryController = TextEditingController(text: recipe?.category ?? '家常');
     _cookingMinutesController = TextEditingController(

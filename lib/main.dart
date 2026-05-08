@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
+import 'providers/ai_draft_provider.dart';
 import 'providers/custom_recipe_provider.dart';
 import 'providers/inventory_provider.dart';
 import 'providers/shopping_provider.dart';
 import 'providers/storage_service_provider.dart';
+import 'services/share_intent_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +26,7 @@ void main() async {
         inventorySeedProvider.overrideWithValue(inventorySeed),
         shoppingSeedProvider.overrideWithValue(shoppingSeed),
         customRecipeSeedProvider.overrideWithValue(customRecipeSeed),
+        systemShareSourceProvider.overrideWithValue(ReceiveSharingIntentSource()),
       ],
       child: const FreshPantryApp(),
     ),

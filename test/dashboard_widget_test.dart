@@ -9,9 +9,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fresh_pantry/app.dart';
 import 'package:fresh_pantry/models/ingredient.dart';
 import 'package:fresh_pantry/models/storage_area.dart';
+import 'package:fresh_pantry/providers/ai_draft_provider.dart';
 import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/navigation_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
+import 'package:fresh_pantry/services/share_intent_service.dart';
 import 'package:fresh_pantry/widgets/dashboard/alert_card.dart';
 
 void main() {
@@ -35,7 +37,10 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
+          ],
           child: Builder(
             builder: (context) {
               container = ProviderScope.containerOf(context);
@@ -75,7 +80,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
+        ],
         child: const FreshPantryApp(),
       ),
     );
@@ -112,7 +120,10 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
+          ],
           child: const FreshPantryApp(),
         ),
       );
@@ -196,6 +207,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           selectedCategoryProvider.overrideWith((ref) => '不新鲜'),
         ],
         child: Builder(
@@ -231,7 +243,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
+        ],
         child: const FreshPantryApp(),
       ),
     );
@@ -254,7 +269,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
+        ],
         child: Builder(
           builder: (context) {
             container = ProviderScope.containerOf(context);

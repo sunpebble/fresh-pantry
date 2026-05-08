@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/ingredient_draft.dart';
 import '../models/recipe_draft.dart';
 import '../services/ai_client.dart';
+import '../services/share_intent_service.dart';
 
 @immutable
 class AiDraftState {
@@ -74,6 +75,7 @@ class AiDraftNotifier extends Notifier<AiDraftState> {
   }
 
   Future<void> runRecipeFromUrl(String url, {required RecipeUrlParser parser}) async {
+    if (state.isRunning) return;
     state = AiDraftState(isRunning: true, recipeSourceUrl: url);
     try {
       final draft = await parser(url);
@@ -86,6 +88,7 @@ class AiDraftNotifier extends Notifier<AiDraftState> {
   }
 
   Future<void> runIngredientsFromText(String text, {required IngredientTextParser parser}) async {
+    if (state.isRunning) return;
     state = AiDraftState(isRunning: true, ingredientSourceText: text);
     try {
       final drafts = await parser(text);
@@ -98,6 +101,7 @@ class AiDraftNotifier extends Notifier<AiDraftState> {
   }
 
   Future<void> runIngredientsFromImage(Uint8List bytes, {required IngredientImageParser parser}) async {
+    if (state.isRunning) return;
     _lastImageBytes = bytes;
     state = const AiDraftState(isRunning: true);
     try {
@@ -121,3 +125,7 @@ class AiDraftNotifier extends Notifier<AiDraftState> {
 
 final aiDraftProvider =
     NotifierProvider<AiDraftNotifier, AiDraftState>(AiDraftNotifier.new);
+
+final systemShareSourceProvider = Provider<SystemShareSource>((_) {
+  throw UnimplementedError('Override in main with a real SystemShareSource.');
+});
