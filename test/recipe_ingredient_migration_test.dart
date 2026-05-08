@@ -104,5 +104,40 @@ void main() {
       expect(restored.unit, original.unit);
       expect(restored.amount, original.amount);
     });
+
+    test('copyWith preserves explicit amount when neither quantity nor unit changes',
+        () {
+      final original = RecipeIngredient(
+        name: 'x',
+        quantity: '200',
+        unit: 'g',
+        amount: '约 200g',
+      );
+      final updated = original.copyWith(name: 'y');
+      expect(updated.amount, '约 200g');
+    });
+
+    test(
+        'copyWith recomposes amount when quantity or unit changes and no explicit amount given',
+        () {
+      final original = RecipeIngredient(
+        name: 'x',
+        quantity: '200',
+        unit: 'g',
+        amount: '约 200g',
+      );
+      final updated = original.copyWith(quantity: '300');
+      expect(updated.amount, '300g');
+    });
+
+    test('copyWith honors explicit amount even when changing quantity', () {
+      final original = RecipeIngredient(
+        name: 'x',
+        quantity: '200',
+        unit: 'g',
+      );
+      final updated = original.copyWith(quantity: '300', amount: '约 300g');
+      expect(updated.amount, '约 300g');
+    });
   });
 }

@@ -52,11 +52,13 @@ class RecipeIngredient {
     String? unit,
     String? amount,
   }) {
+    final preservedAmount = amount ??
+        (quantity == null && unit == null ? this.amount : null);
     return RecipeIngredient(
       name: name ?? this.name,
       quantity: quantity ?? this.quantity,
       unit: unit ?? this.unit,
-      amount: amount,
+      amount: preservedAmount,
     );
   }
 
