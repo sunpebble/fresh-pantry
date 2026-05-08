@@ -36,6 +36,68 @@ void main() {
         1.0,
       );
     });
+
+    test('returns 0.0 when totalShelfLifeDays is zero', () {
+      final now = DateTime(2026, 4, 24);
+      expect(
+        expiryFreshness(
+          expiryDate: now.add(const Duration(days: 7)),
+          totalShelfLifeDays: 0,
+          now: now,
+        ),
+        0.0,
+      );
+    });
+
+    test('returns 0.0 when totalShelfLifeDays is negative', () {
+      final now = DateTime(2026, 4, 24);
+      expect(
+        expiryFreshness(
+          expiryDate: now.add(const Duration(days: 5)),
+          totalShelfLifeDays: -3,
+          now: now,
+        ),
+        0.0,
+      );
+    });
+
+    test('clamps to 0.0 once the expiry date has passed', () {
+      final now = DateTime(2026, 4, 24);
+      final yesterday = now.subtract(const Duration(days: 1));
+      expect(
+        expiryFreshness(
+          expiryDate: yesterday,
+          totalShelfLifeDays: 7,
+          now: now,
+        ),
+        0.0,
+      );
+    });
+
+    test('clamps to 1.0 when remaining days exceed total shelf life', () {
+      final now = DateTime(2026, 4, 24);
+      // shelf life is short but expiry far in the future — clamp to 1.0.
+      expect(
+        expiryFreshness(
+          expiryDate: now.add(const Duration(days: 100)),
+          totalShelfLifeDays: 7,
+          now: now,
+        ),
+        1.0,
+      );
+    });
+
+    test('handles a very large totalShelfLifeDays without overflow', () {
+      final now = DateTime(2026, 4, 24);
+      expect(
+        expiryFreshness(
+          expiryDate: now.add(const Duration(days: 365)),
+          totalShelfLifeDays: 100000,
+          now: now,
+        ),
+        closeTo(365 / 100000, 1e-6),
+      );
+    });
   });
 
   group('freshnessStateForExpiry', () {
