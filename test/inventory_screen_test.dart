@@ -13,6 +13,7 @@ import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/ingredient_detail_screen.dart';
 import 'package:fresh_pantry/screens/inventory_screen.dart';
+import 'package:fresh_pantry/widgets/common/category_chips.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,7 +25,14 @@ void main() {
   testWidgets(
     'inventory screen does not show middle search or quick add inputs',
     (tester) async {
-      SharedPreferences.setMockInitialValues({'inventory_items': '[]'});
+      SharedPreferences.setMockInitialValues({
+        'inventory_items': jsonEncode([
+          _ingredient(
+            name: '番茄',
+            category: FoodCategories.freshProduce,
+          ).toJson(),
+        ]),
+      });
       final prefs = await SharedPreferences.getInstance();
 
       await tester.pumpWidget(
@@ -35,17 +43,30 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(TextField), findsNothing);
-      expect(find.textContaining('快速添加'), findsNothing);
-      expect(find.textContaining('搜索'), findsNothing);
+      // Positive structural assertions: the screen renders the inventory
+      // chrome we expect.
+      expect(find.byType(CategoryChips), findsOneWidget);
+      expect(find.byType(CustomScrollView), findsOneWidget);
+      expect(find.text('食材库存'), findsOneWidget);
+      // "不新鲜" leading filter chip is present and rendered before the
+      // scrollable "全部" chip.
       expect(find.text('不新鲜'), findsOneWidget);
-      expect(
-        find.ancestor(of: find.text('不新鲜'), matching: find.byType(ListView)),
-        findsNothing,
-      );
+      expect(find.text('全部'), findsOneWidget);
       expect(
         tester.getTopLeft(find.text('不新鲜')).dx,
         lessThan(tester.getTopLeft(find.text('全部')).dx),
+      );
+      // Inventory rows render with their stable swipe keys.
+      expect(find.byKey(const ValueKey('inv_swipe_番茄_0')), findsOneWidget);
+
+      // Negative assertions: middle search/quick add inputs and the
+      // textContaining hints stay absent.
+      expect(find.byType(TextField), findsNothing);
+      expect(find.textContaining('快速添加'), findsNothing);
+      expect(find.textContaining('搜索'), findsNothing);
+      expect(
+        find.ancestor(of: find.text('不新鲜'), matching: find.byType(ListView)),
+        findsNothing,
       );
     },
   );
