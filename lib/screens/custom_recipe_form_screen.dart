@@ -54,7 +54,7 @@ class _CustomRecipeFormScreenState
   late final TextEditingController _difficultyController;
   late final TextEditingController _descriptionController;
   late final List<_IngredientControllers> _ingredientControllers;
-  late final List<TextEditingController> _stepControllers;
+  late final List<_StepEntry> _stepEntries;
   final _clipboardDetector = ClipboardUrlDetector();
   String? _coverImageSource;
   bool _isSaving = false;
@@ -86,12 +86,9 @@ class _CustomRecipeFormScreenState
         recipe?.ingredients.isNotEmpty == true
             ? recipe!.ingredients.map(_IngredientControllers.from).toList()
             : [_IngredientControllers.empty()];
-    _stepControllers =
-        recipe?.steps.isNotEmpty == true
-            ? recipe!.steps
-                .map((step) => TextEditingController(text: step))
-                .toList()
-            : [TextEditingController()];
+    _stepEntries = recipe?.steps.isNotEmpty == true
+        ? recipe!.steps.map((step) => _StepEntry(text: step)).toList()
+        : [_StepEntry()];
 
     if (!_isEditing) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeOfferClipboardUrl());
@@ -109,8 +106,8 @@ class _CustomRecipeFormScreenState
     for (final ingredient in _ingredientControllers) {
       ingredient.dispose();
     }
-    for (final stepController in _stepControllers) {
-      stepController.dispose();
+    for (final entry in _stepEntries) {
+      entry.dispose();
     }
     super.dispose();
   }
@@ -303,49 +300,107 @@ class _CustomRecipeFormScreenState
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: AppSpacing.xxl),
-                    Text(
-                      '步骤',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    for (var i = 0; i < _stepControllers.length; i++) ...[
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _stepControllers[i],
-                              decoration: _fieldDecoration('步骤 ${i + 1}'),
-                              maxLines: 3,
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                  AppSpacing.lg,
+                  0,
+                ),
+                child: RecipeFormCard(
+                  icon: Icons.format_list_numbered,
+                  title: '步骤',
+                  iconBackgroundColor: AppColors.secondaryFixed,
+                  iconForegroundColor: AppColors.secondary,
+                  countLabel: '${_stepEntries.length} 步',
+                  child: Column(
+                    children: [
+                      ReorderableListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        buildDefaultDragHandles: false,
+                        itemCount: _stepEntries.length,
+                        onReorderItem: (oldIndex, newIndex) {
+                          setState(() {
+                            final item = _stepEntries.removeAt(oldIndex);
+                            _stepEntries.insert(newIndex, item);
+                          });
+                        },
+                        itemBuilder: (context, i) {
+                          final entry = _stepEntries[i];
+                          return Padding(
+                            key: ValueKey(entry.dragKey),
+                            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 32,
+                                  height: 32,
+                                  margin: const EdgeInsets.only(top: 4),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    '${i + 1}',
+                                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                          color: AppColors.onPrimary,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.md),
+                                Expanded(
+                                  child: TextField(
+                                    controller: entry.controller,
+                                    decoration: _compactDecoration('输入下一步…'),
+                                    maxLines: null,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ReorderableDragStartListener(
+                                      index: i,
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(AppSpacing.xs),
+                                        child: Icon(
+                                          Icons.drag_indicator,
+                                          color: AppColors.outlineVariant,
+                                        ),
+                                      ),
+                                    ),
+                                    if (i > 0)
+                                      IconButton(
+                                        onPressed: () => _removeStep(i),
+                                        icon: const Icon(Icons.remove_circle_outline),
+                                        tooltip: '移除步骤',
+                                        color: AppColors.error,
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                  ],
+                                ),
+                              ],
                             ),
-                          ),
-                          if (i > 0)
-                            IconButton(
-                              onPressed: () => _removeStep(i),
-                              icon: const Icon(Icons.remove_circle_outline),
-                              tooltip: '移除步骤',
-                            ),
-                        ],
+                          );
+                        },
                       ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.sm),
+                      OutlinedButton.icon(
+                        onPressed: _addStep,
+                        icon: const Icon(Icons.add),
+                        label: const Text('添加步骤'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 44),
+                        ),
+                      ),
                     ],
-                    OutlinedButton.icon(
-                      onPressed: _addStep,
-                      icon: const Icon(Icons.add),
-                      label: const Text('添加步骤'),
-                    ),
-                    const SizedBox(height: 88),
-                  ],
+                  ),
                 ),
               ),
+              const SizedBox(height: 88),
             ],
           ),
         ),
@@ -452,11 +507,10 @@ class _CustomRecipeFormScreenState
     final cookingMinutes = int.tryParse(_cookingMinutesController.text.trim());
     final difficulty = int.tryParse(_difficultyController.text.trim());
     final imageUrl = _normalizedCoverImageSource();
-    final steps =
-        _stepControllers
-            .map((controller) => controller.text.trim())
-            .where((step) => step.isNotEmpty)
-            .toList();
+    final steps = _stepEntries
+        .map((entry) => entry.controller.text.trim())
+        .where((step) => step.isNotEmpty)
+        .toList();
 
     final missingFields = _missingFields(
       name: name,
@@ -536,13 +590,13 @@ class _CustomRecipeFormScreenState
 
   void _addStep() {
     setState(() {
-      _stepControllers.add(TextEditingController());
+      _stepEntries.add(_StepEntry());
     });
   }
 
   void _removeStep(int index) {
     setState(() {
-      _stepControllers.removeAt(index).dispose();
+      _stepEntries.removeAt(index).dispose();
     });
   }
 
@@ -900,6 +954,17 @@ class _IngredientControllers {
     nameController.dispose();
     quantityController.dispose();
   }
+}
+
+class _StepEntry {
+  _StepEntry({String text = ''})
+      : controller = TextEditingController(text: text),
+        dragKey = UniqueKey();
+
+  final TextEditingController controller;
+  final Key dragKey;
+
+  void dispose() => controller.dispose();
 }
 
 class _AiUrlBanner extends StatelessWidget {

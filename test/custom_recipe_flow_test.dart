@@ -353,7 +353,9 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, '食材名称').first, '面条');
     await tester.enterText(find.widgetWithText(TextField, '用量').first, '1份');
     await tester.enterText(
-      find.widgetWithText(TextField, '步骤 1').first,
+      find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
+      ).first,
       '煮面后拌入葱油',
     );
     await tester.tap(find.text('保存食谱'));
@@ -458,7 +460,9 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, '食材名称').first, '面条');
     await tester.enterText(find.widgetWithText(TextField, '用量').first, '1份');
     await tester.enterText(
-      find.widgetWithText(TextField, '步骤 1').first,
+      find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
+      ).first,
       '煮面后拌入葱油',
     );
     await tester.tap(find.text('保存食谱'));
@@ -510,7 +514,9 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.widgetWithText(TextField, '步骤 1').first,
+      find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
+      ).first,
       '煮面后拌入葱油',
     );
     await tester.pumpAndSettle();
@@ -568,7 +574,9 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, '食材名称').first, '面条');
     await tester.enterText(find.widgetWithText(TextField, '用量').first, '1份');
     await tester.enterText(
-      find.widgetWithText(TextField, '步骤 1').first,
+      find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
+      ).first,
       '煮面后拌入葱油',
     );
     await tester.tap(find.text('保存食谱'));
@@ -625,7 +633,9 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, '食材名称').first, '面条');
     await tester.enterText(find.widgetWithText(TextField, '用量').first, '1份');
     await tester.enterText(
-      find.widgetWithText(TextField, '步骤 1').first,
+      find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
+      ).first,
       '煮面后拌入葱油',
     );
     await tester.tap(find.text('保存食谱'));
