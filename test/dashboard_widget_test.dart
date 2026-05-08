@@ -118,9 +118,30 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('已过期2天'), findsWidgets);
-      expect(find.text('今天'), findsNothing);
-      expect(find.text('48H'), findsNothing);
+      // The AlertCard renders the ingredient's expiryLabel — both as
+      // subtitle text and as the badge — and never falls back to
+      // hard-coded labels like "今天" or "48H".
+      expect(
+        find.descendant(
+          of: find.byType(AlertCard),
+          matching: find.text('已过期2天'),
+        ),
+        findsNWidgets(2),
+      );
+      expect(
+        find.descendant(
+          of: find.byType(AlertCard),
+          matching: find.text('今天'),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(AlertCard),
+          matching: find.text('48H'),
+        ),
+        findsNothing,
+      );
     },
   );
 
