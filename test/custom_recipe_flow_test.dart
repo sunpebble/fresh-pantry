@@ -592,7 +592,18 @@ void main() {
       '煮面后拌入葱油',
     );
     await tester.tap(find.text('保存食谱'));
-    await tester.tap(find.text('保存食谱'));
+    // After the first tap, _isSaving flips to true and the FilledButton's
+    // onPressed must be null so the second tap is a no-op.
+    await tester.pump();
+    final saveButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, '保存食谱'),
+    );
+    expect(
+      saveButton.onPressed,
+      isNull,
+      reason: 'save button should be disabled while saving is in progress',
+    );
+    await tester.tap(find.text('保存食谱'), warnIfMissed: false);
     await tester.pumpAndSettle();
 
     final saved = json.decode(prefs.getString(customRecipesStorageKey)!);
