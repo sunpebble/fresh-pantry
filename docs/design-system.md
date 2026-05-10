@@ -112,7 +112,88 @@ The base scale is exposed via `AppTypography.textTheme` (a `Material 3 TextTheme
 
 ## L2 Themes
 
-> Filled in Task 6.
+> All theme configuration lives in [`lib/theme/app_theme.dart`](../lib/theme/app_theme.dart). The theme is wired via Material 3 (`useMaterial3: true`) with a custom `ColorScheme` derived from `AppColors`.
+
+### 2.1 Card
+
+**Theme key**: `ThemeData.cardTheme`.
+**Reference implementation**: [`RecipeFormCard`](../lib/widgets/recipe_form/recipe_form_card.dart) (note: currently a `Container`-based reimplementation that bypasses the theme — see Appendix A T2; new code should use `Card` to inherit the theme).
+
+| Property | Value | Token |
+|---|---|---|
+| Elevation | 0 | — (flat surfaces by design) |
+| Radius | 16 | `AppRadius.lg` |
+| Background color | white (`#FFFFFF`) | `AppColors.surfaceContainerLowest` |
+| Border | 1px outlineVariant | `AppColors.outlineVariant` |
+| Margin | zero | — |
+
+**Error state**: when a card represents a form section with validation errors, override the border to `1.5px AppColors.error` (consumer responsibility — see L3.6).
+
+**When to use**: any "section grouping" surface — form sections, list items, info panels.
+
+**When NOT to use**: full-bleed hero imagery (use a different container — see L3.5 reference if applicable); inline pills or chips (use `PillChip` — L3.10).
+
+### 2.2 Chip
+
+**Theme key**: `ThemeData.chipTheme` (fallback for any future Material `Chip(...)` use).
+**Reference implementation**: [`PillChip`](../lib/widgets/shared/pill_chip.dart) — the project's **only** chip implementation.
+
+| Property | Value | Token |
+|---|---|---|
+| Shape | StadiumBorder (full pill) | `AppRadius.pill` |
+| Default background | surfaceContainerLow | `AppColors.surfaceContainerLow` |
+| Selected color | primary | `AppColors.primary` |
+| Label style | labelLarge (14/w700) | `AppTypography.textTheme.labelLarge` |
+| Show checkmark | false | — |
+| Side | none | — |
+
+**Contrast caveat**: when a chip is placed on top of a white card (`surfaceContainerLowest`), the default `surfaceContainerLow` (`#F6F3F0`) only has subtle contrast. In that context, the consumer should pass `backgroundColor: AppColors.surfaceContainer` to PillChip explicitly for stronger separation.
+
+**Implementation rule**: new chip surfaces must use `PillChip`, not Material's `Chip` / `FilterChip` / `ChoiceChip`. The chipTheme exists only as fallback — it is currently unused (zero `Chip(...)` call sites in `lib/`).
+
+### 2.3 InputDecoration
+
+**Theme key**: `ThemeData.inputDecorationTheme`.
+**Reference implementation**: text fields in [`custom_recipe_form_screen.dart`](../lib/screens/custom_recipe_form_screen.dart).
+
+| Property | Value | Token |
+|---|---|---|
+| Filled | true | — |
+| Fill color | surfaceContainerHigh | `AppColors.surfaceContainerHigh` |
+| Default radius | 16 | (literal `BorderRadius.circular(16)`) |
+| Default border | none | `BorderSide.none` |
+| Focus border | primary 1.5px | `AppColors.primary`, width `1.5` |
+| Content padding | 16h × 14v | (literal `EdgeInsets.symmetric(horizontal: 16, vertical: 14)`) |
+
+**Error state**: `errorText: ...` triggers default Material error styling; do not customize it per-field (see L3.6).
+
+### 2.4 Buttons
+
+**Theme keys**: `filledButtonTheme`, `textButtonTheme`.
+
+| Variant | Shape | Padding |
+|---|---|---|
+| FilledButton | StadiumBorder | 24h × 16v |
+| TextButton | StadiumBorder | (default) |
+
+**Selection rule**: `FilledButton` for primary actions ("Save Recipe", "Add Ingredient"). `TextButton` for secondary inline actions ("Discard", "Cancel"). For destructive actions, use a `FilledButton` with explicit `style: FilledButton.styleFrom(backgroundColor: AppColors.error)` — there is no separate "destructiveButton" theme.
+
+### 2.5 AppBar / Scaffold
+
+**Theme keys**: `appBarTheme`, `scaffoldBackgroundColor`.
+**Reference implementation**: [`TopAppBar`](../lib/widgets/common/top_app_bar.dart) (custom widget for main 4 screens); Material `AppBar` for pushed screens (recipe form, ingredient detail, etc.).
+
+| Property | Value |
+|---|---|
+| Scaffold background | `AppColors.surface` (`#FCF9F6`) |
+| AppBar background | `Colors.transparent` |
+| Elevation | 0 |
+| `scrolledUnderElevation` | 0 (no surface tint when scrolled) |
+| `systemOverlayStyle` | `kAppSystemOverlayStyle` (defined in `app_theme.dart`, also wired at app root via `AnnotatedRegion`) |
+
+**System overlay rule**: `kAppSystemOverlayStyle` is wired both at app root (`FreshPantryApp.build`) and on `AppBarTheme` — both are required, otherwise pushed screens override the root and break status bar contrast.
+
+---
 
 ## L3 Component Patterns
 
