@@ -979,48 +979,45 @@ class _CoverImagePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLow,
-        border: Border.all(
-          color: AppColors.outlineVariant,
-          style: BorderStyle.solid,
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: Column(
-        children: [
-          const Icon(
-            Icons.add_photo_alternate_outlined,
-            size: 36,
-            color: AppColors.outline,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            '添加封面（可选）',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.onSurfaceVariant,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: AppSpacing.sm,
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(color: AppColors.surfaceContainerLow),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              OutlinedButton.icon(
-                onPressed: onUpload,
-                icon: const Icon(Icons.upload_file_outlined, size: 18),
-                label: const Text('上传图片'),
+              const Icon(
+                Icons.add_photo_alternate_outlined,
+                size: 36,
+                color: AppColors.outline,
               ),
-              OutlinedButton.icon(
-                onPressed: onCamera,
-                icon: const Icon(Icons.photo_camera_outlined, size: 18),
-                label: const Text('拍照'),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                '添加封面（可选）',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Wrap(
+                spacing: AppSpacing.sm,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: onUpload,
+                    icon: const Icon(Icons.upload_file_outlined, size: 18),
+                    label: const Text('上传图片'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: onCamera,
+                    icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                    label: const Text('拍照'),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
