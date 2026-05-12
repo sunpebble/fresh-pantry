@@ -79,4 +79,26 @@ class AppTypography {
 
   static TextStyle get sectionTitle =>
       textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w800);
+
+  /// Hero block 大数字(Dashboard / Shopping 进度卡)。
+  static TextStyle get heroStat => GoogleFonts.plusJakartaSans(
+        fontSize: 56,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -1,
+        height: 1,
+      );
+
+  /// 中量级 hero 数字(Detail 数量 / 剩余天数)。
+  static TextStyle get heroSubStat => GoogleFonts.plusJakartaSans(
+        fontSize: 28,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.4,
+      );
+
+  /// FK Top bar 标题。
+  static TextStyle get sectionTitleLg => GoogleFonts.plusJakartaSans(
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.3,
+      );
 }

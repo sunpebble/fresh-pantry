@@ -72,19 +72,19 @@ class AppTheme {
         scrolledUnderElevation: 0,
         systemOverlayStyle: kAppSystemOverlayStyle,
       ),
-      // Shape System: "No-Line" Rule
+      // Shape System: FK 无描边 + 软阴影
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          side: const BorderSide(color: AppColors.outlineVariant),
+          borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
         color: AppColors.surfaceContainerLowest,
+        shadowColor: AppColors.shadowSoft,
         margin: EdgeInsets.zero,
       ),
       chipTheme: ChipThemeData(
         shape: const StadiumBorder(),
-        backgroundColor: AppColors.surfaceContainerLow,
+        backgroundColor: AppColors.surfaceContainer,
         selectedColor: AppColors.primary,
         labelStyle: AppTypography.textTheme.labelLarge,
         showCheckmark: false,
@@ -92,22 +92,22 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surfaceContainerHigh,
+        fillColor: AppColors.surfaceContainer,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
+          horizontal: 14,
+          vertical: 12,
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(

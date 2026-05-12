@@ -34,6 +34,8 @@ void main() {
       expect(AppRadius.lg, 16);
       expect(AppRadius.xl, 20);
       expect(AppRadius.xxl, 24);
+      expect(AppRadius.hero, 28);
+      expect(AppRadius.chip, 14);
       expect(AppRadius.pill, 999);
     });
   });
@@ -56,15 +58,14 @@ void main() {
       expect(cardTheme.elevation, 0);
     });
 
-    testWidgets('uses AppRadius.lg (16) and 1px outlineVariant border', (
+    testWidgets('uses AppRadius.xl (20) with no border (FK soft-shadow style)', (
       tester,
     ) async {
       final cardTheme = AppTheme.lightTheme.cardTheme;
       final shape = cardTheme.shape as RoundedRectangleBorder;
       final radius = (shape.borderRadius as BorderRadius).topLeft.x;
-      expect(radius, AppRadius.lg);
-      expect(shape.side.color, AppColors.outlineVariant);
-      expect(shape.side.width, 1);
+      expect(radius, AppRadius.xl);
+      expect(shape.side, BorderSide.none);
     });
 
     testWidgets('uses surfaceContainerLowest as default color', (tester) async {
@@ -74,9 +75,11 @@ void main() {
   });
 
   group('AppTheme chipTheme', () {
-    testWidgets('uses surfaceContainerLow as default backgroundColor', (tester) async {
+    testWidgets('uses surfaceContainer as default backgroundColor (FK bgAlt)', (
+      tester,
+    ) async {
       final chipTheme = AppTheme.lightTheme.chipTheme;
-      expect(chipTheme.backgroundColor, AppColors.surfaceContainerLow);
+      expect(chipTheme.backgroundColor, AppColors.surfaceContainer);
     });
 
     testWidgets('uses primary as selectedColor', (tester) async {
@@ -87,6 +90,24 @@ void main() {
     testWidgets('uses StadiumBorder shape', (tester) async {
       final chipTheme = AppTheme.lightTheme.chipTheme;
       expect(chipTheme.shape, isA<StadiumBorder>());
+    });
+  });
+
+  group('AppColors FK palette', () {
+    test('primary is FK cornflower blue', () {
+      expect(AppColors.primary, const Color(0xFF5B7FD4));
+    });
+    test('warn is butter yellow', () {
+      expect(AppColors.fkWarn, const Color(0xFFFFC857));
+    });
+    test('danger is coral', () {
+      expect(AppColors.fkDanger, const Color(0xFFE76F51));
+    });
+    test('surface is warm cream', () {
+      expect(AppColors.surface, const Color(0xFFFBF8F3));
+    });
+    test('on-surface is plum-ink', () {
+      expect(AppColors.onSurface, const Color(0xFF2D2438));
     });
   });
 }
