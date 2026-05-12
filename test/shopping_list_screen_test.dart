@@ -65,7 +65,10 @@ void main() {
     expect(find.text('番茄'), findsOneWidget);
   });
 
-  testWidgets('swiping a shopping item reveals delete without removing it', (
+  testWidgets(
+    skip: true, // FK redesign uses inline X icon for delete; swipe-to-reveal removed.
+    'swiping a shopping item reveals delete without removing it',
+    (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({
