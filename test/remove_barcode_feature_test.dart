@@ -156,10 +156,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // FK redesign: dashboard quick-add labels are "AI / 拍照 / 手动" — no scanning.
+    // Dashboard no longer hosts the quick-add row — that surface was
+    // redundant with the bottom nav center "+" FAB. Make sure none of
+    // the legacy entry-mode labels (least of all 扫码) remain on it.
     expect(find.text('扫码'), findsNothing);
-    expect(find.text('AI'), findsOneWidget);
-    expect(find.text('手动'), findsOneWidget);
+    expect(find.text('AI'), findsNothing);
+    expect(find.text('拍照'), findsNothing);
+    expect(find.text('手动'), findsNothing);
   });
 }
 

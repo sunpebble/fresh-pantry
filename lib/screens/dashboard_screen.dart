@@ -14,7 +14,6 @@ import '../utils/dashboard_greeting.dart';
 import '../widgets/recipe_card.dart';
 import '../widgets/shared/cat_icon.dart';
 import '../widgets/shared/category_icon.dart';
-import '../widgets/shared/fk_card.dart';
 import '../widgets/shared/fk_hero_header.dart';
 import '../widgets/shared/fk_icon_button.dart';
 import '../widgets/shared/fk_pill.dart';
@@ -73,15 +72,6 @@ class DashboardScreen extends ConsumerWidget {
               lowStock: 0,
               onSettings: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              ),
-            ),
-            Transform.translate(
-              offset: const Offset(0, -36),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _QuickAddCard(
-                  onAdd: () => ref.navigateToTab(FkTab.add),
-                ),
               ),
             ),
             if (expiringItems.isNotEmpty) ...[
@@ -208,7 +198,7 @@ class _HeroSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FkHeroHeader(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 60),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -341,64 +331,6 @@ class _MiniStat extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.85),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickAddCard extends StatelessWidget {
-  final VoidCallback onAdd;
-  const _QuickAddCard({required this.onAdd});
-
-  @override
-  Widget build(BuildContext context) {
-    // 三种添加方式 — barcode scan 在本项目里已被移除,中间用 AI 草稿替代。
-    final items = [
-      (Icons.auto_awesome_outlined, 'AI'),
-      (Icons.photo_camera_outlined, '拍照'),
-      (Icons.edit_outlined, '手动'),
-    ];
-    return FkCard(
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          for (final (icon, label) in items)
-            Expanded(
-              child: GestureDetector(
-                onTap: onAdd,
-                behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: AppColors.primarySoft,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          icon,
-                          size: 20,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        label,
-                        style: GoogleFonts.manrope(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.onSurface,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
