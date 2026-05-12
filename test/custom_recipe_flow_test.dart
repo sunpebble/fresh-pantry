@@ -15,6 +15,7 @@ import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/services/share_intent_service.dart';
 import 'package:fresh_pantry/screens/custom_recipe_form_screen.dart';
 import 'package:fresh_pantry/screens/dashboard_screen.dart';
+import 'package:fresh_pantry/screens/settings_screen.dart';
 import 'package:fresh_pantry/screens/my_recipes_screen.dart';
 import 'package:fresh_pantry/screens/recipe_detail_screen.dart';
 import 'package:fresh_pantry/widgets/recipe_card.dart';
@@ -23,20 +24,30 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets(
-    skip: true, // FK redesign moved "我的食谱" off dashboard; Phase 9/12 places it in Settings or Recipes tab toolbar.
-    'dashboard quick action opens my recipes screen',
-    (tester) async {
+  testWidgets('settings 我的食谱 link opens MyRecipesScreen', (tester) async {
+    // Use a tall surface so the 更多 list (last section) is rendered
+    // in the lazily-mounted ListView viewport.
+    await tester.binding.setSurfaceSize(const Size(412, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     final prefs = await _prefs({});
 
-    await tester.pumpWidget(_app(prefs, const DashboardScreen()));
+    await tester.pumpWidget(_app(prefs, const SettingsScreen()));
     await tester.pumpAndSettle();
 
-    expect(find.text('我的食谱'), findsOneWidget);
+    // Scroll to bring the 我的食谱 link in the 更多 section into view.
+    await tester.scrollUntilVisible(
+      find.text('我的食谱'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
 
+    // FK redesign moved 我的食谱 into Settings → 更多 list. Tap it to push.
     await tester.tap(find.text('我的食谱'));
     await tester.pumpAndSettle();
 
+    // After push: opaque MaterialPageRoute deactivates Settings, so only
+    // MyRecipesScreen's AppBar title remains in the visible tree.
     expect(find.text('我的食谱'), findsOneWidget);
     expect(find.text('还没有自定义食谱'), findsOneWidget);
   });
@@ -114,44 +125,6 @@ void main() {
     expect(find.text('食材匹配 1/1'), findsOneWidget);
     expect(find.text('1种食材'), findsNothing);
     expect(find.byType(Chip), findsNothing);
-  });
-
-  testWidgets(
-    skip: true, // FK hero stat is non-clickable in redesign; Phase 13 reasserts via section link.
-    'dashboard overview stat card jumps to inventory tab',
-    (tester) async {
-    final prefs = await _prefs({
-      'inventory_items': '[]',
-      'shopping_items': '[]',
-      'add_history': '{}',
-    });
-    late ProviderContainer container;
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
-        ],
-        child: MaterialApp(
-          home: Builder(
-            builder: (context) {
-              container = ProviderScope.containerOf(context);
-              return const AppShell();
-            },
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(container.read(navigationProvider), 0);
-
-    await tester.tap(find.text('种食材'));
-    await tester.pumpAndSettle();
-
-    expect(container.read(navigationProvider), 1);
-    expect(find.text('食材库存'), findsOneWidget);
   });
 
   testWidgets('saved custom recipe opens detail screen', (tester) async {
@@ -260,9 +233,13 @@ void main() {
   });
 
   testWidgets(
-    skip: true, // FK redesign cards make steps fall outside the default 800x600 test viewport when scrollUntilVisible(delta=300) settles; behavior itself is unchanged. Phase 13 will reassert with setSurfaceSize.
     'custom recipe detail progress resets after edited steps change',
     (tester) async {
+      // FK hero + step cards are taller than the legacy layout; bump the
+      // surface so scrollUntilVisible can reach the bottom of the steps.
+      await tester.binding.setSurfaceSize(const Size(412, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
       final prefs = await _prefs({
         customRecipesStorageKey: json.encode([_multiPartRecipe('r2').toJson()]),
       });

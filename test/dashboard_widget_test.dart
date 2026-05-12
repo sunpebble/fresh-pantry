@@ -14,7 +14,6 @@ import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/navigation_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/services/share_intent_service.dart';
-import 'package:fresh_pantry/widgets/dashboard/alert_card.dart';
 
 void main() {
   setUpAll(() {
@@ -22,8 +21,7 @@ void main() {
   });
 
   testWidgets(
-    skip: true, // FK redesign removed clickable stat cards from hero; Phase 13 reassesses.
-    'dashboard expiring overview opens inventory with not fresh filter',
+    'dashboard "该用了" action pushes ExpiringScreen with not-fresh items',
     (tester) async {
       SharedPreferences.setMockInitialValues({
         'inventory_items': jsonEncode([
@@ -34,7 +32,6 @@ void main() {
         'add_history': '{}',
       });
       final prefs = await SharedPreferences.getInstance();
-      late ProviderContainer container;
 
       await tester.pumpWidget(
         ProviderScope(
@@ -42,32 +39,29 @@ void main() {
             sharedPreferencesProvider.overrideWithValue(prefs),
             systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           ],
-          child: Builder(
-            builder: (context) {
-              container = ProviderScope.containerOf(context);
-              return const FreshPantryApp();
-            },
-          ),
+          child: const FreshPantryApp(),
         ),
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('即将过期').first);
+      // FK dashboard surfaces section "该用了" + actionLabel "全部";
+      // tapping the action pushes ExpiringScreen.
+      expect(find.text('该用了'), findsOneWidget);
+      await tester.tap(find.text('全部').first);
       await tester.pumpAndSettle();
 
-      expect(container.read(navigationProvider), 1);
-      expect(container.read(selectedCategoryProvider), '不新鲜');
-      expect(
-        container.read(filteredByCategoryProvider).map((item) => item.name),
-        ['牛奶'],
-      );
+      expect(find.text('临期提醒'), findsOneWidget);
+      // The expiring milk shows up grouped under "即将过期".
+      expect(find.text('即将过期'), findsAtLeastNWidgets(1));
+      expect(find.text('牛奶'), findsOneWidget);
+      // The fresh cucumber is NOT in this view.
+      expect(find.text('黄瓜'), findsNothing);
     },
   );
 
-  testWidgets(
-    skip: true, // FK redesign uses horizontal ExpiringCard row; Phase 13 re-asserts.
-    'dashboard urgent attention shows every not fresh item',
-    (tester) async {
+  testWidgets('dashboard 该用了 scroller renders every not-fresh item', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({
       'inventory_items': jsonEncode([
         _ingredient('黄瓜').toJson(),
@@ -91,157 +85,24 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      find.descendant(of: find.byType(AlertCard), matching: find.text('牛奶')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: find.byType(AlertCard), matching: find.text('面包')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: find.byType(AlertCard), matching: find.text('番茄')),
-      findsOneWidget,
-    );
+    // The FK 该用了 horizontal scroller renders one card per not-fresh item.
+    // All three names must be present; the fresh cucumber must not be.
+    expect(find.text('牛奶'), findsAtLeastNWidgets(1));
+    expect(find.text('面包'), findsAtLeastNWidgets(1));
+    expect(find.text('番茄'), findsAtLeastNWidgets(1));
+    expect(find.text('黄瓜'), findsNothing);
   });
 
-  testWidgets(
-    skip: true, // FK redesign moved expiry-label badges onto FkPill; Phase 13 re-asserts.
-    'dashboard urgent attention uses the item expiry label as badge',
-    (tester) async {
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': jsonEncode([
-          _ingredient(
-            '面包',
-            state: FreshnessState.expired,
-          ).copyWith(expiryLabel: '已过期2天').toJson(),
-        ]),
-        'shopping_items': '[]',
-        'add_history': '{}',
-      });
-      final prefs = await SharedPreferences.getInstance();
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-            systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
-          ],
-          child: const FreshPantryApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // The AlertCard renders the ingredient's expiryLabel — both as
-      // subtitle text and as the badge — and never falls back to
-      // hard-coded labels like "今天" or "48H".
-      expect(
-        find.descendant(
-          of: find.byType(AlertCard),
-          matching: find.text('已过期2天'),
-        ),
-        findsNWidgets(2),
-      );
-      expect(
-        find.descendant(
-          of: find.byType(AlertCard),
-          matching: find.text('今天'),
-        ),
-        findsNothing,
-      );
-      expect(
-        find.descendant(
-          of: find.byType(AlertCard),
-          matching: find.text('48H'),
-        ),
-        findsNothing,
-      );
-    },
-  );
-
-  testWidgets(
-    skip: true, // FK redesign uses fixed-width ExpiringCard in scroller — no overflow risk by design.
-    'alert cards keep actions visible on narrow dashboard widths',
-    (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 240,
-              child: AlertCard(
-                icon: Icons.kitchen,
-                iconColor: Colors.green,
-                name: '牛奶',
-                subtitle: '已过期2天',
-                storageTag: '冰箱',
-                badge: '已过期2天',
-                badgeBg: Colors.orange,
-                badgeText: Colors.black,
-                onConsume: () {},
-                onAddToCart: () {},
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    expect(tester.takeException(), isNull);
-    expect(find.text('已消耗'), findsOneWidget);
-    expect(find.text('加入清单'), findsOneWidget);
-    expect(find.text('已过期2天'), findsWidgets);
-  });
-
-  testWidgets(
-    skip: true, // FK redesign hero stat is non-clickable; filter-all set on tab entry instead.
-    'dashboard total overview resets inventory filter to all',
-    (tester) async {
+  testWidgets('dashboard 该用了 ExpiringCard uses expiryLabel as the pill', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({
       'inventory_items': jsonEncode([
-        _ingredient('黄瓜').toJson(),
-        _ingredient('牛奶', state: FreshnessState.expiringSoon).toJson(),
+        _ingredient(
+          '面包',
+          state: FreshnessState.expired,
+        ).copyWith(expiryLabel: '已过期2天').toJson(),
       ]),
-      'shopping_items': '[]',
-      'add_history': '{}',
-    });
-    final prefs = await SharedPreferences.getInstance();
-    late ProviderContainer container;
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
-          selectedCategoryProvider.overrideWith((ref) => '不新鲜'),
-        ],
-        child: Builder(
-          builder: (context) {
-            container = ProviderScope.containerOf(context);
-            return const FreshPantryApp();
-          },
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('种食材'));
-    await tester.pumpAndSettle();
-
-    expect(container.read(navigationProvider), 1);
-    expect(container.read(selectedCategoryProvider), '全部');
-    expect(
-      container.read(filteredByCategoryProvider).map((item) => item.name),
-      ['黄瓜', '牛奶'],
-    );
-  });
-
-  testWidgets(
-    skip: true, // FK redesign removed 存储概况 section; Phase 13 reconsiders surfacing capacity bars.
-    'dashboard storage overview omits view all shortcut',
-    (tester) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': '[]',
       'shopping_items': '[]',
       'add_history': '{}',
     });
@@ -258,8 +119,45 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('存储概况'), findsOneWidget);
-    expect(find.text('查看全部'), findsNothing);
+    // The ExpiringCard surfaces the ingredient's expiryLabel verbatim — never
+    // falls back to hard-coded labels like "今天" or "48H".
+    expect(find.text('已过期2天'), findsOneWidget);
+    expect(find.text('今天'), findsNothing);
+    expect(find.text('48H'), findsNothing);
+  });
+
+  testWidgets('dashboard hero shows the total inventory count', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'inventory_items': jsonEncode([
+        _ingredient('黄瓜').toJson(),
+        _ingredient('牛奶', state: FreshnessState.expiringSoon).toJson(),
+        _ingredient('面包', state: FreshnessState.expired).toJson(),
+      ]),
+      'shopping_items': '[]',
+      'add_history': '{}',
+    });
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
+        ],
+        child: const FreshPantryApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // FK hero: 56pt big number is the inventory total; mini stats split
+    // the not-fresh items into urgent vs soon.
+    expect(find.text('3'), findsAtLeastNWidgets(1));
+    expect(find.text('你的冰箱状态'), findsOneWidget);
+    // The 3 mini-stat labels live on the hero; same words can repeat as
+    // pill labels on ExpiringCard rows, so use findsAtLeastNWidgets.
+    expect(find.text('快过期'), findsAtLeastNWidgets(1));
+    expect(find.text('即将过期'), findsAtLeastNWidgets(1));
+    expect(find.text('库存不足'), findsOneWidget);
   });
 
   testWidgets('discarding a new ingredient clears the form in place', (

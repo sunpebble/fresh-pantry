@@ -65,12 +65,7 @@ void main() {
     expect(find.text('番茄'), findsOneWidget);
   });
 
-  testWidgets(
-    skip: true, // FK redesign uses inline X icon for delete; swipe-to-reveal removed.
-    'swiping a shopping item reveals delete without removing it',
-    (
-    tester,
-  ) async {
+  testWidgets('inline X icon on a shopping row deletes it', (tester) async {
     SharedPreferences.setMockInitialValues({
       'shopping_items': jsonEncode([
         const ShoppingItem(
@@ -99,19 +94,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.drag(find.text('番茄'), const Offset(-240, 0));
-    await tester.pumpAndSettle();
-
     expect(container.read(shoppingProvider).single.name, '番茄');
-    expect(find.text('「番茄」已删除'), findsNothing);
-    expect(
-      find.byKey(const ValueKey('shopping_swipe_delete_tomato')),
-      findsOneWidget,
-    );
 
-    await tester.tap(
-      find.byKey(const ValueKey('shopping_swipe_delete_tomato')),
-    );
+    // FK redesign: each row has an inline X icon for delete.
+    await tester.tap(find.byIcon(Icons.close_rounded).first);
     await tester.pumpAndSettle();
 
     expect(container.read(shoppingProvider), isEmpty);
