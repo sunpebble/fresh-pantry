@@ -200,6 +200,46 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
     return queuePersistence(() => _save(current));
   }
 
+  /// Applies a list of DeductionProposals atomically. Each Proposal references
+  /// an inventory row by index; deducted quantities reaching 0 (or negative)
+  /// remove the row.
+  Future<void> applyDeductionProposals(List<DeductionProposal> proposals) async {
+    final removalIndices = <int>{};
+    var current = [...state];
+    for (final p in proposals) {
+      if (!p.selected) continue;
+      if (p.action == DeductionAction.skip) continue;
+      final i = p.chosenIndex;
+      if (i < 0 || i >= current.length) continue;
+      final existing = current[i];
+      final remaining = _subtractQuantity(existing.quantity, p.deductAmount);
+      if (remaining <= 0) {
+        removalIndices.add(i);
+      } else {
+        final newQty = remaining == remaining.roundToDouble()
+            ? remaining.toInt().toString()
+            : remaining.toString();
+        current[i] = _refreshIngredientFreshness(
+          existing.copyWith(quantity: newQty),
+        );
+      }
+    }
+    if (removalIndices.isNotEmpty) {
+      final sortedDesc = removalIndices.toList()..sort((a, b) => b.compareTo(a));
+      for (final idx in sortedDesc) {
+        current.removeAt(idx);
+      }
+    }
+    state = List<Ingredient>.from(current);
+    return queuePersistence(() => _save(state));
+  }
+
+  double _subtractQuantity(String existing, String deduct) {
+    final ne = double.tryParse(existing) ?? 0;
+    final nd = double.tryParse(deduct) ?? 0;
+    return ne - nd;
+  }
+
   Ingredient _ingredientFromProposal(IntakeProposal p) {
     final shelf = p.shelfLifeDays;
     final addedAt = DateTime.now();
