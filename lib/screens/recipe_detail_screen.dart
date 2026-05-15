@@ -7,15 +7,18 @@ import '../data/food_knowledge.dart';
 import '../models/ingredient.dart';
 import '../models/recipe.dart';
 import '../models/shopping_item.dart';
+import '../providers/deduction_review_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/recipe_provider.dart';
 import '../providers/shopping_provider.dart';
+import '../services/deduction_proposal_factory.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_snackbar.dart';
 import '../widgets/shared/fk_card.dart';
 import '../widgets/shared/fk_icon_button.dart';
 import '../widgets/shared/fk_pill.dart';
 import '../widgets/shared/recipe_image.dart';
+import 'deduction_review_screen.dart';
 
 /// 设计稿 `screens-3.jsx::RecipeDetailScreen`。
 ///
@@ -222,6 +225,22 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   onToggleStep: _toggleStep,
                 ),
                 const SizedBox(height: 20),
+                FilledButton.icon(
+                  key: const Key('recipe_cooked_action'),
+                  icon: const Icon(Icons.restaurant),
+                  label: const Text('我做了'),
+                  onPressed: () async {
+                    final inv = ref.read(inventoryProvider);
+                    final proposals =
+                        DeductionProposalFactory.forRecipe(widget.recipe, inv);
+                    ref.read(deductionReviewProvider.notifier).seed(proposals);
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const DeductionReviewScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
                 _StartCookingButton(onTap: () {}),
               ],
             ),
