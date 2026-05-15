@@ -5,12 +5,16 @@ import 'app.dart';
 import 'providers/ai_draft_provider.dart';
 import 'providers/custom_recipe_provider.dart';
 import 'providers/inventory_provider.dart';
+import 'providers/notification_service_provider.dart';
 import 'providers/shopping_provider.dart';
 import 'providers/storage_service_provider.dart';
+import 'services/notification_service.dart';
 import 'services/share_intent_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final notificationService = NotificationService();
+  await notificationService.init();
   final prefs = await SharedPreferences.getInstance();
 
   // 启动时预解码三大持久化 blob,把 jsonDecode 移出首帧。
@@ -22,6 +26,7 @@ void main() async {
   runApp(
     ProviderScope(
       overrides: [
+        notificationServiceProvider.overrideWithValue(notificationService),
         sharedPreferencesProvider.overrideWithValue(prefs),
         inventorySeedProvider.overrideWithValue(inventorySeed),
         shoppingSeedProvider.overrideWithValue(shoppingSeed),
