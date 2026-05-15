@@ -7,9 +7,12 @@ import '../data/mock_data.dart';
 import '../models/ingredient.dart';
 import '../models/shopping_item.dart';
 import '../models/storage_area.dart';
+import '../providers/intake_review_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../providers/shopping_provider.dart';
+import '../services/intake_proposal_factory.dart';
+import 'intake_review_screen.dart';
 import '../theme/app_theme.dart';
 import '../theme/fk_category_palette.dart';
 import '../utils/app_dialog.dart';
@@ -61,7 +64,9 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
 
     final visibleGroups = _applyFilter(groupedItems);
 
-    return GestureDetector(
+    return Stack(
+      children: [
+        GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       behavior: HitTestBehavior.translucent,
       child: RefreshIndicator(
@@ -173,6 +178,26 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
           ],
         ),
       ),
+    ),
+        if (checkedCount > 0)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: SafeArea(
+              minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: FilledButton(
+                key: const Key('shopping_to_intake_cta'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                ),
+                onPressed: () =>
+                    _openIntakeReviewForChecked(context, ref),
+                child: Text('已购买的 $checkedCount 项一键入库'),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -252,6 +277,38 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
         actionTextColor: AppColors.onPrimary,
         onAction: () => _addItemToInventory(item.name, item.imageUrl),
       );
+    }
+  }
+
+  Future<void> _openIntakeReviewForChecked(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final all = ref.read(shoppingProvider);
+    final checked = all.where((i) => i.isChecked).toList();
+    if (checked.isEmpty) return;
+
+    final inventory = ref.read(inventoryProvider);
+    final proposals =
+        IntakeProposalFactory.fromShoppingItems(checked, inventory);
+    ref.read(intakeReviewProvider.notifier).seed(proposals);
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const IntakeReviewScreen(title: '已购买项入库'),
+      ),
+    );
+
+    // After review (whether confirmed or cancelled), remove only items whose
+    // proposals were actually applied. We approximate "applied" as: the
+    // intakeReviewProvider has cleared (clear() runs only after apply).
+    if (!context.mounted) return;
+    final remaining = ref.read(intakeReviewProvider).proposals;
+    if (remaining.isEmpty) {
+      final shopping = ref.read(shoppingProvider.notifier);
+      for (final item in checked) {
+        await shopping.remove(item.id);
+      }
     }
   }
 
