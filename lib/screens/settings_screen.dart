@@ -46,8 +46,66 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     fkToast(context, '已复制 $bytes 字节,粘贴到 Notes/邮箱保存');
   }
 
-  void _onImportTap() {
-    // Wired in Task 6.
+  Future<void> _onImportTap() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text;
+    if (!mounted) return;
+    if (text == null || text.trim().isEmpty) {
+      _showSimpleDialog('剪贴板为空', '请先在另一台设备复制备份 JSON 后再试。');
+      return;
+    }
+
+    final Map<String, dynamic> decoded;
+    try {
+      decoded = BackupService.decodeFromJson(text);
+    } on BackupVersionException catch (e) {
+      _showSimpleDialog('备份版本不兼容', e.message);
+      return;
+    } on FormatException catch (e) {
+      _showSimpleDialog('备份不是合法 JSON', e.message);
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认导入?'),
+        content: const Text('将覆盖当前的所有食材、购物清单、菜谱与 AI 设置。此操作不可撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.fkDanger),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('确认覆盖'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final prefs = ref.read(sharedPreferencesProvider);
+    await BackupService.importFromMap(prefs, decoded);
+    if (!mounted) return;
+    _showSimpleDialog('导入完成', '请重启 App 以加载新数据。');
+  }
+
+  Future<void> _showSimpleDialog(String title, String body) {
+    return showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('好'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
