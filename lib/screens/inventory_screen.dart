@@ -28,10 +28,57 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   final _searchCtrl = TextEditingController();
   String _query = '';
 
+  // Multi-select state: stores indices into the currently-displayed `items` list.
+  final Set<int> _selected = {};
+
   @override
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  bool get _selectionMode => _selected.isNotEmpty;
+
+  bool _canMerge(List<Ingredient> items) {
+    if (_selected.length < 2) return false;
+    final rows = _selected.map((i) => items[i]).toList();
+    final first = rows.first;
+    return rows.every(
+      (r) =>
+          r.name == first.name &&
+          r.unit == first.unit &&
+          r.storage == first.storage,
+    );
+  }
+
+  Future<void> _mergeSelected(List<Ingredient> displayItems, List<Ingredient> inventory) async {
+    // Map display indices → raw inventory indices
+    final rawIndices = _selected
+        .map((displayIdx) => inventoryIndexOf(inventory, displayItems[displayIdx]))
+        .where((i) => i != -1)
+        .toList()
+      ..sort((a, b) => b.compareTo(a)); // descending so we remove from end first
+
+    if (rawIndices.length < 2) {
+      setState(() => _selected.clear());
+      return;
+    }
+
+    final notifier = ref.read(inventoryProvider.notifier);
+    // Merge all sources into the raw index that corresponds to the last selected display item.
+    // Since rawIndices is sorted descending, the smallest raw index (last element) is the target.
+    final target = rawIndices.last;
+    for (final src in rawIndices.where((i) => i != target)) {
+      await notifier.mergeBatch(src, target);
+    }
+
+    if (!mounted) return;
+    setState(() => _selected.clear());
+    showAppSnackBar(
+      context,
+      '已合并批次',
+      backgroundColor: AppColors.primary,
+    );
   }
 
   Future<void> _onRefresh() async {
@@ -102,8 +149,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             )
             .toList();
 
+    final canMerge = _canMerge(items);
+
     return GestureDetector(
-      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      onTap: () {
+        FocusManager.instance.primaryFocus?.unfocus();
+        if (_selectionMode) setState(() => _selected.clear());
+      },
       behavior: HitTestBehavior.translucent,
       child: RefreshIndicator(
         onRefresh: _onRefresh,
@@ -115,16 +167,23 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             SliverToBoxAdapter(
               child: SafeArea(
                 bottom: false,
-                child: FkTopBar(
-                  title: '我的食材',
-                  subtitle: '共 ${inventory.length} 件',
-                  actions: [
-                    FkIconButton(
-                      child: const Icon(Icons.tune_rounded),
-                      onTap: () {},
-                    ),
-                  ],
-                ),
+                child: _selectionMode
+                    ? _SelectionTopBar(
+                        selectedCount: _selected.length,
+                        canMerge: canMerge,
+                        onCancel: () => setState(() => _selected.clear()),
+                        onMerge: () => _mergeSelected(items, inventory),
+                      )
+                    : FkTopBar(
+                        title: '我的食材',
+                        subtitle: '共 ${inventory.length} 件',
+                        actions: [
+                          FkIconButton(
+                            child: const Icon(Icons.tune_rounded),
+                            onTap: () {},
+                          ),
+                        ],
+                      ),
               ),
             ),
             SliverToBoxAdapter(child: _SearchField(controller: _searchCtrl, onChanged: (v) {
@@ -168,17 +227,110 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   ),
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final item = items[index];
-                    return IngredientCard(
-                      key: ValueKey('inv_${item.name}_$index'),
-                      ingredient: item,
-                      onTap: () => _openItemDetail(item),
-                      onBuyAgain: () => _addToShoppingList(item),
+                    final isSelected = _selected.contains(index);
+                    return GestureDetector(
+                      onLongPress: () {
+                        setState(() => _selected.add(index));
+                      },
+                      onTap: _selectionMode
+                          ? () {
+                              setState(() {
+                                if (isSelected) {
+                                  _selected.remove(index);
+                                } else {
+                                  _selected.add(index);
+                                }
+                              });
+                            }
+                          : () => _openItemDetail(item),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        decoration: isSelected
+                            ? BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: AppColors.primary,
+                                  width: 2.5,
+                                ),
+                              )
+                            : null,
+                        child: IngredientCard(
+                          key: ValueKey('inv_${item.name}_$index'),
+                          ingredient: item,
+                          onTap: null,
+                          onBuyAgain: _selectionMode
+                              ? null
+                              : () => _addToShoppingList(item),
+                        ),
+                      ),
                     );
                   }, childCount: items.length),
                 ),
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Top bar shown when in multi-select mode.
+class _SelectionTopBar extends StatelessWidget {
+  final int selectedCount;
+  final bool canMerge;
+  final VoidCallback onCancel;
+  final VoidCallback onMerge;
+
+  const _SelectionTopBar({
+    required this.selectedCount,
+    required this.canMerge,
+    required this.onCancel,
+    required this.onMerge,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: onCancel,
+            behavior: HitTestBehavior.opaque,
+            child: const Icon(Icons.close_rounded, size: 22, color: AppColors.onSurface),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '已选 $selectedCount 件',
+              style: GoogleFonts.manrope(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.onSurface,
+              ),
+            ),
+          ),
+          if (canMerge)
+            GestureDetector(
+              onTap: onMerge,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '合并 $selectedCount 批',
+                  style: GoogleFonts.manrope(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

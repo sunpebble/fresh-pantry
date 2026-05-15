@@ -272,6 +272,35 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
     return sum.toString();
   }
 
+  /// Merges two inventory rows (`sourceIndex` into `targetIndex`):
+  /// quantities sum, expiry takes the earlier of the two (so urgency signal
+  /// is preserved), source row is removed.
+  Future<void> mergeBatch(int sourceIndex, int targetIndex) async {
+    if (sourceIndex == targetIndex) return;
+    if (sourceIndex < 0 || sourceIndex >= state.length) return;
+    if (targetIndex < 0 || targetIndex >= state.length) return;
+    final source = state[sourceIndex];
+    final target = state[targetIndex];
+    if (source.unit.trim() != target.unit.trim()) return;
+    if (source.storage != target.storage) return;
+    final summed = _sumQuantity(source.quantity, target.quantity);
+    final earlierExpiry = _earlierExpiry(source.expiryDate, target.expiryDate);
+    final mergedTarget = _refreshIngredientFreshness(
+      target.copyWith(quantity: summed, expiryDate: earlierExpiry),
+    );
+    final updated = [...state];
+    updated[targetIndex] = mergedTarget;
+    updated.removeAt(sourceIndex);
+    state = updated;
+    return queuePersistence(() => _save(updated));
+  }
+
+  DateTime? _earlierExpiry(DateTime? a, DateTime? b) {
+    if (a == null) return b;
+    if (b == null) return a;
+    return a.isBefore(b) ? a : b;
+  }
+
   List<Ingredient> getByCategory(String category) {
     return inventoryItemsForCategory(state, category);
   }
