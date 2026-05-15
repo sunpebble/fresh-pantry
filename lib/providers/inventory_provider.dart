@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/frequent_item.dart';
 import '../models/ingredient.dart';
+import '../models/proposal.dart';
 import '../models/storage_area.dart';
 import '../data/food_categories.dart';
 import '../data/food_knowledge.dart';
@@ -170,6 +171,65 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
     updated[index] = _refreshIngredientFreshness(stampedItem);
     state = updated;
     return queuePersistence(() => _save(updated));
+  }
+
+  /// Applies a list of IntakeProposals atomically: newRow proposals append,
+  /// mergeInto proposals add quantity to the referenced row. Unselected
+  /// proposals are ignored.
+  Future<void> applyIntakeProposals(List<IntakeProposal> proposals) async {
+    var current = [...state];
+    for (final p in proposals) {
+      if (!p.selected) continue;
+      switch (p.action) {
+        case IntakeAction.newRow:
+          current = [...current, _ingredientFromProposal(p)];
+        case IntakeAction.mergeInto:
+          final index = int.tryParse(p.mergeTargetId ?? '');
+          if (index == null || index < 0 || index >= current.length) {
+            current = [...current, _ingredientFromProposal(p)];
+            break;
+          }
+          final existing = current[index];
+          final summed = _sumQuantity(existing.quantity, p.quantity);
+          current = [...current]..[index] = _refreshIngredientFreshness(
+                existing.copyWith(quantity: summed),
+              );
+      }
+    }
+    state = current;
+    return queuePersistence(() => _save(current));
+  }
+
+  Ingredient _ingredientFromProposal(IntakeProposal p) {
+    final shelf = p.shelfLifeDays;
+    final addedAt = DateTime.now();
+    final expiryDate =
+        shelf == null ? null : addedAt.add(Duration(days: shelf));
+    return _refreshIngredientFreshness(
+      _normalizeIngredientCategory(
+        Ingredient(
+          name: p.name,
+          quantity: p.quantity,
+          unit: p.unit,
+          imageUrl: '',
+          freshnessPercent: 1.0,
+          state: FreshnessState.fresh,
+          category: p.category,
+          storage: p.storage,
+          expiryDate: expiryDate,
+          addedAt: addedAt,
+          shelfLifeDays: shelf,
+        ),
+      ),
+    );
+  }
+
+  String _sumQuantity(String a, String b) {
+    final na = double.tryParse(a) ?? 0;
+    final nb = double.tryParse(b) ?? 0;
+    final sum = na + nb;
+    if (sum == sum.roundToDouble()) return sum.toInt().toString();
+    return sum.toString();
   }
 
   List<Ingredient> getByCategory(String category) {
