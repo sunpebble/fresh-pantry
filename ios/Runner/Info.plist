@@ -26,8 +26,15 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_dartVmService._tcp</string>
+		<string>_dartobservatory._tcp</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>用于拍摄食谱封面图片。</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>用于 Flutter 调试工具在本地网络发现并连接到调试模式下的 app。仅调试期使用。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>用于从相册选择食谱封面图片。</string>
 	<key>UIApplicationSceneManifest</key>

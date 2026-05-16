@@ -323,7 +323,7 @@ class _CustomRecipeFormScreenState
                         physics: const NeverScrollableScrollPhysics(),
                         buildDefaultDragHandles: false,
                         itemCount: _ingredientControllers.length,
-                        onReorderItem: (oldIndex, newIndex) {
+                        onReorder: (oldIndex, newIndex) {
                           setState(() {
                             final item =
                                 _ingredientControllers.removeAt(oldIndex);
@@ -439,7 +439,7 @@ class _CustomRecipeFormScreenState
                         physics: const NeverScrollableScrollPhysics(),
                         buildDefaultDragHandles: false,
                         itemCount: _stepEntries.length,
-                        onReorderItem: (oldIndex, newIndex) {
+                        onReorder: (oldIndex, newIndex) {
                           setState(() {
                             final item = _stepEntries.removeAt(oldIndex);
                             _stepEntries.insert(newIndex, item);

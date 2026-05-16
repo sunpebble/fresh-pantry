@@ -8,7 +8,6 @@ import '../models/ingredient.dart';
 import '../models/storage_area.dart';
 import '../data/food_categories.dart';
 import '../data/food_knowledge.dart';
-import '../data/mock_data.dart';
 import '../utils/expiry_calculator.dart';
 import '../utils/json_object_list.dart';
 import '_persistence_queue.dart';
@@ -217,8 +216,7 @@ final inventoryProvider = NotifierProvider<InventoryNotifier, List<Ingredient>>(
 /// 启动时预 hydrated 的 inventory 种子，由 main.dart 预解码后通过 override 注入。
 /// Notifier.build 直接同步读取，从而把 prefs 解码移出首帧关键路径。
 ///
-/// Fallback: 当未被 override 时读取 prefs 中的 JSON。若 key 不存在则返回空列表
-/// (main.dart 始终注入实际数据，包括 kDebugMode 下的 mock 数据)。
+/// Fallback: 当未被 override 时读取 prefs 中的 JSON。若 key 不存在则返回空列表。
 final inventorySeedProvider = Provider<List<Ingredient>>((ref) {
   final prefs = ref.read(sharedPreferencesProvider);
   final jsonString = prefs.getString(_kInventoryKey);
@@ -237,15 +235,13 @@ final inventorySeedProvider = Provider<List<Ingredient>>((ref) {
 /// 仅供 main.dart hydrate 与 [inventorySeedProvider] fallback 使用,公共 API 不依赖。
 List<Ingredient> loadInventoryFromPrefs(SharedPreferences prefs) {
   final jsonString = prefs.getString(_kInventoryKey);
-  if (jsonString == null) {
-    return kDebugMode ? List.from(MockData.inventoryItems) : [];
-  }
+  if (jsonString == null) return [];
   try {
     return decodeJsonObjectList(
       jsonString,
     ).map(Ingredient.fromJson).map(_normalizeInventoryIngredient).toList();
   } catch (_) {
-    return kDebugMode ? List.from(MockData.inventoryItems) : [];
+    return [];
   }
 }
 

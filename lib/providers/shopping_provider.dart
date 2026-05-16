@@ -1,12 +1,10 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ingredient.dart';
 import '../models/shopping_item.dart';
 import '../data/food_categories.dart';
 import '../data/food_knowledge.dart';
-import '../data/mock_data.dart';
 import '../utils/json_object_list.dart';
 import '_persistence_queue.dart';
 import 'storage_service_provider.dart';
@@ -155,16 +153,14 @@ final shoppingSeedProvider = Provider<List<ShoppingItem>>((ref) {
 /// 仅供 main.dart hydrate 与 [shoppingSeedProvider] fallback 使用。
 List<ShoppingItem> loadShoppingFromPrefs(SharedPreferences prefs) {
   final jsonString = prefs.getString(_kShoppingKey);
-  if (jsonString == null) {
-    return kDebugMode ? List.from(MockData.shoppingItems) : [];
-  }
+  if (jsonString == null) return [];
   try {
     final items = decodeJsonObjectList(
       jsonString,
     ).map(ShoppingItem.fromJson).map(_normalizeShoppingItemCategory);
     return _deduplicateShoppingItems(items);
   } catch (_) {
-    return kDebugMode ? List.from(MockData.shoppingItems) : [];
+    return [];
   }
 }
 
