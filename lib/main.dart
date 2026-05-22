@@ -3,29 +3,35 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'providers/ai_draft_provider.dart';
-import 'providers/custom_recipe_provider.dart';
-import 'providers/inventory_provider.dart';
-import 'providers/shopping_provider.dart';
 import 'providers/storage_service_provider.dart';
 import 'services/share_intent_service.dart';
+import 'storage/custom_recipe_repo.dart';
+import 'storage/inventory_repo.dart';
+import 'storage/shared_prefs_storage_adapter.dart';
+import 'storage/shopping_repo.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
+  final adapter = SharedPrefsStorageAdapter(prefs);
 
-  // 启动时预解码三大持久化 blob,把 jsonDecode 移出首帧。
-  // 解码失败 / 缺省由各 helper 自身的 try/catch 兜底回到 mock 或空列表。
-  final inventorySeed = loadInventoryFromPrefs(prefs);
-  final shoppingSeed = loadShoppingFromPrefs(prefs);
-  final customRecipeSeed = loadCustomRecipesFromPrefs(prefs);
+  final inventoryRepo = InventoryRepo(adapter);
+  final shoppingRepo = ShoppingRepo(adapter);
+  final customRecipeRepo = CustomRecipeRepo(adapter);
+
+  // Pre-decode seeds to avoid JSON parse on the first frame.
+  inventoryRepo.hydrate(inventoryRepo.loadAll());
+  shoppingRepo.hydrate(shoppingRepo.loadAll());
+  customRecipeRepo.hydrate(customRecipeRepo.loadAll());
 
   runApp(
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
-        inventorySeedProvider.overrideWithValue(inventorySeed),
-        shoppingSeedProvider.overrideWithValue(shoppingSeed),
-        customRecipeSeedProvider.overrideWithValue(customRecipeSeed),
+        storageAdapterProvider.overrideWithValue(adapter),
+        inventoryRepoProvider.overrideWithValue(inventoryRepo),
+        shoppingRepoProvider.overrideWithValue(shoppingRepo),
+        customRecipeRepoProvider.overrideWithValue(customRecipeRepo),
         systemShareSourceProvider.overrideWithValue(ReceiveSharingIntentSource()),
       ],
       child: const FreshPantryApp(),

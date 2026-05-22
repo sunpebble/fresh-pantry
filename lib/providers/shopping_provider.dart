@@ -1,38 +1,19 @@
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ingredient.dart';
 import '../models/shopping_item.dart';
 import '../data/food_categories.dart';
 import '../data/food_knowledge.dart';
-import '../utils/json_object_list.dart';
+import '../storage/shopping_repo.dart';
 import '_persistence_queue.dart';
 import 'storage_service_provider.dart';
 
-const _kShoppingKey = 'shopping_items';
+String _shoppingItemNameKey(String name) => name.trim().toLowerCase();
 
 ShoppingItem _normalizeShoppingItemCategory(ShoppingItem item) {
   final category =
       FoodCategories.normalize(item.category) ?? FoodCategories.other;
   if (category == item.category) return item;
   return item.copyWith(category: category);
-}
-
-String _shoppingItemNameKey(String name) => name.trim().toLowerCase();
-
-List<ShoppingItem> _deduplicateShoppingItems(Iterable<ShoppingItem> items) {
-  final seenNames = <String>{};
-  final seenIds = <String>{};
-  final deduplicated = <ShoppingItem>[];
-
-  for (final item in items) {
-    final nameKey = _shoppingItemNameKey(item.name);
-    if (nameKey.isEmpty || seenNames.contains(nameKey)) continue;
-    seenNames.add(nameKey);
-    deduplicated.add(_withUniqueShoppingItemId(item, seenIds));
-  }
-
-  return deduplicated;
 }
 
 ShoppingItem _withUniqueShoppingItemId(
@@ -53,23 +34,14 @@ ShoppingItem _withUniqueShoppingItemId(
   return candidateId == item.id ? item : item.copyWith(id: candidateId);
 }
 
-/// Shopping list state with local persistence
 class ShoppingNotifier extends Notifier<List<ShoppingItem>>
     with PersistenceQueue {
-  late final SharedPreferences _prefs;
+  late final ShoppingRepo _repo;
 
   @override
   List<ShoppingItem> build() {
-    _prefs = ref.read(sharedPreferencesProvider);
-    return ref.read(shoppingSeedProvider);
-  }
-
-  Future<void> _save(List<ShoppingItem> items) async {
-    final jsonString = json.encode(items.map((e) => e.toJson()).toList());
-    final saved = await _prefs.setString(_kShoppingKey, jsonString);
-    if (!saved) {
-      throw StateError('Failed to save shopping items');
-    }
+    _repo = ref.read(shoppingRepoProvider);
+    return _repo.loadAll();
   }
 
   Future<bool> add(ShoppingItem item) async {
@@ -85,7 +57,9 @@ class ShoppingNotifier extends Notifier<List<ShoppingItem>>
 
     final updated = [...state, normalizedItem];
     state = updated;
-    await queuePersistence(() => _save(updated));
+    await queuePersistence(() async {
+      _repo.saveItems(updated);
+    });
     return true;
   }
 
@@ -96,7 +70,9 @@ class ShoppingNotifier extends Notifier<List<ShoppingItem>>
     }
 
     state = updated;
-    await queuePersistence(() => _save(updated));
+    await queuePersistence(() async {
+      _repo.saveItems(updated);
+    });
   }
 
   Future<void> toggleCheck(String id) async {
@@ -114,11 +90,11 @@ class ShoppingNotifier extends Notifier<List<ShoppingItem>>
     }
 
     state = updated;
-    await queuePersistence(() => _save(updated));
+    await queuePersistence(() async {
+      _repo.saveItems(updated);
+    });
   }
 
-  /// Build a ShoppingItem from the given inventory item and add it.
-  /// Returns true if added, false if a duplicate name was found.
   Future<bool> addFromIngredient(Ingredient ingredient) {
     return add(ShoppingItem.fromIngredient(ingredient));
   }
@@ -141,30 +117,6 @@ final shoppingProvider = NotifierProvider<ShoppingNotifier, List<ShoppingItem>>(
   ShoppingNotifier.new,
 );
 
-/// 启动时预 hydrated 的 shopping 种子,由 main.dart 预解码后通过 override 注入。
-///
-/// Fallback: 未被 override 时回退到 prefs 同步解码,保持升级前行为。
-final shoppingSeedProvider = Provider<List<ShoppingItem>>((ref) {
-  final prefs = ref.read(sharedPreferencesProvider);
-  return loadShoppingFromPrefs(prefs);
-});
-
-/// 把存储中的 shopping JSON 解码为 `List<ShoppingItem>`(同步)。
-/// 仅供 main.dart hydrate 与 [shoppingSeedProvider] fallback 使用。
-List<ShoppingItem> loadShoppingFromPrefs(SharedPreferences prefs) {
-  final jsonString = prefs.getString(_kShoppingKey);
-  if (jsonString == null) return [];
-  try {
-    final items = decodeJsonObjectList(
-      jsonString,
-    ).map(ShoppingItem.fromJson).map(_normalizeShoppingItemCategory);
-    return _deduplicateShoppingItems(items);
-  } catch (_) {
-    return [];
-  }
-}
-
-/// Shopping items grouped by category
 final groupedShoppingProvider = Provider<Map<String, List<ShoppingItem>>>((
   ref,
 ) {
@@ -176,13 +128,11 @@ final groupedShoppingProvider = Provider<Map<String, List<ShoppingItem>>>((
   return grouped;
 });
 
-/// Count of checked items
 final checkedCountProvider = Provider<int>((ref) {
   final items = ref.watch(shoppingProvider);
   return items.where((item) => item.isChecked).length;
 });
 
-/// Count of unchecked items
 final uncheckedCountProvider = Provider<int>((ref) {
   final items = ref.watch(shoppingProvider);
   return items.where((item) => !item.isChecked).length;
