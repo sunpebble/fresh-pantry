@@ -384,6 +384,89 @@ void main() {
     );
   });
 
+  group('InventoryNotifier.update + remove edge cases', () {
+    test('update with negative index leaves state unchanged', () async {
+      final container = await _containerWithInventory([_ingredient('番茄')]);
+      addTearDown(container.dispose);
+
+      await container
+          .read(inventoryProvider.notifier)
+          .update(-1, _ingredient('苹果'));
+      expect(container.read(inventoryProvider).map((i) => i.name), ['番茄']);
+    });
+
+    test('update with out-of-bounds index leaves state unchanged', () async {
+      final container = await _containerWithInventory([_ingredient('番茄')]);
+      addTearDown(container.dispose);
+
+      await container
+          .read(inventoryProvider.notifier)
+          .update(99, _ingredient('苹果'));
+      expect(container.read(inventoryProvider).map((i) => i.name), ['番茄']);
+    });
+
+    test('remove with negative index leaves state unchanged', () async {
+      final container = await _containerWithInventory([_ingredient('番茄')]);
+      addTearDown(container.dispose);
+
+      await container.read(inventoryProvider.notifier).remove(-1);
+      expect(container.read(inventoryProvider).map((i) => i.name), ['番茄']);
+    });
+
+    test('remove with out-of-bounds index leaves state unchanged', () async {
+      final container = await _containerWithInventory([_ingredient('番茄')]);
+      addTearDown(container.dispose);
+
+      await container.read(inventoryProvider.notifier).remove(99);
+      expect(container.read(inventoryProvider).map((i) => i.name), ['番茄']);
+    });
+  });
+
+  group('frequentItemsProvider caps and filters', () {
+    test('excludes items with count < 2', () async {
+      SharedPreferences.setMockInitialValues({
+        'inventory_items': '[]',
+        'add_history': json.encode({
+          '常用': {'count': 3, 'category': '其他', 'storage': 'fridge', 'unit': '个'},
+          '单次': {'count': 1, 'category': '其他', 'storage': 'fridge', 'unit': '个'},
+        }),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+
+      final frequent = container.read(frequentItemsProvider);
+      expect(frequent.map((i) => i.name), contains('常用'));
+      expect(frequent.map((i) => i.name), isNot(contains('单次')));
+    });
+
+    test('caps result at 6 items even with more qualifying entries', () async {
+      final history = {
+        for (var i = 0; i < 8; i++)
+          '食材$i': {
+            'count': 2,
+            'category': '其他',
+            'storage': 'fridge',
+            'unit': '个',
+          },
+      };
+      SharedPreferences.setMockInitialValues({
+        'inventory_items': '[]',
+        'add_history': json.encode(history),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+
+      final frequent = container.read(frequentItemsProvider);
+      expect(frequent.length, lessThanOrEqualTo(6));
+    });
+  });
+
   group('expiryLabelFor', () {
     test('formats expiry labels consistently', () {
       final now = DateTime(2026, 4, 27, 14);
@@ -510,6 +593,43 @@ void main() {
     );
   });
 
+  group('ShoppingNotifier.remove', () {
+    test('remove with unknown id does not crash or change state', () async {
+      SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+
+      await container
+          .read(shoppingProvider.notifier)
+          .add(_shoppingItem('si_1', '牛奶'));
+      await container
+          .read(shoppingProvider.notifier)
+          .remove('si_nonexistent');
+
+      expect(container.read(shoppingProvider).map((i) => i.name), ['牛奶']);
+    });
+
+    test('toggleCheck toggles checked state persistently', () async {
+      SharedPreferences.setMockInitialValues({
+        'shopping_items': json.encode([_shoppingItem('si_1', '苹果').toJson()]),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(shoppingProvider.notifier).toggleCheck('si_1');
+      expect(container.read(shoppingProvider).single.isChecked, isTrue);
+
+      await container.read(shoppingProvider.notifier).toggleCheck('si_1');
+      expect(container.read(shoppingProvider).single.isChecked, isFalse);
+    });
+  });
+
   group('ShoppingNotifier.addFromSuggestion', () {
     test('ignores duplicate suggestions by name', () async {
       SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
@@ -523,6 +643,21 @@ void main() {
       await container.read(shoppingProvider.notifier).addFromSuggestion('鸡蛋');
 
       expect(container.read(shoppingProvider).map((item) => item.name), ['鸡蛋']);
+    });
+
+    test('returns false for blank input', () async {
+      SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+
+      final added = await container
+          .read(shoppingProvider.notifier)
+          .addFromSuggestion('   ');
+      expect(added, isFalse);
+      expect(container.read(shoppingProvider), isEmpty);
     });
 
     test('uses stable food knowledge categories for suggestions', () async {
