@@ -25,6 +25,48 @@ void main() {
     });
   });
 
+  group('FoodKnowledge.lookup', () {
+    test('returns defaults for exact keyword match', () {
+      final result = FoodKnowledge.lookup('牛奶');
+      expect(result, isNotNull);
+      expect(result!.shelfLifeDays, greaterThan(0));
+    });
+
+    test('matches when name contains keyword (substring)', () {
+      final result = FoodKnowledge.lookup('新鲜牛奶两盒');
+      expect(result, isNotNull);
+    });
+
+    test('returns null for unknown food name', () {
+      expect(FoodKnowledge.lookup('未知食品XYZ123'), isNull);
+    });
+
+    test('returns null for empty string', () {
+      expect(FoodKnowledge.lookup(''), isNull);
+    });
+
+    test('returns null for whitespace-only string', () {
+      expect(FoodKnowledge.lookup('   '), isNull);
+    });
+  });
+
+  group('FoodKnowledge.englishName', () {
+    test('returns null for unknown name', () {
+      expect(FoodKnowledge.englishName('未知食品XYZ'), isNull);
+    });
+
+    test('returns null for empty string', () {
+      expect(FoodKnowledge.englishName(''), isNull);
+    });
+
+    test('returns non-null for known entry', () {
+      // At least one Chinese food should have an English name mapping
+      final known = ['大米', '牛肉', '猪肉', '鸡肉', '鱼'];
+      final found = known.any((n) => FoodKnowledge.englishName(n) != null);
+      expect(found, isTrue, reason: 'at least one common food should have English name');
+    });
+  });
+
   group('FoodKnowledge.categoryFor', () {
     test('returns the stable category for known ingredients', () {
       expect(FoodKnowledge.categoryFor('鸡蛋'), FoodCategories.dairyAndEggs);
