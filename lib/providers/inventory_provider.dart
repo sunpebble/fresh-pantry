@@ -140,8 +140,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
     state = updated;
     return queuePersistence(() async {
       await _save(updated);
-      await _recordAddHistory(itemToAdd);
-      ref.read(_addHistoryVersionProvider.notifier).state++;
+      await ref.read(_addHistoryProvider.notifier).record(itemToAdd);
     });
   }
 
@@ -191,9 +190,10 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
           }
           final existing = current[index];
           final summed = _sumQuantity(existing.quantity, p.quantity);
-          current = [...current]..[index] = _refreshIngredientFreshness(
-                existing.copyWith(quantity: summed),
-              );
+          current = [...current]
+            ..[index] = _refreshIngredientFreshness(
+              existing.copyWith(quantity: summed),
+            );
       }
     }
     state = current;
@@ -203,7 +203,9 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
   /// Applies a list of DeductionProposals atomically. Each Proposal references
   /// an inventory row by index; deducted quantities reaching 0 (or negative)
   /// remove the row.
-  Future<void> applyDeductionProposals(List<DeductionProposal> proposals) async {
+  Future<void> applyDeductionProposals(
+    List<DeductionProposal> proposals,
+  ) async {
     final removalIndices = <int>{};
     var current = [...state];
     for (final p in proposals) {
@@ -216,16 +218,18 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
       if (remaining <= 0) {
         removalIndices.add(i);
       } else {
-        final newQty = remaining == remaining.roundToDouble()
-            ? remaining.toInt().toString()
-            : remaining.toString();
+        final newQty =
+            remaining == remaining.roundToDouble()
+                ? remaining.toInt().toString()
+                : remaining.toString();
         current[i] = _refreshIngredientFreshness(
           existing.copyWith(quantity: newQty),
         );
       }
     }
     if (removalIndices.isNotEmpty) {
-      final sortedDesc = removalIndices.toList()..sort((a, b) => b.compareTo(a));
+      final sortedDesc =
+          removalIndices.toList()..sort((a, b) => b.compareTo(a));
       for (final idx in sortedDesc) {
         current.removeAt(idx);
       }
@@ -304,39 +308,6 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
   List<Ingredient> getByCategory(String category) {
     return inventoryItemsForCategory(state, category);
   }
-
-  Future<void> _recordAddHistory(Ingredient item) async {
-    final historyJson = _prefs.getString(addHistoryStorageKey);
-    final history = <String, dynamic>{};
-    if (historyJson != null) {
-      try {
-        history.addAll((json.decode(historyJson) as Map<String, dynamic>));
-      } catch (e) {
-        if (kDebugMode) {
-          debugPrint('Error decoding add history: $e');
-        }
-      }
-    }
-
-    final key = item.name;
-    final existing = history[key];
-    final existingCount = switch (existing) {
-      {'count': final num count} => count.toInt(),
-      num count => count.toInt(),
-      _ => 0,
-    };
-    history[key] = {
-      'count': existingCount + 1,
-      'category': FoodCategories.normalize(item.category) ?? '',
-      'storage': item.storage.name,
-      'unit': item.unit,
-    };
-
-    final saved = await _prefs.setString(addHistoryStorageKey, json.encode(history));
-    if (!saved) {
-      throw StateError('Failed to save add history');
-    }
-  }
 }
 
 final inventoryProvider = NotifierProvider<InventoryNotifier, List<Ingredient>>(
@@ -353,10 +324,9 @@ final inventorySeedProvider = Provider<List<Ingredient>>((ref) {
   final jsonString = prefs.getString(inventoryItemsStorageKey);
   if (jsonString == null) return [];
   try {
-    return decodeJsonObjectList(jsonString)
-        .map(Ingredient.fromJson)
-        .map(_normalizeInventoryIngredient)
-        .toList();
+    return decodeJsonObjectList(
+      jsonString,
+    ).map(Ingredient.fromJson).map(_normalizeInventoryIngredient).toList();
   } catch (_) {
     return [];
   }
@@ -378,34 +348,116 @@ List<Ingredient> loadInventoryFromPrefs(SharedPreferences prefs) {
   }
 }
 
-final _addHistoryVersionProvider = StateProvider<int>((ref) => 0);
+class _AddHistoryNotifier extends Notifier<List<FrequentItem>> {
+  late final SharedPreferences _prefs;
+
+  @override
+  List<FrequentItem> build() {
+    _prefs = ref.read(sharedPreferencesProvider);
+    return _itemsFromHistoryMap(_readHistoryMap(_prefs));
+  }
+
+  Future<void> record(Ingredient item) async {
+    final history = _readHistoryMap(_prefs);
+    final key = item.name;
+    final existing = history[key];
+    final existingCount = switch (existing) {
+      {'count': final num count} => count.toInt(),
+      num count => count.toInt(),
+      _ => 0,
+    };
+    history[key] = {
+      'count': existingCount + 1,
+      'category': FoodCategories.normalize(item.category) ?? '',
+      'storage': item.storage.name,
+      'unit': item.unit,
+    };
+
+    final saved = await _prefs.setString(
+      addHistoryStorageKey,
+      json.encode(history),
+    );
+    if (!saved) {
+      throw StateError('Failed to save add history');
+    }
+    state = _itemsFromHistoryMap(history);
+  }
+
+  Map<String, dynamic> _readHistoryMap(SharedPreferences prefs) {
+    final historyJson = prefs.getString(addHistoryStorageKey);
+    if (historyJson == null) return <String, dynamic>{};
+    try {
+      return Map<String, dynamic>.from(json.decode(historyJson) as Map);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error decoding add history: $e');
+      }
+      return <String, dynamic>{};
+    }
+  }
+
+  List<FrequentItem> _itemsFromHistoryMap(Map<String, dynamic> history) {
+    return history.entries.map((e) {
+      final value = e.value;
+      final data = value is Map<String, dynamic> ? value : const {};
+      final count = switch (value) {
+        {'count': final num count} => count.toInt(),
+        num count => count.toInt(),
+        _ => 1,
+      };
+      final category = data['category'];
+      final storageValue = data['storage'];
+      final unit = data['unit'];
+      final storageName = storageValue is String ? storageValue : 'fridge';
+      final defaults = FoodKnowledge.lookup(e.key);
+      final storage = iconTypeFromName(storageName);
+      final rememberedCategory =
+          category is String ? category : defaults?.category;
+
+      return FrequentItem(
+        name: e.key,
+        category: FoodCategories.dropdownValue(rememberedCategory),
+        storage: storage,
+        unit: unit is String ? unit : '个',
+        shelfLifeDays: defaults?.shelfLifeDays,
+        count: count,
+      );
+    }).toList();
+  }
+}
+
+final _addHistoryProvider =
+    NotifierProvider<_AddHistoryNotifier, List<FrequentItem>>(
+      _AddHistoryNotifier.new,
+    );
 
 /// Items expiring soon (state == expiringSoon or expired)
-final expiringItemsProvider = Provider<List<Ingredient>>((ref) {
+final expiringItemsProvider = Provider.autoDispose<List<Ingredient>>((ref) {
   final items = ref.watch(inventoryProvider);
   return items.where(isNotFreshIngredient).toList();
 });
 
 /// Recent additions from the current inventory, newest first.
-final recentAdditionsProvider = Provider<List<Ingredient>>((ref) {
+final recentAdditionsProvider = Provider.autoDispose<List<Ingredient>>((ref) {
   final items = ref.watch(inventoryProvider);
   return items.reversed.take(2).toList();
 });
 
 /// Stat counts for dashboard
-final statCountsProvider = Provider<({int total, int expiringSoon})>((ref) {
-  final items = ref.watch(inventoryProvider);
-  final expiringSoon = notFreshIngredientCount(items);
-  return (total: items.length, expiringSoon: expiringSoon);
-});
+final statCountsProvider =
+    Provider.autoDispose<({int total, int expiringSoon})>((ref) {
+      final items = ref.watch(inventoryProvider);
+      final expiringSoon = notFreshIngredientCount(items);
+      return (total: items.length, expiringSoon: expiringSoon);
+    });
 
 /// Fixed category filters for inventory.
-final categoriesProvider = Provider<List<String>>((ref) {
+final categoriesProvider = Provider.autoDispose<List<String>>((ref) {
   return const [inventoryFilterAll, ...FoodCategories.values];
 });
 
 /// Storage area stats derived from actual inventory
-final storageAreasProvider = Provider<List<StorageArea>>((ref) {
+final storageAreasProvider = Provider.autoDispose<List<StorageArea>>((ref) {
   final items = ref.watch(inventoryProvider);
   const maxCapacity = {IconType.fridge: 20, IconType.pantry: 50};
   const names = {IconType.fridge: '冰箱', IconType.pantry: '食品柜'};
@@ -433,57 +485,32 @@ final selectedCategoryProvider = StateProvider<String>(
 );
 
 /// Inventory filtered by selected category
-final filteredByCategoryProvider = Provider<List<Ingredient>>((ref) {
+final filteredByCategoryProvider = Provider.autoDispose<List<Ingredient>>((
+  ref,
+) {
   final category = ref.watch(selectedCategoryProvider);
   final items = ref.watch(inventoryProvider);
   return inventoryItemsForCategory(items, category);
 });
 
-/// Shared helper: reads add_history prefs and returns ALL FrequentItems with
-/// no threshold or cap. Consumers apply their own filters.
-List<FrequentItem> _allFrequentItemsFromHistory(Ref ref) {
-  // Re-read after add history changes.
-  ref.watch(_addHistoryVersionProvider);
-  final prefs = ref.read(sharedPreferencesProvider);
-  final historyJson = prefs.getString(addHistoryStorageKey);
-  if (historyJson == null) return [];
+final inventorySearchQueryProvider = StateProvider.autoDispose<String>(
+  (ref) => '',
+);
 
-  try {
-    final history = json.decode(historyJson) as Map<String, dynamic>;
-    return history.entries.map((e) {
-      final value = e.value;
-      final data = value is Map<String, dynamic> ? value : const {};
-      final count = switch (value) {
-        {'count': final num count} => count.toInt(),
-        num count => count.toInt(),
-        _ => 1,
-      };
-      final category = data['category'];
-      final storageValue = data['storage'];
-      final unit = data['unit'];
-      final storageName = storageValue is String ? storageValue : 'fridge';
-      final defaults = FoodKnowledge.lookup(e.key);
-      final storage = iconTypeFromName(storageName);
-      final rememberedCategory =
-          category is String ? category : defaults?.category;
-
-      return FrequentItem(
-        name: e.key,
-        category: FoodCategories.dropdownValue(rememberedCategory),
-        storage: storage,
-        unit: unit is String ? unit : '个',
-        shelfLifeDays: defaults?.shelfLifeDays,
-        count: count,
-      );
-    }).toList();
-  } catch (_) {
-    return [];
-  }
-}
+final filteredInventoryItemsProvider = Provider.autoDispose<List<Ingredient>>((
+  ref,
+) {
+  final query = ref.watch(inventorySearchQueryProvider).trim().toLowerCase();
+  final items = ref.watch(filteredByCategoryProvider);
+  if (query.isEmpty) return items;
+  return items
+      .where((item) => item.name.toLowerCase().contains(query))
+      .toList();
+});
 
 /// Top frequent items derived from add history.
-final frequentItemsProvider = Provider<List<FrequentItem>>((ref) {
-  final all = _allFrequentItemsFromHistory(ref);
+final frequentItemsProvider = Provider.autoDispose<List<FrequentItem>>((ref) {
+  final all = [...ref.watch(_addHistoryProvider)];
   all.sort((a, b) => b.count.compareTo(a.count));
   return all.where((i) => i.count >= 2).take(6).toList();
 });
@@ -491,17 +518,17 @@ final frequentItemsProvider = Provider<List<FrequentItem>>((ref) {
 /// Items the user has bought >=3 times historically but which are NOT currently
 /// in inventory (by name, case+whitespace insensitive). Sorted by historical
 /// frequency descending.
-final lowStockItemsProvider = Provider<List<FrequentItem>>((ref) {
-  final all = _allFrequentItemsFromHistory(ref);
+final lowStockItemsProvider = Provider.autoDispose<List<FrequentItem>>((ref) {
+  final all = ref.watch(_addHistoryProvider);
   final inventory = ref.watch(inventoryProvider);
-  final presentNames = inventory
-      .map((i) => i.name.trim().toLowerCase())
-      .toSet();
+  final presentNames =
+      inventory.map((i) => i.name.trim().toLowerCase()).toSet();
 
-  final filtered = all
-      .where((f) => f.count >= 3)
-      .where((f) => !presentNames.contains(f.name.trim().toLowerCase()))
-      .toList();
+  final filtered =
+      all
+          .where((f) => f.count >= 3)
+          .where((f) => !presentNames.contains(f.name.trim().toLowerCase()))
+          .toList();
   filtered.sort((a, b) => b.count.compareTo(a.count));
   return filtered;
 });

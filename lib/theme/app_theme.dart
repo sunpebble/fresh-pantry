@@ -7,6 +7,7 @@ import 'app_typography.dart';
 export 'app_colors.dart';
 export 'app_radius.dart';
 export 'app_spacing.dart';
+export 'app_sizes.dart';
 export 'app_typography.dart';
 
 /// 全局系统 overlay：浅色 surface 上的深色状态栏 / 导航栏图标。

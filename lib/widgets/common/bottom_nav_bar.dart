@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../providers/navigation_provider.dart';
 import '../../theme/app_theme.dart';
@@ -58,15 +57,15 @@ class BottomNavBar extends ConsumerWidget {
                   for (final (index, item) in _items.indexed)
                     index == FkTab.add
                         ? _PrimaryFab(
-                            icon: item.icon,
-                            onTap: () => ref.navigateToTab(index),
-                          )
+                          icon: item.icon,
+                          onTap: () => ref.navigateToTab(index),
+                        )
                         : _TabButton(
-                            icon: item.icon,
-                            label: item.label,
-                            active: index == currentIndex,
-                            onTap: () => ref.navigateToTab(index),
-                          ),
+                          icon: item.icon,
+                          label: item.label,
+                          active: index == currentIndex,
+                          onTap: () => ref.navigateToTab(index),
+                        ),
                 ],
               ),
             ),
@@ -108,10 +107,8 @@ class _TabButton extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 label,
-                style: GoogleFonts.manrope(
-                  fontSize: 10,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.w600,
-                  letterSpacing: -0.1,
                   color: color,
                 ),
               ),
@@ -137,8 +134,8 @@ class _PrimaryFab extends StatelessWidget {
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          width: 52,
-          height: 52,
+          width: AppSize.profileAvatar - AppSpacing.xs,
+          height: AppSize.profileAvatar - AppSpacing.xs,
           margin: const EdgeInsets.only(bottom: 4),
           decoration: const BoxDecoration(
             color: AppColors.primary,
@@ -152,7 +149,7 @@ class _PrimaryFab extends StatelessWidget {
             ],
           ),
           alignment: Alignment.center,
-          child: Icon(icon, size: 26, color: Colors.white),
+          child: Icon(icon, size: AppSize.iconMd + 6, color: Colors.white),
         ),
       ),
     );

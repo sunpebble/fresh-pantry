@@ -1,0 +1,41 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:fresh_pantry/models/ingredient.dart';
+import 'package:fresh_pantry/models/recipe.dart';
+import 'package:fresh_pantry/providers/inventory_provider.dart';
+import 'package:fresh_pantry/providers/recipe_provider.dart';
+import 'package:fresh_pantry/providers/storage_service_provider.dart';
+import 'package:fresh_pantry/screens/recipes_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() {
+  testWidgets('explore tab shows recipe loading skeleton', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final pendingRecipes = Completer<List<Recipe>>();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          inventorySeedProvider.overrideWithValue(const <Ingredient>[]),
+          recipesProvider.overrideWith((ref) => pendingRecipes.future),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(useMaterial3: false),
+          home: const Scaffold(body: RecipesScreen()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('探索'));
+    await tester.pump();
+
+    expect(find.byType(FractionallySizedBox), findsNWidgets(9));
+    expect(find.text('暂无可探索的菜谱'), findsNothing);
+  });
+}

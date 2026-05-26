@@ -112,6 +112,34 @@ void main() {
   );
 
   test(
+    'falls back to local food knowledge when external lookup throws',
+    () async {
+      final ingredient = _ingredient('鸡蛋');
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final client = _FakeFoodDetailsClient(
+        lookupResult: null,
+        lookupError: StateError('network down'),
+      );
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          foodDetailsClientProvider.overrideWithValue(client),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final details = await container.read(
+        foodDetailsProvider(ingredient).future,
+      );
+
+      expect(details.displayName, '鸡蛋');
+      expect(details.source, '本地食材知识库');
+      expect(client.calls, 1);
+    },
+  );
+
+  test(
     'retries external lookup when the cached value is local fallback',
     () async {
       final ingredient = _ingredient('牛奶');
@@ -216,14 +244,17 @@ void main() {
 }
 
 class _FakeFoodDetailsClient implements FoodDetailsClient {
-  _FakeFoodDetailsClient({required this.lookupResult});
+  _FakeFoodDetailsClient({required this.lookupResult, this.lookupError});
 
   final FoodDetails? lookupResult;
+  final Object? lookupError;
   int calls = 0;
 
   @override
   Future<FoodDetails?> lookup(Ingredient ingredient) async {
     calls++;
+    final error = lookupError;
+    if (error != null) throw error;
     return lookupResult;
   }
 }

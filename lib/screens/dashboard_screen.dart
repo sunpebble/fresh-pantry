@@ -37,150 +37,270 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final inventory = ref.watch(inventoryProvider);
-    final stats = ref.watch(statCountsProvider);
-    final expiringItems = ref.watch(expiringItemsProvider);
-    final recommendedRecipes = ref.watch(recommendedRecipesProvider);
-    final now = DateTime.now();
-
-    final urgent = expiringItems
-        .where((i) => i.state == FreshnessState.expired)
-        .length;
-    final soon = expiringItems
-        .where((i) => i.state == FreshnessState.expiringSoon)
-        .length;
-    final categoryCounts = _countByCategory(inventory);
-    final todayRecipe = recommendedRecipes.isNotEmpty
-        ? recommendedRecipes.first
-        : null;
-
     return SafeArea(
       bottom: false,
       child: RefreshIndicator(
-        onRefresh: () async =>
-            await Future.delayed(const Duration(milliseconds: 600)),
+        onRefresh: () => _refreshDashboard(context, ref),
         color: AppColors.primary,
         backgroundColor: AppColors.surface,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.zero,
-          children: [
-            _HeroSection(
-              greeting: dashboardGreetingFor(now),
-              total: stats.total,
-              categoryCount: categoryCounts.length,
-              urgent: urgent,
-              soon: soon,
-              lowStock: 0,
-              onSettings: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              ),
-            ),
-            if (expiringItems.isNotEmpty) ...[
-              FkSectionHead(
-                title: '该用了',
-                count: expiringItems.length,
-                actionLabel: '全部',
-                onAction: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const ExpiringScreen(),
-                  ),
-                ),
-              ),
-              SizedBox(
-                height: 168,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  itemCount: expiringItems.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 10),
-                  itemBuilder: (_, i) {
-                    final item = expiringItems[i];
-                    return _ExpiringCard(
-                      item: item,
-                      onAdd: () => _addToShoppingList(context, ref, item),
-                    );
-                  },
-                ),
-              ),
-            ],
-            const Padding(
+          children: const [
+            _DashboardHero(),
+            _ExpiringItemsSection(),
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               child: LowStockCard(),
             ),
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               child: ExpiringFallbackCard(),
             ),
-            if (categoryCounts.isNotEmpty) ...[
-              FkSectionHead(
-                title: '食材分类',
-                actionLabel: '全部',
-                onAction: () => ref.navigateToTab(FkTab.fridge),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: _CategoryGrid(
-                  counts: categoryCounts,
-                  onTap: (cat) => ref.navigateToTab(FkTab.fridge),
-                ),
-              ),
-            ],
-            if (todayRecipe != null) ...[
-              FkSectionHead(
-                title: '今日推荐',
-                trailing: const FkPill(
-                  label: '智能推荐',
-                  backgroundColor: AppColors.primarySoft,
-                  foregroundColor: AppColors.primaryContainer,
-                  sm: true,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 100),
-                child: RecipeCard(
-                  recipe: todayRecipe,
-                  matchedCount: matchedIngredientCount(
-                    inventory,
-                    todayRecipe,
-                  ),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => RecipeDetailScreen(recipe: todayRecipe),
-                    ),
-                  ),
-                ),
-              ),
-            ] else
-              const SizedBox(height: 100),
+            _CategorySection(),
+            _TodayRecommendationSection(),
           ],
         ),
       ),
     );
   }
+}
 
-  Map<String, int> _countByCategory(List<Ingredient> items) {
-    final m = <String, int>{};
-    for (final item in items) {
-      final id = fkCategoryIdFor(item.category);
-      m[id] = (m[id] ?? 0) + 1;
-    }
-    return m;
-  }
-
-  Future<void> _addToShoppingList(
-    BuildContext context,
-    WidgetRef ref,
-    Ingredient item,
-  ) async {
-    final added = await ref
-        .read(shoppingProvider.notifier)
-        .addFromIngredient(item);
+Future<void> _refreshDashboard(BuildContext context, WidgetRef ref) async {
+  try {
+    ref.invalidate(recipesProvider);
+    await ref.read(recipesProvider.future);
+  } catch (_) {
     if (!context.mounted) return;
-    showAppSnackBar(
-      context,
-      added ? '已将「${item.name}」加入购物清单' : '「${item.name}」已在购物清单中',
-      backgroundColor: added ? AppColors.primary : AppColors.tertiary,
+    showAppSnackBar(context, '刷新推荐失败，请稍后重试', backgroundColor: AppColors.error);
+  }
+}
+
+Map<String, int> _countByCategory(List<Ingredient> items) {
+  final m = <String, int>{};
+  for (final item in items) {
+    final id = fkCategoryIdFor(item.category);
+    m[id] = (m[id] ?? 0) + 1;
+  }
+  return m;
+}
+
+String _categoryCountsSignature(List<Ingredient> items) {
+  final counts = _countByCategory(items);
+  final entries =
+      counts.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+  return entries.map((entry) => '${entry.key}:${entry.value}').join('|');
+}
+
+Future<void> _addToShoppingList(
+  BuildContext context,
+  WidgetRef ref,
+  Ingredient item,
+) async {
+  final added = await ref
+      .read(shoppingProvider.notifier)
+      .addFromIngredient(item);
+  if (!context.mounted) return;
+  showAppSnackBar(
+    context,
+    added ? '已将「${item.name}」加入购物清单' : '「${item.name}」已在购物清单中',
+    backgroundColor: added ? AppColors.primary : AppColors.tertiary,
+  );
+}
+
+class _DashboardHero extends ConsumerWidget {
+  const _DashboardHero();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final total = ref.watch(inventoryProvider.select((items) => items.length));
+    final categoryCount = ref.watch(
+      inventoryProvider.select(
+        (items) =>
+            items.map((item) => fkCategoryIdFor(item.category)).toSet().length,
+      ),
+    );
+    final expiringCounts = ref.watch(
+      expiringItemsProvider.select(
+        (items) => (
+          urgent: items.where((i) => i.state == FreshnessState.expired).length,
+          soon:
+              items.where((i) => i.state == FreshnessState.expiringSoon).length,
+        ),
+      ),
+    );
+
+    return _HeroSection(
+      greeting: dashboardGreetingFor(DateTime.now()),
+      total: total,
+      categoryCount: categoryCount,
+      urgent: expiringCounts.urgent,
+      soon: expiringCounts.soon,
+      lowStock: 0,
+      onSettings:
+          () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
+    );
+  }
+}
+
+class _ExpiringItemsSection extends ConsumerWidget {
+  const _ExpiringItemsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final expiringItems = ref.watch(expiringItemsProvider);
+    if (expiringItems.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FkSectionHead(
+          title: '该用了',
+          count: expiringItems.length,
+          actionLabel: '全部',
+          onAction:
+              () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const ExpiringScreen())),
+        ),
+        SizedBox(
+          height: 168,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            itemCount: expiringItems.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (_, i) {
+              final item = expiringItems[i];
+              return _ExpiringCard(
+                item: item,
+                onAdd: () => _addToShoppingList(context, ref, item),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CategorySection extends ConsumerWidget {
+  const _CategorySection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(inventoryProvider.select(_categoryCountsSignature));
+    final categoryCounts = _countByCategory(ref.read(inventoryProvider));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FkSectionHead(
+          title: '食材分类',
+          actionLabel: '全部',
+          onAction: () => ref.navigateToTab(FkTab.fridge),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child:
+              categoryCounts.isEmpty
+                  ? const _DashboardEmptyState(
+                    icon: Icons.category_outlined,
+                    label: '还没有分类数据',
+                  )
+                  : _CategoryGrid(
+                    counts: categoryCounts,
+                    onTap: (cat) => ref.navigateToTab(FkTab.fridge),
+                  ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TodayRecommendationSection extends ConsumerWidget {
+  const _TodayRecommendationSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recommendedRecipes = ref.watch(recommendedRecipesProvider);
+    if (recommendedRecipes.isEmpty) {
+      return const SizedBox(height: 100);
+    }
+
+    ref.watch(inventoryProvider.select(inventoryNamesSignature));
+    final inventoryNames = inventoryNameSet(ref.read(inventoryProvider));
+    final todayRecipe = recommendedRecipes.first;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FkSectionHead(
+          title: '今日推荐',
+          trailing: const FkPill(
+            label: '智能推荐',
+            backgroundColor: AppColors.primarySoft,
+            foregroundColor: AppColors.primaryContainer,
+            sm: true,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 100),
+          child: RecipeCard(
+            recipe: todayRecipe,
+            matchedCount: matchedIngredientCountForNames(
+              inventoryNames,
+              todayRecipe,
+            ),
+            onTap:
+                () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => RecipeDetailScreen(recipe: todayRecipe),
+                  ),
+                ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DashboardEmptyState extends StatelessWidget {
+  const _DashboardEmptyState({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xl,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.outline),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: AppColors.onSurfaceVariant),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            label,
+            style: GoogleFonts.manrope(
+              fontSize: AppFontSize.sm,
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -357,9 +477,7 @@ class _ExpiringCard extends StatelessWidget {
     final catId = fkCategoryIdFor(item.category);
     final palette = FkCategoryPalette.of(catId);
     final isExpired = item.state == FreshnessState.expired;
-    final pillBg = isExpired
-        ? AppColors.fkDanger
-        : AppColors.fkWarnSoft;
+    final pillBg = isExpired ? AppColors.fkDanger : AppColors.fkWarnSoft;
     final pillFg = isExpired ? Colors.white : AppColors.onSecondaryContainer;
     final topBorder = isExpired ? AppColors.fkDanger : AppColors.fkWarn;
 
@@ -433,56 +551,54 @@ class _CategoryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entries = counts.entries.take(8).toList();
-    return GridView.count(
-      crossAxisCount: 4,
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
+    return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 0.95,
-      children: [
-        for (final entry in entries)
-          GestureDetector(
-            onTap: () => onTap(entry.key),
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              decoration: BoxDecoration(
-                color: FkCategoryPalette.of(entry.key).tint,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CatIcon(
-                    category: entry.key,
-                    size: 28,
-                    color: FkCategoryPalette.of(entry.key).ink,
+      itemCount: entries.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 0.95,
+      ),
+      itemBuilder: (context, index) {
+        final entry = entries[index];
+        final palette = FkCategoryPalette.of(entry.key);
+        return GestureDetector(
+          onTap: () => onTap(entry.key),
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            decoration: BoxDecoration(
+              color: palette.tint,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CatIcon(category: entry.key, size: 28, color: palette.ink),
+                const SizedBox(height: 4),
+                Text(
+                  FkCategoryPalette.names[entry.key] ?? entry.key,
+                  style: GoogleFonts.manrope(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: palette.ink,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    FkCategoryPalette.names[entry.key] ?? entry.key,
-                    style: GoogleFonts.manrope(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: FkCategoryPalette.of(entry.key).ink,
-                    ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${entry.value}',
+                  style: GoogleFonts.manrope(
+                    fontSize: 11,
+                    color: palette.ink.withValues(alpha: 0.7),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${entry.value}',
-                    style: GoogleFonts.manrope(
-                      fontSize: 11,
-                      color: FkCategoryPalette.of(entry.key).ink.withValues(
-                            alpha: 0.7,
-                          ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-      ],
+        );
+      },
     );
   }
 }

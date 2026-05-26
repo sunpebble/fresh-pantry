@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,13 +37,16 @@ class AddIngredientScreen extends ConsumerStatefulWidget {
     this.textParserOverride,
     this.imageParserOverride,
     this.imagePicker,
-  }) : assert(prefillOnly || initialIngredient == null || inventoryIndex != null);
+  }) : assert(
+         prefillOnly || initialIngredient == null || inventoryIndex != null,
+       );
 
   final Ingredient? initialIngredient;
   final int? inventoryIndex;
   final bool prefillOnly;
   final Future<List<IngredientDraft>> Function(String text)? textParserOverride;
-  final Future<List<IngredientDraft>> Function(Uint8List bytes)? imageParserOverride;
+  final Future<List<IngredientDraft>> Function(Uint8List bytes)?
+  imageParserOverride;
   final Future<Uint8List?> Function(ImageSource source)? imagePicker;
 
   @override
@@ -68,6 +70,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
   bool _storageManuallySelected = false;
   bool _shelfLifeManuallySelected = false;
   bool _usesCustomDateRange = false;
+  bool _isSaving = false;
   String _resolvedImageUrl = '';
 
   static const _categories = FoodCategories.values;
@@ -78,18 +81,58 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
   static final _decimalInputFormatters = <TextInputFormatter>[
     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
   ];
+  static final _categoryDropdownItems = _categories
+      .map(
+        (category) => DropdownMenuItem(value: category, child: Text(category)),
+      )
+      .toList(growable: false);
+  static final _storageDropdownItems = IconType.values
+      .map(
+        (type) => DropdownMenuItem(
+          value: type,
+          child: Row(
+            children: [
+              Icon(
+                storageIconFor(type),
+                size: 16,
+                color: AppColors.onSurfaceVariant,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(storageLabelFor(type)),
+            ],
+          ),
+        ),
+      )
+      .toList(growable: false);
+  static final _unitDropdownItems = FoodKnowledge.units
+      .map((unit) => DropdownMenuItem(value: unit, child: Text(unit)))
+      .toList(growable: false);
 
-  bool get _isEditing => widget.initialIngredient != null && !widget.prefillOnly;
+  bool get _isEditing =>
+      widget.initialIngredient != null && !widget.prefillOnly;
 
-  List<String> get _categoryOptions => [
-    if (!_categories.contains(_selectedCategory)) _selectedCategory,
-    ..._categories,
-  ];
+  List<DropdownMenuItem<String>> get _categoryItems {
+    if (_categories.contains(_selectedCategory)) {
+      return _categoryDropdownItems;
+    }
+    return [
+      DropdownMenuItem(
+        value: _selectedCategory,
+        child: Text(_selectedCategory),
+      ),
+      ..._categoryDropdownItems,
+    ];
+  }
 
-  List<String> get _unitOptions => [
-    if (!FoodKnowledge.units.contains(_selectedUnit)) _selectedUnit,
-    ...FoodKnowledge.units,
-  ];
+  List<DropdownMenuItem<String>> get _unitItems {
+    if (FoodKnowledge.units.contains(_selectedUnit)) {
+      return _unitDropdownItems;
+    }
+    return [
+      DropdownMenuItem(value: _selectedUnit, child: Text(_selectedUnit)),
+      ..._unitDropdownItems,
+    ];
+  }
 
   static DateTime? _rangeStartFor({
     required DateTime? expiryDate,
@@ -304,7 +347,8 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
     });
   }
 
-  void _save({bool navigateToInventory = false}) {
+  Future<void> _save({bool navigateToInventory = false}) async {
+    if (_isSaving) return;
     final name = _nameController.text.trim();
     final missingFields = [if (name.isEmpty) '食材名称'];
     if (missingFields.isNotEmpty) {
@@ -313,27 +357,33 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
     }
 
     final ingredient = _buildIngredientFromForm(name);
+    setState(() => _isSaving = true);
 
-    if (_isEditing) {
-      final index = _resolveEditIndex();
-      if (index == -1) {
-        Navigator.of(context).maybePop();
+    try {
+      if (_isEditing) {
+        final index = _resolveEditIndex();
+        if (index == -1) {
+          if (mounted) Navigator.of(context).maybePop();
+          return;
+        }
+        await ref.read(inventoryProvider.notifier).update(index, ingredient);
+        if (mounted) Navigator.of(context).pop(name);
         return;
       }
-      ref.read(inventoryProvider.notifier).update(index, ingredient);
-      Navigator.of(context).pop(name);
-      return;
-    }
 
-    ref.read(inventoryProvider.notifier).add(ingredient);
-    final addedItem = ref.read(inventoryProvider).last;
+      await ref.read(inventoryProvider.notifier).add(ingredient);
+      final addedItem = ref.read(inventoryProvider).last;
 
-    _resetForm();
+      if (!mounted) return;
+      _resetForm();
 
-    _showAddedSnackBar(name, addedItem);
+      _showAddedSnackBar(name, addedItem);
 
-    if (navigateToInventory) {
-      ref.navigateToTab(FkTab.fridge);
+      if (navigateToInventory) {
+        ref.navigateToTab(FkTab.fridge);
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -383,10 +433,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
       actionLabel: '撤销',
       actionTextColor: AppColors.onPrimary,
       onAction: () {
-        final index = inventoryIndexOf(
-          ref.read(inventoryProvider),
-          addedItem,
-        );
+        final index = inventoryIndexOf(ref.read(inventoryProvider), addedItem);
         if (index != -1) {
           ref.read(inventoryProvider.notifier).remove(index);
         }
@@ -404,13 +451,16 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final frequentItems = ref.watch(frequentItemsProvider);
-
     return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       behavior: HitTestBehavior.translucent,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.xxl, AppSpacing.lg, AppSpacing.xxl, 120),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xxl,
+          AppSpacing.lg,
+          AppSpacing.xxl,
+          120,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -443,12 +493,8 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
             ],
 
             // ── Frequent items ──
-            if (!_isEditing && frequentItems.isNotEmpty) ...[
-              _buildLabel('常购食材'),
-              const SizedBox(height: AppSpacing.md),
-              _buildFrequentChips(frequentItems),
-              const SizedBox(height: AppSpacing.xxxl),
-            ],
+            if (!_isEditing)
+              _FrequentItemsSection(onSelected: _applyFrequentItem),
 
             // Ingredient Name
             _buildLabel('食材名称'),
@@ -543,57 +589,20 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
 
   // ─── Sub-widgets ────────────────────────────────────────────────────
 
-  Widget _buildFrequentChips(List<FrequentItem> items) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final item in items)
-          GestureDetector(
-            onTap: () {
-              _nameController.text = item.name;
-              setState(() {
-                _selectedCategory = FoodCategories.dropdownValue(item.category);
-                _selectedStorage = item.storage;
-                _selectedUnit = item.unit;
-                if (item.shelfLifeDays != null) {
-                  _setShelfDays(item.shelfLifeDays!);
-                }
-                _autoFilled = true;
-                _categoryManuallySelected = false;
-                _storageManuallySelected = false;
-                _shelfLifeManuallySelected = false;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
-              decoration: BoxDecoration(
-                color: AppColors.primaryFixed,
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    storageIconFor(item.storage),
-                    size: 14,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    item.name,
-                    style: GoogleFonts.manrope(
-                      fontSize: AppFontSize.sm,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-      ],
-    );
+  void _applyFrequentItem(FrequentItem item) {
+    _nameController.text = item.name;
+    setState(() {
+      _selectedCategory = FoodCategories.dropdownValue(item.category);
+      _selectedStorage = item.storage;
+      _selectedUnit = item.unit;
+      if (item.shelfLifeDays != null) {
+        _setShelfDays(item.shelfLifeDays!);
+      }
+      _autoFilled = true;
+      _categoryManuallySelected = false;
+      _storageManuallySelected = false;
+      _shelfLifeManuallySelected = false;
+    });
   }
 
   Widget _buildCategoryDropdown() {
@@ -611,12 +620,12 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
             color: AppColors.onSurfaceVariant,
             size: 20,
           ),
-          style: GoogleFonts.manrope(fontSize: AppFontSize.md, color: AppColors.onSurface),
+          style: GoogleFonts.manrope(
+            fontSize: AppFontSize.md,
+            color: AppColors.onSurface,
+          ),
           dropdownColor: AppColors.surfaceContainerLowest,
-          items: [
-            for (final category in _categoryOptions)
-              DropdownMenuItem(value: category, child: Text(category)),
-          ],
+          items: _categoryItems,
           onChanged:
               (v) => setState(() {
                 _selectedCategory = v!;
@@ -642,25 +651,12 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
             color: AppColors.onSurfaceVariant,
             size: 20,
           ),
-          style: GoogleFonts.manrope(fontSize: AppFontSize.md, color: AppColors.onSurface),
+          style: GoogleFonts.manrope(
+            fontSize: AppFontSize.md,
+            color: AppColors.onSurface,
+          ),
           dropdownColor: AppColors.surfaceContainerLowest,
-          items: [
-            for (final type in IconType.values)
-              DropdownMenuItem(
-                value: type,
-                child: Row(
-                  children: [
-                    Icon(
-                      storageIconFor(type),
-                      size: 16,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Text(storageLabelFor(type)),
-                  ],
-                ),
-              ),
-          ],
+          items: _storageDropdownItems,
           onChanged:
               (v) => setState(() {
                 _selectedStorage = v!;
@@ -686,12 +682,12 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
             color: AppColors.onSurfaceVariant,
             size: 20,
           ),
-          style: GoogleFonts.manrope(fontSize: AppFontSize.md, color: AppColors.onSurface),
+          style: GoogleFonts.manrope(
+            fontSize: AppFontSize.md,
+            color: AppColors.onSurface,
+          ),
           dropdownColor: AppColors.surfaceContainerLowest,
-          items: [
-            for (final unit in _unitOptions)
-              DropdownMenuItem(value: unit, child: Text(unit)),
-          ],
+          items: _unitItems,
           onChanged: (v) => setState(() => _selectedUnit = v!),
         ),
       ),
@@ -767,7 +763,10 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
             const SizedBox(height: AppSpacing.lg),
             // Show selected date
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.md,
+              ),
               decoration: BoxDecoration(
                 color: AppColors.surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(AppRadius.md),
@@ -825,7 +824,10 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
       label: '$days天后',
       onTap: () => _applyShelfDays(days),
       selected: isSelected,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
       fontWeight: FontWeight.w700,
       backgroundColor: AppColors.surfaceContainerLowest,
       foregroundColor: AppColors.onSurface,
@@ -864,7 +866,10 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
         }
       },
       selected: isCustom,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
       fontWeight: FontWeight.w700,
       backgroundColor: AppColors.surfaceContainerLowest,
       foregroundColor: AppColors.onSurface,
@@ -874,9 +879,9 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
   Widget _buildSaveButton() {
     return Semantics(
       button: true,
-      label: _isEditing ? '保存修改' : '保存',
+      label: _isSaving ? '保存中' : (_isEditing ? '保存修改' : '保存'),
       child: GestureDetector(
-        onTap: () => _save(),
+        onTap: _isSaving ? null : () => _save(),
         child: Container(
           width: double.infinity,
           height: 56,
@@ -894,13 +899,23 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                _isEditing ? Icons.check_circle : Icons.add_circle,
-                color: AppColors.onPrimary,
-              ),
+              if (_isSaving)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation(AppColors.onPrimary),
+                  ),
+                )
+              else
+                Icon(
+                  _isEditing ? Icons.check_circle : Icons.add_circle,
+                  color: AppColors.onPrimary,
+                ),
               const SizedBox(width: AppSpacing.sm),
               Text(
-                _isEditing ? '保存修改' : '保存',
+                _isSaving ? '保存中...' : (_isEditing ? '保存修改' : '保存'),
                 style: GoogleFonts.plusJakartaSans(
                   fontWeight: FontWeight.w700,
                   fontSize: AppFontSize.lg,
@@ -957,90 +972,107 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
   // ─── Quick entry ────────────────────────────────────────────────────
 
   Widget _buildQuickEntryRow() => Row(
-        children: [
-          Expanded(child: _quickButton(
-            key: const Key('quick_camera'),
-            icon: Icons.camera_alt_outlined,
-            label: '拍照识别',
-            onTap: _runCamera,
-          )),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(child: _quickButton(
-            key: const Key('quick_text'),
-            icon: Icons.edit_note,
-            label: '粘贴清单',
-            onTap: _runTextDialog,
-          )),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(child: _quickButton(
-            key: const Key('quick_manual'),
-            icon: Icons.edit,
-            label: '手填',
-            onTap: () => FocusScope.of(context).requestFocus(FocusNode()),
-          )),
-        ],
-      );
+    children: [
+      Expanded(
+        child: _quickButton(
+          key: const Key('quick_camera'),
+          icon: Icons.camera_alt_outlined,
+          label: '拍照识别',
+          onTap: _runCamera,
+        ),
+      ),
+      const SizedBox(width: AppSpacing.sm),
+      Expanded(
+        child: _quickButton(
+          key: const Key('quick_text'),
+          icon: Icons.edit_note,
+          label: '粘贴清单',
+          onTap: _runTextDialog,
+        ),
+      ),
+      const SizedBox(width: AppSpacing.sm),
+      Expanded(
+        child: _quickButton(
+          key: const Key('quick_manual'),
+          icon: Icons.edit,
+          label: '手填',
+          onTap: () => FocusScope.of(context).requestFocus(FocusNode()),
+        ),
+      ),
+    ],
+  );
 
   Widget _quickButton({
     required Key key,
     required IconData icon,
     required String label,
     required VoidCallback onTap,
-  }) =>
-      InkWell(
-        key: key,
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: AppColors.primaryFixed,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
+  }) => InkWell(
+    key: key,
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.primaryFixed,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: AppColors.primary),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: AppFontSize.sm,
+            ),
           ),
-          child: Column(
-            children: [
-              Icon(icon, color: AppColors.primary),
-              const SizedBox(height: AppSpacing.sm),
-              Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: AppFontSize.sm)),
-            ],
-          ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 
   Future<void> _runTextDialog() async {
     final controller = TextEditingController();
     final text = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('粘贴食材清单'),
-        content: TextField(
-          key: const Key('quick_text_input'),
-          controller: controller,
-          maxLines: 6,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: '例：番茄 3 个 鸡蛋 6 颗 面条 1 把',
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('粘贴食材清单'),
+            content: TextField(
+              key: const Key('quick_text_input'),
+              controller: controller,
+              maxLines: 6,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: '例：番茄 3 个 鸡蛋 6 颗 面条 1 把',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                key: const Key('quick_text_parse'),
+                onPressed: () => Navigator.pop(ctx, controller.text),
+                child: const Text('解析'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
-          FilledButton(
-            key: const Key('quick_text_parse'),
-            onPressed: () => Navigator.pop(ctx, controller.text),
-            child: const Text('解析'),
-          ),
-        ],
-      ),
     );
     if (text == null || text.trim().isEmpty) return;
     await _runIngredientFlow(
-      runner: () => (widget.textParserOverride ??
-          (t) => AiIngredientParser.fromText(
+      runner:
+          () => (widget.textParserOverride ??
+              (t) => AiIngredientParser.fromText(
                 t,
-                chatFn: (msgs) => AiClient.chat(
-                  settings: ref.read(aiSettingsProvider),
-                  messages: msgs,
-                  responseFormat: const {'type': 'json_object'},
-                ),
+                chatFn:
+                    (msgs) => AiClient.chat(
+                      settings: ref.read(aiSettingsProvider),
+                      messages: msgs,
+                      responseFormat: const {'type': 'json_object'},
+                    ),
               ))(text.trim()),
     );
   }
@@ -1050,56 +1082,69 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
     final bytes = await picker(ImageSource.camera);
     if (bytes == null) return;
     await _runIngredientFlow(
-      runner: () => (widget.imageParserOverride ??
-          (b) => AiIngredientParser.fromImage(
+      runner:
+          () => (widget.imageParserOverride ??
+              (b) => AiIngredientParser.fromImage(
                 b,
-                chatFn: (msgs) => AiClient.chat(
-                  settings: ref.read(aiSettingsProvider),
-                  messages: msgs,
-                ),
+                chatFn:
+                    (msgs) => AiClient.chat(
+                      settings: ref.read(aiSettingsProvider),
+                      messages: msgs,
+                    ),
               ))(bytes),
     );
   }
 
   Future<Uint8List?> _defaultImagePicker(ImageSource source) async {
-    final image = await ImagePicker().pickImage(source: source, maxWidth: 1600, imageQuality: 82);
+    final image = await ImagePicker().pickImage(
+      source: source,
+      maxWidth: 1600,
+      imageQuality: 82,
+    );
     return image == null ? null : await image.readAsBytes();
   }
 
-  Future<void> _runIngredientFlow({required Future<List<IngredientDraft>> Function() runner}) async {
+  Future<void> _runIngredientFlow({
+    required Future<List<IngredientDraft>> Function() runner,
+  }) async {
     try {
       final drafts = await runner();
       if (!mounted) return;
       if (drafts.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('未识别到食材')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('未识别到食材')));
         return;
       }
       if (drafts.length == 1) {
         final ingredient = drafts.first.toIngredient();
         await Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => AddIngredientScreen(
-            initialIngredient: ingredient,
-            prefillOnly: true,
-          )),
+          MaterialPageRoute(
+            builder:
+                (_) => AddIngredientScreen(
+                  initialIngredient: ingredient,
+                  prefillOnly: true,
+                ),
+          ),
         );
         return;
       }
       final inventory = ref.read(inventoryProvider);
       final proposals = IntakeProposalFactory.fromDrafts(drafts, inventory);
       ref.read(intakeReviewProvider.notifier).seed(proposals);
-      await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const IntakeReviewScreen()),
-      );
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const IntakeReviewScreen()));
     } on AiNotConfiguredException {
       if (!mounted) return;
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const AiSettingsScreen()),
-      );
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const AiSettingsScreen()));
     } on AiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     }
   }
 
@@ -1126,56 +1171,163 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
     double fontSize = 16,
     TextInputType? keyboardType,
   }) {
+    return _FilledInput(
+      controller: controller,
+      hintText: hintText,
+      fontSize: fontSize,
+      keyboardType: keyboardType,
+      inputFormatters:
+          keyboardType == _decimalKeyboardType ? _decimalInputFormatters : null,
+    );
+  }
+}
+
+class _FrequentItemsSection extends ConsumerWidget {
+  const _FrequentItemsSection({required this.onSelected});
+
+  final ValueChanged<FrequentItem> onSelected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(frequentItemsProvider);
+    if (items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionLabel('常购食材'),
+        const SizedBox(height: AppSpacing.md),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final item in items)
+              GestureDetector(
+                onTap: () => onSelected(item),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryFixed,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        storageIconFor(item.storage),
+                        size: 14,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        item.name,
+                        style: GoogleFonts.manrope(
+                          fontSize: AppFontSize.sm,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xxxl),
+      ],
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label.toUpperCase(),
+      style: GoogleFonts.plusJakartaSans(
+        fontSize: AppFontSize.sm,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 2,
+        color: AppColors.primary,
+      ),
+    );
+  }
+}
+
+class _FilledInput extends StatefulWidget {
+  const _FilledInput({
+    required this.controller,
+    this.hintText,
+    this.fontSize = 16,
+    this.keyboardType,
+    this.inputFormatters,
+  });
+
+  final TextEditingController controller;
+  final String? hintText;
+  final double fontSize;
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+
+  @override
+  State<_FilledInput> createState() => _FilledInputState();
+}
+
+class _FilledInputState extends State<_FilledInput> {
+  bool _hasFocus = false;
+
+  @override
+  Widget build(BuildContext context) {
     return Focus(
       skipTraversal: true,
-      onFocusChange: (_) => setState(() {}),
-      child: Builder(
-        builder: (context) {
-          final hasFocus = Focus.of(context).hasFocus;
-
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeOut,
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: hasFocus ? AppColors.primary : AppColors.outline,
-                  width: 2,
-                ),
-              ),
+      onFocusChange: (hasFocus) => setState(() => _hasFocus = hasFocus),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: _hasFocus ? AppColors.primary : AppColors.outline,
+              width: 2,
             ),
-            child: TextField(
-              controller: controller,
-              keyboardType: keyboardType,
-              inputFormatters:
-                  keyboardType == _decimalKeyboardType
-                      ? _decimalInputFormatters
-                      : null,
-              style: GoogleFonts.manrope(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w500,
-                color: AppColors.onSurface,
-              ),
-              decoration: InputDecoration(
-                hintText: hintText,
-                hintStyle: TextStyle(
-                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
-                ),
-                filled: false,
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                disabledBorder: InputBorder.none,
-                errorBorder: InputBorder.none,
-                focusedErrorBorder: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.lg,
-                  vertical: AppSpacing.lg,
-                ),
-              ),
+          ),
+        ),
+        child: TextField(
+          controller: widget.controller,
+          keyboardType: widget.keyboardType,
+          inputFormatters: widget.inputFormatters,
+          style: GoogleFonts.manrope(
+            fontSize: widget.fontSize,
+            fontWeight: FontWeight.w500,
+            color: AppColors.onSurface,
+          ),
+          decoration: InputDecoration(
+            hintText: widget.hintText,
+            hintStyle: TextStyle(
+              color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
             ),
-          );
-        },
+            filled: false,
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            disabledBorder: InputBorder.none,
+            errorBorder: InputBorder.none,
+            focusedErrorBorder: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.lg,
+            ),
+          ),
+        ),
       ),
     );
   }

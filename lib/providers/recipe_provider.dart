@@ -15,27 +15,14 @@ import 'storage_service_provider.dart';
 
 const recipeDetailsCacheStorageKey = 'recipe_details_cache';
 
-abstract class MealDbClient {
-  Future<List<Recipe>> searchByName(String term);
-}
-
-class TheMealDbClient implements MealDbClient {
-  const TheMealDbClient();
-
-  @override
-  Future<List<Recipe>> searchByName(String term) {
-    return TheMealDbService.searchByName(term);
-  }
-}
-
-final mealDbClientProvider = Provider<MealDbClient>(
-  (ref) => const TheMealDbClient(),
+final mealDbApiProvider = Provider<MealDbApi>(
+  (ref) => const TheMealDbService(),
 );
 
 final recipeSearchRepositoryProvider = Provider<RecipeSearchRepository>((ref) {
   return RecipeSearchRepository(
     prefs: ref.read(sharedPreferencesProvider),
-    client: ref.watch(mealDbClientProvider),
+    api: ref.watch(mealDbApiProvider),
   );
 });
 
@@ -44,10 +31,10 @@ String recipeSearchCacheKeyFor(String term) {
 }
 
 class RecipeSearchRepository {
-  RecipeSearchRepository({required this.prefs, required this.client});
+  RecipeSearchRepository({required this.prefs, required this.api});
 
   final SharedPreferences prefs;
-  final MealDbClient client;
+  final MealDbApi api;
 
   Future<List<Recipe>> searchByName(String term) async {
     final cache = _readCache();
@@ -60,7 +47,7 @@ class RecipeSearchRepository {
           .toList();
     }
 
-    final recipes = await client.searchByName(term);
+    final recipes = await api.searchByName(term);
     cache[key] = recipes.map((recipe) => recipe.toJson()).toList();
     await prefs.setString(recipeDetailsCacheStorageKey, jsonEncode(cache));
     return recipes;
@@ -79,14 +66,14 @@ class RecipeSearchRepository {
   }
 }
 
-Set<String> _inventoryNameSet(Iterable<Ingredient> inventory) {
+Set<String> inventoryNameSet(Iterable<Ingredient> inventory) {
   return inventory
       .map((item) => item.name.trim().toLowerCase())
       .where((name) => name.isNotEmpty)
       .toSet();
 }
 
-bool _recipeIngredientMatchesInventory(
+bool recipeIngredientMatchesInventory(
   RecipeIngredient ingredient,
   Set<String> inventoryNames,
 ) {
@@ -98,15 +85,27 @@ bool _recipeIngredientMatchesInventory(
   );
 }
 
-int _matchedIngredientCountForNames(Set<String> inventoryNames, Recipe recipe) {
+int matchedIngredientCountForNames(Set<String> inventoryNames, Recipe recipe) {
   if (inventoryNames.isEmpty || recipe.ingredients.isEmpty) return 0;
 
   return recipe.ingredients
       .where(
         (ingredient) =>
-            _recipeIngredientMatchesInventory(ingredient, inventoryNames),
+            recipeIngredientMatchesInventory(ingredient, inventoryNames),
       )
       .length;
+}
+
+List<RecipeIngredient> missingRecipeIngredientsForNames(
+  Set<String> inventoryNames,
+  Recipe recipe,
+) {
+  return recipe.ingredients
+      .where(
+        (ingredient) =>
+            !recipeIngredientMatchesInventory(ingredient, inventoryNames),
+      )
+      .toList();
 }
 
 /// All available recipes: mock recipes + TheMealDB results.
@@ -117,13 +116,12 @@ int _matchedIngredientCountForNames(Set<String> inventoryNames, Recipe recipe) {
 final recipesProvider = FutureProvider<List<Recipe>>((ref) async {
   final englishTerms = ref.watch(
     inventoryProvider.select(
-      (items) =>
-          items
-              .take(3)
-              .map((i) => FoodKnowledge.englishName(i.name))
-              .whereType<String>()
-              .toSet() // deduplicate (e.g. multiple egg items)
-              .toList(growable: false),
+      (items) => items
+          .take(3)
+          .map((i) => FoodKnowledge.englishName(i.name))
+          .whereType<String>()
+          .toSet() // deduplicate (e.g. multiple egg items)
+          .toList(growable: false),
     ),
   );
   final inventoryEmpty = ref.watch(
@@ -160,8 +158,8 @@ final recipesProvider = FutureProvider<List<Recipe>>((ref) async {
 /// comparison can short-circuit rebuilds when names are unchanged. A raw
 /// `Set<String>` returned from select would not deduplicate, since `Set` does
 /// not override `==` by content.
-String _inventoryNamesSignature(Iterable<Ingredient> inventory) {
-  final names = _inventoryNameSet(inventory).toList()..sort();
+String inventoryNamesSignature(Iterable<Ingredient> inventory) {
+  final names = inventoryNameSet(inventory).toList()..sort();
   return names.join(' ');
 }
 
@@ -175,8 +173,8 @@ final recommendedRecipesProvider = Provider<List<Recipe>>((ref) {
   // Watching the signature alone subscribes us; reading the full inventory
   // afterwards does not add a dependency, but supplies the source for the
   // name set used by scoring.
-  ref.watch(inventoryProvider.select(_inventoryNamesSignature));
-  final inventoryNames = _inventoryNameSet(ref.read(inventoryProvider));
+  ref.watch(inventoryProvider.select(inventoryNamesSignature));
+  final inventoryNames = inventoryNameSet(ref.read(inventoryProvider));
   final recipesAsync = ref.watch(recipesProvider);
   final customRecipes = ref.watch(customRecipesProvider);
 
@@ -197,22 +195,23 @@ final recommendedRecipesProvider = Provider<List<Recipe>>((ref) {
 
   // Build a set of normalised names for expiring/expired inventory items so
   // that recipes using them can receive a ranking boost.
-  final expiringNameSet = ref
-      .read(inventoryProvider)
-      .where(
-        (i) =>
-            i.state == FreshnessState.expiringSoon ||
-            i.state == FreshnessState.expired,
-      )
-      .map((i) => i.name.trim().toLowerCase())
-      .toSet();
+  final expiringNameSet =
+      ref
+          .read(inventoryProvider)
+          .where(
+            (i) =>
+                i.state == FreshnessState.expiringSoon ||
+                i.state == FreshnessState.expired,
+          )
+          .map((i) => i.name.trim().toLowerCase())
+          .toSet();
 
   // Score each recipe by how many ingredients are available, with a +0.5
   // boost when any ingredient is expiring/expired so those recipes surface
   // first and help the user use up perishables.
   final scored =
       recipes.map((recipe) {
-        final matched = _matchedIngredientCountForNames(inventoryNames, recipe);
+        final matched = matchedIngredientCountForNames(inventoryNames, recipe);
         if (matched == 0 || recipe.ingredients.isEmpty) {
           return (recipe: recipe, score: 0.0);
         }
@@ -231,7 +230,7 @@ final recommendedRecipesProvider = Provider<List<Recipe>>((ref) {
 
 /// Count of matching inventory items for a recipe
 int matchedIngredientCount(List<Ingredient> inventory, Recipe recipe) {
-  return _matchedIngredientCountForNames(_inventoryNameSet(inventory), recipe);
+  return matchedIngredientCountForNames(inventoryNameSet(inventory), recipe);
 }
 
 /// Returns the single recipe that covers the most expiring inventory items,
@@ -244,33 +243,42 @@ int matchedIngredientCount(List<Ingredient> inventory, Recipe recipe) {
 /// my 临期 items today". UI: ExpiringFallbackCard on Dashboard.
 final expiringFallbackRecipeProvider =
     Provider<({Recipe recipe, Set<String> coveredExpiringNames})?>((ref) {
-  final inventory = ref.watch(inventoryProvider);
-  final expiringNameSet = inventory
-      .where((i) =>
-          i.state == FreshnessState.expiringSoon ||
-          i.state == FreshnessState.expired)
-      .map((i) => i.name.trim().toLowerCase())
-      .toSet();
-  if (expiringNameSet.isEmpty) return null;
+      final inventory = ref.watch(inventoryProvider);
+      final expiringNameSet =
+          inventory
+              .where(
+                (i) =>
+                    i.state == FreshnessState.expiringSoon ||
+                    i.state == FreshnessState.expired,
+              )
+              .map((i) => i.name.trim().toLowerCase())
+              .toSet();
+      if (expiringNameSet.isEmpty) return null;
 
-  final recipesAsync = ref.watch(recipesProvider);
-  final customRecipes = ref.watch(customRecipesProvider);
-  final base = recipesAsync.maybeWhen(data: (d) => d, orElse: () => const <Recipe>[]);
-  final seen = base.map((r) => r.id).toSet();
-  final all = [...base, ...customRecipes.where((r) => !seen.contains(r.id))];
+      final recipesAsync = ref.watch(recipesProvider);
+      final customRecipes = ref.watch(customRecipesProvider);
+      final base = recipesAsync.maybeWhen(
+        data: (d) => d,
+        orElse: () => const <Recipe>[],
+      );
+      final seen = base.map((r) => r.id).toSet();
+      final all = [
+        ...base,
+        ...customRecipes.where((r) => !seen.contains(r.id)),
+      ];
 
-  ({Recipe recipe, Set<String> covered})? best;
-  for (final recipe in all) {
-    final covered = <String>{};
-    for (final ri in recipe.ingredients) {
-      final n = ri.name.trim().toLowerCase();
-      if (expiringNameSet.contains(n)) covered.add(n);
-    }
-    if (covered.isEmpty) continue;
-    if (best == null || covered.length > best.covered.length) {
-      best = (recipe: recipe, covered: covered);
-    }
-  }
-  if (best == null) return null;
-  return (recipe: best.recipe, coveredExpiringNames: best.covered);
-});
+      ({Recipe recipe, Set<String> covered})? best;
+      for (final recipe in all) {
+        final covered = <String>{};
+        for (final ri in recipe.ingredients) {
+          final n = ri.name.trim().toLowerCase();
+          if (expiringNameSet.contains(n)) covered.add(n);
+        }
+        if (covered.isEmpty) continue;
+        if (best == null || covered.length > best.covered.length) {
+          best = (recipe: recipe, covered: covered);
+        }
+      }
+      if (best == null) return null;
+      return (recipe: best.recipe, coveredExpiringNames: best.covered);
+    });

@@ -2,15 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../data/food_knowledge.dart';
 import '../data/mock_data.dart';
-import '../models/ingredient.dart';
 import '../models/shopping_item.dart';
-import '../models/storage_area.dart';
 import '../providers/intake_review_provider.dart';
 import '../providers/inventory_provider.dart';
-import '../providers/navigation_provider.dart';
 import '../providers/shopping_provider.dart';
+import '../services/ingredient_factory.dart';
 import '../services/intake_proposal_factory.dart';
 import 'intake_review_screen.dart';
 import '../theme/app_theme.dart';
@@ -26,159 +23,113 @@ import '../widgets/shopping/quick_add_field.dart';
 import '../widgets/shopping/smart_planner_card.dart';
 import 'recipe_detail_screen.dart';
 
-/// FreshKeeper 购物清单 — 设计稿 `screens-3.jsx::ShoppingScreen`。
+/// FreshKeeper 购物清单 - 设计稿 `screens-3.jsx::ShoppingScreen`。
 ///
 /// FK top bar + 大渐变进度卡(本次采购进度 + 大数字 done/total + percent + 白色
 /// 进度条)+ 待购/已购 filter chip + 按品类分组 FkCard(每行圆形 check + 名称 +
 /// detail + 删除 icon)+ 清空已完成 dashed CTA。
-enum _ShoppingFilter { all, todo, done }
-
-class ShoppingListScreen extends ConsumerStatefulWidget {
+class ShoppingListScreen extends ConsumerWidget {
   const ShoppingListScreen({super.key});
 
   @override
-  ConsumerState<ShoppingListScreen> createState() => _ShoppingListScreenState();
-}
-
-class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
-  _ShoppingFilter _filter = _ShoppingFilter.all;
-  final Set<String> _collapsedCategories = <String>{};
-
-  @override
-  Widget build(BuildContext context) {
-    final groupedItems = ref.watch(groupedShoppingProvider);
-    final allItems = ref.watch(shoppingProvider);
-    final checkedCount = ref.watch(checkedCountProvider);
-    final uncheckedCount = ref.watch(uncheckedCountProvider);
-    ref.listen<String?>(shoppingCategoryToExpandProvider, (previous, category) {
-      if (category == null) return;
-      if (_collapsedCategories.remove(category)) {
-        setState(() {});
-      }
-      ref.read(shoppingCategoryToExpandProvider.notifier).state = null;
-    });
-
-    final total = allItems.length;
-    final done = checkedCount;
-    final progress = total == 0 ? 0.0 : done / total;
-
-    final visibleGroups = _applyFilter(groupedItems);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final viewState = ref.watch(shoppingListViewProvider);
+    final collapsedCategories = ref.watch(collapsedShoppingCategoriesProvider);
+    final allItems = viewState.items;
+    final total = viewState.total;
+    final checkedCount = viewState.checkedCount;
+    final uncheckedCount = viewState.uncheckedCount;
+    final visibleEntries = viewState.visibleGroups.entries.toList(
+      growable: false,
+    );
 
     return Stack(
       children: [
         GestureDetector(
-      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-      behavior: HitTestBehavior.translucent,
-      child: RefreshIndicator(
-        onRefresh: () async =>
-            await Future.delayed(const Duration(milliseconds: 600)),
-        color: AppColors.primary,
-        backgroundColor: AppColors.surface,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: SafeArea(
-                bottom: false,
-                child: FkTopBar(
-                  title: '购物清单',
-                  subtitle: total == 0
-                      ? '清单为空 · 在上方添加食材'
-                      : '$done/$total 已完成 · $uncheckedCount 件待购',
-                  actions: [
-                    FkIconButton(
-                      child: const Icon(Icons.add_rounded, size: 18),
-                      onTap: () =>
-                          FocusManager.instance.primaryFocus?.requestFocus(),
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          behavior: HitTestBehavior.translucent,
+          child: RefreshIndicator(
+            onRefresh: () => _refreshShoppingList(context, ref),
+            color: AppColors.primary,
+            backgroundColor: AppColors.surface,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: SafeArea(
+                    bottom: false,
+                    child: FkTopBar(
+                      title: '购物清单',
+                      subtitle:
+                          total == 0
+                              ? '清单为空 · 在上方添加食材'
+                              : '$checkedCount/$total 已完成 · $uncheckedCount 件待购',
+                      actions: [
+                        FkIconButton(
+                          child: const Icon(Icons.add_rounded, size: 18),
+                          onTap:
+                              () =>
+                                  FocusManager.instance.primaryFocus
+                                      ?.requestFocus(),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: _ProgressCard(done: done, total: total, progress: progress),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
-                child: const QuickAddField(),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: _FilterChipRow(
-                selected: _filter,
-                todoCount: uncheckedCount,
-                doneCount: checkedCount,
-                onSelect: (f) => setState(() => _filter = f),
-              ),
-            ),
-            if (allItems.isEmpty)
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: _EmptyState(),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(18, 6, 18, 120),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    for (final entry in visibleGroups.entries)
-                      _CategoryGroup(
-                        title: entry.key,
-                        items: entry.value,
-                        collapsed: _collapsedCategories.contains(entry.key),
-                        onToggleCollapse: () => setState(() {
-                          if (_collapsedCategories.contains(entry.key)) {
-                            _collapsedCategories.remove(entry.key);
-                          } else {
-                            _collapsedCategories.add(entry.key);
-                          }
-                        }),
-                        onItemToggle: (item) => _onItemChecked(context, ref, item),
-                        onItemDelete: (item) =>
-                            _deleteShoppingItem(context, ref, item),
-                      ),
-                    if (visibleGroups.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 32),
-                        child: Center(
-                          child: Text(
-                            _filter == _ShoppingFilter.todo
-                                ? '没有待购项目'
-                                : '没有已购项目',
-                            style: GoogleFonts.manrope(
-                              fontSize: 13,
-                              color: AppColors.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (allItems.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: SmartPlannerCard(
-                          title: '再买2样食材，就能完成您的卡博纳拉意面食谱。',
-                          onViewRecipe: () => _openPlannerRecipe(context),
-                        ),
-                      ),
-                    if (checkedCount > 0)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 14),
-                        child: _ClearDoneButton(
-                          count: checkedCount,
-                          onTap: () => _confirmClearChecked(context, ref),
-                        ),
-                      ),
-                  ]),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: _ProgressCard(
+                      done: checkedCount,
+                      total: total,
+                      progress: viewState.progress,
+                    ),
+                  ),
                 ),
-              ),
-          ],
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+                    child: const QuickAddField(),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: _FilterChipRow(
+                    selected: viewState.filter,
+                    todoCount: uncheckedCount,
+                    doneCount: checkedCount,
+                    onSelect:
+                        (filter) =>
+                            ref.read(shoppingFilterProvider.notifier).state =
+                                filter,
+                  ),
+                ),
+                if (allItems.isEmpty)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _EmptyState(),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(18, 6, 18, 120),
+                    sliver: _ShoppingContentSliver(
+                      visibleEntries: visibleEntries,
+                      selectedFilter: viewState.filter,
+                      collapsedCategories: collapsedCategories,
+                      checkedCount: checkedCount,
+                      onToggleCategory:
+                          (category) => _toggleCategory(ref, category),
+                      onItemToggle:
+                          (item) => _onItemChecked(context, ref, item),
+                      onItemDelete:
+                          (item) => _deleteShoppingItem(context, ref, item),
+                      onViewRecipe: () => _openPlannerRecipe(context),
+                      onClearChecked: () => _confirmClearChecked(context, ref),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
-      ),
-    ),
         if (checkedCount > 0)
           Positioned(
             left: 0,
@@ -191,8 +142,7 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(double.infinity, 48),
                 ),
-                onPressed: () =>
-                    _openIntakeReviewForChecked(context, ref),
+                onPressed: () => _openIntakeReviewForChecked(context, ref),
                 child: Text('已购买的 $checkedCount 项一键入库'),
               ),
             ),
@@ -201,21 +151,33 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
     );
   }
 
-  Map<String, List<ShoppingItem>> _applyFilter(
-    Map<String, List<ShoppingItem>> grouped,
-  ) {
-    if (_filter == _ShoppingFilter.all) return grouped;
-    final result = <String, List<ShoppingItem>>{};
-    grouped.forEach((cat, items) {
-      final filtered = items
-          .where(
-            (i) =>
-                _filter == _ShoppingFilter.todo ? !i.isChecked : i.isChecked,
-          )
-          .toList();
-      if (filtered.isNotEmpty) result[cat] = filtered;
+  void _toggleCategory(WidgetRef ref, String category) {
+    ref.read(collapsedShoppingCategoriesProvider.notifier).update((collapsed) {
+      final next = {...collapsed};
+      if (!next.add(category)) {
+        next.remove(category);
+      }
+      return next;
     });
-    return result;
+  }
+
+  Future<void> _refreshShoppingList(BuildContext context, WidgetRef ref) async {
+    try {
+      ref.invalidate(shoppingProvider);
+      ref.invalidate(shoppingListViewProvider);
+      ref.read(shoppingListViewProvider);
+    } catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'fresh_pantry.shopping',
+          context: ErrorDescription('while refreshing shopping list'),
+        ),
+      );
+      if (!context.mounted) return;
+      showAppSnackBar(context, '购物清单刷新失败', backgroundColor: AppColors.error);
+    }
   }
 
   void _openPlannerRecipe(BuildContext context) {
@@ -275,7 +237,7 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
         backgroundColor: AppColors.primary,
         actionLabel: '加入库存',
         actionTextColor: AppColors.onPrimary,
-        onAction: () => _addItemToInventory(item.name, item.imageUrl),
+        onAction: () => _addItemToInventory(context, ref, item),
       );
     }
   }
@@ -289,8 +251,10 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
     if (checked.isEmpty) return;
 
     final inventory = ref.read(inventoryProvider);
-    final proposals =
-        IntakeProposalFactory.fromShoppingItems(checked, inventory);
+    final proposals = IntakeProposalFactory.fromShoppingItems(
+      checked,
+      inventory,
+    );
     ref.read(intakeReviewProvider.notifier).seed(proposals);
 
     await Navigator.of(context).push(
@@ -312,32 +276,113 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
     }
   }
 
-  void _addItemToInventory(String name, String? imageUrl) {
-    final defaults = FoodKnowledge.lookup(name);
-    final now = DateTime.now();
-    final expiryDate = defaults != null
-        ? now.add(Duration(days: defaults.shelfLifeDays))
-        : null;
-    final freshness = expiryDate != null ? 1.0 : 0.85;
-    final ingredient = Ingredient(
-      name: name,
-      quantity: '1',
-      unit: '份',
-      imageUrl: imageUrl ?? '',
-      freshnessPercent: freshness,
-      state: FreshnessState.fresh,
-      category: FoodKnowledge.categoryFor(name),
-      storage: defaults?.storage ?? IconType.fridge,
-      expiryDate: expiryDate,
-      shelfLifeDays: defaults?.shelfLifeDays,
-      expiryLabel:
-          expiryDate != null ? '${defaults!.shelfLifeDays}天后过期' : '新鲜',
-    );
+  void _addItemToInventory(
+    BuildContext context,
+    WidgetRef ref,
+    ShoppingItem item,
+  ) {
+    final ingredient = IngredientFactory.fromShoppingItem(item);
     ref.read(inventoryProvider.notifier).add(ingredient);
     showAppSnackBar(
       context,
-      '已添加「$name」到库存',
+      '已添加「${item.name}」到库存',
       backgroundColor: AppColors.primary,
+    );
+  }
+}
+
+class _ShoppingContentSliver extends StatelessWidget {
+  const _ShoppingContentSliver({
+    required this.visibleEntries,
+    required this.selectedFilter,
+    required this.collapsedCategories,
+    required this.checkedCount,
+    required this.onToggleCategory,
+    required this.onItemToggle,
+    required this.onItemDelete,
+    required this.onViewRecipe,
+    required this.onClearChecked,
+  });
+
+  final List<MapEntry<String, List<ShoppingItem>>> visibleEntries;
+  final ShoppingFilter selectedFilter;
+  final Set<String> collapsedCategories;
+  final int checkedCount;
+  final ValueChanged<String> onToggleCategory;
+  final ValueChanged<ShoppingItem> onItemToggle;
+  final ValueChanged<ShoppingItem> onItemDelete;
+  final VoidCallback onViewRecipe;
+  final VoidCallback onClearChecked;
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(_buildItem, childCount: _itemCount),
+    );
+  }
+
+  int get _itemCount =>
+      visibleEntries.length +
+      (visibleEntries.isEmpty ? 1 : 0) +
+      1 +
+      (checkedCount > 0 ? 1 : 0);
+
+  Widget _buildItem(BuildContext context, int index) {
+    if (index < visibleEntries.length) {
+      final entry = visibleEntries[index];
+      return _CategoryGroup(
+        title: entry.key,
+        items: entry.value,
+        collapsed: collapsedCategories.contains(entry.key),
+        onToggleCollapse: () => onToggleCategory(entry.key),
+        onItemToggle: onItemToggle,
+        onItemDelete: onItemDelete,
+      );
+    }
+
+    var extraIndex = index - visibleEntries.length;
+    if (visibleEntries.isEmpty) {
+      if (extraIndex == 0) {
+        return _FilterEmptyMessage(filter: selectedFilter);
+      }
+      extraIndex -= 1;
+    }
+
+    if (extraIndex == 0) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: SmartPlannerCard(
+          title: '再买2样食材，就能完成您的卡博纳拉意面食谱。',
+          onViewRecipe: onViewRecipe,
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: _ClearDoneButton(count: checkedCount, onTap: onClearChecked),
+    );
+  }
+}
+
+class _FilterEmptyMessage extends StatelessWidget {
+  const _FilterEmptyMessage({required this.filter});
+
+  final ShoppingFilter filter;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 32),
+      child: Center(
+        child: Text(
+          filter == ShoppingFilter.todo ? '没有待购项目' : '没有已购项目',
+          style: GoogleFonts.manrope(
+            fontSize: 13,
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -443,10 +488,10 @@ class _ProgressCard extends StatelessWidget {
 }
 
 class _FilterChipRow extends StatelessWidget {
-  final _ShoppingFilter selected;
+  final ShoppingFilter selected;
   final int todoCount;
   final int doneCount;
-  final void Function(_ShoppingFilter) onSelect;
+  final void Function(ShoppingFilter) onSelect;
   const _FilterChipRow({
     required this.selected,
     required this.todoCount,
@@ -456,10 +501,10 @@ class _FilterChipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chips = <(String, _ShoppingFilter, int)>[
-      ('全部', _ShoppingFilter.all, todoCount + doneCount),
-      ('待购买', _ShoppingFilter.todo, todoCount),
-      ('已购', _ShoppingFilter.done, doneCount),
+    final chips = <(String, ShoppingFilter, int)>[
+      ('全部', ShoppingFilter.all, todoCount + doneCount),
+      ('待购买', ShoppingFilter.todo, todoCount),
+      ('已购', ShoppingFilter.done, doneCount),
     ];
     return SizedBox(
       height: 40,
@@ -575,22 +620,26 @@ class _CategoryGroup extends StatelessWidget {
           AnimatedSize(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
-            child: collapsed
-                ? const SizedBox.shrink()
-                : FkCard(
-                    padding: EdgeInsets.zero,
-                    child: Column(
-                      children: [
-                        for (var i = 0; i < items.length; i++)
-                          _ShopRow(
-                            item: items[i],
-                            isLast: i == items.length - 1,
-                            onToggle: () => onItemToggle(items[i]),
-                            onDelete: () => onItemDelete(items[i]),
-                          ),
-                      ],
+            child:
+                collapsed
+                    ? const SizedBox.shrink()
+                    : FkCard(
+                      padding: EdgeInsets.zero,
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: items.length,
+                        itemBuilder: (context, index) {
+                          final item = items[index];
+                          return _ShopRow(
+                            item: item,
+                            isLast: index == items.length - 1,
+                            onToggle: () => onItemToggle(item),
+                            onDelete: () => onItemDelete(item),
+                          );
+                        },
+                      ),
                     ),
-                  ),
           ),
         ],
       ),
@@ -599,6 +648,10 @@ class _CategoryGroup extends StatelessWidget {
 }
 
 class _ShopRow extends StatelessWidget {
+  static const _dividerDecoration = BoxDecoration(
+    border: Border(bottom: BorderSide(color: AppColors.hair, width: 0.5)),
+  );
+
   final ShoppingItem item;
   final bool isLast;
   final VoidCallback onToggle;
@@ -619,13 +672,7 @@ class _ShopRow extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          border: isLast
-              ? null
-              : const Border(
-                  bottom: BorderSide(color: AppColors.hair, width: 0.5),
-                ),
-        ),
+        decoration: isLast ? null : _dividerDecoration,
         child: Opacity(
           opacity: checked ? 0.45 : 1.0,
           child: Row(
@@ -641,13 +688,14 @@ class _ShopRow extends StatelessWidget {
                     width: 2,
                   ),
                 ),
-                child: checked
-                    ? const Icon(
-                        Icons.check_rounded,
-                        size: 14,
-                        color: Colors.white,
-                      )
-                    : null,
+                child:
+                    checked
+                        ? const Icon(
+                          Icons.check_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        )
+                        : null,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -660,9 +708,7 @@ class _ShopRow extends StatelessWidget {
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: AppColors.onSurface,
-                        decoration: checked
-                            ? TextDecoration.lineThrough
-                            : null,
+                        decoration: checked ? TextDecoration.lineThrough : null,
                       ),
                     ),
                     if (item.detail.trim().isNotEmpty) ...[

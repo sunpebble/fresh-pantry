@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../providers/inventory_provider.dart';
 import '../providers/notification_service_provider.dart';
@@ -33,10 +32,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final Set<String> _selectedPrefs = {'高蛋白', '低脂', '素食'};
 
   Future<void> _onExportTap() async {
-    final prefs = ref.read(sharedPreferencesProvider);
-    final envelope = BackupService.exportToMap(prefs);
-    final json = BackupService.encodeToJson(envelope);
-    await Clipboard.setData(ClipboardData(text: json));
+    late final String json;
+    await _withLoading('正在导出数据...', () async {
+      final prefs = ref.read(sharedPreferencesProvider);
+      final envelope = BackupService.exportToMap(prefs);
+      json = BackupService.encodeToJson(envelope);
+      await Clipboard.setData(ClipboardData(text: json));
+    });
     if (!mounted) return;
     final bytes = json.length;
     fkToast(context, '已复制 $bytes 字节,粘贴到 Notes/邮箱保存');
@@ -64,26 +66,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('确认导入?'),
-        content: const Text('将覆盖当前的所有食材、购物清单、菜谱与 AI 设置。此操作不可撤销。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('确认导入?'),
+            content: const Text('将覆盖当前的所有食材、购物清单、菜谱与 AI 设置。此操作不可撤销。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.fkDanger,
+                ),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('确认覆盖'),
+              ),
+            ],
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.fkDanger),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('确认覆盖'),
-          ),
-        ],
-      ),
     );
     if (confirmed != true || !mounted) return;
 
-    final prefs = ref.read(sharedPreferencesProvider);
-    await BackupService.importFromMap(prefs, decoded);
+    await _withLoading('正在导入数据...', () async {
+      final prefs = ref.read(sharedPreferencesProvider);
+      await BackupService.importFromMap(prefs, decoded);
+    });
     if (!mounted) return;
     _showSimpleDialog('导入完成', '请重启 App 以加载新数据。');
   }
@@ -100,16 +107,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         if (!granted) {
           await showDialog(
             context: context,
-            builder: (_) => AlertDialog(
-              title: const Text('未开启通知权限'),
-              content: const Text('系统通知权限未开启,无法发送临期提醒。请在 系统设置 → 通知 中允许。'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('好'),
+            builder:
+                (_) => AlertDialog(
+                  title: const Text('未开启通知权限'),
+                  content: const Text('系统通知权限未开启,无法发送临期提醒。请在 系统设置 → 通知 中允许。'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('好'),
+                    ),
+                  ],
                 ),
-              ],
-            ),
           );
           return; // don't apply
         }
@@ -121,246 +129,307 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _showSimpleDialog(String title, String body) {
     return showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(body),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('好'),
+      builder:
+          (ctx) => AlertDialog(
+            title: Text(title),
+            content: Text(body),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('好'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
+  }
+
+  Future<void> _withLoading(String message, Future<void> Function() run) async {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (ctx) => AlertDialog(
+            content: Row(
+              children: [
+                const SizedBox(
+                  width: AppSize.iconMd,
+                  height: AppSize.iconMd,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(child: Text(message)),
+              ],
+            ),
+          ),
+    );
+    try {
+      await run();
+    } finally {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final inventory = ref.watch(inventoryProvider);
-    final shopping = ref.watch(shoppingProvider);
+    final inventoryCount = ref.watch(
+      inventoryProvider.select((items) => items.length),
+    );
+    final shoppingCount = ref.watch(
+      shoppingProvider.select((items) => items.length),
+    );
     final reminder = ref.watch(reminderSettingsProvider);
     final reminderN = ref.read(reminderSettingsProvider.notifier);
 
-    final anyReminderOn = reminder.remindD1 ||
+    final anyReminderOn =
+        reminder.remindD1 ||
         reminder.remindD3 ||
         reminder.remindD7 ||
         reminder.remindDaily;
-    final service = ref.watch(notificationServiceProvider);
-    final permissionMissing = anyReminderOn && !service.permissionGranted;
+    final permissionGranted = ref.watch(
+      notificationServiceProvider.select(
+        (service) => service.permissionGranted,
+      ),
+    );
+    final permissionMissing = anyReminderOn && !permissionGranted;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: 40),
-          children: [
-            FkTopBar(
-              title: '我的',
-              subtitle: '设置 · 提醒 · 偏好',
-              onBack: () => Navigator.of(context).maybePop(),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: _ProfileCard(
-                onTap: () {},
+        child: Builder(
+          builder: (context) {
+            final sections = <Widget>[
+              FkTopBar(
+                title: '我的',
+                subtitle: '设置 · 提醒 · 偏好',
+                onBack: () => Navigator.of(context).maybePop(),
               ),
-            ),
-            const SizedBox(height: 14),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: _StatRow(
-                items: [
-                  ('食材', '${inventory.length}', AppColors.primary),
-                  ('采购', '${shopping.length}', AppColors.fkWarn),
-                  ('收藏菜谱', '12', AppColors.fkDanger),
-                ],
-              ),
-            ),
-            if (permissionMissing)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.fkWarnSoft,
-                    borderRadius: BorderRadius.circular(12),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                child: const _ProfileCard(),
+              ),
+              const SizedBox(height: 14),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                child: _StatRow(
+                  items: [
+                    ('食材', '$inventoryCount', AppColors.primary),
+                    ('采购', '$shoppingCount', AppColors.fkWarn),
+                    ('收藏菜谱', '12', AppColors.fkDanger),
+                  ],
+                ),
+              ),
+              if (permissionMissing)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xl,
                   ),
-                  child: Row(
-                    children: const [
-                      Icon(Icons.warning_amber, color: AppColors.fkWarn),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          '系统通知权限未开启,提醒不会送达。请去 系统设置 → 通知 中允许。',
-                          style: TextStyle(fontSize: 13),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.fkWarnSoft,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.warning_amber, color: AppColors.fkWarn),
+                        SizedBox(width: AppSpacing.sm + 2),
+                        Expanded(
+                          child: Text(
+                            '系统通知权限未开启,提醒不会送达。请去 系统设置 → 通知 中允许。',
+                            style: TextStyle(fontSize: 13),
+                          ),
                         ),
+                      ],
+                    ),
+                  ),
+                ),
+              if (permissionMissing) const SizedBox(height: AppSpacing.md),
+              const FkSectionHead(title: '临期提醒'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                child: FkCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      _ToggleRow(
+                        label: '提前 1 天提醒',
+                        sub: '高优先级 · 推送 + 角标',
+                        value: reminder.remindD1,
+                        onChanged:
+                            (v) => _onReminderToggle(
+                              v,
+                              () => reminderN.update(remindD1: v),
+                            ),
+                      ),
+                      _ToggleRow(
+                        label: '提前 3 天提醒',
+                        sub: '标准 · 仅推送',
+                        value: reminder.remindD3,
+                        onChanged:
+                            (v) => _onReminderToggle(
+                              v,
+                              () => reminderN.update(remindD3: v),
+                            ),
+                      ),
+                      _ToggleRow(
+                        label: '提前 7 天提醒',
+                        sub: '轻量 · 仅角标',
+                        value: reminder.remindD7,
+                        onChanged:
+                            (v) => _onReminderToggle(
+                              v,
+                              () => reminderN.update(remindD7: v),
+                            ),
+                      ),
+                      _ToggleRow(
+                        label: '每日 9:00 汇总',
+                        sub: '包含临期 + 库存不足',
+                        value: reminder.remindDaily,
+                        onChanged:
+                            (v) => _onReminderToggle(
+                              v,
+                              () => reminderN.update(remindDaily: v),
+                            ),
+                        isLast: true,
                       ),
                     ],
                   ),
                 ),
               ),
-            if (permissionMissing) const SizedBox(height: 12),
-            const FkSectionHead(title: '临期提醒'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: FkCard(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    _ToggleRow(
-                      label: '提前 1 天提醒',
-                      sub: '高优先级 · 推送 + 角标',
-                      value: reminder.remindD1,
-                      onChanged: (v) => _onReminderToggle(v, () => reminderN.update(remindD1: v)),
-                    ),
-                    _ToggleRow(
-                      label: '提前 3 天提醒',
-                      sub: '标准 · 仅推送',
-                      value: reminder.remindD3,
-                      onChanged: (v) => _onReminderToggle(v, () => reminderN.update(remindD3: v)),
-                    ),
-                    _ToggleRow(
-                      label: '提前 7 天提醒',
-                      sub: '轻量 · 仅角标',
-                      value: reminder.remindD7,
-                      onChanged: (v) => _onReminderToggle(v, () => reminderN.update(remindD7: v)),
-                    ),
-                    _ToggleRow(
-                      label: '每日 9:00 汇总',
-                      sub: '包含临期 + 库存不足',
-                      value: reminder.remindDaily,
-                      onChanged: (v) => _onReminderToggle(v, () => reminderN.update(remindDaily: v)),
-                      isLast: true,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const FkSectionHead(title: '数据备份'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: FkCard(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    _ActionRow(
-                      key: const Key('backup_export_action'),
-                      label: '导出到剪贴板',
-                      sub: '复制全部数据为 JSON,粘贴到 Notes/邮箱保存',
-                      icon: Icons.upload_outlined,
-                      onTap: _onExportTap,
-                    ),
-                    const Divider(height: 1, color: AppColors.hair),
-                    _ActionRow(
-                      key: const Key('backup_import_action'),
-                      label: '从剪贴板导入',
-                      sub: '会覆盖当前所有数据',
-                      icon: Icons.download_outlined,
-                      destructive: true,
-                      onTap: _onImportTap,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            const FkSectionHead(title: '饮食偏好'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: FkCard(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '根据偏好为你推荐菜谱',
-                      style: GoogleFonts.manrope(
-                        fontSize: 12,
-                        color: AppColors.onSurfaceVariant,
+              const FkSectionHead(title: '数据备份'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                child: FkCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      _ActionRow(
+                        key: const Key('backup_export_action'),
+                        label: '导出到剪贴板',
+                        sub: '复制全部数据为 JSON,粘贴到 Notes/邮箱保存',
+                        icon: Icons.upload_outlined,
+                        onTap: _onExportTap,
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        for (final tag in const [
-                          '高蛋白',
-                          '低脂',
-                          '素食',
-                          '家常菜',
-                          '快手菜',
-                          '儿童餐',
-                          '低碳水',
-                        ])
-                          _PrefChip(
-                            label: tag,
-                            selected: _selectedPrefs.contains(tag),
-                            onTap: () => setState(() {
-                              if (_selectedPrefs.contains(tag)) {
-                                _selectedPrefs.remove(tag);
-                              } else {
-                                _selectedPrefs.add(tag);
-                              }
-                            }),
-                          ),
-                      ],
-                    ),
-                  ],
+                      const Divider(height: 1, color: AppColors.hair),
+                      _ActionRow(
+                        key: const Key('backup_import_action'),
+                        label: '从剪贴板导入',
+                        sub: '会覆盖当前所有数据',
+                        icon: Icons.download_outlined,
+                        destructive: true,
+                        onTap: _onImportTap,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const FkSectionHead(title: '更多'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: FkCard(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    _LinkRow(
-                      label: '我的食谱',
-                      sub: '添加和管理私房菜单',
-                      icon: Icons.menu_book_rounded,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const MyRecipesScreen(),
-                        ),
+              const SizedBox(height: AppSpacing.xl),
+              const FkSectionHead(title: '饮食偏好'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                child: FkCard(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '根据偏好为你推荐菜谱',
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(color: AppColors.onSurfaceVariant),
                       ),
-                    ),
-                    _LinkRow(
-                      label: 'AI 助手',
-                      sub: '配置模型与连接',
-                      icon: Icons.auto_awesome_outlined,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const AiSettingsScreen(),
-                        ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final tag in const [
+                            '高蛋白',
+                            '低脂',
+                            '素食',
+                            '家常菜',
+                            '快手菜',
+                            '儿童餐',
+                            '低碳水',
+                          ])
+                            _PrefChip(
+                              label: tag,
+                              selected: _selectedPrefs.contains(tag),
+                              onTap:
+                                  () => setState(() {
+                                    if (_selectedPrefs.contains(tag)) {
+                                      _selectedPrefs.remove(tag);
+                                    } else {
+                                      _selectedPrefs.add(tag);
+                                    }
+                                  }),
+                            ),
+                        ],
                       ),
-                    ),
-                    _LinkRow(
-                      label: '冰箱布局',
-                      sub: '4 个分区已设置',
-                      icon: Icons.kitchen_outlined,
-                      onTap: () {},
-                    ),
-                    _LinkRow(
-                      label: '常备库存阈值',
-                      sub: '已为 6 种食材设置',
-                      icon: Icons.inventory_2_outlined,
-                      onTap: () {},
-                    ),
-                    _LinkRow(
-                      label: '关于 FreshKeeper',
-                      icon: Icons.info_outline_rounded,
-                      onTap: () {},
-                      isLast: true,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+              const FkSectionHead(title: '更多'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                child: FkCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      _LinkRow(
+                        label: '我的食谱',
+                        sub: '添加和管理私房菜单',
+                        icon: Icons.menu_book_rounded,
+                        onTap:
+                            () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const MyRecipesScreen(),
+                              ),
+                            ),
+                      ),
+                      _LinkRow(
+                        label: 'AI 助手',
+                        sub: '配置模型与连接',
+                        icon: Icons.auto_awesome_outlined,
+                        onTap:
+                            () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const AiSettingsScreen(),
+                              ),
+                            ),
+                      ),
+                      _LinkRow(
+                        label: '冰箱布局',
+                        sub: '4 个分区已设置',
+                        icon: Icons.kitchen_outlined,
+                        onTap: () {},
+                      ),
+                      _LinkRow(
+                        label: '常备库存阈值',
+                        sub: '已为 6 种食材设置',
+                        icon: Icons.inventory_2_outlined,
+                        onTap: () {},
+                      ),
+                      _LinkRow(
+                        label: '关于 FreshKeeper',
+                        icon: Icons.info_outline_rounded,
+                        onTap: () {},
+                        isLast: true,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ];
+            return ListView.builder(
+              padding: const EdgeInsets.only(bottom: AppSpacing.huge),
+              itemCount: sections.length,
+              itemBuilder: (context, index) => sections[index],
+            );
+          },
         ),
       ),
     );
@@ -368,37 +437,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 }
 
 class _ProfileCard extends StatelessWidget {
-  final VoidCallback onTap;
-  const _ProfileCard({required this.onTap});
+  const _ProfileCard();
 
   @override
   Widget build(BuildContext context) {
     return FkCard(
       padding: const EdgeInsets.all(16),
-      onTap: onTap,
       child: Row(
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.primary, AppColors.primaryLight],
-              ),
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              '米',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-          ),
+          const _ProfileAvatar(),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -406,8 +453,7 @@ class _ProfileCard extends StatelessWidget {
               children: [
                 Text(
                   '小米的厨房',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: AppColors.onSurface,
                   ),
@@ -415,8 +461,7 @@ class _ProfileCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   '管理冰箱 90 天 · 减少浪费 23 件',
-                  style: GoogleFonts.manrope(
-                    fontSize: 12,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.onSurfaceVariant,
                   ),
                 ),
@@ -425,10 +470,38 @@ class _ProfileCard extends StatelessWidget {
           ),
           const Icon(
             Icons.chevron_right_rounded,
-            size: 18,
+            size: AppSize.iconSm,
             color: AppColors.outline,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: AppSize.profileAvatar,
+      height: AppSize.profileAvatar,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.primaryLight],
+        ),
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        '米',
+        style: Theme.of(context).textTheme.displaySmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
       ),
     );
   }
@@ -443,7 +516,7 @@ class _StatRow extends StatelessWidget {
     return Row(
       children: [
         for (var i = 0; i < items.length; i++) ...[
-          if (i > 0) const SizedBox(width: 10),
+          if (i > 0) const SizedBox(width: AppSpacing.sm + 2),
           Expanded(
             child: FkCard(
               padding: const EdgeInsets.all(14),
@@ -451,8 +524,7 @@ class _StatRow extends StatelessWidget {
                 children: [
                   Text(
                     items[i].$2,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 22,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                       color: items[i].$3,
                     ),
@@ -460,8 +532,7 @@ class _StatRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     items[i].$1,
-                    style: GoogleFonts.manrope(
-                      fontSize: 11,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: AppColors.onSurfaceVariant,
                     ),
                   ),
@@ -495,11 +566,12 @@ class _ToggleRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        border: isLast
-            ? null
-            : const Border(
-                bottom: BorderSide(color: AppColors.hair, width: 0.5),
-              ),
+        border:
+            isLast
+                ? null
+                : const Border(
+                  bottom: BorderSide(color: AppColors.hair, width: 0.5),
+                ),
       ),
       child: Row(
         children: [
@@ -509,8 +581,7 @@ class _ToggleRow extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: GoogleFonts.manrope(
-                    fontSize: 14,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.onSurface,
                   ),
@@ -519,8 +590,7 @@ class _ToggleRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     sub!,
-                    style: GoogleFonts.manrope(
-                      fontSize: 11,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: AppColors.onSurfaceVariant,
                     ),
                   ),
@@ -554,7 +624,8 @@ class _PrefChip extends StatelessWidget {
     return FkPill(
       label: label,
       onTap: onTap,
-      backgroundColor: selected ? AppColors.primary : AppColors.surfaceContainer,
+      backgroundColor:
+          selected ? AppColors.primary : AppColors.surfaceContainer,
       foregroundColor: selected ? Colors.white : AppColors.onSurface,
     );
   }
@@ -577,62 +648,69 @@ class _LinkRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          border: isLast
-              ? null
-              : const Border(
-                  bottom: BorderSide(color: AppColors.hair, width: 0.5),
-                ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              alignment: Alignment.center,
-              child: Icon(icon, size: 18, color: AppColors.primary),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.manrope(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.onSurface,
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            border:
+                isLast
+                    ? null
+                    : const Border(
+                      bottom: BorderSide(color: AppColors.hair, width: 0.5),
                     ),
-                  ),
-                  if (sub != null) ...[
-                    const SizedBox(height: 2),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: AppSize.settingsIconBox,
+                height: AppSize.settingsIconBox,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  icon,
+                  size: AppSize.iconSm,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      sub!,
-                      style: GoogleFonts.manrope(
-                        fontSize: 11,
-                        color: AppColors.onSurfaceVariant,
+                      label,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurface,
                       ),
                     ),
+                    if (sub != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        sub!,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              size: 16,
-              color: AppColors.outline,
-            ),
-          ],
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: AppSize.iconSm,
+                color: AppColors.outline,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -666,7 +744,7 @@ class _ActionRow extends StatelessWidget {
         child: Row(
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 20, color: color),
+              Icon(icon, size: AppSize.iconMd, color: color),
               const SizedBox(width: 12),
             ],
             Expanded(
@@ -675,8 +753,7 @@ class _ActionRow extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: GoogleFonts.manrope(
-                      fontSize: 14,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: color,
                     ),
@@ -685,8 +762,7 @@ class _ActionRow extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       sub!,
-                      style: GoogleFonts.manrope(
-                        fontSize: 11,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: AppColors.onSurfaceVariant,
                       ),
                     ),
@@ -696,7 +772,7 @@ class _ActionRow extends StatelessWidget {
             ),
             const Icon(
               Icons.chevron_right,
-              size: 20,
+              size: AppSize.iconMd,
               color: AppColors.outline,
             ),
           ],

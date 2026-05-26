@@ -13,6 +13,7 @@ import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/recipe_provider.dart';
 import 'package:fresh_pantry/providers/shopping_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
+import 'package:fresh_pantry/services/themealdb_service.dart';
 import 'package:fresh_pantry/utils/expiry_calculator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -72,9 +73,7 @@ void main() {
           fireImmediately: true,
         );
 
-        await container
-            .read(inventoryProvider.notifier)
-            .add(_ingredient('鸡蛋'));
+        await container.read(inventoryProvider.notifier).add(_ingredient('鸡蛋'));
 
         final frequentItems = container.read(frequentItemsProvider);
         expect(frequentItems.map((item) => item.name), contains('鸡蛋'));
@@ -312,10 +311,10 @@ void main() {
         final savedInventory =
             json.decode(prefs.getString('inventory_items')!) as List<dynamic>;
         expect(savedInventory, hasLength(2));
-        expect(
-          savedInventory.map((row) => (row as Map)['name']).toList(),
-          ['牛奶', '牛奶'],
-        );
+        expect(savedInventory.map((row) => (row as Map)['name']).toList(), [
+          '牛奶',
+          '牛奶',
+        ]);
       },
     );
 
@@ -427,8 +426,18 @@ void main() {
       SharedPreferences.setMockInitialValues({
         'inventory_items': '[]',
         'add_history': json.encode({
-          '常用': {'count': 3, 'category': '其他', 'storage': 'fridge', 'unit': '个'},
-          '单次': {'count': 1, 'category': '其他', 'storage': 'fridge', 'unit': '个'},
+          '常用': {
+            'count': 3,
+            'category': '其他',
+            'storage': 'fridge',
+            'unit': '个',
+          },
+          '单次': {
+            'count': 1,
+            'category': '其他',
+            'storage': 'fridge',
+            'unit': '个',
+          },
         }),
       });
       final prefs = await SharedPreferences.getInstance();
@@ -605,9 +614,7 @@ void main() {
       await container
           .read(shoppingProvider.notifier)
           .add(_shoppingItem('si_1', '牛奶'));
-      await container
-          .read(shoppingProvider.notifier)
-          .remove('si_nonexistent');
+      await container.read(shoppingProvider.notifier).remove('si_nonexistent');
 
       expect(container.read(shoppingProvider).map((i) => i.name), ['牛奶']);
     });
@@ -803,6 +810,16 @@ void main() {
         0,
       );
     });
+
+    test(
+      'matchedIngredientCount returns zero for empty inventory and recipe',
+      () {
+        expect(
+          matchedIngredientCount(const [], _recipe('empty', '空菜谱', const [])),
+          0,
+        );
+      },
+    );
   });
 
   group('recipesProvider cache', () {
@@ -815,13 +832,13 @@ void main() {
         }),
       });
       final prefs = await SharedPreferences.getInstance();
-      final client = _FakeMealDbClient(
+      final client = _FakeMealDbApi(
         onSearch: (_) => throw StateError('network should not be called'),
       );
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          mealDbClientProvider.overrideWithValue(client),
+          mealDbApiProvider.overrideWithValue(client),
         ],
       );
       addTearDown(container.dispose);
@@ -838,11 +855,11 @@ void main() {
         'inventory_items': json.encode([_ingredient('番茄').toJson()]),
       });
       final prefs = await SharedPreferences.getInstance();
-      final client = _FakeMealDbClient(onSearch: (_) async => [fetchedRecipe]);
+      final client = _FakeMealDbApi(onSearch: (_) async => [fetchedRecipe]);
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          mealDbClientProvider.overrideWithValue(client),
+          mealDbApiProvider.overrideWithValue(client),
         ],
       );
       addTearDown(container.dispose);
@@ -857,6 +874,28 @@ void main() {
         saved[recipeSearchCacheKeyFor('tomato')].single['id'],
         'mealdb_fetched',
       );
+    });
+
+    test('keeps mock recipes when TheMealDB client throws', () async {
+      SharedPreferences.setMockInitialValues({
+        'inventory_items': json.encode([_ingredient('番茄').toJson()]),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final client = _FakeMealDbApi(
+        onSearch: (_) => throw StateError('service unavailable'),
+      );
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          mealDbApiProvider.overrideWithValue(client),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final recipes = await container.read(recipesProvider.future);
+
+      expect(client.calls, 1);
+      expect(recipes, isNotEmpty);
     });
   });
 }
@@ -918,8 +957,8 @@ Recipe _recipe(String id, String name, List<String> ingredients) {
   );
 }
 
-class _FakeMealDbClient implements MealDbClient {
-  _FakeMealDbClient({required this.onSearch});
+class _FakeMealDbApi implements MealDbApi {
+  _FakeMealDbApi({required this.onSearch});
 
   final Future<List<Recipe>> Function(String term) onSearch;
   int calls = 0;

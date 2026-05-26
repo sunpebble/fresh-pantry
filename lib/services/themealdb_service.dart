@@ -7,8 +7,16 @@ import '../models/recipe.dart';
 import '../utils/json_cast.dart';
 import '_http.dart';
 
+abstract class MealDbApi {
+  Future<List<Recipe>> searchByName(String term);
+}
+
 /// Service for fetching recipes from TheMealDB open API.
-class TheMealDbService {
+class TheMealDbService implements MealDbApi {
+  const TheMealDbService({this.client});
+
+  final http.Client? client;
+
   static const _baseUrl = 'https://www.themealdb.com/api/json/v1/1';
   static const _timeout = Duration(seconds: 8);
   static const _retryCount = 1;
@@ -22,13 +30,21 @@ class TheMealDbService {
     'User-Agent': 'FreshPantry/1.0 (Flutter)',
   };
 
+  @override
+  Future<List<Recipe>> searchByName(String query) {
+    return _searchByName(query, client: client);
+  }
+
   /// Search recipes by name. Returns up to [_maxSearchResults] results.
-  static Future<List<Recipe>> searchByName(String query) async {
+  static Future<List<Recipe>> _searchByName(
+    String query, {
+    http.Client? client,
+  }) async {
     try {
       final uri = Uri.parse(
         '$_baseUrl/search.php?s=${Uri.encodeComponent(query)}',
       );
-      final response = await _fetch(uri);
+      final response = await _fetch(uri, client: client);
 
       if (response.statusCode != 200) return [];
 
@@ -120,9 +136,10 @@ class TheMealDbService {
   }
 
   /// Perform an HTTP GET with retry logic.
-  static Future<http.Response> _fetch(Uri uri) {
+  static Future<http.Response> _fetch(Uri uri, {http.Client? client}) {
     return fetchWithRetry(
       uri,
+      client: client,
       timeout: _timeout,
       retryDelay: _retryDelay,
       retryCount: _retryCount,

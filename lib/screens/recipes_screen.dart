@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../models/ingredient.dart';
 import '../providers/inventory_provider.dart';
@@ -19,6 +18,18 @@ enum _RecipeTab { expiring, available, explore }
 
 enum _TimeFilter { all, fast15, fast30 }
 
+const _screenHorizontalPadding = AppSpacing.xl;
+const _timeFilterPadding = EdgeInsets.symmetric(
+  horizontal: _screenHorizontalPadding,
+  vertical: AppSpacing.xs + 2,
+);
+const _listPadding = EdgeInsets.fromLTRB(
+  _screenHorizontalPadding,
+  AppSpacing.sm,
+  _screenHorizontalPadding,
+  120,
+);
+
 class RecipesScreen extends ConsumerStatefulWidget {
   const RecipesScreen({super.key});
 
@@ -32,7 +43,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final inventory = ref.watch(inventoryProvider);
+    ref.watch(inventoryProvider.select(inventoryNamesSignature));
+    ref.watch(inventoryProvider.select(_expiringNamesSignature));
+    final inventory = ref.read(inventoryProvider);
+    final inventoryNames = inventoryNameSet(inventory);
     final recommended = ref.watch(recommendedRecipesProvider);
     final allAsync = ref.watch(recipesProvider);
 
@@ -42,17 +56,14 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     );
 
     final expiringNames = _expiringIngredientNames(inventory);
-    final expiringRecipes = recommended
-        .where(
-          (r) => r.ingredients.any(
-            (ing) => expiringNames.any(
-              (name) =>
-                  name.contains(ing.name.toLowerCase()) ||
-                  ing.name.toLowerCase().contains(name),
-            ),
-          ),
-        )
-        .toList();
+    final expiringRecipes =
+        recommended
+            .where(
+              (r) => r.ingredients.any(
+                (ing) => recipeIngredientMatchesInventory(ing, expiringNames),
+              ),
+            )
+            .toList();
 
     final list = switch (_tab) {
       _RecipeTab.expiring => expiringRecipes,
@@ -60,13 +71,14 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
       _RecipeTab.explore => all,
     };
 
-    final filtered = list.where((r) {
-      return switch (_time) {
-        _TimeFilter.all => true,
-        _TimeFilter.fast15 => r.cookingMinutes <= 15,
-        _TimeFilter.fast30 => r.cookingMinutes <= 30,
-      };
-    }).toList();
+    final filtered =
+        list.where((r) {
+          return switch (_time) {
+            _TimeFilter.all => true,
+            _TimeFilter.fast15 => r.cookingMinutes <= 15,
+            _TimeFilter.fast30 => r.cookingMinutes <= 30,
+          };
+        }).toList();
 
     return SafeArea(
       bottom: false,
@@ -83,44 +95,52 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
               ),
             ],
           ),
-          _TabRow(
-            selected: _tab,
-            onSelect: (t) => setState(() => _tab = t),
-          ),
+          _TabRow(selected: _tab, onSelect: (t) => setState(() => _tab = t)),
           _TimeFilterRow(
             selected: _time,
             onSelect: (t) => setState(() => _time = t),
           ),
           if (_tab == _RecipeTab.expiring && expiringRecipes.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+              padding: const EdgeInsets.fromLTRB(
+                _screenHorizontalPadding,
+                0,
+                _screenHorizontalPadding,
+                AppSpacing.sm,
+              ),
               child: _ExpiringBanner(count: expiringNames.length),
             ),
           Expanded(
-            child: filtered.isEmpty
-                ? _EmptyState(tab: _tab)
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(18, 8, 18, 120),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, i) {
-                      final recipe = filtered[i];
-                      final matched =
-                          matchedIngredientCount(inventory, recipe);
-                      final useExpiring = _tab == _RecipeTab.expiring;
-                      return RecipeCard(
-                        recipe: recipe,
-                        matchedCount: matched,
-                        useExpiring: useExpiring,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                RecipeDetailScreen(recipe: recipe),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+            child:
+                allAsync.isLoading && _tab == _RecipeTab.explore
+                    ? const _RecipeSkeletonList()
+                    : filtered.isEmpty
+                    ? _EmptyState(tab: _tab)
+                    : ListView.separated(
+                      padding: _listPadding,
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (context, i) {
+                        final recipe = filtered[i];
+                        final matched = matchedIngredientCountForNames(
+                          inventoryNames,
+                          recipe,
+                        );
+                        final useExpiring = _tab == _RecipeTab.expiring;
+                        return RecipeCard(
+                          recipe: recipe,
+                          matchedCount: matched,
+                          useExpiring: useExpiring,
+                          onTap:
+                              () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) => RecipeDetailScreen(recipe: recipe),
+                                ),
+                              ),
+                        );
+                      },
+                    ),
           ),
         ],
       ),
@@ -138,6 +158,11 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
         .map((i) => i.name.trim().toLowerCase())
         .where((name) => name.isNotEmpty)
         .toSet();
+  }
+
+  String _expiringNamesSignature(List<Ingredient> inventory) {
+    final names = _expiringIngredientNames(inventory).toList()..sort();
+    return names.join(' ');
   }
 }
 
@@ -157,16 +182,18 @@ class _TabRow extends StatelessWidget {
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.hair, width: 0.5)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 18),
+      padding: const EdgeInsets.symmetric(horizontal: _screenHorizontalPadding),
       child: Row(
         children: [
           for (final (value, label, icon) in tabs)
-            Expanded(child: _TabButton(
-              icon: icon,
-              label: label,
-              active: value == selected,
-              onTap: () => onSelect(value),
-            )),
+            Expanded(
+              child: _TabButton(
+                icon: icon,
+                label: label,
+                active: value == selected,
+                onTap: () => onSelect(value),
+              ),
+            ),
         ],
       ),
     );
@@ -188,45 +215,58 @@ class _TabButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = active ? AppColors.primary : AppColors.onSurfaceVariant;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(0, 10, 0, 14),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 16, color: color),
-                const SizedBox(width: 5),
-                Text(
-                  label,
-                  style: GoogleFonts.manrope(
-                    fontSize: 13,
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                    color: color,
+    return Semantics(
+      label: '$label tab',
+      selected: active,
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 10, 0, 14),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 16, color: color),
+                  const SizedBox(width: 5),
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                      color: color,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          if (active)
-            Positioned(
-              left: 24,
-              right: 24,
-              bottom: 0,
-              child: Container(
-                height: 2.5,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                ],
               ),
             ),
-        ],
+            if (active)
+              const Positioned(
+                left: AppSpacing.xxl,
+                right: AppSpacing.xxl,
+                bottom: 0,
+                child: _ActiveTabIndicator(),
+              ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _ActiveTabIndicator extends StatelessWidget {
+  const _ActiveTabIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(AppRadius.xs),
+      ),
+      child: const SizedBox(height: 2.5),
     );
   }
 }
@@ -247,7 +287,7 @@ class _TimeFilterRow extends StatelessWidget {
       height: 40,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+        padding: _timeFilterPadding,
         itemCount: filters.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
@@ -259,7 +299,7 @@ class _TimeFilterRow extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: active ? AppColors.primary : Colors.white,
+                color: active ? AppColors.primary : AppColors.surface,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
                 border: Border.all(
                   color: active ? AppColors.primary : AppColors.hair,
@@ -268,10 +308,9 @@ class _TimeFilterRow extends StatelessWidget {
               alignment: Alignment.center,
               child: Text(
                 label,
-                style: GoogleFonts.manrope(
-                  fontSize: 12,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: active ? Colors.white : AppColors.onSurface,
+                  color: active ? AppColors.onPrimary : AppColors.onSurface,
                 ),
               ),
             ),
@@ -292,7 +331,7 @@ class _ExpiringBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.fkWarnSoft,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Row(
         children: [
@@ -305,14 +344,90 @@ class _ExpiringBanner extends StatelessWidget {
           Expanded(
             child: Text(
               '优先使用 $count 件临期食材',
-              style: GoogleFonts.manrope(
-                fontSize: 12,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: AppColors.onSecondaryContainer,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RecipeSkeletonList extends StatelessWidget {
+  const _RecipeSkeletonList();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: _listPadding,
+      itemCount: 3,
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
+      itemBuilder: (_, _) => const _RecipeSkeletonCard(),
+    );
+  }
+}
+
+class _RecipeSkeletonCard extends StatelessWidget {
+  const _RecipeSkeletonCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 130,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.outline),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        children: [
+          Container(
+            width: 104,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainer,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _SkeletonLine(widthFactor: 0.75),
+                SizedBox(height: AppSpacing.md),
+                _SkeletonLine(widthFactor: 0.55),
+                SizedBox(height: AppSpacing.md),
+                _SkeletonLine(widthFactor: 0.35),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SkeletonLine extends StatelessWidget {
+  const _SkeletonLine({required this.widthFactor});
+
+  final double widthFactor;
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionallySizedBox(
+      widthFactor: widthFactor,
+      alignment: Alignment.centerLeft,
+      child: Container(
+        height: 12,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainer,
+          borderRadius: BorderRadius.circular(AppRadius.xs),
+        ),
       ),
     );
   }
@@ -331,13 +446,12 @@ class _EmptyState extends StatelessWidget {
     };
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(40),
+        padding: const EdgeInsets.all(AppSpacing.huge),
         child: Text(
           msg,
-          style: GoogleFonts.manrope(
-            fontSize: 14,
-            color: AppColors.onSurfaceVariant,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: AppColors.onSurfaceVariant),
           textAlign: TextAlign.center,
         ),
       ),

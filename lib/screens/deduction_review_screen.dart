@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/deduction_review_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../theme/app_spacing.dart';
+import '../widgets/review/base_review_screen.dart';
 import '../widgets/review/deduction_proposal_row.dart';
 import '../widgets/review/review_bottom_bar.dart';
 
@@ -28,15 +29,15 @@ class _DeductionReviewScreenState extends ConsumerState<DeductionReviewScreen> {
       final inv = ref.read(inventoryProvider.notifier);
       await n.applyToInventory(inv);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已扣减库存')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已扣减库存')));
       Navigator.of(context).maybePop();
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('扣减失败，请重试')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('扣减失败，请重试')));
     } finally {
       if (mounted) setState(() => _isConfirming = false);
     }
@@ -47,35 +48,26 @@ class _DeductionReviewScreenState extends ConsumerState<DeductionReviewScreen> {
     final state = ref.watch(deductionReviewProvider);
     final n = ref.read(deductionReviewProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
-      body: state.proposals.isEmpty
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(AppSpacing.xxl),
-                child: Text(
-                  '这道菜的食材没有可扣减的库存项。',
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              itemCount: state.proposals.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (_, i) {
-                final p = state.proposals[i];
-                return DeductionProposalRow(
-                  key: Key('deduction_proposal_${p.id}'),
-                  proposal: p,
-                  onToggleSelected: () => n.toggleSelected(p.id),
-                  onToggleAction: () => n.toggleAction(p.id),
-                  onChooseCandidate: (idx) => n.chooseCandidate(p.id, idx),
-                  onChangeAmount: (v) => n.updateDeductAmount(p.id, v),
-                );
-              },
-            ),
-      bottomNavigationBar: ReviewBottomBar(
+    return BaseReviewScreen(
+      title: widget.title,
+      items: state.proposals,
+      showBottomBarWhenEmpty: true,
+      emptyState: const Center(
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.xxl),
+          child: Text('这道菜的食材没有可扣减的库存项。', textAlign: TextAlign.center),
+        ),
+      ),
+      itemBuilder:
+          (_, _, p) => DeductionProposalRow(
+            key: Key('deduction_proposal_${p.id}'),
+            proposal: p,
+            onToggleSelected: () => n.toggleSelected(p.id),
+            onToggleAction: () => n.toggleAction(p.id),
+            onChooseCandidate: (idx) => n.chooseCandidate(p.id, idx),
+            onChangeAmount: (v) => n.updateDeductAmount(p.id, v),
+          ),
+      bottomBar: ReviewBottomBar(
         selectedCount: state.selectedCount,
         totalCount: state.proposals.length,
         confirmLabel: _isConfirming ? '扣减中…' : '确认扣减',

@@ -5,6 +5,7 @@ import '../data/food_categories.dart';
 import '../models/draft_field.dart';
 import '../models/ingredient_draft.dart';
 import '../models/storage_area.dart';
+import '../utils/ai_json_extract.dart';
 import 'ai_client.dart';
 import 'ai_recipe_parser.dart';
 
@@ -19,9 +20,10 @@ class AiIngredientParser {
     if (trimmed.isEmpty) {
       throw ArgumentError('文本不能为空');
     }
-    final input = trimmed.length > _maxTextLength
-        ? trimmed.substring(0, _maxTextLength)
-        : trimmed;
+    final input =
+        trimmed.length > _maxTextLength
+            ? trimmed.substring(0, _maxTextLength)
+            : trimmed;
 
     final messages = [
       AiMessage.text(
@@ -57,7 +59,7 @@ class AiIngredientParser {
   }
 
   static List<IngredientDraft> _parseList(String raw) {
-    final list = _extractJsonArray(raw);
+    final list = extractJsonArrayWithFallbacks(raw);
     if (list == null) {
       throw const AiParseException('AI 返回不是合法 JSON 数组');
     }
@@ -67,42 +69,24 @@ class AiIngredientParser {
       try {
         final name = (entry['name'] as String?)?.trim();
         if (name == null || name.isEmpty) continue;
-        items.add(IngredientDraft(
-          id: 'ai_${DateTime.now().millisecondsSinceEpoch}_${idCounter++}',
-          name: DraftField.ai(name),
-          quantity: DraftField.ai((entry['quantity'] ?? '1').toString()),
-          unit: DraftField.ai((entry['unit'] as String?) ?? '个'),
-          category: DraftField.ai((entry['category'] as String?) ?? FoodCategories.other),
-          storage: DraftField.ai(_parseStorage(entry['storage'] as String?)),
-          shelfLifeDays: DraftField.ai(_parseInt(entry['shelfLifeDays'])),
-        ));
+        items.add(
+          IngredientDraft(
+            id: 'ai_${DateTime.now().millisecondsSinceEpoch}_${idCounter++}',
+            name: DraftField.ai(name),
+            quantity: DraftField.ai((entry['quantity'] ?? '1').toString()),
+            unit: DraftField.ai((entry['unit'] as String?) ?? '个'),
+            category: DraftField.ai(
+              (entry['category'] as String?) ?? FoodCategories.other,
+            ),
+            storage: DraftField.ai(_parseStorage(entry['storage'] as String?)),
+            shelfLifeDays: DraftField.ai(_parseInt(entry['shelfLifeDays'])),
+          ),
+        );
       } catch (_) {
         // Skip malformed entries — keep partial results.
       }
     }
     return items;
-  }
-
-  static List<dynamic>? _extractJsonArray(String input) {
-    try {
-      final v = jsonDecode(input);
-      if (v is List) return v;
-    } catch (_) {}
-    final fence = RegExp(r'```(?:json)?\s*(\[[\s\S]*?\])\s*```').firstMatch(input);
-    if (fence != null) {
-      try {
-        final v = jsonDecode(fence.group(1)!);
-        if (v is List) return v;
-      } catch (_) {}
-    }
-    final bracket = RegExp(r'\[[\s\S]*\]').firstMatch(input);
-    if (bracket != null) {
-      try {
-        final v = jsonDecode(bracket.group(0)!);
-        if (v is List) return v;
-      } catch (_) {}
-    }
-    return null;
   }
 
   // IconType only has {fridge, pantry}. Map raw input following storage_area.dart convention.

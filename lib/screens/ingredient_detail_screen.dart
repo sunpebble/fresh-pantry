@@ -86,15 +86,16 @@ class _IngredientDetailScreenState
 
     final updatedName = await Navigator.of(context).push<String>(
       MaterialPageRoute(
-        builder: (_) => Scaffold(
-          backgroundColor: AppColors.surface,
-          body: SafeArea(
-            child: AddIngredientScreen(
-              initialIngredient: item,
-              inventoryIndex: index,
+        builder:
+            (_) => Scaffold(
+              backgroundColor: AppColors.surface,
+              body: SafeArea(
+                child: AddIngredientScreen(
+                  initialIngredient: item,
+                  inventoryIndex: index,
+                ),
+              ),
             ),
-          ),
-        ),
       ),
     );
     if (!mounted || updatedName == null) return;
@@ -120,9 +121,17 @@ class _IngredientDetailScreenState
 
   @override
   Widget build(BuildContext context) {
-    final inventory = ref.watch(inventoryProvider);
-    final index = inventoryIndexOf(inventory, widget.ingredient);
-    final item = index == -1 ? widget.ingredient : inventory[index];
+    final current = ref.watch(
+      inventoryProvider.select((items) {
+        final index = inventoryIndexOf(items, widget.ingredient);
+        return (
+          index: index,
+          item: index == -1 ? widget.ingredient : items[index],
+        );
+      }),
+    );
+    final item = current.item;
+    final index = current.index;
     final isInventoryItem = index != -1;
     final detailsAsync = ref.watch(foodDetailsProvider(item));
 
@@ -130,16 +139,22 @@ class _IngredientDetailScreenState
       backgroundColor: AppColors.surface,
       body: detailsAsync.when(
         data: (details) => _buildBody(item, details, isInventoryItem),
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
-        error: (_, _) =>
-            _buildBody(item, fallbackFoodDetailsFor(item), isInventoryItem),
+        loading:
+            () => const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+        error:
+            (_, _) =>
+                _buildBody(item, fallbackFoodDetailsFor(item), isInventoryItem),
       ),
     );
   }
 
-  Widget _buildBody(Ingredient item, FoodDetails details, bool isInventoryItem) {
+  Widget _buildBody(
+    Ingredient item,
+    FoodDetails details,
+    bool isInventoryItem,
+  ) {
     final catId = fkCategoryIdFor(item.category);
     final palette = FkCategoryPalette.of(catId);
     final statusBadge = _statusBadgeFor(item.state);
@@ -161,8 +176,7 @@ class _IngredientDetailScreenState
                   statusBadge: statusBadge,
                   onBack: () => Navigator.of(context).maybePop(),
                   onEdit: isInventoryItem ? () => _editItem(item) : null,
-                  onDelete:
-                      isInventoryItem ? () => _confirmDelete(item) : null,
+                  onDelete: isInventoryItem ? () => _confirmDelete(item) : null,
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(18, 18, 18, 32),
@@ -259,11 +273,7 @@ class _DetailHero extends StatelessWidget {
                 opacity: 0.18,
                 child: Transform.rotate(
                   angle: 0.31,
-                  child: CatIcon(
-                    category: catId,
-                    size: 90,
-                    color: palette.ink,
-                  ),
+                  child: CatIcon(category: catId, size: 90, color: palette.ink),
                 ),
               ),
             ),
@@ -274,11 +284,7 @@ class _DetailHero extends StatelessWidget {
                 opacity: 0.18,
                 child: Transform.rotate(
                   angle: -0.21,
-                  child: CatIcon(
-                    category: catId,
-                    size: 42,
-                    color: palette.ink,
-                  ),
+                  child: CatIcon(category: catId, size: 42, color: palette.ink),
                 ),
               ),
             ),
@@ -289,11 +295,7 @@ class _DetailHero extends StatelessWidget {
                 opacity: 0.18,
                 child: Transform.rotate(
                   angle: 0.14,
-                  child: CatIcon(
-                    category: catId,
-                    size: 56,
-                    color: palette.ink,
-                  ),
+                  child: CatIcon(category: catId, size: 56, color: palette.ink),
                 ),
               ),
             ),
@@ -304,11 +306,7 @@ class _DetailHero extends StatelessWidget {
                 opacity: 0.18,
                 child: Transform.rotate(
                   angle: -0.38,
-                  child: CatIcon(
-                    category: catId,
-                    size: 28,
-                    color: palette.ink,
-                  ),
+                  child: CatIcon(category: catId, size: 28, color: palette.ink),
                 ),
               ),
             ),
@@ -584,8 +582,7 @@ class _InfoList extends StatelessWidget {
     final rows = <(String, String)>[
       ('分类', details.category),
       ('存放位置', storageLabelFor(item.storage)),
-      if (details.shelfLifeDays != null)
-        ('保质期建议', '${details.shelfLifeDays}天'),
+      if (details.shelfLifeDays != null) ('保质期建议', '${details.shelfLifeDays}天'),
       ('来源', details.source),
     ];
     return FkCard(
@@ -596,14 +593,12 @@ class _InfoList extends StatelessWidget {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               decoration: BoxDecoration(
-                border: i == rows.length - 1
-                    ? null
-                    : const Border(
-                        bottom: BorderSide(
-                          color: AppColors.hair,
-                          width: 0.5,
+                border:
+                    i == rows.length - 1
+                        ? null
+                        : const Border(
+                          bottom: BorderSide(color: AppColors.hair, width: 0.5),
                         ),
-                      ),
               ),
               child: Row(
                 children: [

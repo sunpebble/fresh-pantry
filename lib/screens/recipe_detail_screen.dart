@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../data/food_knowledge.dart';
-import '../models/ingredient.dart';
 import '../models/recipe.dart';
 import '../models/shopping_item.dart';
 import '../providers/deduction_review_provider.dart';
@@ -85,42 +84,27 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     showAppSnackBar(
       context,
       addedCount == 0 ? '缺失食材已在购物清单中' : '已将 $addedCount 个食材加入购物清单',
-      backgroundColor:
-          addedCount == 0 ? AppColors.tertiary : AppColors.primary,
+      backgroundColor: addedCount == 0 ? AppColors.tertiary : AppColors.primary,
     );
-  }
-
-  String _norm(String name) => name.trim().toLowerCase();
-
-  bool _matchesInventory(String ingredientName, Set<String> inventoryNames) {
-    final n = _norm(ingredientName);
-    if (n.isEmpty) return false;
-    return inventoryNames.any(
-      (name) => name.contains(n) || n.contains(name),
-    );
-  }
-
-  List<RecipeIngredient> _missingIngredients(
-    List<Ingredient> inventory,
-    Recipe recipe,
-  ) {
-    final names = inventory.map((i) => _norm(i.name)).toSet();
-    return recipe
-        .ingredients
-        .where((ing) => !_matchesInventory(ing.name, names))
-        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final inventory = ref.watch(inventoryProvider);
-    final inventoryNames = inventory.map((i) => _norm(i.name)).toSet();
-    final matched = matchedIngredientCount(inventory, widget.recipe);
-    final missing = _missingIngredients(inventory, widget.recipe);
+    ref.watch(inventoryProvider.select(inventoryNamesSignature));
+    final inventoryNames = inventoryNameSet(ref.read(inventoryProvider));
+    final matched = matchedIngredientCountForNames(
+      inventoryNames,
+      widget.recipe,
+    );
+    final missing = missingRecipeIngredientsForNames(
+      inventoryNames,
+      widget.recipe,
+    );
 
-    final stepProgress = widget.recipe.steps.isEmpty
-        ? 0.0
-        : _completedSteps.length / widget.recipe.steps.length;
+    final stepProgress =
+        widget.recipe.steps.isEmpty
+            ? 0.0
+            : _completedSteps.length / widget.recipe.steps.length;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -132,8 +116,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             isFavorite: _isFavorite,
             isCustom: widget.isCustomRecipe,
             onBack: () => Navigator.of(context).maybePop(),
-            onToggleFavorite: () =>
-                setState(() => _isFavorite = !_isFavorite),
+            onToggleFavorite: () => setState(() => _isFavorite = !_isFavorite),
             onEdit: widget.onEdit,
             onDelete: widget.onDelete,
           ),
@@ -231,12 +214,15 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   label: const Text('我做了'),
                   onPressed: () async {
                     final inv = ref.read(inventoryProvider);
-                    final proposals =
-                        DeductionProposalFactory.forRecipe(widget.recipe, inv);
+                    final proposals = DeductionProposalFactory.forRecipe(
+                      widget.recipe,
+                      inv,
+                    );
                     ref.read(deductionReviewProvider.notifier).seed(proposals);
                     await Navigator.of(context).push(
                       MaterialPageRoute(
-                          builder: (_) => const DeductionReviewScreen()),
+                        builder: (_) => const DeductionReviewScreen(),
+                      ),
                     );
                   },
                 ),
@@ -272,8 +258,10 @@ class _HeroSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final heroHeight = (screenHeight * 0.32).clamp(200.0, 260.0);
     return SizedBox(
-      height: 260,
+      height: heroHeight,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -356,9 +344,8 @@ class _HeroSection extends StatelessWidget {
                   FkIconButton(
                     onTap: onToggleFavorite,
                     onImage: true,
-                    foregroundColor: isFavorite
-                        ? AppColors.fkDanger
-                        : AppColors.onSurface,
+                    foregroundColor:
+                        isFavorite ? AppColors.fkDanger : AppColors.onSurface,
                     child: Icon(
                       isFavorite
                           ? Icons.favorite_rounded
@@ -417,26 +404,26 @@ class _IngredientsSection extends StatelessWidget {
         const SizedBox(height: 10),
         FkCard(
           padding: EdgeInsets.zero,
-          child: Column(
-            children: [
-              for (var i = 0; i < recipe.ingredients.length; i++)
-                _IngredientRow(
-                  index: i,
-                  ingredient: recipe.ingredients[i],
-                  isAvailable: _isAvailable(recipe.ingredients[i].name),
-                  isLast: i == recipe.ingredients.length - 1,
+          child: ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: recipe.ingredients.length,
+            itemBuilder: (context, index) {
+              final ingredient = recipe.ingredients[index];
+              return _IngredientRow(
+                index: index,
+                ingredient: ingredient,
+                isAvailable: recipeIngredientMatchesInventory(
+                  ingredient,
+                  inventoryNames,
                 ),
-            ],
+                isLast: index == recipe.ingredients.length - 1,
+              );
+            },
           ),
         ),
       ],
     );
-  }
-
-  bool _isAvailable(String ingredientName) {
-    final n = ingredientName.trim().toLowerCase();
-    if (n.isEmpty) return false;
-    return inventoryNames.any((name) => name.contains(n) || n.contains(name));
   }
 }
 
@@ -460,11 +447,12 @@ class _IngredientRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
         color: isAvailable ? Colors.transparent : AppColors.fkDangerSoft,
-        border: isLast
-            ? null
-            : const Border(
-                bottom: BorderSide(color: AppColors.hair, width: 0.5),
-              ),
+        border:
+            isLast
+                ? null
+                : const Border(
+                  bottom: BorderSide(color: AppColors.hair, width: 0.5),
+                ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -480,9 +468,8 @@ class _IngredientRow extends StatelessWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: isAvailable
-                        ? AppColors.onSurface
-                        : AppColors.fkDanger,
+                    color:
+                        isAvailable ? AppColors.onSurface : AppColors.fkDanger,
                   ),
                 ),
                 if (ingredient.amount.trim().isNotEmpty) ...[
@@ -500,22 +487,22 @@ class _IngredientRow extends StatelessWidget {
           ),
           isAvailable
               ? FkPill(
-                  label: '已有',
-                  sm: true,
-                  backgroundColor: AppColors.primarySoft,
-                  foregroundColor: AppColors.primaryContainer,
-                )
+                label: '已有',
+                sm: true,
+                backgroundColor: AppColors.primarySoft,
+                foregroundColor: AppColors.primaryContainer,
+              )
               : FkPill(
-                  label: '缺少',
-                  sm: true,
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppColors.fkDanger,
-                  border: const BorderSide(
-                    color: AppColors.fkDanger,
-                    width: 1,
-                    style: BorderStyle.solid,
-                  ),
+                label: '缺少',
+                sm: true,
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.fkDanger,
+                border: const BorderSide(
+                  color: AppColors.fkDanger,
+                  width: 1,
+                  style: BorderStyle.solid,
                 ),
+              ),
         ],
       ),
     );
@@ -534,9 +521,10 @@ class _StatusMark extends StatelessWidget {
       decoration: BoxDecoration(
         color: isAvailable ? AppColors.primary : Colors.white,
         shape: BoxShape.circle,
-        border: isAvailable
-            ? null
-            : Border.all(color: AppColors.fkDanger, width: 2),
+        border:
+            isAvailable
+                ? null
+                : Border.all(color: AppColors.fkDanger, width: 2),
       ),
       alignment: Alignment.center,
       child: Icon(
@@ -646,15 +634,19 @@ class _StepsSection extends StatelessWidget {
           const SizedBox(height: 12),
         ] else
           const SizedBox(height: 10),
-        for (var i = 0; i < steps.length; i++) ...[
-          _StepRow(
-            index: i,
-            text: steps[i],
-            completed: completed.contains(i),
-            onTap: () => onToggleStep(i),
-          ),
-          if (i != steps.length - 1) const SizedBox(height: 10),
-        ],
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: steps.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          itemBuilder:
+              (_, index) => _StepRow(
+                index: index,
+                text: steps[index],
+                completed: completed.contains(index),
+                onTap: () => onToggleStep(index),
+              ),
+        ),
       ],
     );
   }
@@ -690,20 +682,21 @@ class _StepRow extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: completed
-                ? const Icon(
-                    Icons.check_rounded,
-                    size: 14,
-                    color: Colors.white,
-                  )
-                : Text(
-                    '${index + 1}',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primaryContainer,
+            child:
+                completed
+                    ? const Icon(
+                      Icons.check_rounded,
+                      size: 14,
+                      color: Colors.white,
+                    )
+                    : Text(
+                      '${index + 1}',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primaryContainer,
+                      ),
                     ),
-                  ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -714,11 +707,11 @@ class _StepRow extends StatelessWidget {
                 style: GoogleFonts.manrope(
                   fontSize: 14,
                   height: 1.5,
-                  color: completed
-                      ? AppColors.onSurfaceVariant
-                      : AppColors.onSurface,
-                  decoration:
-                      completed ? TextDecoration.lineThrough : null,
+                  color:
+                      completed
+                          ? AppColors.onSurfaceVariant
+                          : AppColors.onSurface,
+                  decoration: completed ? TextDecoration.lineThrough : null,
                 ),
               ),
             ),

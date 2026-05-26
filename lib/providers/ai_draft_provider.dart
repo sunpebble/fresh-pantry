@@ -47,13 +47,13 @@ class AiDraftState {
       );
 
   @override
-  bool operator ==(Object o) =>
-      identical(this, o) ||
-      (o is AiDraftState &&
-          o.isRunning == isRunning &&
-          o.recipeDraft == recipeDraft &&
-          identical(o.ingredientDrafts, ingredientDrafts) &&
-          o.error == error);
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AiDraftState &&
+          other.isRunning == isRunning &&
+          other.recipeDraft == recipeDraft &&
+          identical(other.ingredientDrafts, ingredientDrafts) &&
+          other.error == error);
 
   @override
   int get hashCode => Object.hash(isRunning, recipeDraft, ingredientDrafts, error);

@@ -13,9 +13,13 @@ import '../models/storage_area.dart';
 /// Current search keyword
 final searchProvider = StateProvider<String>((ref) => '');
 
+final trimmedSearchKeywordProvider = Provider.autoDispose<String>(
+  (ref) => ref.watch(searchProvider.select((keyword) => keyword.trim())),
+);
+
 /// Filtered inventory based on search keyword
-final filteredInventoryProvider = Provider<List<Ingredient>>((ref) {
-  final keyword = ref.watch(searchProvider).trim().toLowerCase();
+final filteredInventoryProvider = Provider.autoDispose<List<Ingredient>>((ref) {
+  final keyword = ref.watch(trimmedSearchKeywordProvider).toLowerCase();
   final items = ref.watch(inventoryProvider);
 
   if (keyword.isEmpty) return items;
@@ -27,8 +31,10 @@ final filteredInventoryProvider = Provider<List<Ingredient>>((ref) {
 });
 
 /// Filtered shopping list based on search keyword
-final filteredShoppingProvider = Provider<List<ShoppingItem>>((ref) {
-  final keyword = ref.watch(searchProvider).trim().toLowerCase();
+final filteredShoppingProvider = Provider.autoDispose<List<ShoppingItem>>((
+  ref,
+) {
+  final keyword = ref.watch(trimmedSearchKeywordProvider).toLowerCase();
   final items = ref.watch(shoppingProvider);
 
   if (keyword.isEmpty) return items;
@@ -48,7 +54,7 @@ final filteredShoppingProvider = Provider<List<ShoppingItem>>((ref) {
 final searchFoodDetailsProvider = FutureProvider.autoDispose<FoodDetails?>((
   ref,
 ) async {
-  final keyword = ref.watch(searchProvider).trim();
+  final keyword = ref.watch(trimmedSearchKeywordProvider);
   if (keyword.length < 2) return null;
 
   await Future<void>.delayed(const Duration(milliseconds: 300));

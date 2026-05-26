@@ -60,6 +60,8 @@ class FoodDetailsRepository {
 
   final SharedPreferences prefs;
   final FoodDetailsClient client;
+  String? _cachedRawCache;
+  Map<String, dynamic>? _cachedDecodedCache;
 
   Future<FoodDetails> detailsFor(Ingredient ingredient) async {
     final cache = _readCache();
@@ -82,7 +84,10 @@ class FoodDetailsRepository {
     final details =
         fetched ?? cachedDetails ?? fallbackFoodDetailsFor(ingredient);
     cache[key] = details.toJson();
-    await prefs.setString(foodDetailsCacheStorageKey, jsonEncode(cache));
+    final encoded = jsonEncode(cache);
+    await prefs.setString(foodDetailsCacheStorageKey, encoded);
+    _cachedRawCache = encoded;
+    _cachedDecodedCache = Map<String, dynamic>.from(cache);
     return details;
   }
 
@@ -113,10 +118,16 @@ class FoodDetailsRepository {
   Map<String, dynamic> _readCache() {
     final raw = prefs.getString(foodDetailsCacheStorageKey);
     if (raw == null || raw.isEmpty) return <String, dynamic>{};
+    if (raw == _cachedRawCache && _cachedDecodedCache != null) {
+      return Map<String, dynamic>.from(_cachedDecodedCache!);
+    }
     try {
       final decoded = jsonDecode(raw);
       if (decoded is Map) {
-        return Map<String, dynamic>.from(decoded);
+        final cache = Map<String, dynamic>.from(decoded);
+        _cachedRawCache = raw;
+        _cachedDecodedCache = Map<String, dynamic>.from(cache);
+        return cache;
       }
     } catch (_) {
       return <String, dynamic>{};
@@ -164,4 +175,3 @@ String? _fallbackImageUrl(Ingredient ingredient) {
   final slug = englishName.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '_');
   return 'https://www.themealdb.com/images/ingredients/$slug.png';
 }
-

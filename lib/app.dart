@@ -76,7 +76,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     if (url == null) return;
     ref.read(navigationProvider.notifier).state = 0;
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => CustomRecipeFormScreen(prefilledUrl: url)),
+      MaterialPageRoute(
+        builder: (_) => CustomRecipeFormScreen(prefilledUrl: url),
+      ),
     );
   }
 
@@ -84,6 +86,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget build(BuildContext context) {
     ref.watch(notificationSyncProvider);
     final currentIndex = ref.watch(navigationProvider);
+    final isSearchActive = ref.watch(searchActiveProvider);
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -98,8 +101,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                 ),
               ],
             ),
-            // Search overlay on top
-            const SearchOverlay(),
+            if (isSearchActive) const SearchOverlay(),
           ],
         ),
       ),

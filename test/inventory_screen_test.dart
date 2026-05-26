@@ -13,7 +13,6 @@ import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/ingredient_detail_screen.dart';
 import 'package:fresh_pantry/screens/inventory_screen.dart';
-import 'package:fresh_pantry/widgets/common/category_chips.dart';
 import 'package:fresh_pantry/widgets/inventory/ingredient_card.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ingredient.dart';
 import '../models/shopping_item.dart';
@@ -13,6 +14,29 @@ import 'storage_service_provider.dart';
 
 const shoppingItemsStorageKey = 'shopping_items';
 
+enum ShoppingFilter { all, todo, done }
+
+class ShoppingListViewState {
+  const ShoppingListViewState({
+    required this.items,
+    required this.groupedItems,
+    required this.visibleGroups,
+    required this.filter,
+    required this.checkedCount,
+    required this.uncheckedCount,
+  });
+
+  final List<ShoppingItem> items;
+  final Map<String, List<ShoppingItem>> groupedItems;
+  final Map<String, List<ShoppingItem>> visibleGroups;
+  final ShoppingFilter filter;
+  final int checkedCount;
+  final int uncheckedCount;
+
+  int get total => items.length;
+  double get progress => total == 0 ? 0.0 : checkedCount / total;
+}
+
 ShoppingItem _normalizeShoppingItemCategory(ShoppingItem item) {
   final category =
       FoodCategories.normalize(item.category) ?? FoodCategories.other;
@@ -21,6 +45,53 @@ ShoppingItem _normalizeShoppingItemCategory(ShoppingItem item) {
 }
 
 String _shoppingItemNameKey(String name) => name.trim().toLowerCase();
+
+({int checked, int unchecked}) shoppingCountsFor(Iterable<ShoppingItem> items) {
+  var checked = 0;
+  var unchecked = 0;
+  for (final item in items) {
+    if (item.isChecked) {
+      checked += 1;
+    } else {
+      unchecked += 1;
+    }
+  }
+  return (checked: checked, unchecked: unchecked);
+}
+
+Map<String, List<ShoppingItem>> groupShoppingItems(
+  Iterable<ShoppingItem> items,
+) {
+  final grouped = <String, List<ShoppingItem>>{};
+  for (final item in items) {
+    grouped.putIfAbsent(item.category, () => []).add(item);
+  }
+  return grouped;
+}
+
+Map<String, List<ShoppingItem>> filterShoppingGroups(
+  Map<String, List<ShoppingItem>> grouped,
+  ShoppingFilter filter,
+) {
+  if (filter == ShoppingFilter.all) return grouped;
+
+  final result = <String, List<ShoppingItem>>{};
+  grouped.forEach((category, items) {
+    final filtered =
+        items
+            .where(
+              (item) =>
+                  filter == ShoppingFilter.todo
+                      ? !item.isChecked
+                      : item.isChecked,
+            )
+            .toList();
+    if (filtered.isNotEmpty) {
+      result[category] = filtered;
+    }
+  });
+  return result;
+}
 
 List<ShoppingItem> _deduplicateShoppingItems(Iterable<ShoppingItem> items) {
   final seenNames = <String>{};
@@ -143,6 +214,29 @@ final shoppingProvider = NotifierProvider<ShoppingNotifier, List<ShoppingItem>>(
   ShoppingNotifier.new,
 );
 
+final shoppingFilterProvider = StateProvider<ShoppingFilter>(
+  (ref) => ShoppingFilter.all,
+);
+
+final collapsedShoppingCategoriesProvider = StateProvider<Set<String>>(
+  (ref) => const <String>{},
+);
+
+final shoppingListViewProvider = Provider<ShoppingListViewState>((ref) {
+  final items = ref.watch(shoppingProvider);
+  final filter = ref.watch(shoppingFilterProvider);
+  final groupedItems = groupShoppingItems(items);
+  final counts = shoppingCountsFor(items);
+  return ShoppingListViewState(
+    items: items,
+    groupedItems: groupedItems,
+    visibleGroups: filterShoppingGroups(groupedItems, filter),
+    filter: filter,
+    checkedCount: counts.checked,
+    uncheckedCount: counts.unchecked,
+  );
+});
+
 /// 启动时预 hydrated 的 shopping 种子,由 main.dart 预解码后通过 override 注入。
 ///
 /// Fallback: 未被 override 时回退到 prefs 同步解码,保持升级前行为。
@@ -173,21 +267,17 @@ final groupedShoppingProvider = Provider<Map<String, List<ShoppingItem>>>((
   ref,
 ) {
   final items = ref.watch(shoppingProvider);
-  final grouped = <String, List<ShoppingItem>>{};
-  for (final item in items) {
-    grouped.putIfAbsent(item.category, () => []).add(item);
-  }
-  return grouped;
+  return groupShoppingItems(items);
 });
 
 /// Count of checked items
 final checkedCountProvider = Provider<int>((ref) {
   final items = ref.watch(shoppingProvider);
-  return items.where((item) => item.isChecked).length;
+  return shoppingCountsFor(items).checked;
 });
 
 /// Count of unchecked items
 final uncheckedCountProvider = Provider<int>((ref) {
   final items = ref.watch(shoppingProvider);
-  return items.where((item) => !item.isChecked).length;
+  return shoppingCountsFor(items).unchecked;
 });

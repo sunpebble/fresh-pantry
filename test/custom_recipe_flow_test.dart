@@ -4,19 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fresh_pantry/app.dart';
 import 'package:fresh_pantry/models/ingredient.dart';
 import 'package:fresh_pantry/models/recipe.dart';
 import 'package:fresh_pantry/models/storage_area.dart';
-import 'package:fresh_pantry/providers/ai_draft_provider.dart';
 import 'package:fresh_pantry/providers/custom_recipe_provider.dart';
-import 'package:fresh_pantry/providers/navigation_provider.dart';
 import 'package:fresh_pantry/providers/notification_service_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/services/notification_service.dart';
-import 'package:fresh_pantry/services/share_intent_service.dart';
 import 'package:fresh_pantry/screens/custom_recipe_form_screen.dart';
-import 'package:fresh_pantry/screens/dashboard_screen.dart';
 import 'package:fresh_pantry/screens/settings_screen.dart';
 import 'package:fresh_pantry/screens/my_recipes_screen.dart';
 import 'package:fresh_pantry/screens/recipe_detail_screen.dart';
@@ -59,11 +54,47 @@ void main() {
       customRecipesStorageKey: json.encode([_recipe('r1').toJson()]),
     });
 
-    await tester.pumpWidget(_app(prefs, const MyRecipesScreen()));
+    await tester.pumpWidget(
+      _app(prefs, const MyRecipesScreen(), useMaterial3: false),
+    );
     await tester.pumpAndSettle();
 
     // FK redesign removed subtitle/description from the inline card; the name remains.
     expect(find.text('番茄炒蛋'), findsOneWidget);
+  });
+
+  testWidgets('my recipes empty state CTA opens custom recipe form', (
+    tester,
+  ) async {
+    final prefs = await _prefs({});
+
+    await tester.pumpWidget(
+      _app(prefs, const MyRecipesScreen(), useMaterial3: false),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('还没有自定义食谱'), findsOneWidget);
+    await tester.tap(find.text('创建第一份食谱'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('保存食谱'), findsOneWidget);
+  });
+
+  testWidgets('my recipes screen keeps saved recipe order', (tester) async {
+    final prefs = await _prefs({
+      customRecipesStorageKey: json.encode([
+        _recipe('r1').copyWith(name: '早餐三明治').toJson(),
+        _recipe('r2').copyWith(name: '番茄炒蛋').toJson(),
+      ]),
+    });
+
+    await tester.pumpWidget(_app(prefs, const MyRecipesScreen()));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getTopLeft(find.text('早餐三明治')).dy,
+      lessThan(tester.getTopLeft(find.text('番茄炒蛋')).dy),
+    );
   });
 
   testWidgets('my recipes screen shows saved recipe images', (tester) async {
@@ -153,9 +184,9 @@ void main() {
     final prefs = await _prefs({
       'inventory_items': json.encode([_ingredient('Chicken').toJson()]),
     });
-    final recipe = _recipe('r1').copyWith(
-      ingredients: [RecipeIngredient(name: 'chicken', amount: '1份')],
-    );
+    final recipe = _recipe(
+      'r1',
+    ).copyWith(ingredients: [RecipeIngredient(name: 'chicken', amount: '1份')]);
 
     await tester.pumpWidget(_app(prefs, RecipeDetailScreen(recipe: recipe)));
     await tester.pumpAndSettle();
@@ -251,9 +282,17 @@ void main() {
 
       await tester.tap(find.text('番茄鸡蛋汤'));
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(find.text('切番茄'), 300);
+      await tester.scrollUntilVisible(
+        find.text('切番茄'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.text('切番茄'));
-      await tester.scrollUntilVisible(find.text('炒熟鸡蛋'), 300);
+      await tester.scrollUntilVisible(
+        find.text('炒熟鸡蛋'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.text('炒熟鸡蛋'));
       await tester.pumpAndSettle();
 
@@ -344,9 +383,11 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, '食材名称').first, '面条');
     await tester.enterText(find.widgetWithText(TextField, '用量').first, '1份');
     await tester.enterText(
-      find.byWidgetPredicate(
-        (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
-      ).first,
+      find
+          .byWidgetPredicate(
+            (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
+          )
+          .first,
       '煮面后拌入葱油',
     );
     await tester.tap(find.text('保存食谱'));
@@ -398,14 +439,15 @@ void main() {
 
     // Only check labeled fields (those with a labelText) — unlabeled internal
     // fields like the CookingTimeRow input are excluded.
-    final labeledTextFields = tester
-        .widgetList<TextField>(find.byType(TextField))
-        .where(
-          (tf) =>
-              tf.key != const Key('recipe_url_input') &&
-              tf.decoration?.labelText != null,
-        )
-        .toList();
+    final labeledTextFields =
+        tester
+            .widgetList<TextField>(find.byType(TextField))
+            .where(
+              (tf) =>
+                  tf.key != const Key('recipe_url_input') &&
+                  tf.decoration?.labelText != null,
+            )
+            .toList();
 
     expect(labeledTextFields, isNotEmpty);
     for (final textField in labeledTextFields) {
@@ -455,9 +497,11 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, '食材名称').first, '面条');
     await tester.enterText(find.widgetWithText(TextField, '用量').first, '1份');
     await tester.enterText(
-      find.byWidgetPredicate(
-        (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
-      ).first,
+      find
+          .byWidgetPredicate(
+            (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
+          )
+          .first,
       '煮面后拌入葱油',
     );
     await tester.tap(find.text('保存食谱'));
@@ -512,9 +556,11 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.byWidgetPredicate(
-        (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
-      ).first,
+      find
+          .byWidgetPredicate(
+            (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
+          )
+          .first,
       '煮面后拌入葱油',
     );
     await tester.pumpAndSettle();
@@ -572,9 +618,11 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, '食材名称').first, '面条');
     await tester.enterText(find.widgetWithText(TextField, '用量').first, '1份');
     await tester.enterText(
-      find.byWidgetPredicate(
-        (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
-      ).first,
+      find
+          .byWidgetPredicate(
+            (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
+          )
+          .first,
       '煮面后拌入葱油',
     );
     await tester.tap(find.text('保存食谱'));
@@ -631,9 +679,11 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, '食材名称').first, '面条');
     await tester.enterText(find.widgetWithText(TextField, '用量').first, '1份');
     await tester.enterText(
-      find.byWidgetPredicate(
-        (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
-      ).first,
+      find
+          .byWidgetPredicate(
+            (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
+          )
+          .first,
       '煮面后拌入葱油',
     );
     await tester.tap(find.text('保存食谱'));
@@ -659,7 +709,9 @@ void main() {
     expect(saved, hasLength(1));
   });
 
-  testWidgets('full create flow with new controls saves recipe', (tester) async {
+  testWidgets('full create flow with new controls saves recipe', (
+    tester,
+  ) async {
     final prefs = await _prefs({});
     await tester.pumpWidget(_app(prefs, const CustomRecipeFormScreen()));
     await tester.pumpAndSettle();
@@ -683,9 +735,11 @@ void main() {
 
     // 步骤：填第一步
     await tester.enterText(
-      find.byWidgetPredicate(
-        (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
-      ).first,
+      find
+          .byWidgetPredicate(
+            (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
+          )
+          .first,
       '切块翻炒',
     );
 
@@ -707,8 +761,9 @@ void main() {
     expect(find.text('请填入食谱名称'), findsOneWidget);
   });
 
-  testWidgets('edit mode prefills legacy amount as quantity + unit',
-      (tester) async {
+  testWidgets('edit mode prefills legacy amount as quantity + unit', (
+    tester,
+  ) async {
     // RecipeIngredient with only amount (legacy shape): quantity='', unit=''.
     // _IngredientControllers.from detects hasNewShape=false and sets
     // quantity=amount ('200g') and unit='' (empty → UnitDropdown shows '单位 ▾').
@@ -719,9 +774,7 @@ void main() {
       difficulty: 2,
       cookingMinutes: 25,
       description: '',
-      ingredients: [
-        RecipeIngredient(name: '西红柿', amount: '200g'),
-      ],
+      ingredients: [RecipeIngredient(name: '西红柿', amount: '200g')],
       steps: const ['切块'],
     );
 
@@ -790,6 +843,7 @@ Widget _app(
   SharedPreferences prefs,
   Widget child, {
   List<Override> overrides = const [],
+  bool useMaterial3 = true,
 }) {
   return ProviderScope(
     overrides: [
@@ -797,7 +851,10 @@ Widget _app(
       notificationServiceProvider.overrideWithValue(NotificationService()),
       ...overrides,
     ],
-    child: MaterialApp(home: Scaffold(body: child)),
+    child: MaterialApp(
+      theme: ThemeData(useMaterial3: useMaterial3),
+      home: Scaffold(body: child),
+    ),
   );
 }
 

@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fresh_pantry/models/draft_field.dart';
-import 'package:fresh_pantry/models/recipe.dart';
 import 'package:fresh_pantry/models/recipe_draft.dart';
 
 void main() {

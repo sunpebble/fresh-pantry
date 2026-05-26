@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fresh_pantry/theme/app_colors.dart';
-import 'package:fresh_pantry/theme/app_radius.dart';
-import 'package:fresh_pantry/theme/app_spacing.dart';
 import 'package:fresh_pantry/theme/app_theme.dart';
-import 'package:fresh_pantry/theme/app_typography.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 void main() {

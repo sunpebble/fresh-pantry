@@ -102,12 +102,15 @@ class _CustomRecipeFormScreenState
         recipe?.ingredients.isNotEmpty == true
             ? recipe!.ingredients.map(_IngredientControllers.from).toList()
             : [_IngredientControllers.empty()];
-    _stepEntries = recipe?.steps.isNotEmpty == true
-        ? recipe!.steps.map((step) => _StepEntry(text: step)).toList()
-        : [_StepEntry()];
+    _stepEntries =
+        recipe?.steps.isNotEmpty == true
+            ? recipe!.steps.map((step) => _StepEntry(text: step)).toList()
+            : [_StepEntry()];
 
     if (!_isEditing) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeOfferClipboardUrl());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _maybeOfferClipboardUrl(),
+      );
     }
   }
 
@@ -156,17 +159,20 @@ class _CustomRecipeFormScreenState
                 ),
               Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.md),
-                child: _coverImageSource == null
-                    ? _CoverImagePlaceholder(
-                        onUpload: () => _selectCoverImage(ImageSource.gallery),
-                        onCamera: () => _selectCoverImage(ImageSource.camera),
-                      )
-                    : _CoverImageHero(
-                        imageSource: _coverImageSource,
-                        onUpload: () => _selectCoverImage(ImageSource.gallery),
-                        onCamera: () => _selectCoverImage(ImageSource.camera),
-                        onClear: _clearCoverImage,
-                      ),
+                child:
+                    _coverImageSource == null
+                        ? _CoverImagePlaceholder(
+                          onUpload:
+                              () => _selectCoverImage(ImageSource.gallery),
+                          onCamera: () => _selectCoverImage(ImageSource.camera),
+                        )
+                        : _CoverImageHero(
+                          imageSource: _coverImageSource,
+                          onUpload:
+                              () => _selectCoverImage(ImageSource.gallery),
+                          onCamera: () => _selectCoverImage(ImageSource.camera),
+                          onClear: _clearCoverImage,
+                        ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -192,15 +198,16 @@ class _CustomRecipeFormScreenState
                           errorText: _nameError,
                         ),
                         onChanged: (_) {
-                          if (_nameError != null) setState(() => _nameError = null);
+                          if (_nameError != null) {
+                            setState(() => _nameError = null);
+                          }
                         },
                       ),
                       const SizedBox(height: AppSpacing.md),
                       Text(
                         '分类 *',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: AppColors.onSurfaceVariant,
-                            ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(color: AppColors.onSurfaceVariant),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Container(
@@ -210,19 +217,21 @@ class _CustomRecipeFormScreenState
                           children: [
                             RecipeCategoryChips(
                               selected: _categoryController.text,
-                              onChanged: (value) => setState(() {
-                                _categoryController.text = value;
-                                _categoryError = null;
-                              }),
+                              onChanged:
+                                  (value) => setState(() {
+                                    _categoryController.text = value;
+                                    _categoryError = null;
+                                  }),
                             ),
                             if (_categoryError != null)
                               Padding(
-                                padding: const EdgeInsets.only(top: AppSpacing.xs),
+                                padding: const EdgeInsets.only(
+                                  top: AppSpacing.xs,
+                                ),
                                 child: Text(
                                   _categoryError!,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: AppColors.error,
-                                      ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: AppColors.error),
                                 ),
                               ),
                           ],
@@ -231,9 +240,8 @@ class _CustomRecipeFormScreenState
                       const SizedBox(height: AppSpacing.md),
                       Text(
                         '烹饪时间 *',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: AppColors.onSurfaceVariant,
-                            ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(color: AppColors.onSurfaceVariant),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Container(
@@ -251,9 +259,8 @@ class _CustomRecipeFormScreenState
                       const SizedBox(height: AppSpacing.md),
                       Text(
                         '难度 *',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: AppColors.onSurfaceVariant,
-                            ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(color: AppColors.onSurfaceVariant),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Container(
@@ -262,20 +269,24 @@ class _CustomRecipeFormScreenState
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             DifficultyStars(
-                              value: int.tryParse(_difficultyController.text) ?? 3,
-                              onChanged: (value) => setState(() {
-                                _difficultyController.text = value.toString();
-                                _difficultyError = null;
-                              }),
+                              value:
+                                  int.tryParse(_difficultyController.text) ?? 3,
+                              onChanged:
+                                  (value) => setState(() {
+                                    _difficultyController.text =
+                                        value.toString();
+                                    _difficultyError = null;
+                                  }),
                             ),
                             if (_difficultyError != null)
                               Padding(
-                                padding: const EdgeInsets.only(top: AppSpacing.xs),
+                                padding: const EdgeInsets.only(
+                                  top: AppSpacing.xs,
+                                ),
                                 child: Text(
                                   _difficultyError!,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: AppColors.error,
-                                      ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: AppColors.error),
                                 ),
                               ),
                           ],
@@ -313,9 +324,8 @@ class _CustomRecipeFormScreenState
                           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                           child: Text(
                             _ingredientsError!,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.error,
-                                ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AppColors.error),
                           ),
                         ),
                       ReorderableListView.builder(
@@ -325,8 +335,9 @@ class _CustomRecipeFormScreenState
                         itemCount: _ingredientControllers.length,
                         onReorder: (oldIndex, newIndex) {
                           setState(() {
-                            final item =
-                                _ingredientControllers.removeAt(oldIndex);
+                            final item = _ingredientControllers.removeAt(
+                              oldIndex,
+                            );
                             _ingredientControllers.insert(newIndex, item);
                           });
                         },
@@ -335,7 +346,8 @@ class _CustomRecipeFormScreenState
                           return Padding(
                             key: ValueKey(ing.dragKey),
                             padding: const EdgeInsets.symmetric(
-                                vertical: AppSpacing.xs),
+                              vertical: AppSpacing.xs,
+                            ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
@@ -353,7 +365,11 @@ class _CustomRecipeFormScreenState
                                     controller: ing.nameController,
                                     decoration: _compactDecoration('食材名称'),
                                     onChanged: (_) {
-                                      if (_ingredientsError != null) setState(() => _ingredientsError = null);
+                                      if (_ingredientsError != null) {
+                                        setState(
+                                          () => _ingredientsError = null,
+                                        );
+                                      }
                                     },
                                   ),
                                 ),
@@ -366,26 +382,32 @@ class _CustomRecipeFormScreenState
                                     textAlign: TextAlign.right,
                                     keyboardType:
                                         const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
+                                          decimal: true,
+                                        ),
                                     onChanged: (_) {
-                                      if (_ingredientsError != null) setState(() => _ingredientsError = null);
+                                      if (_ingredientsError != null) {
+                                        setState(
+                                          () => _ingredientsError = null,
+                                        );
+                                      }
                                     },
                                   ),
                                 ),
                                 const SizedBox(width: AppSpacing.sm),
                                 UnitDropdown(
                                   value: ing.unit,
-                                  onChanged: (value) => setState(() {
-                                    ing.unit = value;
-                                    _ingredientsError = null;
-                                  }),
+                                  onChanged:
+                                      (value) => setState(() {
+                                        ing.unit = value;
+                                        _ingredientsError = null;
+                                      }),
                                 ),
                                 if (i > 0)
                                   IconButton(
                                     onPressed: () => _removeIngredient(i),
                                     icon: const Icon(
-                                        Icons.remove_circle_outline),
+                                      Icons.remove_circle_outline,
+                                    ),
                                     tooltip: '移除食材',
                                     color: AppColors.error,
                                   ),
@@ -429,9 +451,8 @@ class _CustomRecipeFormScreenState
                           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                           child: Text(
                             _stepsError!,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.error,
-                                ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AppColors.error),
                           ),
                         ),
                       ReorderableListView.builder(
@@ -449,7 +470,9 @@ class _CustomRecipeFormScreenState
                           final entry = _stepEntries[i];
                           return Padding(
                             key: ValueKey(entry.dragKey),
-                            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AppSpacing.sm,
+                            ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -464,10 +487,12 @@ class _CustomRecipeFormScreenState
                                   alignment: Alignment.center,
                                   child: Text(
                                     '${i + 1}',
-                                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                          color: AppColors.onPrimary,
-                                          fontWeight: FontWeight.w800,
-                                        ),
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.labelLarge?.copyWith(
+                                      color: AppColors.onPrimary,
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: AppSpacing.md),
@@ -477,7 +502,9 @@ class _CustomRecipeFormScreenState
                                     decoration: _compactDecoration('输入下一步…'),
                                     maxLines: null,
                                     onChanged: (_) {
-                                      if (_stepsError != null) setState(() => _stepsError = null);
+                                      if (_stepsError != null) {
+                                        setState(() => _stepsError = null);
+                                      }
                                     },
                                   ),
                                 ),
@@ -498,7 +525,9 @@ class _CustomRecipeFormScreenState
                                     if (i > 0)
                                       IconButton(
                                         onPressed: () => _removeStep(i),
-                                        icon: const Icon(Icons.remove_circle_outline),
+                                        icon: const Icon(
+                                          Icons.remove_circle_outline,
+                                        ),
                                         tooltip: '移除步骤',
                                         color: AppColors.error,
                                         visualDensity: VisualDensity.compact,
@@ -531,9 +560,7 @@ class _CustomRecipeFormScreenState
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: AppColors.surface,
-          border: Border(
-            top: BorderSide(color: AppColors.outlineVariant),
-          ),
+          border: Border(top: BorderSide(color: AppColors.outlineVariant)),
         ),
         child: SafeArea(
           minimum: const EdgeInsets.all(AppSpacing.lg),
@@ -542,24 +569,26 @@ class _CustomRecipeFormScreenState
             style: FilledButton.styleFrom(
               minimumSize: const Size(double.infinity, 48),
             ),
-            child: _isSaving
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(AppColors.onPrimary),
+            child:
+                _isSaving
+                    ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.onPrimary,
+                            ),
+                          ),
                         ),
-                      ),
-                      SizedBox(width: AppSpacing.sm),
-                      Text('保存中…'),
-                    ],
-                  )
-                : const Text('保存食谱'),
+                        SizedBox(width: AppSpacing.sm),
+                        Text('保存中…'),
+                      ],
+                    )
+                    : const Text('保存食谱'),
           ),
         ),
       ),
@@ -601,10 +630,7 @@ class _CustomRecipeFormScreenState
       SnackBar(
         duration: const Duration(seconds: 8),
         content: Text('检测到食谱链接：$url'),
-        action: SnackBarAction(
-          label: '解析',
-          onPressed: _onParseUrl,
-        ),
+        action: SnackBarAction(label: '解析', onPressed: _onParseUrl),
       ),
     );
 
@@ -622,20 +648,24 @@ class _CustomRecipeFormScreenState
       return;
     }
     final notifier = ref.read(aiDraftProvider.notifier);
-    final parser = widget.urlParserOverride ??
+    final parser =
+        widget.urlParserOverride ??
         (u) => AiRecipeParser.fromUrl(
-              u,
-              chatFn: (msgs) => AiClient.chat(
+          u,
+          chatFn:
+              (msgs) => AiClient.chat(
                 settings: ref.read(aiSettingsProvider),
                 messages: msgs,
                 responseFormat: const {'type': 'json_object'},
               ),
-            );
+        );
     await notifier.runRecipeFromUrl(url, parser: parser);
     final state = ref.read(aiDraftProvider);
     if (state.error is AiNotConfiguredException) {
       if (!mounted) return;
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AiSettingsScreen()));
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const AiSettingsScreen()));
       return;
     }
     if (state.error != null) {
@@ -646,9 +676,12 @@ class _CustomRecipeFormScreenState
     if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => RecipeDraftReviewScreen(
-          regenerate: (sourceUrl) => notifier.runRecipeFromUrl(sourceUrl, parser: parser),
-        ),
+        builder:
+            (_) => RecipeDraftReviewScreen(
+              regenerate:
+                  (sourceUrl) =>
+                      notifier.runRecipeFromUrl(sourceUrl, parser: parser),
+            ),
       ),
     );
   }
@@ -664,10 +697,11 @@ class _CustomRecipeFormScreenState
     final cookingMinutes = int.tryParse(_cookingMinutesController.text.trim());
     final difficulty = int.tryParse(_difficultyController.text.trim());
     final imageUrl = _normalizedCoverImageSource();
-    final steps = _stepEntries
-        .map((entry) => entry.controller.text.trim())
-        .where((step) => step.isNotEmpty)
-        .toList();
+    final steps =
+        _stepEntries
+            .map((entry) => entry.controller.text.trim())
+            .where((step) => step.isNotEmpty)
+            .toList();
 
     final missingFields = _missingFields(
       name: name,
@@ -678,20 +712,19 @@ class _CustomRecipeFormScreenState
     );
     if (missingFields.isNotEmpty) {
       setState(() {
-        _nameError =
-            missingFields.contains('食谱名称') ? '请填入食谱名称' : null;
+        _nameError = missingFields.contains('食谱名称') ? '请填入食谱名称' : null;
         _categoryError = missingFields.contains('分类') ? '请选择分类' : null;
         _cookingMinutesError =
             missingFields.contains('有效烹饪时间') ? '请输入大于 0 的分钟数' : null;
         _difficultyError =
             missingFields.contains('1-5 的难度') ? '请选择 1-5 颗星' : null;
-        final ingredientErrors = missingFields
-            .where((m) => ['至少一种食材', '食材名称', '食材用量'].contains(m))
-            .toList();
+        final ingredientErrors =
+            missingFields
+                .where((m) => ['至少一种食材', '食材名称', '食材用量'].contains(m))
+                .toList();
         _ingredientsError =
             ingredientErrors.isEmpty ? null : ingredientErrors.join('、');
-        _stepsError =
-            missingFields.contains('至少一个步骤') ? '至少添加一个步骤' : null;
+        _stepsError = missingFields.contains('至少一个步骤') ? '至少添加一个步骤' : null;
       });
       await _scrollToFirstError();
       return;
@@ -733,10 +766,15 @@ class _CustomRecipeFormScreenState
       }
     } on Object {
       if (mounted) {
-        _showError('保存失败，请重试');
         setState(() {
           _isSaving = false;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('保存失败，请重试'),
+            action: SnackBarAction(label: '重试', onPressed: _saveRecipe),
+          ),
+        );
       }
       return;
     }
@@ -996,8 +1034,8 @@ class _CoverImagePlaceholder extends StatelessWidget {
               Text(
                 '添加封面（可选）',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.onSurfaceVariant,
-                    ),
+                  color: AppColors.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
               Wrap(
@@ -1056,7 +1094,9 @@ class _CoverImageHero extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Theme.of(context).colorScheme.onSurface.withValues(alpha: 0),
+                    Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0),
                     Theme.of(
                       context,
                     ).colorScheme.onSurface.withValues(alpha: 0.13),
@@ -1145,7 +1185,10 @@ class _HeroImageButton extends StatelessWidget {
         foregroundColor: AppColors.onPrimary,
         backgroundColor: AppColors.onImageScrim,
         side: const BorderSide(color: AppColors.onImageBorderStrong),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
         minimumSize: const Size(0, 40),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
@@ -1173,9 +1216,9 @@ class _IngredientControllers {
     required String name,
     required String quantity,
     required this.unit,
-  })  : nameController = TextEditingController(text: name),
-        quantityController = TextEditingController(text: quantity),
-        dragKey = UniqueKey();
+  }) : nameController = TextEditingController(text: name),
+       quantityController = TextEditingController(text: quantity),
+       dragKey = UniqueKey();
 
   factory _IngredientControllers.empty() {
     return _IngredientControllers(name: '', quantity: '', unit: 'g');
@@ -1207,12 +1250,11 @@ class _IngredientControllers {
 
 class _StepEntry {
   _StepEntry({String text = ''})
-      : controller = TextEditingController(text: text),
-        dragKey = UniqueKey();
+    : controller = TextEditingController(text: text),
+      dragKey = UniqueKey();
 
   final TextEditingController controller;
   final Key dragKey;
 
   void dispose() => controller.dispose();
 }
-

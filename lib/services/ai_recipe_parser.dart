@@ -1,7 +1,6 @@
-import 'dart:convert';
-
 import '../models/draft_field.dart';
 import '../models/recipe_draft.dart';
+import '../utils/ai_json_extract.dart';
 import 'ai_client.dart';
 
 typedef AiChatFn = Future<String> Function(List<AiMessage> messages);
@@ -23,7 +22,7 @@ class AiRecipeParser {
     ];
 
     final raw = await chatFn(messages);
-    final json = _extractJsonObject(raw);
+    final json = extractJsonObjectWithFallbacks(raw);
     if (json == null) {
       throw const AiParseException('AI 返回不是合法 JSON');
     }
@@ -39,18 +38,25 @@ class AiRecipeParser {
         cookingMinutes: DraftField.ai(_requireInt(json, 'cookingMinutes')),
         difficulty: DraftField.ai(_requireInt(json, 'difficulty')),
         description: DraftField.ai((json['description'] as String?) ?? ''),
-        imageUrl: DraftField<String?>(value: json['imageUrl'] as String?, source: DraftSource.ai),
-        ingredients: ((json['ingredients'] as List<dynamic>?) ?? const [])
-            .whereType<Map<String, dynamic>>()
-            .map((e) => RecipeIngredientDraft(
-                  name: DraftField.ai(_requireString(e, 'name')),
-                  amount: DraftField.ai(_requireString(e, 'amount')),
-                ))
-            .toList(),
-        steps: ((json['steps'] as List<dynamic>?) ?? const [])
-            .whereType<String>()
-            .map(DraftField<String>.ai)
-            .toList(),
+        imageUrl: DraftField<String?>(
+          value: json['imageUrl'] as String?,
+          source: DraftSource.ai,
+        ),
+        ingredients:
+            ((json['ingredients'] as List<dynamic>?) ?? const [])
+                .whereType<Map<String, dynamic>>()
+                .map(
+                  (e) => RecipeIngredientDraft(
+                    name: DraftField.ai(_requireString(e, 'name')),
+                    amount: DraftField.ai(_requireString(e, 'amount')),
+                  ),
+                )
+                .toList(),
+        steps:
+            ((json['steps'] as List<dynamic>?) ?? const [])
+                .whereType<String>()
+                .map(DraftField<String>.ai)
+                .toList(),
       );
     } on AiParseException {
       rethrow;
@@ -72,29 +78,5 @@ class AiRecipeParser {
     if (v is int) return v;
     if (v is num) return v.round();
     throw AiParseException('字段 $key 缺失或非整数');
-  }
-
-  static Map<String, dynamic>? _extractJsonObject(String input) {
-    try {
-      final v = jsonDecode(input);
-      if (v is Map<String, dynamic>) return v;
-    } catch (_) {}
-
-    final fenceMatch = RegExp(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```').firstMatch(input);
-    if (fenceMatch != null) {
-      try {
-        final v = jsonDecode(fenceMatch.group(1)!);
-        if (v is Map<String, dynamic>) return v;
-      } catch (_) {}
-    }
-
-    final braceMatch = RegExp(r'\{[\s\S]*\}').firstMatch(input);
-    if (braceMatch != null) {
-      try {
-        final v = jsonDecode(braceMatch.group(0)!);
-        if (v is Map<String, dynamic>) return v;
-      } catch (_) {}
-    }
-    return null;
   }
 }

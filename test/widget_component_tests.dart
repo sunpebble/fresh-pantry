@@ -4,10 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fresh_pantry/data/food_categories.dart';
 import 'package:fresh_pantry/models/ingredient.dart';
 import 'package:fresh_pantry/models/storage_area.dart';
+import 'package:fresh_pantry/providers/navigation_provider.dart';
 import 'package:fresh_pantry/widgets/common/bottom_nav_bar.dart';
 import 'package:fresh_pantry/widgets/dashboard/curators_tip_card.dart';
 import 'package:fresh_pantry/widgets/dashboard/quick_action_card.dart';
 import 'package:fresh_pantry/widgets/dashboard/stat_card.dart';
+import 'package:fresh_pantry/widgets/dashboard/storage_summary_card.dart';
 import 'package:fresh_pantry/widgets/shared/category_icon.dart';
 import 'package:fresh_pantry/widgets/shared/freshness_meter.dart';
 import 'package:fresh_pantry/widgets/shared/recipe_image.dart';
@@ -97,20 +99,13 @@ void main() {
 
   group('CuratorsTipCard', () {
     testWidgets('renders tip text', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const CuratorsTipCard(tip: '今天适合清炒一道蔬菜')),
-      );
+      await tester.pumpWidget(_wrap(const CuratorsTipCard(tip: '今天适合清炒一道蔬菜')));
       expect(find.textContaining('今天适合清炒'), findsOneWidget);
     });
 
     testWidgets('renders custom bottomLabel', (tester) async {
       await tester.pumpWidget(
-        _wrap(
-          const CuratorsTipCard(
-            tip: '提示',
-            bottomLabel: '自定义底部文字',
-          ),
-        ),
+        _wrap(const CuratorsTipCard(tip: '提示', bottomLabel: '自定义底部文字')),
       );
       expect(find.text('自定义底部文字'), findsOneWidget);
     });
@@ -158,24 +153,14 @@ void main() {
   group('FreshnessMeter', () {
     testWidgets('renders fresh label at 80%', (tester) async {
       await tester.pumpWidget(
-        _wrap(
-          const FreshnessMeter(
-            percent: 0.8,
-            state: FreshnessState.fresh,
-          ),
-        ),
+        _wrap(const FreshnessMeter(percent: 0.8, state: FreshnessState.fresh)),
       );
       expect(find.textContaining('80%'), findsOneWidget);
     });
 
     testWidgets('renders expired state', (tester) async {
       await tester.pumpWidget(
-        _wrap(
-          const FreshnessMeter(
-            percent: 0,
-            state: FreshnessState.expired,
-          ),
-        ),
+        _wrap(const FreshnessMeter(percent: 0, state: FreshnessState.expired)),
       );
       expect(find.textContaining('0%'), findsOneWidget);
     });
@@ -201,23 +186,19 @@ void main() {
     testWidgets('shows fallback when imageSource is null', (tester) async {
       await tester.pumpWidget(
         _wrap(
-          RecipeImage(
-            imageSource: null,
-            fallback: const Text('placeholder'),
-          ),
+          RecipeImage(imageSource: null, fallback: const Text('placeholder')),
         ),
       );
       await tester.pump();
       expect(find.text('placeholder'), findsOneWidget);
     });
 
-    testWidgets('shows fallback when imageSource is empty string', (tester) async {
+    testWidgets('shows fallback when imageSource is empty string', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
-          RecipeImage(
-            imageSource: '',
-            fallback: const Text('empty-fallback'),
-          ),
+          RecipeImage(imageSource: '', fallback: const Text('empty-fallback')),
         ),
       );
       await tester.pump();
@@ -229,16 +210,16 @@ void main() {
 
   group('SmartPlannerCard', () {
     testWidgets('renders title', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const SmartPlannerCard(title: '番茄炒蛋')),
-      );
+      await tester.pumpWidget(_wrap(const SmartPlannerCard(title: '番茄炒蛋')));
       expect(find.text('番茄炒蛋'), findsOneWidget);
     });
 
     testWidgets('fires onViewRecipe callback', (tester) async {
       var tapped = false;
       await tester.pumpWidget(
-        _wrap(SmartPlannerCard(title: '青椒肉丝', onViewRecipe: () => tapped = true)),
+        _wrap(
+          SmartPlannerCard(title: '青椒肉丝', onViewRecipe: () => tapped = true),
+        ),
       );
       // The button is inside the card — find it by text or icon
       final viewBtn = find.text('查看菜谱');
@@ -253,10 +234,24 @@ void main() {
 
   group('BottomNavBar', () {
     testWidgets('renders without error', (tester) async {
-      await tester.pumpWidget(
-        _wrapProvider(const BottomNavBar()),
-      );
+      await tester.pumpWidget(_wrapProvider(const BottomNavBar()));
       expect(find.byType(BottomNavBar), findsOneWidget);
+    });
+
+    testWidgets('tap switches the navigation provider tab', (tester) async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: Scaffold(body: BottomNavBar())),
+        ),
+      );
+
+      await tester.tap(find.text('食材'));
+      await tester.pump();
+
+      expect(container.read(navigationProvider), FkTab.fridge);
     });
   });
 
@@ -270,34 +265,10 @@ void main() {
         itemCount: 5,
         capacityPercent: 0.6,
       );
-      await tester.pumpWidget(
-        _wrap(StorageSummaryCardWrapper(area: fridgeArea)),
-      );
+      await tester.pumpWidget(_wrap(StorageSummaryCard(area: fridgeArea)));
       expect(find.text('冰箱'), findsOneWidget);
+      expect(find.text('5 件'), findsOneWidget);
+      expect(find.text('60% 容量'), findsOneWidget);
     });
   });
-}
-
-// Minimal wrapper to avoid importing storage_summary_card directly
-// (it uses StorageArea model which needs to be constructed)
-class StorageSummaryCardWrapper extends StatelessWidget {
-  final StorageArea area;
-  const StorageSummaryCardWrapper({super.key, required this.area});
-
-  @override
-  Widget build(BuildContext context) {
-    // Import inline to avoid top-level import issues in test
-    return Builder(
-      builder: (context) {
-        // We just test that it renders — import is at build time
-        try {
-          // Dynamic import workaround: use a Text widget as placeholder
-          // The actual StorageSummaryCard is tested by rendering
-          return Text(area.name);
-        } catch (e) {
-          return Text('Error: $e');
-        }
-      },
-    );
-  }
 }
