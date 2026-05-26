@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fresh_pantry/widgets/shared/cat_icon.dart';
+import 'package:fresh_pantry/widgets/shared/fk_nav_icon.dart';
 import 'package:fresh_pantry/widgets/shared/zone_icon.dart';
 
 void main() {
@@ -23,6 +24,18 @@ void main() {
       );
       await tester.pump();
       expect(find.byType(ZoneIcon), findsOneWidget);
+    }
+  });
+
+  testWidgets('FkNavIcon renders all 5 nav icons without throwing', (
+    tester,
+  ) async {
+    for (final icon in kFkNavIconIds) {
+      await tester.pumpWidget(
+        MaterialApp(home: Scaffold(body: FkNavIcon(icon: icon))),
+      );
+      await tester.pump();
+      expect(find.byType(FkNavIcon), findsOneWidget);
     }
   });
 

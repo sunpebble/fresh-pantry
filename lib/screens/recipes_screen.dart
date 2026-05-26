@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../widgets/recipe_card.dart';
 import '../widgets/shared/fk_icon_button.dart';
 import '../widgets/shared/fk_top_bar.dart';
+import 'custom_recipe_form_screen.dart';
 import 'recipe_detail_screen.dart';
 
 /// FreshKeeper 菜谱 tab — 设计稿 `screens-3.jsx::RecipesScreen`。
@@ -58,6 +59,12 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
         _query = '';
       }
     });
+  }
+
+  void _openCustomRecipeForm() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const CustomRecipeFormScreen()),
+    );
   }
 
   @override
@@ -120,6 +127,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
             title: '智能菜谱',
             subtitle: '基于你的冰箱推荐',
             actions: [
+              FkIconButton(
+                onTap: _openCustomRecipeForm,
+                child: const Icon(Icons.add_rounded, size: 18),
+              ),
               FkIconButton(
                 onTap: _toggleSearch,
                 child: Icon(

@@ -8,10 +8,38 @@ import 'package:fresh_pantry/models/recipe.dart';
 import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/recipe_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
+import 'package:fresh_pantry/screens/custom_recipe_form_screen.dart';
 import 'package:fresh_pantry/screens/recipes_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  testWidgets('recipes screen add button opens custom recipe form', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          inventorySeedProvider.overrideWithValue(const <Ingredient>[]),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(useMaterial3: false),
+          home: const Scaffold(body: RecipesScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.add_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CustomRecipeFormScreen), findsOneWidget);
+    expect(find.text('保存食谱'), findsOneWidget);
+  });
+
   testWidgets('explore tab shows recipe loading skeleton', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();

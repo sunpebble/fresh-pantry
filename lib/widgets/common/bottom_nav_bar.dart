@@ -4,9 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/navigation_provider.dart';
 import '../../theme/app_theme.dart';
+import '../shared/fk_nav_icon.dart';
 
 class _NavItem {
-  final IconData icon;
+  final String icon;
   final String label;
   const _NavItem(this.icon, this.label);
 }
@@ -17,11 +18,11 @@ class BottomNavBar extends ConsumerWidget {
   const BottomNavBar({super.key});
 
   static const _items = [
-    _NavItem(Icons.home_rounded, '首页'),
-    _NavItem(Icons.kitchen_rounded, '食材'),
-    _NavItem(Icons.add_rounded, ''),
-    _NavItem(Icons.menu_book_rounded, '菜谱'),
-    _NavItem(Icons.shopping_cart_rounded, '清单'),
+    _NavItem('home', '首页'),
+    _NavItem('fridge', '食材'),
+    _NavItem('add', ''),
+    _NavItem('recipes', '菜谱'),
+    _NavItem('shopping', '清单'),
   ];
 
   @override
@@ -77,7 +78,7 @@ class BottomNavBar extends ConsumerWidget {
 }
 
 class _TabButton extends StatelessWidget {
-  final IconData icon;
+  final String icon;
   final String label;
   final bool active;
   final VoidCallback onTap;
@@ -103,7 +104,7 @@ class _TabButton extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 22, color: color),
+              FkNavIcon(icon: icon, size: 22, color: color),
               const SizedBox(height: 3),
               Text(
                 label,
@@ -121,7 +122,7 @@ class _TabButton extends StatelessWidget {
 }
 
 class _PrimaryFab extends StatelessWidget {
-  final IconData icon;
+  final String icon;
   final VoidCallback onTap;
   const _PrimaryFab({required this.icon, required this.onTap});
 
@@ -149,7 +150,12 @@ class _PrimaryFab extends StatelessWidget {
             ],
           ),
           alignment: Alignment.center,
-          child: Icon(icon, size: AppSize.iconMd + 6, color: Colors.white),
+          child: FkNavIcon(
+            icon: icon,
+            size: AppSize.iconMd + 6,
+            color: AppColors.onPrimary,
+            strokeWidth: 2,
+          ),
         ),
       ),
     );
