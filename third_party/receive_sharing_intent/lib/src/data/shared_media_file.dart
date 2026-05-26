@@ -1,4 +1,4 @@
-part of receive_sharing_intent;
+part of '../../receive_sharing_intent.dart';
 
 class SharedMediaFile {
   /// Shared file path, url or the text

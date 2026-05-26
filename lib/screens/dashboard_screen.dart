@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../data/food_categories.dart';
 import '../models/ingredient.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/navigation_provider.dart';
@@ -90,6 +91,16 @@ String _categoryCountsSignature(List<Ingredient> items) {
   final entries =
       counts.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
   return entries.map((entry) => '${entry.key}:${entry.value}').join('|');
+}
+
+String _inventoryCategoryForFkCategoryId(String catId) {
+  return switch (catId) {
+    'dairy' => FoodCategories.dairyAndEggs,
+    'veg' || 'fruit' => FoodCategories.freshProduce,
+    'meat' || 'sea' => FoodCategories.meatAndSeafood,
+    'sauce' => FoodCategories.herbsAndSpices,
+    _ => FoodCategories.other,
+  };
 }
 
 Future<void> _addToShoppingList(
@@ -214,7 +225,12 @@ class _CategorySection extends ConsumerWidget {
                   )
                   : _CategoryGrid(
                     counts: categoryCounts,
-                    onTap: (cat) => ref.navigateToTab(FkTab.fridge),
+                    onTap: (cat) {
+                      ref
+                          .read(selectedCategoryProvider.notifier)
+                          .state = _inventoryCategoryForFkCategoryId(cat);
+                      ref.navigateToTab(FkTab.fridge);
+                    },
                   ),
         ),
       ],

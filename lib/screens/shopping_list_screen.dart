@@ -28,11 +28,24 @@ import 'recipe_detail_screen.dart';
 /// FK top bar + 大渐变进度卡(本次采购进度 + 大数字 done/total + percent + 白色
 /// 进度条)+ 待购/已购 filter chip + 按品类分组 FkCard(每行圆形 check + 名称 +
 /// detail + 删除 icon)+ 清空已完成 dashed CTA。
-class ShoppingListScreen extends ConsumerWidget {
+class ShoppingListScreen extends ConsumerStatefulWidget {
   const ShoppingListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ShoppingListScreen> createState() => _ShoppingListScreenState();
+}
+
+class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
+  final _quickAddFocusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _quickAddFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final viewState = ref.watch(shoppingListViewProvider);
     final collapsedCategories = ref.watch(collapsedShoppingCategoriesProvider);
     final allItems = viewState.items;
@@ -66,11 +79,8 @@ class ShoppingListScreen extends ConsumerWidget {
                               : '$checkedCount/$total 已完成 · $uncheckedCount 件待购',
                       actions: [
                         FkIconButton(
+                          onTap: _quickAddFocusNode.requestFocus,
                           child: const Icon(Icons.add_rounded, size: 18),
-                          onTap:
-                              () =>
-                                  FocusManager.instance.primaryFocus
-                                      ?.requestFocus(),
                         ),
                       ],
                     ),
@@ -89,7 +99,7 @@ class ShoppingListScreen extends ConsumerWidget {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
-                    child: const QuickAddField(),
+                    child: QuickAddField(focusNode: _quickAddFocusNode),
                   ),
                 ),
                 SliverToBoxAdapter(

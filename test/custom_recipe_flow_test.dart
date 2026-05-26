@@ -832,6 +832,130 @@ void main() {
     expect(find.text('第一'), findsOneWidget);
     expect(find.text('第二'), findsOneWidget);
   });
+
+  testWidgets('moving first ingredient down saves it at the dropped position', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(412, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final prefs = await _prefs({});
+    await tester.pumpWidget(_app(prefs, const CustomRecipeFormScreen()));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, '食谱名称 *'), '顺序测试');
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(CookingTimeRow),
+        matching: find.byType(TextField),
+      ),
+      '12',
+    );
+    await tester.enterText(
+      find
+          .byWidgetPredicate(
+            (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
+          )
+          .first,
+      '完成',
+    );
+
+    for (final name in const ['第一', '第二', '第三']) {
+      if (name != '第一') {
+        await tester.scrollUntilVisible(
+          find.text('添加食材'),
+          300,
+          scrollable: find.byType(Scrollable).last,
+        );
+        await tester.tap(find.text('添加食材'));
+        await tester.pumpAndSettle();
+      }
+      final index = const ['第一', '第二', '第三'].indexOf(name);
+      await tester.enterText(
+        find.widgetWithText(TextField, '食材名称').at(index),
+        name,
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, '用量').at(index),
+        '1',
+      );
+    }
+
+    await tester.drag(
+      find.byIcon(Icons.drag_indicator).first,
+      const Offset(0, 180),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('保存食谱'));
+    await tester.pump();
+    await tester.pump();
+
+    final saved = json.decode(prefs.getString(customRecipesStorageKey)!);
+    final ingredients = saved.single['ingredients'] as List<dynamic>;
+    expect(ingredients.map((ingredient) => ingredient['name']).toList(), [
+      '第二',
+      '第三',
+      '第一',
+    ]);
+  });
+
+  testWidgets('moving first step down saves it at the dropped position', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(412, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final prefs = await _prefs({});
+    await tester.pumpWidget(_app(prefs, const CustomRecipeFormScreen()));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, '食谱名称 *'), '步骤顺序');
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(CookingTimeRow),
+        matching: find.byType(TextField),
+      ),
+      '12',
+    );
+    await tester.enterText(find.widgetWithText(TextField, '食材名称').first, '面条');
+    await tester.enterText(find.widgetWithText(TextField, '用量').first, '1');
+
+    for (final step in const ['第一步', '第二步', '第三步']) {
+      if (step != '第一步') {
+        await tester.scrollUntilVisible(
+          find.text('添加步骤'),
+          300,
+          scrollable: find.byType(Scrollable).last,
+        );
+        await tester.tap(find.text('添加步骤'));
+        await tester.pumpAndSettle();
+      }
+      final index = const ['第一步', '第二步', '第三步'].indexOf(step);
+      await tester.enterText(
+        find
+            .byWidgetPredicate(
+              (w) => w is TextField && w.decoration?.hintText == '输入下一步…',
+            )
+            .at(index),
+        step,
+      );
+    }
+
+    final stepDragHandles = find.descendant(
+      of: find.byType(ReorderableListView).at(1),
+      matching: find.byIcon(Icons.drag_indicator),
+    );
+    await tester.drag(stepDragHandles.first, const Offset(0, 280));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('保存食谱'));
+    await tester.pump();
+    await tester.pump();
+
+    final saved = json.decode(prefs.getString(customRecipesStorageKey)!);
+    expect(saved.single['steps'], ['第二步', '第三步', '第一步']);
+  });
 }
 
 Future<SharedPreferences> _prefs(Map<String, Object> values) async {

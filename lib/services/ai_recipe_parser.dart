@@ -24,12 +24,10 @@ class AiRecipeParser {
             '不要声称无法访问网页；只根据提供的内容工作。'
             '只返回 JSON，不要前后文。如果内容不足以抽取，返回 {"error":"..."}。'
             'JSON 字段：name, category, cookingMinutes (int 分钟), difficulty (int 1-5), '
-            'description, imageUrl (可空), ingredients ([{name, amount}]), steps (string array)。',
+            'description, imageUrl (可空；如果网页内容包含“封面图片”，优先使用该 URL), '
+            'ingredients ([{name, amount}]), steps (string array)。',
       ),
-      AiMessage.text(
-        'user',
-        '来源 URL：$normalizedUrl\n\n网页内容：\n$pageText',
-      ),
+      AiMessage.text('user', '来源 URL：$normalizedUrl\n\n网页内容：\n$pageText'),
     ];
 
     final raw = await chatFn(messages);

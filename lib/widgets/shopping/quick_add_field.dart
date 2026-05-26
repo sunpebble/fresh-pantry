@@ -5,7 +5,9 @@ import '../../theme/app_theme.dart';
 import '../../utils/app_snackbar.dart';
 
 class QuickAddField extends ConsumerStatefulWidget {
-  const QuickAddField({super.key});
+  const QuickAddField({super.key, this.focusNode});
+
+  final FocusNode? focusNode;
 
   @override
   ConsumerState<QuickAddField> createState() => _QuickAddFieldState();
@@ -55,6 +57,7 @@ class _QuickAddFieldState extends ConsumerState<QuickAddField> {
           borderRadius: BorderRadius.circular(AppRadius.sm),
         ),
         child: TextField(
+          focusNode: widget.focusNode,
           controller: _controller,
           textInputAction: TextInputAction.done,
           decoration: InputDecoration(

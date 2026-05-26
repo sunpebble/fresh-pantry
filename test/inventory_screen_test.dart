@@ -27,10 +27,7 @@ void main() {
   ) async {
     SharedPreferences.setMockInitialValues({
       'inventory_items': jsonEncode([
-        _ingredient(
-          name: '番茄',
-          category: FoodCategories.freshProduce,
-        ).toJson(),
+        _ingredient(name: '番茄', category: FoodCategories.freshProduce).toJson(),
         _ingredient(
           name: '牛奶',
           category: FoodCategories.dairyAndEggs,
@@ -67,56 +64,53 @@ void main() {
     expect(find.widgetWithText(IngredientCard, '牛奶'), findsNothing);
   });
 
-  testWidgets(
-    'deletes the selected filtered inventory item by original index',
-    (tester) async {
-      final otherCategoryItem = _ingredient(
-        name: '米饭',
-        category: FoodCategories.other,
-      );
-      final targetCategoryItem = _ingredient(
-        name: '番茄',
-        category: FoodCategories.freshProduce,
-      );
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': jsonEncode([
-          otherCategoryItem.toJson(),
-          targetCategoryItem.toJson(),
-        ]),
-      });
-      final prefs = await SharedPreferences.getInstance();
-      late ProviderContainer container;
+  testWidgets('deletes the selected filtered inventory item by original index', (
+    tester,
+  ) async {
+    final otherCategoryItem = _ingredient(
+      name: '米饭',
+      category: FoodCategories.other,
+    );
+    final targetCategoryItem = _ingredient(
+      name: '番茄',
+      category: FoodCategories.freshProduce,
+    );
+    SharedPreferences.setMockInitialValues({
+      'inventory_items': jsonEncode([
+        otherCategoryItem.toJson(),
+        targetCategoryItem.toJson(),
+      ]),
+    });
+    final prefs = await SharedPreferences.getInstance();
+    late ProviderContainer container;
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-          child: Builder(
-            builder: (context) {
-              container = ProviderScope.containerOf(context);
-              return const MaterialApp(home: Scaffold(body: InventoryScreen()));
-            },
-          ),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        child: Builder(
+          builder: (context) {
+            container = ProviderScope.containerOf(context);
+            return const MaterialApp(home: Scaffold(body: InventoryScreen()));
+          },
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      // FK chip text now shows "果蔬生鲜 · 1" — match by prefix.
-      await tester.tap(find.textContaining(FoodCategories.freshProduce));
-      await tester.pumpAndSettle();
+    // FK chip text now shows "果蔬生鲜 · 1" — match by prefix.
+    await tester.tap(find.textContaining(FoodCategories.freshProduce));
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.text('番茄'));
-      await tester.pumpAndSettle();
-      // FK redesign: delete is an icon button on the hero, dialog still has "删除" text.
-      await tester.tap(find.byIcon(Icons.delete_outline_rounded));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('删除').last);
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('番茄'));
+    await tester.pumpAndSettle();
+    // FK redesign: delete is an icon button on the hero, dialog still has "删除" text.
+    await tester.tap(find.byIcon(Icons.delete_outline_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除').last);
+    await tester.pumpAndSettle();
 
-      expect(container.read(inventoryProvider).map((item) => item.name), [
-        '米饭',
-      ]);
-    },
-  );
+    expect(container.read(inventoryProvider).map((item) => item.name), ['米饭']);
+  });
 
   testWidgets(
     'detail delete removes the correct duplicate-name inventory item',
@@ -130,8 +124,10 @@ void main() {
         category: FoodCategories.freshProduce,
       ).copyWith(quantity: '2');
       SharedPreferences.setMockInitialValues({
-        'inventory_items':
-            jsonEncode([firstItem.toJson(), secondItem.toJson()]),
+        'inventory_items': jsonEncode([
+          firstItem.toJson(),
+          secondItem.toJson(),
+        ]),
       });
       final prefs = await SharedPreferences.getInstance();
       late ProviderContainer container;
@@ -142,9 +138,7 @@ void main() {
           child: Builder(
             builder: (context) {
               container = ProviderScope.containerOf(context);
-              return const MaterialApp(
-                home: Scaffold(body: InventoryScreen()),
-              );
+              return const MaterialApp(home: Scaffold(body: InventoryScreen()));
             },
           ),
         ),
@@ -213,6 +207,36 @@ void main() {
     expect(find.text('本地食材知识库'), findsOneWidget);
     // Name appears in the hero — at least one instance must exist on screen.
     expect(find.text('番茄'), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('changing search after multi-select does not crash', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'inventory_items': jsonEncode([
+        _ingredient(name: '牛奶', category: FoodCategories.dairyAndEggs).toJson(),
+        _ingredient(name: '番茄', category: FoodCategories.freshProduce).toJson(),
+      ]),
+    });
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        child: const MaterialApp(home: Scaffold(body: InventoryScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.byKey(const ValueKey('inv_番茄_1')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, '搜索食材'), '牛奶');
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('已选 1 件'), findsNothing);
+    expect(find.widgetWithText(IngredientCard, '牛奶'), findsOneWidget);
   });
 
   testWidgets(

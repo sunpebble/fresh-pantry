@@ -5,28 +5,35 @@ import 'package:fresh_pantry/data/food_categories.dart';
 import 'package:fresh_pantry/models/ingredient.dart';
 import 'package:fresh_pantry/models/recipe.dart';
 import 'package:fresh_pantry/models/storage_area.dart';
-import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/recipe_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/widgets/dashboard/expiring_fallback_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Ingredient _ing({required String name, FreshnessState? state}) => Ingredient(
-      name: name, quantity: '1', unit: '个', imageUrl: '',
-      freshnessPercent: state == FreshnessState.expiringSoon ? 0.2 : 1.0,
-      state: state ?? FreshnessState.fresh,
-      category: FoodCategories.other,
-      storage: IconType.fridge,
-    );
+  name: name,
+  quantity: '1',
+  unit: '个',
+  imageUrl: '',
+  freshnessPercent: state == FreshnessState.expiringSoon ? 0.2 : 1.0,
+  state: state ?? FreshnessState.fresh,
+  category: FoodCategories.other,
+  storage: IconType.fridge,
+);
 
 Recipe _recipe(String id, List<String> ings) => Recipe(
-      id: id, name: id, category: '中餐',
-      difficulty: 1, cookingMinutes: 10, description: '',
-      ingredients: ings
+  id: id,
+  name: id,
+  category: '中餐',
+  difficulty: 1,
+  cookingMinutes: 10,
+  description: '',
+  ingredients:
+      ings
           .map((n) => RecipeIngredient(name: n, quantity: '1', unit: '个'))
           .toList(),
-      steps: const [],
-    );
+  steps: const [],
+);
 
 void main() {
   testWidgets('renders SizedBox.shrink when no fallback', (tester) async {
@@ -46,8 +53,9 @@ void main() {
     expect(find.text('用临期食材'), findsNothing);
   });
 
-  testWidgets('renders recipe name + coverage when fallback exists',
-      (tester) async {
+  testWidgets('renders recipe name + coverage when fallback exists', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     await tester.pumpWidget(
@@ -58,9 +66,11 @@ void main() {
             _ing(name: '番茄', state: FreshnessState.expiringSoon),
             _ing(name: '鸡蛋', state: FreshnessState.expiringSoon),
           ]),
-          recipesProvider.overrideWith((ref) => Future.value([
-                _recipe('番茄炒蛋', ['番茄', '鸡蛋']),
-              ])),
+          recipesProvider.overrideWith(
+            (ref) => Future.value([
+              _recipe('番茄炒蛋', ['番茄', '鸡蛋']),
+            ]),
+          ),
         ],
         child: const MaterialApp(home: Scaffold(body: ExpiringFallbackCard())),
       ),

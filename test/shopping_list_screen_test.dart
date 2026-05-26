@@ -104,6 +104,28 @@ void main() {
     expect(find.text('「番茄」已删除'), findsOneWidget);
   });
 
+  testWidgets('top add button focuses the quick add field', (tester) async {
+    SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        child: const MaterialApp(home: Scaffold(body: ShoppingListScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final fieldBefore = tester.widget<EditableText>(find.byType(EditableText));
+    expect(fieldBefore.focusNode.hasFocus, isFalse);
+
+    await tester.tap(find.byIcon(Icons.add_rounded));
+    await tester.pump();
+
+    final fieldAfter = tester.widget<EditableText>(find.byType(EditableText));
+    expect(fieldAfter.focusNode.hasFocus, isTrue);
+  });
+
   testWidgets('smart planner view recipe opens the suggested recipe detail', (
     tester,
   ) async {

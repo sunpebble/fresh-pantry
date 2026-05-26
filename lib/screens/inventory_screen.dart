@@ -41,7 +41,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
   bool _canMerge(List<Ingredient> items) {
     if (_selected.length < 2) return false;
-    final rows = _selected.map((i) => items[i]).toList();
+    final rows =
+        _selected
+            .where((i) => i >= 0 && i < items.length)
+            .map((i) => items[i])
+            .toList();
+    if (rows.length < 2) return false;
     final first = rows.first;
     return rows.every(
       (r) =>
@@ -49,6 +54,14 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           r.unit == first.unit &&
           r.storage == first.storage,
     );
+  }
+
+  void _pruneSelectionFor(List<Ingredient> items) {
+    if (_selected.every((i) => i >= 0 && i < items.length)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _selected.removeWhere((i) => i < 0 || i >= items.length));
+    });
   }
 
   Future<void> _mergeSelected(List<Ingredient> displayItems) async {
@@ -154,6 +167,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     final query = ref.watch(inventorySearchQueryProvider);
     final items = ref.watch(filteredInventoryItemsProvider);
     final lowStock = ref.watch(lowStockItemsProvider);
+    _pruneSelectionFor(items);
 
     final canMerge = _canMerge(items);
     final showLowStockCta = lowStock.isNotEmpty && !_selectionMode;

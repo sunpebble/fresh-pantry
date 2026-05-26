@@ -7,9 +7,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fresh_pantry/app.dart';
+import 'package:fresh_pantry/data/food_categories.dart';
 import 'package:fresh_pantry/models/ingredient.dart';
 import 'package:fresh_pantry/models/storage_area.dart';
 import 'package:fresh_pantry/providers/ai_draft_provider.dart';
+import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/navigation_provider.dart';
 import 'package:fresh_pantry/providers/notification_service_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
@@ -39,8 +41,9 @@ void main() {
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
             systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
-            notificationServiceProvider
-                .overrideWithValue(FakeNotificationService()),
+            notificationServiceProvider.overrideWithValue(
+              FakeNotificationService(),
+            ),
           ],
           child: const FreshPantryApp(),
         ),
@@ -82,8 +85,9 @@ void main() {
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
-          notificationServiceProvider
-              .overrideWithValue(FakeNotificationService()),
+          notificationServiceProvider.overrideWithValue(
+            FakeNotificationService(),
+          ),
         ],
         child: const FreshPantryApp(),
       ),
@@ -118,8 +122,9 @@ void main() {
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
-          notificationServiceProvider
-              .overrideWithValue(FakeNotificationService()),
+          notificationServiceProvider.overrideWithValue(
+            FakeNotificationService(),
+          ),
         ],
         child: const FreshPantryApp(),
       ),
@@ -150,8 +155,9 @@ void main() {
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
-          notificationServiceProvider
-              .overrideWithValue(FakeNotificationService()),
+          notificationServiceProvider.overrideWithValue(
+            FakeNotificationService(),
+          ),
         ],
         child: const FreshPantryApp(),
       ),
@@ -169,6 +175,58 @@ void main() {
     expect(find.text('库存不足'), findsOneWidget);
   });
 
+  testWidgets(
+    'dashboard category tile opens fridge filtered to that category',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'inventory_items': jsonEncode([
+          _ingredient(
+            '黄瓜',
+          ).copyWith(category: FoodCategories.freshProduce).toJson(),
+          _ingredient(
+            '牛奶',
+          ).copyWith(category: FoodCategories.dairyAndEggs).toJson(),
+        ]),
+        'shopping_items': '[]',
+        'add_history': '{}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      late ProviderContainer container;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
+            notificationServiceProvider.overrideWithValue(
+              FakeNotificationService(),
+            ),
+          ],
+          child: Builder(
+            builder: (context) {
+              container = ProviderScope.containerOf(context);
+              return const FreshPantryApp();
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(container.read(selectedCategoryProvider), inventoryFilterAll);
+
+      await tester.ensureVisible(find.text('蔬菜'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('蔬菜'));
+      await tester.pumpAndSettle();
+
+      expect(container.read(navigationProvider), FkTab.fridge);
+      expect(
+        container.read(selectedCategoryProvider),
+        FoodCategories.freshProduce,
+      );
+    },
+  );
+
   testWidgets('discarding a new ingredient clears the form in place', (
     tester,
   ) async {
@@ -185,8 +243,9 @@ void main() {
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
-          notificationServiceProvider
-              .overrideWithValue(FakeNotificationService()),
+          notificationServiceProvider.overrideWithValue(
+            FakeNotificationService(),
+          ),
         ],
         child: Builder(
           builder: (context) {
