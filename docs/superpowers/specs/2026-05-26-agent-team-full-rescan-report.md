@@ -178,7 +178,7 @@
 
 ## Decisions Log
 
-(空)
+- **2026-05-26 LOW 批量批准**：用户批准全部 44 个 `auto-approved` LOW 项，Status 将在实施阶段逐步改为 `done`。blocked-by-high LOW 项待对应 HIGH 项决策后解锁。
 
 ## Final Verification
 
