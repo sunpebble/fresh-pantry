@@ -1,19 +1,17 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/frequent_item.dart';
 import '../models/ingredient.dart';
 import '../models/proposal.dart';
 import '../models/storage_area.dart';
 import '../data/food_categories.dart';
 import '../data/food_knowledge.dart';
-import '../data/mock_data.dart';
-import '../utils/expiry_calculator.dart';
-import '../utils/json_object_list.dart';
+import '../storage/inventory_repo.dart';
+import '../utils/ingredient_normalizer.dart';
 import '_persistence_queue.dart';
 import 'storage_service_provider.dart';
+
+export 'storage_service_provider.dart' show inventorySeedProvider;
 
 const inventoryItemsStorageKey = 'inventory_items';
 const addHistoryStorageKey = 'add_history';
@@ -54,88 +52,27 @@ int notFreshIngredientCount(Iterable<Ingredient> items) {
   return items.where(isNotFreshIngredient).length;
 }
 
-Ingredient _normalizeIngredientCategory(Ingredient item) {
-  final category = FoodCategories.normalize(item.category);
-  if (category == item.category) return item;
-  return item.copyWith(category: category);
-}
-
-int? _shelfLifeDaysFor(Ingredient item) {
-  final expiryDate = item.expiryDate;
-  if (expiryDate == null) return null;
-
-  final savedShelfLifeDays = item.shelfLifeDays;
-  if (savedShelfLifeDays != null && savedShelfLifeDays > 0) {
-    return savedShelfLifeDays;
-  }
-
-  final defaultShelfLifeDays = FoodKnowledge.lookup(item.name)?.shelfLifeDays;
-  if (defaultShelfLifeDays != null && defaultShelfLifeDays > 0) {
-    return defaultShelfLifeDays;
-  }
-
-  if (item.addedAt == null) return null;
-
-  final days = calendarDaysBetween(item.addedAt!, expiryDate);
-  return days > 0 ? days : null;
-}
-
-Ingredient _refreshIngredientFreshness(Ingredient item, {DateTime? now}) {
-  final expiryDate = item.expiryDate;
-  if (expiryDate == null) return item;
-
-  final shelfLifeDays = _shelfLifeDaysFor(item);
-  if (shelfLifeDays == null) {
-    return item.copyWith(expiryLabel: expiryLabelFor(expiryDate, now: now));
-  }
-
-  final freshness = expiryFreshness(
-    expiryDate: expiryDate,
-    totalShelfLifeDays: shelfLifeDays,
-    now: now,
-  );
-
-  return item.copyWith(
-    freshnessPercent: freshness,
-    state: freshnessStateForExpiry(
-      freshness: freshness,
-      expiryDate: expiryDate,
-      now: now,
-    ),
-    expiryLabel: expiryLabelFor(expiryDate, now: now),
-  );
-}
-
-Ingredient _normalizeInventoryIngredient(Ingredient item) {
-  return _refreshIngredientFreshness(_normalizeIngredientCategory(item));
-}
-
-/// Inventory state (CRUD) with local persistence
 class InventoryNotifier extends Notifier<List<Ingredient>>
     with PersistenceQueue {
-  late final SharedPreferences _prefs;
+  late final InventoryRepo _repo;
 
   @override
   List<Ingredient> build() {
-    _prefs = ref.read(sharedPreferencesProvider);
-    return ref.read(inventorySeedProvider);
+    _repo = ref.read(inventoryRepoProvider);
+    return _repo.loadAll();
   }
 
   Future<void> _save(List<Ingredient> items) async {
-    final jsonString = json.encode(items.map((e) => e.toJson()).toList());
-    final saved = await _prefs.setString(inventoryItemsStorageKey, jsonString);
-    if (!saved) {
-      throw StateError('Failed to save inventory items');
-    }
+    _repo.saveItems(items);
   }
 
   Future<void> add(Ingredient item) async {
-    final normalizedItem = _normalizeIngredientCategory(item);
+    final normalizedItem = normalizeIngredientCategory(item);
     final stampedItem =
         normalizedItem.addedAt == null
             ? normalizedItem.copyWith(addedAt: DateTime.now())
             : normalizedItem;
-    final itemToAdd = _refreshIngredientFreshness(stampedItem);
+    final itemToAdd = refreshIngredientFreshness(stampedItem);
     final updated = [...state, itemToAdd];
     state = updated;
     return queuePersistence(() async {
@@ -154,7 +91,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
   Future<void> insertAt(int index, Ingredient item) async {
     final updated = [...state];
     final clampedIndex = index.clamp(0, updated.length).toInt();
-    updated.insert(clampedIndex, _normalizeInventoryIngredient(item));
+    updated.insert(clampedIndex, normalizeInventoryIngredient(item));
     state = updated;
     return queuePersistence(() => _save(updated));
   }
@@ -162,19 +99,16 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
   Future<void> update(int index, Ingredient item) async {
     if (index < 0 || index >= state.length) return;
     final updated = [...state];
-    final normalizedItem = _normalizeIngredientCategory(item);
+    final normalizedItem = normalizeIngredientCategory(item);
     final stampedItem =
         normalizedItem.addedAt == null
             ? normalizedItem.copyWith(addedAt: state[index].addedAt)
             : normalizedItem;
-    updated[index] = _refreshIngredientFreshness(stampedItem);
+    updated[index] = refreshIngredientFreshness(stampedItem);
     state = updated;
     return queuePersistence(() => _save(updated));
   }
 
-  /// Applies a list of IntakeProposals atomically: newRow proposals append,
-  /// mergeInto proposals add quantity to the referenced row. Unselected
-  /// proposals are ignored.
   Future<void> applyIntakeProposals(List<IntakeProposal> proposals) async {
     var current = [...state];
     for (final p in proposals) {
@@ -191,7 +125,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
           final existing = current[index];
           final summed = _sumQuantity(existing.quantity, p.quantity);
           current = [...current]
-            ..[index] = _refreshIngredientFreshness(
+            ..[index] = refreshIngredientFreshness(
               existing.copyWith(quantity: summed),
             );
       }
@@ -200,9 +134,6 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
     return queuePersistence(() => _save(current));
   }
 
-  /// Applies a list of DeductionProposals atomically. Each Proposal references
-  /// an inventory row by index; deducted quantities reaching 0 (or negative)
-  /// remove the row.
   Future<void> applyDeductionProposals(
     List<DeductionProposal> proposals,
   ) async {
@@ -222,7 +153,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
             remaining == remaining.roundToDouble()
                 ? remaining.toInt().toString()
                 : remaining.toString();
-        current[i] = _refreshIngredientFreshness(
+        current[i] = refreshIngredientFreshness(
           existing.copyWith(quantity: newQty),
         );
       }
@@ -249,8 +180,8 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
     final addedAt = DateTime.now();
     final expiryDate =
         shelf == null ? null : addedAt.add(Duration(days: shelf));
-    return _refreshIngredientFreshness(
-      _normalizeIngredientCategory(
+    return refreshIngredientFreshness(
+      normalizeIngredientCategory(
         Ingredient(
           name: p.name,
           quantity: p.quantity,
@@ -276,9 +207,6 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
     return sum.toString();
   }
 
-  /// Merges two inventory rows (`sourceIndex` into `targetIndex`):
-  /// quantities sum, expiry takes the earlier of the two (so urgency signal
-  /// is preserved), source row is removed.
   Future<void> mergeBatch(int sourceIndex, int targetIndex) async {
     if (sourceIndex == targetIndex) return;
     if (sourceIndex < 0 || sourceIndex >= state.length) return;
@@ -289,7 +217,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
     if (source.storage != target.storage) return;
     final summed = _sumQuantity(source.quantity, target.quantity);
     final earlierExpiry = _earlierExpiry(source.expiryDate, target.expiryDate);
-    final mergedTarget = _refreshIngredientFreshness(
+    final mergedTarget = refreshIngredientFreshness(
       target.copyWith(quantity: summed, expiryDate: earlierExpiry),
     );
     final updated = [...state];
@@ -314,51 +242,17 @@ final inventoryProvider = NotifierProvider<InventoryNotifier, List<Ingredient>>(
   InventoryNotifier.new,
 );
 
-/// 启动时预 hydrated 的 inventory 种子，由 main.dart 预解码后通过 override 注入。
-/// Notifier.build 直接同步读取，从而把 prefs 解码移出首帧关键路径。
-///
-/// Fallback: 当未被 override 时读取 prefs 中的 JSON。若 key 不存在则返回空列表
-/// (main.dart 始终注入实际数据，包括 kDebugMode 下的 mock 数据)。
-final inventorySeedProvider = Provider<List<Ingredient>>((ref) {
-  final prefs = ref.read(sharedPreferencesProvider);
-  final jsonString = prefs.getString(inventoryItemsStorageKey);
-  if (jsonString == null) return [];
-  try {
-    return decodeJsonObjectList(
-      jsonString,
-    ).map(Ingredient.fromJson).map(_normalizeInventoryIngredient).toList();
-  } catch (_) {
-    return [];
-  }
-});
-
-/// 把存储中的 inventory JSON 解码为 `List<Ingredient>`(同步)。
-/// 仅供 main.dart hydrate 与 [inventorySeedProvider] fallback 使用,公共 API 不依赖。
-List<Ingredient> loadInventoryFromPrefs(SharedPreferences prefs) {
-  final jsonString = prefs.getString(inventoryItemsStorageKey);
-  if (jsonString == null) {
-    return kDebugMode ? List.from(MockData.inventoryItems) : [];
-  }
-  try {
-    return decodeJsonObjectList(
-      jsonString,
-    ).map(Ingredient.fromJson).map(_normalizeInventoryIngredient).toList();
-  } catch (_) {
-    return kDebugMode ? List.from(MockData.inventoryItems) : [];
-  }
-}
-
 class _AddHistoryNotifier extends Notifier<List<FrequentItem>> {
-  late final SharedPreferences _prefs;
+  late final InventoryRepo _repo;
 
   @override
   List<FrequentItem> build() {
-    _prefs = ref.read(sharedPreferencesProvider);
-    return _itemsFromHistoryMap(_readHistoryMap(_prefs));
+    _repo = ref.read(inventoryRepoProvider);
+    return _itemsFromHistoryMap(_repo.loadHistory());
   }
 
   Future<void> record(Ingredient item) async {
-    final history = _readHistoryMap(_prefs);
+    final history = Map<String, dynamic>.from(_repo.loadHistory());
     final key = item.name;
     final existing = history[key];
     final existingCount = switch (existing) {
@@ -372,28 +266,8 @@ class _AddHistoryNotifier extends Notifier<List<FrequentItem>> {
       'storage': item.storage.name,
       'unit': item.unit,
     };
-
-    final saved = await _prefs.setString(
-      addHistoryStorageKey,
-      json.encode(history),
-    );
-    if (!saved) {
-      throw StateError('Failed to save add history');
-    }
+    _repo.saveHistory(history);
     state = _itemsFromHistoryMap(history);
-  }
-
-  Map<String, dynamic> _readHistoryMap(SharedPreferences prefs) {
-    final historyJson = prefs.getString(addHistoryStorageKey);
-    if (historyJson == null) return <String, dynamic>{};
-    try {
-      return Map<String, dynamic>.from(json.decode(historyJson) as Map);
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Error decoding add history: $e');
-      }
-      return <String, dynamic>{};
-    }
   }
 
   List<FrequentItem> _itemsFromHistoryMap(Map<String, dynamic> history) {
@@ -431,19 +305,16 @@ final _addHistoryProvider =
       _AddHistoryNotifier.new,
     );
 
-/// Items expiring soon (state == expiringSoon or expired)
 final expiringItemsProvider = Provider.autoDispose<List<Ingredient>>((ref) {
   final items = ref.watch(inventoryProvider);
   return items.where(isNotFreshIngredient).toList();
 });
 
-/// Recent additions from the current inventory, newest first.
 final recentAdditionsProvider = Provider.autoDispose<List<Ingredient>>((ref) {
   final items = ref.watch(inventoryProvider);
   return items.reversed.take(2).toList();
 });
 
-/// Stat counts for dashboard
 final statCountsProvider =
     Provider.autoDispose<({int total, int expiringSoon})>((ref) {
       final items = ref.watch(inventoryProvider);
@@ -451,12 +322,10 @@ final statCountsProvider =
       return (total: items.length, expiringSoon: expiringSoon);
     });
 
-/// Fixed category filters for inventory.
 final categoriesProvider = Provider.autoDispose<List<String>>((ref) {
   return const [inventoryFilterAll, ...FoodCategories.values];
 });
 
-/// Storage area stats derived from actual inventory
 final storageAreasProvider = Provider.autoDispose<List<StorageArea>>((ref) {
   final items = ref.watch(inventoryProvider);
   const maxCapacity = {IconType.fridge: 20, IconType.pantry: 50};
@@ -479,12 +348,10 @@ final storageAreasProvider = Provider.autoDispose<List<StorageArea>>((ref) {
   }).toList();
 });
 
-/// Currently selected category filter
 final selectedCategoryProvider = StateProvider<String>(
   (ref) => inventoryFilterAll,
 );
 
-/// Inventory filtered by selected category
 final filteredByCategoryProvider = Provider.autoDispose<List<Ingredient>>((
   ref,
 ) {
@@ -508,16 +375,12 @@ final filteredInventoryItemsProvider = Provider.autoDispose<List<Ingredient>>((
       .toList();
 });
 
-/// Top frequent items derived from add history.
 final frequentItemsProvider = Provider.autoDispose<List<FrequentItem>>((ref) {
   final all = [...ref.watch(_addHistoryProvider)];
   all.sort((a, b) => b.count.compareTo(a.count));
   return all.where((i) => i.count >= 2).take(6).toList();
 });
 
-/// Items the user has bought >=3 times historically but which are NOT currently
-/// in inventory (by name, case+whitespace insensitive). Sorted by historical
-/// frequency descending.
 final lowStockItemsProvider = Provider.autoDispose<List<FrequentItem>>((ref) {
   final all = ref.watch(_addHistoryProvider);
   final inventory = ref.watch(inventoryProvider);

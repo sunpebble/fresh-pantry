@@ -40,6 +40,25 @@ class RecipesScreen extends ConsumerStatefulWidget {
 class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   _RecipeTab _tab = _RecipeTab.expiring;
   _TimeFilter _time = _TimeFilter.all;
+  bool _searchOpen = false;
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _searchOpen = !_searchOpen;
+      if (!_searchOpen) {
+        _searchCtrl.clear();
+        _query = '';
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +99,18 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           };
         }).toList();
 
+    final q = _query.trim().toLowerCase();
+    final searched = q.isEmpty
+        ? filtered
+        : filtered
+            .where(
+              (r) =>
+                  r.name.toLowerCase().contains(q) ||
+                  r.ingredients
+                      .any((ing) => ing.name.toLowerCase().contains(q)),
+            )
+            .toList();
+
     return SafeArea(
       bottom: false,
       child: Column(
@@ -90,11 +121,19 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
             subtitle: '基于你的冰箱推荐',
             actions: [
               FkIconButton(
-                onTap: () {},
-                child: const Icon(Icons.search_rounded, size: 18),
+                onTap: _toggleSearch,
+                child: Icon(
+                  _searchOpen ? Icons.close_rounded : Icons.search_rounded,
+                  size: 18,
+                ),
               ),
             ],
           ),
+          if (_searchOpen)
+            _RecipeSearchField(
+              controller: _searchCtrl,
+              onChanged: (value) => setState(() => _query = value),
+            ),
           _TabRow(selected: _tab, onSelect: (t) => setState(() => _tab = t)),
           _TimeFilterRow(
             selected: _time,
@@ -114,14 +153,14 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
             child:
                 allAsync.isLoading && _tab == _RecipeTab.explore
                     ? const _RecipeSkeletonList()
-                    : filtered.isEmpty
-                    ? _EmptyState(tab: _tab)
+                    : searched.isEmpty
+                    ? _EmptyState(tab: _tab, query: q)
                     : ListView.separated(
                       padding: _listPadding,
-                      itemCount: filtered.length,
+                      itemCount: searched.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 12),
                       itemBuilder: (context, i) {
-                        final recipe = filtered[i];
+                        final recipe = searched[i];
                         final matched = matchedIngredientCountForNames(
                           inventoryNames,
                           recipe,
@@ -433,17 +472,80 @@ class _SkeletonLine extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  final _RecipeTab tab;
-  const _EmptyState({required this.tab});
+class _RecipeSearchField extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  const _RecipeSearchField({
+    required this.controller,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final msg = switch (tab) {
-      _RecipeTab.expiring => '没有临期食材,先去添加几样吧',
-      _RecipeTab.available => '冰箱里加点食材,菜谱就来啦',
-      _RecipeTab.explore => '暂无可探索的菜谱',
-    };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        _screenHorizontalPadding,
+        0,
+        _screenHorizontalPadding,
+        AppSpacing.sm,
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainer,
+          borderRadius: BorderRadius.circular(AppRadius.chip),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.search_rounded,
+              size: 18,
+              color: AppColors.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: controller,
+                onChanged: onChanged,
+                autofocus: true,
+                style: Theme.of(context).textTheme.bodyMedium,
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  isDense: true,
+                  filled: false,
+                  hintText: '搜索菜谱或食材',
+                  hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  final _RecipeTab tab;
+  final String query;
+
+  const _EmptyState({required this.tab, this.query = ''});
+
+  @override
+  Widget build(BuildContext context) {
+    final msg = query.isNotEmpty
+        ? '没有匹配「$query」的菜谱'
+        : switch (tab) {
+            _RecipeTab.expiring => '没有临期食材,先去添加几样吧',
+            _RecipeTab.available => '冰箱里加点食材,菜谱就来啦',
+            _RecipeTab.explore => '暂无可探索的菜谱',
+          };
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.huge),

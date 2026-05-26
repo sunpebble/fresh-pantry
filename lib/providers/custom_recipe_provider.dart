@@ -1,32 +1,19 @@
-import 'dart:convert';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fresh_pantry/models/recipe.dart';
 import 'package:fresh_pantry/providers/_persistence_queue.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
-import 'package:fresh_pantry/utils/json_object_list.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fresh_pantry/storage/custom_recipe_repo.dart';
 
-const customRecipesStorageKey = 'custom_recipes';
+const customRecipesStorageKey = CustomRecipeRepo.storageKey;
 
 class CustomRecipeNotifier extends Notifier<List<Recipe>>
     with PersistenceQueue {
-  late SharedPreferences _prefs;
+  late CustomRecipeRepo _repo;
 
   @override
   List<Recipe> build() {
-    _prefs = ref.read(sharedPreferencesProvider);
-    return ref.read(customRecipeSeedProvider);
-  }
-
-  Future<void> _save(List<Recipe> recipes) async {
-    final saved = await _prefs.setString(
-      customRecipesStorageKey,
-      json.encode(recipes.map((recipe) => recipe.toJson()).toList()),
-    );
-    if (!saved) {
-      throw StateError('Failed to save custom recipes');
-    }
+    _repo = ref.read(customRecipeRepoProvider);
+    return _repo.loadAll();
   }
 
   Future<void> _mutate(List<Recipe> Function(List<Recipe>) nextState) {
@@ -37,7 +24,7 @@ class CustomRecipeNotifier extends Notifier<List<Recipe>>
         return;
       }
 
-      await _save(next);
+      _repo.saveRecipes(next);
       state = next;
     });
   }
@@ -87,29 +74,3 @@ final customRecipesProvider =
     NotifierProvider<CustomRecipeNotifier, List<Recipe>>(
       CustomRecipeNotifier.new,
     );
-
-/// 启动时预 hydrated 的 custom recipes 种子,由 main.dart 预解码后通过 override 注入。
-///
-/// Fallback: 未被 override 时回退到 prefs 同步解码,保持升级前行为。
-final customRecipeSeedProvider = Provider<List<Recipe>>((ref) {
-  final prefs = ref.read(sharedPreferencesProvider);
-  return loadCustomRecipesFromPrefs(prefs);
-});
-
-/// 把存储中的 custom recipes JSON 解码为 `List<Recipe>`(同步)。
-/// 仅供 main.dart hydrate 与 [customRecipeSeedProvider] fallback 使用。
-List<Recipe> loadCustomRecipesFromPrefs(SharedPreferences prefs) {
-  final saved = prefs.getString(customRecipesStorageKey);
-  if (saved == null) {
-    return const [];
-  }
-
-  try {
-    return decodeJsonObjectList(saved)
-        .map(Recipe.fromJson)
-        .where((recipe) => recipe.id.isNotEmpty && recipe.name.isNotEmpty)
-        .toList();
-  } on Object {
-    return const [];
-  }
-}
