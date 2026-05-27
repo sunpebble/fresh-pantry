@@ -11,6 +11,7 @@ import 'package:fresh_pantry/providers/ai_draft_provider.dart';
 import 'package:fresh_pantry/providers/notification_service_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/services/share_intent_service.dart';
+import 'package:fresh_pantry/storage/shared_prefs_storage_adapter.dart';
 import 'helpers/fake_notification_service.dart';
 import 'package:fresh_pantry/widgets/common/bottom_nav_bar.dart';
 
@@ -19,14 +20,16 @@ void main() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
-  testWidgets('App smoke test renders dashboard chrome', (tester) async {
+  testWidgets('renders Fresh Pantry app shell', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final adapter = SharedPrefsStorageAdapter(prefs);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          storageAdapterProvider.overrideWithValue(adapter),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),
@@ -52,6 +55,7 @@ void main() {
   ) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final adapter = SharedPrefsStorageAdapter(prefs);
     final shareSource = _CancellableShareSource();
     addTearDown(shareSource.close);
 
@@ -59,6 +63,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          storageAdapterProvider.overrideWithValue(adapter),
           systemShareSourceProvider.overrideWithValue(shareSource),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),

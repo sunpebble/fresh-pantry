@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app.dart';
+import 'config/backend_config.dart';
 import 'providers/ai_draft_provider.dart';
 import 'providers/notification_service_provider.dart';
 import 'providers/storage_service_provider.dart';
@@ -16,6 +18,14 @@ import 'storage/shopping_repo.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   GoogleFonts.config.allowRuntimeFetching = false;
+  final backendConfig = BackendConfig.fromEnvironment();
+  await Supabase.initialize(
+    url: backendConfig.supabaseUrl,
+    anonKey: backendConfig.supabasePublishableKey,
+    authOptions: const FlutterAuthClientOptions(
+      authFlowType: AuthFlowType.pkce,
+    ),
+  );
   final notificationService = NotificationService();
   await notificationService.init();
   final prefs = await SharedPreferences.getInstance();
