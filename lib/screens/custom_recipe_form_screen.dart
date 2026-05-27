@@ -384,14 +384,7 @@ class _CustomRecipeFormScreenState
                               physics: const NeverScrollableScrollPhysics(),
                               buildDefaultDragHandles: false,
                               itemCount: _ingredientControllers.length,
-                              onReorderItem: (oldIndex, newIndex) {
-                                setState(() {
-                                  final item = _ingredientControllers.removeAt(
-                                    oldIndex,
-                                  );
-                                  _ingredientControllers.insert(newIndex, item);
-                                });
-                              },
+                              onReorderItem: _reorderIngredient,
                               itemBuilder: (context, i) {
                                 final ing = _ingredientControllers[i];
                                 return Padding(
@@ -516,12 +509,7 @@ class _CustomRecipeFormScreenState
                               physics: const NeverScrollableScrollPhysics(),
                               buildDefaultDragHandles: false,
                               itemCount: _stepEntries.length,
-                              onReorderItem: (oldIndex, newIndex) {
-                                setState(() {
-                                  final item = _stepEntries.removeAt(oldIndex);
-                                  _stepEntries.insert(newIndex, item);
-                                });
-                              },
+                              onReorderItem: _reorderStep,
                               itemBuilder: (context, i) {
                                 final entry = _stepEntries[i];
                                 return Padding(
@@ -944,6 +932,13 @@ class _CustomRecipeFormScreenState
     });
   }
 
+  void _reorderIngredient(int oldIndex, int newIndex) {
+    setState(() {
+      final item = _ingredientControllers.removeAt(oldIndex);
+      _ingredientControllers.insert(newIndex, item);
+    });
+  }
+
   void _addStep() {
     setState(() {
       _stepEntries.add(_StepEntry());
@@ -955,6 +950,13 @@ class _CustomRecipeFormScreenState
     setState(() {
       _stepEntries.removeAt(index).dispose();
       _stepsError = null;
+    });
+  }
+
+  void _reorderStep(int oldIndex, int newIndex) {
+    setState(() {
+      final item = _stepEntries.removeAt(oldIndex);
+      _stepEntries.insert(newIndex, item);
     });
   }
 

@@ -36,17 +36,22 @@ class AiCancelledException extends AiException {
 
 class AiContent {
   const AiContent.text(this.text) : imageDataUrl = null, type = 'text';
-  const AiContent.imageDataUrl(this.imageDataUrl) : text = null, type = 'image_url';
+  const AiContent.imageDataUrl(this.imageDataUrl)
+    : text = null,
+      type = 'image_url';
 
   final String type;
   final String? text;
   final String? imageDataUrl;
 
   Map<String, dynamic> toJson() => switch (type) {
-        'text' => {'type': 'text', 'text': text},
-        'image_url' => {'type': 'image_url', 'image_url': {'url': imageDataUrl}},
-        _ => throw StateError('unsupported content type: $type'),
-      };
+    'text' => {'type': 'text', 'text': text},
+    'image_url' => {
+      'type': 'image_url',
+      'image_url': {'url': imageDataUrl},
+    },
+    _ => throw StateError('unsupported content type: $type'),
+  };
 }
 
 class AiMessage {
@@ -59,18 +64,15 @@ class AiMessage {
       AiMessage._(role: role, content: [AiContent.text(text)]);
 
   factory AiMessage.userWithImage(String text, String dataUrl) => AiMessage._(
-        role: 'user',
-        content: [AiContent.text(text), AiContent.imageDataUrl(dataUrl)],
-      );
+    role: 'user',
+    content: [AiContent.text(text), AiContent.imageDataUrl(dataUrl)],
+  );
 
   Map<String, dynamic> toJson() {
     if (content.length == 1 && content.first.type == 'text') {
       return {'role': role, 'content': content.first.text};
     }
-    return {
-      'role': role,
-      'content': content.map((c) => c.toJson()).toList(),
-    };
+    return {'role': role, 'content': content.map((c) => c.toJson()).toList()};
   }
 }
 
@@ -95,7 +97,7 @@ class AiClient {
         'model': settings.model,
         'messages': messages.map((m) => m.toJson()).toList(),
         'temperature': 0.2,
-        if (responseFormat != null) 'response_format': responseFormat,
+        'response_format': ?responseFormat,
       };
 
       late http.Response res;
@@ -140,12 +142,15 @@ class AiClient {
       }
 
       try {
-        final json = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        final json =
+            jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
         final choices = json['choices'] as List<dynamic>?;
         if (choices == null || choices.isEmpty) {
           throw const AiParseException('响应中无 choices');
         }
-        final msg = (choices.first as Map<String, dynamic>)['message'] as Map<String, dynamic>?;
+        final msg =
+            (choices.first as Map<String, dynamic>)['message']
+                as Map<String, dynamic>?;
         final content = msg?['content'];
         if (content is! String) {
           throw const AiParseException('响应中无 content');

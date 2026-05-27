@@ -41,8 +41,8 @@ class RecipeCard extends StatelessWidget {
     final progressColor = ratio >= 1.0
         ? AppColors.primary
         : ratio >= 0.7
-            ? AppColors.primaryLight
-            : AppColors.fkWarn;
+        ? AppColors.primaryLight
+        : AppColors.fkWarn;
 
     return Semantics(
       button: onTap != null,
@@ -163,7 +163,7 @@ class RecipeCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if (trailing != null) trailing!,
+              ?trailing,
             ],
           ),
         ),
@@ -207,10 +207,7 @@ class _Cover extends StatelessWidget {
               top: 8,
               left: 8,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 7,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppColors.fkWarn,
                   borderRadius: BorderRadius.circular(AppRadius.pill),

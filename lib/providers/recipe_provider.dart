@@ -1,19 +1,21 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../models/recipe.dart';
-import '../models/ingredient.dart';
-import '../data/mock_data.dart';
+
 import '../data/food_knowledge.dart';
+import '../data/mock_data.dart';
+import '../models/ingredient.dart';
+import '../models/recipe.dart';
 import '../services/themealdb_service.dart';
-import '../utils/normalize_cache_key.dart';
+import '../storage/recipe_search_repo.dart';
 import 'custom_recipe_provider.dart';
 import 'inventory_provider.dart';
 import 'storage_service_provider.dart';
 
-const recipeDetailsCacheStorageKey = 'recipe_details_cache';
+export '../storage/recipe_search_repo.dart'
+    show
+        RecipeSearchRepository,
+        recipeDetailsCacheStorageKey,
+        recipeSearchCacheKeyFor;
 
 final mealDbApiProvider = Provider<MealDbApi>(
   (ref) => const TheMealDbService(),
@@ -21,50 +23,10 @@ final mealDbApiProvider = Provider<MealDbApi>(
 
 final recipeSearchRepositoryProvider = Provider<RecipeSearchRepository>((ref) {
   return RecipeSearchRepository(
-    prefs: ref.read(sharedPreferencesProvider),
+    storage: ref.read(storageAdapterProvider),
     api: ref.watch(mealDbApiProvider),
   );
 });
-
-String recipeSearchCacheKeyFor(String term) {
-  return 'name:${normalizeCacheKey(term)}';
-}
-
-class RecipeSearchRepository {
-  RecipeSearchRepository({required this.prefs, required this.api});
-
-  final SharedPreferences prefs;
-  final MealDbApi api;
-
-  Future<List<Recipe>> searchByName(String term) async {
-    final cache = _readCache();
-    final key = recipeSearchCacheKeyFor(term);
-    final cachedValue = cache[key];
-    if (cachedValue is List) {
-      return cachedValue
-          .whereType<Map<String, dynamic>>()
-          .map(Recipe.fromJson)
-          .toList();
-    }
-
-    final recipes = await api.searchByName(term);
-    cache[key] = recipes.map((recipe) => recipe.toJson()).toList();
-    await prefs.setString(recipeDetailsCacheStorageKey, jsonEncode(cache));
-    return recipes;
-  }
-
-  Map<String, dynamic> _readCache() {
-    final raw = prefs.getString(recipeDetailsCacheStorageKey);
-    if (raw == null || raw.isEmpty) return <String, dynamic>{};
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    } catch (_) {
-      return <String, dynamic>{};
-    }
-    return <String, dynamic>{};
-  }
-}
 
 Set<String> inventoryNameSet(Iterable<Ingredient> inventory) {
   return inventory

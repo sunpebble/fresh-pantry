@@ -50,8 +50,8 @@ class IngredientCard extends StatelessWidget {
     final progressColor = isExpired
         ? AppColors.fkDanger
         : (state == FreshnessState.expiringSoon
-            ? AppColors.fkWarn
-            : AppColors.primary);
+              ? AppColors.fkWarn
+              : AppColors.primary);
 
     final card = Container(
       padding: const EdgeInsets.all(12),
@@ -81,15 +81,11 @@ class IngredientCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
-                  child: CatIcon(
-                    category: catId,
-                    size: 30,
-                    color: palette.ink,
-                  ),
+                  child: CatIcon(category: catId, size: 30, color: palette.ink),
                 ),
               ),
               const Spacer(),
-              if (statusBadge != null) statusBadge,
+              ?statusBadge,
             ],
           ),
           const SizedBox(height: 10),
@@ -100,7 +96,9 @@ class IngredientCard extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: AppColors.onSurface.withValues(alpha: isExpired ? 0.6 : 1.0),
+              color: AppColors.onSurface.withValues(
+                alpha: isExpired ? 0.6 : 1.0,
+              ),
             ),
           ),
           const SizedBox(height: 2),
@@ -197,10 +195,10 @@ class IngredientCard extends StatelessWidget {
   }
 
   String _defaultLabel(FreshnessState state) => switch (state) {
-        FreshnessState.expiringSoon => '即将过期',
-        FreshnessState.expired => '已过期',
-        FreshnessState.fresh => '新鲜',
-      };
+    FreshnessState.expiringSoon => '即将过期',
+    FreshnessState.expired => '已过期',
+    FreshnessState.fresh => '新鲜',
+  };
 
   /// 把 Ingredient 的 storage(IconType.fridge / pantry / ...)映射到 FK zone id。
   String _zoneId(dynamic storage) {

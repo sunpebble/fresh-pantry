@@ -18,16 +18,10 @@ class CategoryChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fixedCategory = categories.contains('全部') ? '全部' : null;
-    final fixedCategories = [
-      ...leadingCategories,
-      if (fixedCategory != null) fixedCategory,
-    ];
-    final scrollableCategories =
-        fixedCategory == null
-            ? categories
-            : categories
-                .where((category) => category != fixedCategory)
-                .toList();
+    final fixedCategories = [...leadingCategories, ?fixedCategory];
+    final scrollableCategories = fixedCategory == null
+        ? categories
+        : categories.where((category) => category != fixedCategory).toList();
 
     if (fixedCategories.isNotEmpty) {
       return SizedBox(
@@ -128,8 +122,9 @@ class _CategoryChip extends StatelessWidget {
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
           decoration: BoxDecoration(
-            color:
-                isSelected ? AppColors.primary : AppColors.surfaceContainerHigh,
+            color: isSelected
+                ? AppColors.primary
+                : AppColors.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(AppRadius.pill),
           ),
           child: Text(
