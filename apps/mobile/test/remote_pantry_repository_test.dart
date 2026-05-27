@@ -102,6 +102,60 @@ void main() {
     expect(row['storage'], 'fridge');
   });
 
+  test('shoppingRowForUpsert maps local shopping rows to Supabase row', () {
+    final row = shoppingRowForUpsert('household_1', const {
+      'id': '11111111-1111-1111-1111-111111111111',
+      'name': 'Milk',
+      'detail': '1 box',
+      'imageUrl': 'milk.png',
+      'category': '乳制品',
+      'isChecked': true,
+      'remoteVersion': 0,
+      'clientUpdatedAt': '2026-05-27T00:00:00.000Z',
+    });
+
+    expect(row['household_id'], 'household_1');
+    expect(row['id'], '11111111-1111-1111-1111-111111111111');
+    expect(row['image_url'], 'milk.png');
+    expect(row['is_checked'], isTrue);
+    expect(row['version'], 1);
+    expect(row['client_updated_at'], '2026-05-27T00:00:00.000Z');
+  });
+
+  test('shoppingRowForUpsert omits invalid local ids', () {
+    final row = shoppingRowForUpsert('household_1', const {
+      'id': 'si_123',
+      'name': 'Milk',
+      'detail': '1 box',
+    });
+
+    expect(row.containsKey('id'), isFalse);
+  });
+
+  test('customRecipeRowForUpsert maps recipe payload to Supabase row', () {
+    final row = customRecipeRowForUpsert('household_1', const {
+      'id': '11111111-1111-1111-1111-111111111111',
+      'name': 'Tomato Pasta',
+      'remoteVersion': 0,
+      'clientUpdatedAt': '2026-05-27T00:00:00.000Z',
+    });
+
+    expect(row['household_id'], 'household_1');
+    expect(row['id'], '11111111-1111-1111-1111-111111111111');
+    expect(row['payload'], containsPair('name', 'Tomato Pasta'));
+    expect(row['version'], 1);
+    expect(row['client_updated_at'], '2026-05-27T00:00:00.000Z');
+  });
+
+  test('customRecipeRowForUpsert omits invalid local ids', () {
+    final row = customRecipeRowForUpsert('household_1', const {
+      'id': 'recipe_123',
+      'name': 'Tomato Pasta',
+    });
+
+    expect(row.containsKey('id'), isFalse);
+  });
+
   test(
     'SupabaseRemotePantryRepository rejects versioned inventory upserts',
     () async {

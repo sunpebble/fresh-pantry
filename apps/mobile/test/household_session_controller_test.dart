@@ -28,6 +28,14 @@ class FakeHouseholdGateway implements HouseholdGateway {
     return households;
   }
 
+  @override
+  Future<Household> createHousehold(String name) {
+    throw UnimplementedError('Not needed by these tests.');
+  }
+
+  @override
+  Future<void> uploadInitialData(String householdId) async {}
+
   void emitAuthStateChange() {
     authStateController.add(null);
   }

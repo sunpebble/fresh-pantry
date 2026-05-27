@@ -55,6 +55,46 @@ Map<String, dynamic> inventoryRowForUpsert(
   return row;
 }
 
+Map<String, dynamic> shoppingRowForUpsert(
+  String householdId,
+  Map<String, dynamic> item,
+) {
+  final row = {
+    'household_id': householdId,
+    'name': item['name'],
+    'detail': item['detail'] ?? '',
+    'image_url': item['imageUrl'],
+    'category': item['category'] ?? '其他',
+    'is_checked': item['isChecked'] ?? false,
+    'version': _versionForUpsert(item['remoteVersion']),
+    'client_updated_at': item['clientUpdatedAt'],
+    'deleted_at': item['deletedAt'],
+  };
+  final id = item['id'];
+  if (id is String && _isUuid(id)) {
+    row['id'] = id;
+  }
+  return row;
+}
+
+Map<String, dynamic> customRecipeRowForUpsert(
+  String householdId,
+  Map<String, dynamic> recipe,
+) {
+  final row = {
+    'household_id': householdId,
+    'payload': recipe,
+    'version': _versionForUpsert(recipe['remoteVersion']),
+    'client_updated_at': recipe['clientUpdatedAt'],
+    'deleted_at': recipe['deletedAt'],
+  };
+  final id = recipe['id'];
+  if (id is String && _isUuid(id)) {
+    row['id'] = id;
+  }
+  return row;
+}
+
 int _versionForUpsert(Object? remoteVersion) {
   final version = remoteVersion is num ? remoteVersion.toInt() : 0;
   return version <= 0 ? 1 : version;
@@ -71,6 +111,14 @@ abstract class RemotePantryRepository {
   Future<Household> createHousehold(String name);
   Future<List<Map<String, dynamic>>> loadInventory(String householdId);
   Future<void> upsertInventory(
+    String householdId,
+    List<Map<String, dynamic>> rows,
+  );
+  Future<void> upsertShopping(
+    String householdId,
+    List<Map<String, dynamic>> rows,
+  );
+  Future<void> upsertCustomRecipes(
     String householdId,
     List<Map<String, dynamic>> rows,
   );
@@ -136,6 +184,50 @@ class SupabaseRemotePantryRepository implements RemotePantryRepository {
         .from('inventory_items')
         .upsert(
           rows.map((row) => inventoryRowForUpsert(householdId, row)).toList(),
+          ignoreDuplicates: true,
+        );
+  }
+
+  @override
+  Future<void> upsertShopping(
+    String householdId,
+    List<Map<String, dynamic>> rows,
+  ) async {
+    if (rows.isEmpty) return;
+    final versioned = rows.where(_hasRemoteVersion).toList();
+    if (versioned.isNotEmpty) {
+      throw ArgumentError(
+        'upsertShopping only accepts unsynced local rows; versioned sync '
+        'writes must use a conditional remote operation.',
+      );
+    }
+    await _client
+        .from('shopping_items')
+        .upsert(
+          rows.map((row) => shoppingRowForUpsert(householdId, row)).toList(),
+          ignoreDuplicates: true,
+        );
+  }
+
+  @override
+  Future<void> upsertCustomRecipes(
+    String householdId,
+    List<Map<String, dynamic>> rows,
+  ) async {
+    if (rows.isEmpty) return;
+    final versioned = rows.where(_hasRemoteVersion).toList();
+    if (versioned.isNotEmpty) {
+      throw ArgumentError(
+        'upsertCustomRecipes only accepts unsynced local rows; versioned sync '
+        'writes must use a conditional remote operation.',
+      );
+    }
+    await _client
+        .from('custom_recipes')
+        .upsert(
+          rows
+              .map((row) => customRecipeRowForUpsert(householdId, row))
+              .toList(),
           ignoreDuplicates: true,
         );
   }
