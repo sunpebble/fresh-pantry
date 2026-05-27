@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -62,12 +64,16 @@ class _AppShellState extends ConsumerState<AppShell> {
     ShoppingListScreen(),
   ];
 
+  StreamSubscription<String>? _shareTextSubscription;
+
   @override
   void initState() {
     super.initState();
     final source = ref.read(systemShareSourceProvider);
     source.consumeInitialText().then(_handleSharedText);
-    source.incomingTextStream.listen(_handleSharedText);
+    _shareTextSubscription = source.incomingTextStream.listen(
+      _handleSharedText,
+    );
   }
 
   void _handleSharedText(String? text) {
@@ -80,6 +86,12 @@ class _AppShellState extends ConsumerState<AppShell> {
         builder: (_) => CustomRecipeFormScreen(prefilledUrl: url),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _shareTextSubscription?.cancel();
+    super.dispose();
   }
 
   @override

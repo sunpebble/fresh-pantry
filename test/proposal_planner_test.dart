@@ -11,23 +11,27 @@ Ingredient _ing({
   String unit = '个',
   String? category,
   IconType storage = IconType.fridge,
-}) =>
-    Ingredient(
-      name: name,
-      quantity: quantity,
-      unit: unit,
-      imageUrl: '',
-      freshnessPercent: 1.0,
-      state: FreshnessState.fresh,
-      category: category,
-      storage: storage,
-    );
+}) => Ingredient(
+  name: name,
+  quantity: quantity,
+  unit: unit,
+  imageUrl: '',
+  freshnessPercent: 1.0,
+  state: FreshnessState.fresh,
+  category: category,
+  storage: storage,
+);
 
 void main() {
   group('ProposalPlanner.computeIntakeDefaultAction', () {
     test('non-perishable + name+unit+storage match → mergeInto', () {
       final inventory = [
-        _ing(name: '米', unit: 'kg', category: FoodCategories.other, storage: IconType.pantry),
+        _ing(
+          name: '米',
+          unit: 'kg',
+          category: FoodCategories.other,
+          storage: IconType.pantry,
+        ),
       ];
       final action = ProposalPlanner.computeIntakeDefaultAction(
         candidate: _IntakeCandidate(
@@ -78,10 +82,11 @@ void main() {
     test('different storage → newRow', () {
       final inventory = [
         _ing(
-            name: '苹果',
-            unit: '个',
-            category: FoodCategories.other,
-            storage: IconType.fridge),
+          name: '苹果',
+          unit: '个',
+          category: FoodCategories.other,
+          storage: IconType.fridge,
+        ),
       ];
       final action = ProposalPlanner.computeIntakeDefaultAction(
         candidate: _IntakeCandidate(
@@ -106,6 +111,29 @@ void main() {
         inventory: const [],
       );
       expect(action.kind, IntakeAction.newRow);
+    });
+
+    test('blank candidate names never merge into blank inventory rows', () {
+      final inventory = [
+        _ing(
+          name: '',
+          unit: '个',
+          category: FoodCategories.other,
+          storage: IconType.pantry,
+        ),
+      ];
+      final action = ProposalPlanner.computeIntakeDefaultAction(
+        candidate: _IntakeCandidate(
+          name: '   ',
+          unit: '个',
+          storage: IconType.pantry,
+          category: FoodCategories.other,
+        ),
+        inventory: inventory,
+      );
+
+      expect(action.kind, IntakeAction.newRow);
+      expect(action.targetIndex, isNull);
     });
   });
 }

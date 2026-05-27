@@ -236,7 +236,9 @@ class _SearchContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final keyword = ref.watch(trimmedSearchKeywordProvider);
     if (keyword.isEmpty) {
-      return _SearchHistoryPanel(onSelected: onHistorySelected);
+      return Flexible(
+        child: _SearchHistoryPanel(onSelected: onHistorySelected),
+      );
     }
 
     return Flexible(
@@ -281,80 +283,86 @@ class _SearchHistoryPanel extends ConsumerWidget {
         child: Material(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  AppSpacing.lg,
-                  AppSpacing.sm,
-                  AppSpacing.xs,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '最近搜索',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: AppFontSize.sm,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed:
-                          () =>
-                              ref.read(searchHistoryProvider.notifier).clear(),
-                      child: Text(
-                        '清除',
-                        style: GoogleFonts.manrope(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.max,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.lg,
+                    AppSpacing.sm,
+                    AppSpacing.xs,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '最近搜索',
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: AppFontSize.sm,
-                          color: AppColors.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1,
+                          color: AppColors.primary,
                         ),
                       ),
-                    ),
-                  ],
+                      TextButton(
+                        onPressed:
+                            () =>
+                                ref
+                                    .read(searchHistoryProvider.notifier)
+                                    .clear(),
+                        child: Text(
+                          '清除',
+                          style: GoogleFonts.manrope(
+                            fontSize: AppFontSize.sm,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: history.length,
-                itemBuilder: (context, index) {
-                  final term = history[index];
-                  return ListTile(
-                    dense: true,
-                    leading: const Icon(
-                      Icons.history,
-                      size: 18,
-                      color: AppColors.outline,
-                    ),
-                    title: Text(
-                      term,
-                      style: GoogleFonts.manrope(
-                        fontSize: AppFontSize.md,
-                        color: AppColors.onSurface,
-                      ),
-                    ),
-                    trailing: GestureDetector(
-                      onTap:
-                          () => ref
-                              .read(searchHistoryProvider.notifier)
-                              .remove(term),
-                      child: const Icon(
-                        Icons.close,
-                        size: 16,
-                        color: AppColors.outline,
-                      ),
-                    ),
-                    onTap: () => onSelected(term),
-                  );
-                },
-              ),
-            ],
+                Flexible(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                    itemCount: history.length,
+                    itemBuilder: (context, index) {
+                      final term = history[index];
+                      return ListTile(
+                        dense: true,
+                        leading: const Icon(
+                          Icons.history,
+                          size: 18,
+                          color: AppColors.outline,
+                        ),
+                        title: Text(
+                          term,
+                          style: GoogleFonts.manrope(
+                            fontSize: AppFontSize.md,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                        trailing: GestureDetector(
+                          onTap:
+                              () => ref
+                                  .read(searchHistoryProvider.notifier)
+                                  .remove(term),
+                          child: const Icon(
+                            Icons.close,
+                            size: 16,
+                            color: AppColors.outline,
+                          ),
+                        ),
+                        onTap: () => onSelected(term),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

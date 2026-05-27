@@ -51,6 +51,45 @@ void main() {
     expect(container.read(searchProvider), '苹');
   });
 
+  testWidgets('history panel scrolls on compact screens without overflow', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 320));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    SharedPreferences.setMockInitialValues({
+      'inventory_items': '[]',
+      'shopping_items': '[]',
+      'add_history': '{}',
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+    for (var i = 0; i < 10; i += 1) {
+      container.read(searchHistoryProvider.notifier).add('历史 $i');
+    }
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: ThemeData(useMaterial3: false),
+          home: const Scaffold(body: SearchOverlay()),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('最近搜索'), findsOneWidget);
+
+    await tester.drag(find.byType(ListView), const Offset(0, -160));
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('builds inventory and shopping results lazily', (tester) async {
     SharedPreferences.setMockInitialValues({
       'inventory_items': jsonEncode([

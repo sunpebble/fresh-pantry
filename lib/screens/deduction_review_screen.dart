@@ -69,10 +69,10 @@ class _DeductionReviewScreenState extends ConsumerState<DeductionReviewScreen> {
           ),
       bottomBar: ReviewBottomBar(
         selectedCount: state.selectedCount,
-        totalCount: state.proposals.length,
+        totalCount: state.deductibleCount,
         confirmLabel: _isConfirming ? '扣减中…' : '确认扣减',
         onConfirm: _isConfirming ? null : _confirm,
-        onToggleSelectAll: () {},
+        onToggleSelectAll: n.toggleSelectAll,
         onCancel: () => Navigator.of(context).maybePop(),
       ),
     );

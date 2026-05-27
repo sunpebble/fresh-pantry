@@ -21,12 +21,13 @@ class ReviewBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final allSelected = selectedCount == totalCount && totalCount > 0;
+    final canToggleSelection = totalCount > 0;
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Row(
         children: [
           TextButton.icon(
-            onPressed: onToggleSelectAll,
+            onPressed: canToggleSelection ? onToggleSelectAll : null,
             icon: Icon(
               allSelected ? Icons.deselect : Icons.select_all,
               size: 18,
@@ -35,10 +36,7 @@ class ReviewBottomBar extends StatelessWidget {
           ),
           const Spacer(),
           if (onCancel != null) ...[
-            OutlinedButton(
-              onPressed: onCancel,
-              child: const Text('取消'),
-            ),
+            OutlinedButton(onPressed: onCancel, child: const Text('取消')),
             const SizedBox(width: 8),
           ],
           FilledButton(

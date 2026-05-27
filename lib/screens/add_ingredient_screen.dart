@@ -363,7 +363,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
       if (_isEditing) {
         final index = _resolveEditIndex();
         if (index == -1) {
-          if (mounted) Navigator.of(context).maybePop();
+          if (mounted) _showStaleEditSnackBar();
           return;
         }
         await ref.read(inventoryProvider.notifier).update(index, ingredient);
@@ -411,18 +411,38 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
   }
 
   int _resolveEditIndex() {
+    final initialIngredient = widget.initialIngredient!;
     final inventory = ref.read(inventoryProvider);
-    final identityIndex = inventory.indexWhere(
-      (candidate) => identical(candidate, widget.initialIngredient),
-    );
-    if (identityIndex != -1) return identityIndex;
     final providedIndex = widget.inventoryIndex;
     if (providedIndex != null &&
         providedIndex >= 0 &&
         providedIndex < inventory.length) {
-      return providedIndex;
+      final candidate = inventory[providedIndex];
+      if (_matchesInitialIngredient(candidate, initialIngredient)) {
+        return providedIndex;
+      }
     }
-    return inventoryIndexOf(inventory, widget.initialIngredient!);
+    final identityIndex = inventory.indexWhere(
+      (candidate) => identical(candidate, initialIngredient),
+    );
+    if (identityIndex != -1) return identityIndex;
+    return inventory.indexWhere(
+      (candidate) => _matchesInitialIngredient(candidate, initialIngredient),
+    );
+  }
+
+  bool _matchesInitialIngredient(Ingredient candidate, Ingredient initial) {
+    if (identical(candidate, initial) || candidate == initial) return true;
+    return candidate.name == initial.name &&
+        candidate.quantity == initial.quantity &&
+        candidate.unit == initial.unit &&
+        candidate.imageUrl == initial.imageUrl &&
+        candidate.barcode == initial.barcode &&
+        candidate.storage == initial.storage &&
+        candidate.expiryDate == initial.expiryDate &&
+        candidate.shelfLifeDays == initial.shelfLifeDays &&
+        FoodCategories.dropdownValue(candidate.category) ==
+            FoodCategories.dropdownValue(initial.category);
   }
 
   void _showAddedSnackBar(String name, Ingredient addedItem) {
@@ -445,6 +465,14 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
     showAppSnackBar(
       context,
       '保存前请补充：${fields.join('、')}',
+      backgroundColor: AppColors.error,
+    );
+  }
+
+  void _showStaleEditSnackBar() {
+    showAppSnackBar(
+      context,
+      '食材已不在库存中，无法保存修改',
       backgroundColor: AppColors.error,
     );
   }

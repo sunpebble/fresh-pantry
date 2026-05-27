@@ -140,6 +140,14 @@ class _DashboardHero extends ConsumerWidget {
         ),
       ),
     );
+    final lowStock = ref.watch(
+      lowStockItemsProvider.select((items) => items.length),
+    );
+
+    void openInventory(String filter) {
+      ref.read(selectedCategoryProvider.notifier).state = filter;
+      ref.navigateToTab(FkTab.fridge);
+    }
 
     return _HeroSection(
       greeting: dashboardGreetingFor(DateTime.now()),
@@ -147,7 +155,10 @@ class _DashboardHero extends ConsumerWidget {
       categoryCount: categoryCount,
       urgent: expiringCounts.urgent,
       soon: expiringCounts.soon,
-      lowStock: 0,
+      lowStock: lowStock,
+      onUrgentTap: () => openInventory(inventoryFilterNotFresh),
+      onSoonTap: () => openInventory(inventoryFilterNotFresh),
+      onLowStockTap: () => openInventory(inventoryFilterAll),
       onSettings:
           () => Navigator.of(
             context,
@@ -329,6 +340,9 @@ class _HeroSection extends StatelessWidget {
   final int urgent;
   final int soon;
   final int lowStock;
+  final VoidCallback onUrgentTap;
+  final VoidCallback onSoonTap;
+  final VoidCallback onLowStockTap;
   final VoidCallback onSettings;
 
   const _HeroSection({
@@ -338,6 +352,9 @@ class _HeroSection extends StatelessWidget {
     required this.urgent,
     required this.soon,
     required this.lowStock,
+    required this.onUrgentTap,
+    required this.onSoonTap,
+    required this.onLowStockTap,
     required this.onSettings,
   });
 
@@ -413,6 +430,7 @@ class _HeroSection extends StatelessWidget {
                   label: '快过期',
                   count: urgent,
                   accent: AppColors.fkDanger,
+                  onTap: onUrgentTap,
                 ),
               ),
               const SizedBox(width: 8),
@@ -421,6 +439,7 @@ class _HeroSection extends StatelessWidget {
                   label: '即将过期',
                   count: soon,
                   accent: AppColors.fkWarn,
+                  onTap: onSoonTap,
                 ),
               ),
               const SizedBox(width: 8),
@@ -429,6 +448,7 @@ class _HeroSection extends StatelessWidget {
                   label: '库存不足',
                   count: lowStock,
                   accent: Colors.white,
+                  onTap: onLowStockTap,
                 ),
               ),
             ],
@@ -443,15 +463,17 @@ class _MiniStat extends StatelessWidget {
   final String label;
   final int count;
   final Color accent;
+  final VoidCallback? onTap;
   const _MiniStat({
     required this.label,
     required this.count,
     required this.accent,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final body = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.15),
@@ -478,6 +500,17 @@ class _MiniStat extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+    if (onTap == null) return body;
+    return Semantics(
+      button: true,
+      excludeSemantics: true,
+      label: '$label $count',
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: body,
       ),
     );
   }

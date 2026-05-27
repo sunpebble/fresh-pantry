@@ -176,6 +176,92 @@ void main() {
   });
 
   testWidgets(
+    'dashboard hero not-fresh stat opens fridge with not-fresh filter',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'inventory_items': jsonEncode([
+          _ingredient('牛奶', state: FreshnessState.expiringSoon).toJson(),
+        ]),
+        'shopping_items': '[]',
+        'add_history': '{}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      late ProviderContainer container;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
+            notificationServiceProvider.overrideWithValue(
+              FakeNotificationService(),
+            ),
+          ],
+          child: Builder(
+            builder: (context) {
+              container = ProviderScope.containerOf(context);
+              return const FreshPantryApp();
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.bySemanticsLabel('即将过期 1'));
+      await tester.pumpAndSettle();
+
+      expect(container.read(navigationProvider), FkTab.fridge);
+      expect(container.read(selectedCategoryProvider), inventoryFilterNotFresh);
+    },
+  );
+
+  testWidgets(
+    'dashboard hero low-stock stat shows real count and opens fridge',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'inventory_items': '[]',
+        'shopping_items': '[]',
+        'add_history': jsonEncode({
+          '米': {
+            'count': 5,
+            'category': FoodCategories.other,
+            'storage': 'pantry',
+            'unit': '袋',
+          },
+        }),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      late ProviderContainer container;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
+            notificationServiceProvider.overrideWithValue(
+              FakeNotificationService(),
+            ),
+          ],
+          child: Builder(
+            builder: (context) {
+              container = ProviderScope.containerOf(context);
+              return const FreshPantryApp();
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.bySemanticsLabel('库存不足 1'));
+      await tester.pumpAndSettle();
+
+      expect(container.read(navigationProvider), FkTab.fridge);
+      expect(container.read(selectedCategoryProvider), inventoryFilterAll);
+      expect(find.byKey(const Key('inventory_low_stock_cta')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'dashboard category tile opens fridge filtered to that category',
     (tester) async {
       SharedPreferences.setMockInitialValues({

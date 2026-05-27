@@ -42,6 +42,17 @@ ShoppingItem _normalizeShoppingItemCategory(ShoppingItem item) {
   return item.copyWith(category: category);
 }
 
+ShoppingItem _normalizeShoppingItem(ShoppingItem item) {
+  final normalizedCategory = _normalizeShoppingItemCategory(item);
+  final trimmedName = normalizedCategory.name.trim();
+  final trimmedDetail = normalizedCategory.detail.trim();
+  if (trimmedName == normalizedCategory.name &&
+      trimmedDetail == normalizedCategory.detail) {
+    return normalizedCategory;
+  }
+  return normalizedCategory.copyWith(name: trimmedName, detail: trimmedDetail);
+}
+
 String _shoppingItemNameKey(String name) => name.trim().toLowerCase();
 
 ({int checked, int unchecked}) shoppingCountsFor(Iterable<ShoppingItem> items) {
@@ -125,7 +136,7 @@ class ShoppingNotifier extends Notifier<List<ShoppingItem>>
 
   Future<bool> add(ShoppingItem item) async {
     final normalizedItem = _withUniqueShoppingItemId(
-      _normalizeShoppingItemCategory(item),
+      _normalizeShoppingItem(item),
       state.map((item) => item.id).toSet(),
     );
     final nameKey = _shoppingItemNameKey(normalizedItem.name);

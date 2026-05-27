@@ -88,6 +88,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     );
   }
 
+  void _startCooking() {
+    final message = widget.recipe.steps.isEmpty ? '暂无烹饪步骤' : '已开始烹饪，点击步骤可标记完成';
+    showAppSnackBar(context, message);
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.watch(inventoryProvider.select(inventoryNamesSignature));
@@ -227,7 +232,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   },
                 ),
                 const SizedBox(height: 10),
-                _StartCookingButton(onTap: () {}),
+                _StartCookingButton(onTap: _startCooking),
               ],
             ),
           ),
@@ -728,41 +733,46 @@ class _StartCookingButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.shadowWarm,
-              blurRadius: 18,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.restaurant_menu_rounded,
-              size: 18,
-              color: Colors.white,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              '开始烹饪',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
+    return Semantics(
+      button: true,
+      label: '开始烹饪',
+      child: GestureDetector(
+        key: const Key('recipe_start_cooking_action'),
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            boxShadow: const [
+              BoxShadow(
+                color: AppColors.shadowWarm,
+                blurRadius: 18,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.restaurant_menu_rounded,
+                size: 18,
                 color: Colors.white,
               ),
-            ),
-          ],
+              const SizedBox(width: 6),
+              Text(
+                '开始烹饪',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

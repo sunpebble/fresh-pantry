@@ -135,6 +135,55 @@ void main() {
       expect(items.map((item) => item.name), ['重复食材', '第二份食材']);
     },
   );
+
+  testWidgets(
+    'edit save reports stale inventory item instead of overwriting another row',
+    (tester) async {
+      final originalItem = _ingredient('原食材');
+      final replacementItem = _ingredient('替代食材');
+      SharedPreferences.setMockInitialValues({
+        'inventory_items': jsonEncode([originalItem.toJson()]),
+        'shopping_items': '[]',
+        'add_history': '{}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      late ProviderContainer container;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          child: Builder(
+            builder: (context) {
+              container = ProviderScope.containerOf(context);
+              return MaterialApp(
+                theme: AppTheme.lightTheme,
+                home: Scaffold(
+                  body: AddIngredientScreen(
+                    initialIngredient: originalItem,
+                    inventoryIndex: 0,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await container.read(inventoryProvider.notifier).remove(0);
+      await container.read(inventoryProvider.notifier).add(replacementItem);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.widgetWithText(TextField, '原食材'), '错误更新');
+      await tester.ensureVisible(find.text('保存修改'));
+      await tester.tap(find.text('保存修改'));
+      await tester.pumpAndSettle();
+
+      final items = container.read(inventoryProvider);
+      expect(items.map((item) => item.name), ['替代食材']);
+      expect(find.text('食材已不在库存中，无法保存修改'), findsOneWidget);
+    },
+  );
 }
 
 Ingredient _ingredient(String name) {

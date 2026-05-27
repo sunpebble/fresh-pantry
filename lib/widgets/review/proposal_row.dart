@@ -57,14 +57,16 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: p.selected
-            ? AppColors.surfaceContainerLowest
-            : AppColors.surfaceContainerLow,
+        color:
+            p.selected
+                ? AppColors.surfaceContainerLowest
+                : AppColors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: p.selected
-              ? AppColors.primary.withValues(alpha: 0.3)
-              : AppColors.hair,
+          color:
+              p.selected
+                  ? AppColors.primary.withValues(alpha: 0.3)
+                  : AppColors.hair,
         ),
       ),
       child: Column(
@@ -96,34 +98,47 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Row(mainAxisSize: MainAxisSize.min, children: [
-                const Text('数量',
-                    style:
-                        TextStyle(color: AppColors.outline, fontSize: 12)),
-                const SizedBox(width: 6),
-                InlineNumberStepper(
-                  value: p.quantity,
-                  onChanged: (v) =>
-                      widget.onChanged(p.copyWith(quantity: v, userEdited: true)),
-                ),
-                const SizedBox(width: 4),
-                _unitChip(p),
-              ]),
-              Row(mainAxisSize: MainAxisSize.min, children: [
-                const Text('保质期',
-                    style:
-                        TextStyle(color: AppColors.outline, fontSize: 12)),
-                const SizedBox(width: 6),
-                InlineNumberStepper(
-                  value: (p.shelfLifeDays ?? 0).toString(),
-                  onChanged: (v) => widget.onChanged(
-                    p.copyWith(
-                        shelfLifeDays: int.tryParse(v) ?? 0,
-                        userEdited: true),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    '数量',
+                    style: TextStyle(color: AppColors.outline, fontSize: 12),
                   ),
-                  suffix: '天',
-                ),
-              ]),
+                  const SizedBox(width: 6),
+                  InlineNumberStepper(
+                    value: p.quantity,
+                    min: 1,
+                    onChanged:
+                        (v) => widget.onChanged(
+                          p.copyWith(quantity: v, userEdited: true),
+                        ),
+                  ),
+                  const SizedBox(width: 4),
+                  _unitChip(p),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    '保质期',
+                    style: TextStyle(color: AppColors.outline, fontSize: 12),
+                  ),
+                  const SizedBox(width: 6),
+                  InlineNumberStepper(
+                    value: (p.shelfLifeDays ?? 0).toString(),
+                    onChanged:
+                        (v) => widget.onChanged(
+                          p.copyWith(
+                            shelfLifeDays: int.tryParse(v) ?? 0,
+                            userEdited: true,
+                          ),
+                        ),
+                    suffix: '天',
+                  ),
+                ],
+              ),
               _categoryChip(p),
               _storageChip(p),
             ],
@@ -147,7 +162,10 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
       controller: _nameCtrl,
       autofocus: true,
       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-      decoration: const InputDecoration(isDense: true, border: InputBorder.none),
+      decoration: const InputDecoration(
+        isDense: true,
+        border: InputBorder.none,
+      ),
       onSubmitted: (v) => _commitName(v),
       onTapOutside: (_) => _commitName(_nameCtrl.text),
     );
@@ -157,36 +175,40 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
     final trimmed = v.trim();
     if (trimmed != widget.proposal.name) {
       widget.onChanged(
-          widget.proposal.copyWith(name: trimmed, userEdited: true));
+        widget.proposal.copyWith(name: trimmed, userEdited: true),
+      );
     }
     setState(() => _editingName = false);
   }
 
   Widget _unitChip(IntakeProposal p) {
-    return _pill(label: p.unit.isEmpty ? '单位' : p.unit, onTap: () async {
-      final chosen = await PickerSheet.show<String>(
-        context,
-        title: '单位',
-        options: const [
-          PickerOption(value: '个', label: '个'),
-          PickerOption(value: '只', label: '只'),
-          PickerOption(value: '把', label: '把'),
-          PickerOption(value: '盒', label: '盒'),
-          PickerOption(value: '袋', label: '袋'),
-          PickerOption(value: '瓶', label: '瓶'),
-          PickerOption(value: '罐', label: '罐'),
-          PickerOption(value: 'kg', label: 'kg'),
-          PickerOption(value: 'g', label: 'g'),
-          PickerOption(value: 'L', label: 'L'),
-          PickerOption(value: 'ml', label: 'ml'),
-          PickerOption(value: '份', label: '份'),
-        ],
-        selected: p.unit,
-      );
-      if (chosen != null) {
-        widget.onChanged(p.copyWith(unit: chosen, userEdited: true));
-      }
-    });
+    return _pill(
+      label: p.unit.isEmpty ? '单位' : p.unit,
+      onTap: () async {
+        final chosen = await PickerSheet.show<String>(
+          context,
+          title: '单位',
+          options: const [
+            PickerOption(value: '个', label: '个'),
+            PickerOption(value: '只', label: '只'),
+            PickerOption(value: '把', label: '把'),
+            PickerOption(value: '盒', label: '盒'),
+            PickerOption(value: '袋', label: '袋'),
+            PickerOption(value: '瓶', label: '瓶'),
+            PickerOption(value: '罐', label: '罐'),
+            PickerOption(value: 'kg', label: 'kg'),
+            PickerOption(value: 'g', label: 'g'),
+            PickerOption(value: 'L', label: 'L'),
+            PickerOption(value: 'ml', label: 'ml'),
+            PickerOption(value: '份', label: '份'),
+          ],
+          selected: p.unit,
+        );
+        if (chosen != null) {
+          widget.onChanged(p.copyWith(unit: chosen, userEdited: true));
+        }
+      },
+    );
   }
 
   Widget _categoryChip(IntakeProposal p) {
@@ -196,9 +218,10 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
         final chosen = await PickerSheet.show<String>(
           context,
           title: '分类',
-          options: FoodCategories.values
-              .map((c) => PickerOption(value: c, label: c))
-              .toList(),
+          options:
+              FoodCategories.values
+                  .map((c) => PickerOption(value: c, label: c))
+                  .toList(),
           selected: p.category,
         );
         if (chosen != null) {
@@ -215,9 +238,10 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
         final chosen = await PickerSheet.show<IconType>(
           context,
           title: '存储位置',
-          options: IconType.values
-              .map((i) => PickerOption(value: i, label: storageLabelFor(i)))
-              .toList(),
+          options:
+              IconType.values
+                  .map((i) => PickerOption(value: i, label: storageLabelFor(i)))
+                  .toList(),
           selected: p.storage,
         );
         if (chosen != null) {
@@ -236,11 +260,14 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
           color: AppColors.surfaceContainer,
           borderRadius: BorderRadius.circular(999),
         ),
-        child: Text(label,
-            style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.onSurface)),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.onSurface,
+          ),
+        ),
       ),
     );
   }

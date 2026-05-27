@@ -100,6 +100,37 @@ void main() {
       reason: '3 - 1 = 2',
     );
   });
+
+  testWidgets('start cooking button gives immediate guidance', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(412, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final prefs = await _prefs();
+    final recipe = Recipe(
+      id: 'start',
+      name: '两步菜',
+      category: '中餐',
+      difficulty: 1,
+      cookingMinutes: 10,
+      description: '',
+      ingredients: const [],
+      steps: const ['切菜', '装盘'],
+    );
+
+    await tester.pumpWidget(_app(prefs, RecipeDetailScreen(recipe: recipe)));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('recipe_start_cooking_action')),
+      100,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('recipe_start_cooking_action')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('已开始烹饪，点击步骤可标记完成'), findsOneWidget);
+  });
 }
 
 Future<SharedPreferences> _prefs() async {

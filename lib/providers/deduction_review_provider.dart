@@ -10,9 +10,19 @@ class DeductionReviewState {
   const DeductionReviewState({this.proposals = const []});
   final List<DeductionProposal> proposals;
   int get selectedCount =>
-      proposals
-          .where((p) => p.selected && p.action == DeductionAction.deduct)
-          .length;
+      proposals.where((p) => p.selected && _isDeductibleProposal(p)).length;
+  int get deductibleCount => proposals.where(_isDeductibleProposal).length;
+}
+
+bool _hasChosenCandidate(DeductionProposal proposal) {
+  return proposal.candidates.any(
+    (candidate) => candidate.inventoryRowIndex == proposal.chosenIndex,
+  );
+}
+
+bool _isDeductibleProposal(DeductionProposal proposal) {
+  return proposal.action == DeductionAction.deduct &&
+      _hasChosenCandidate(proposal);
 }
 
 class DeductionReviewNotifier extends Notifier<DeductionReviewState>
@@ -29,9 +39,13 @@ class DeductionReviewNotifier extends Notifier<DeductionReviewState>
   void toggleSelected(String id) {
     state = DeductionReviewState(
       proposals:
-          state.proposals
-              .map((p) => p.id == id ? p.copyWith(selected: !p.selected) : p)
-              .toList(),
+          state.proposals.map((p) {
+            if (p.id != id) return p;
+            if (!_isDeductibleProposal(p)) {
+              return p.copyWith(selected: false);
+            }
+            return p.copyWith(selected: !p.selected);
+          }).toList(),
     );
   }
 
@@ -40,11 +54,13 @@ class DeductionReviewNotifier extends Notifier<DeductionReviewState>
       proposals:
           state.proposals.map((p) {
             if (p.id != id) return p;
-            final next =
-                p.action == DeductionAction.deduct
-                    ? DeductionAction.skip
-                    : DeductionAction.deduct;
-            return p.copyWith(action: next);
+            if (p.action == DeductionAction.deduct) {
+              return p.copyWith(action: DeductionAction.skip, selected: false);
+            }
+            if (!_hasChosenCandidate(p)) {
+              return p.copyWith(action: DeductionAction.skip, selected: false);
+            }
+            return p.copyWith(action: DeductionAction.deduct, selected: true);
           }).toList(),
     );
   }
@@ -52,21 +68,49 @@ class DeductionReviewNotifier extends Notifier<DeductionReviewState>
   void chooseCandidate(String id, int candidateRowIndex) {
     state = DeductionReviewState(
       proposals:
+          state.proposals.map((p) {
+            if (p.id != id) return p;
+            final isKnownCandidate = p.candidates.any(
+              (candidate) => candidate.inventoryRowIndex == candidateRowIndex,
+            );
+            if (!isKnownCandidate) return p;
+            return p.copyWith(
+              chosenIndex: candidateRowIndex,
+              action: DeductionAction.deduct,
+              selected: true,
+            );
+          }).toList(),
+    );
+  }
+
+  void updateDeductAmount(String id, String amount) {
+    final trimmedAmount = amount.trim();
+    final parsed = double.tryParse(trimmedAmount);
+    final normalizedAmount =
+        parsed != null && parsed <= 0 ? '1' : trimmedAmount;
+    state = DeductionReviewState(
+      proposals:
           state.proposals
               .map(
                 (p) =>
-                    p.id == id ? p.copyWith(chosenIndex: candidateRowIndex) : p,
+                    p.id == id ? p.copyWith(deductAmount: normalizedAmount) : p,
               )
               .toList(),
     );
   }
 
-  void updateDeductAmount(String id, String amount) {
+  void toggleSelectAll() {
+    final deductible = state.proposals.where(_isDeductibleProposal).toList();
+    final allSelected =
+        deductible.isNotEmpty && deductible.every((p) => p.selected);
     state = DeductionReviewState(
       proposals:
-          state.proposals
-              .map((p) => p.id == id ? p.copyWith(deductAmount: amount) : p)
-              .toList(),
+          state.proposals.map((p) {
+            if (!_isDeductibleProposal(p)) {
+              return p.copyWith(selected: false);
+            }
+            return p.copyWith(selected: !allSelected);
+          }).toList(),
     );
   }
 

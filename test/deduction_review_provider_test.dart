@@ -84,4 +84,62 @@ void main() {
     c.read(deductionReviewProvider.notifier).clear();
     expect(c.read(deductionReviewProvider).selectedCount, 0);
   });
+
+  test(
+    'skip proposals stay unselected and cannot be toggled to deduct without candidates',
+    () async {
+      final c = await _container();
+      final n = c.read(deductionReviewProvider.notifier);
+      n.seed([
+        DeductionProposal.empty(
+          id: 'missing',
+          recipeIngredientName: '罗勒',
+          requiredQty: '1把',
+        ),
+      ]);
+
+      n.toggleSelected('missing');
+      n.toggleAction('missing');
+
+      final p = c.read(deductionReviewProvider).proposals.single;
+      expect(p.action, DeductionAction.skip);
+      expect(p.selected, isFalse);
+      expect(c.read(deductionReviewProvider).selectedCount, 0);
+    },
+  );
+
+  test('toggleAction clears selection when a deduct row is skipped', () async {
+    final c = await _container();
+    final n = c.read(deductionReviewProvider.notifier);
+    n.seed([proposal()]);
+
+    n.toggleAction('d1');
+
+    final p = c.read(deductionReviewProvider).proposals.single;
+    expect(p.action, DeductionAction.skip);
+    expect(p.selected, isFalse);
+    expect(c.read(deductionReviewProvider).selectedCount, 0);
+  });
+
+  test('toggleSelectAll only targets deductible rows', () async {
+    final c = await _container();
+    final n = c.read(deductionReviewProvider.notifier);
+    n.seed([
+      proposal(id: 'd1'),
+      proposal(id: 'd2'),
+      DeductionProposal.empty(
+        id: 'missing',
+        recipeIngredientName: '罗勒',
+        requiredQty: '1把',
+      ),
+    ]);
+
+    n.toggleSelectAll();
+    expect(c.read(deductionReviewProvider).selectedCount, 0);
+    expect(c.read(deductionReviewProvider).proposals.last.selected, isFalse);
+
+    n.toggleSelectAll();
+    expect(c.read(deductionReviewProvider).selectedCount, 2);
+    expect(c.read(deductionReviewProvider).proposals.last.selected, isFalse);
+  });
 }
