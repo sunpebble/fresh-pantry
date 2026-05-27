@@ -14,6 +14,7 @@ import '../widgets/shared/fk_card.dart';
 import '../widgets/shared/fk_pill.dart';
 import '../widgets/shared/fk_section_head.dart';
 import '../widgets/shared/fk_top_bar.dart';
+import '../widgets/settings/household_section.dart';
 import 'ai_settings_screen.dart';
 import 'my_recipes_screen.dart';
 
@@ -220,6 +221,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ('收藏菜谱', '12', AppColors.fkDanger),
                   ],
                 ),
+              ),
+              const HouseholdSection(
+                householdName: 'Kunish Kitchen',
+                members: [],
               ),
               if (permissionMissing)
                 Padding(
