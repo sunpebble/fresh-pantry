@@ -31,7 +31,7 @@ fresh_pantry/
     api/                   # Cloudflare Worker
   supabase/
     migrations/            # SQL schema, RLS, indexes
-    seed.sql               # Local smoke-test seed data
+    seed.sql               # Intentionally empty; tests own their fixtures
     config.toml            # Local Supabase CLI config
   docs/
     superpowers/

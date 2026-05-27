@@ -823,6 +823,26 @@ void main() {
   });
 
   group('recipesProvider cache', () {
+    test('returns no recipes without inventory terms', () async {
+      SharedPreferences.setMockInitialValues({'inventory_items': '[]'});
+      final prefs = await SharedPreferences.getInstance();
+      final client = _FakeMealDbApi(
+        onSearch: (_) => throw StateError('network should not be called'),
+      );
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          mealDbApiProvider.overrideWithValue(client),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final recipes = await container.read(recipesProvider.future);
+
+      expect(recipes, isEmpty);
+      expect(client.calls, 0);
+    });
+
     test('uses cached TheMealDB recipes without calling the client', () async {
       final cachedRecipe = _recipe('mealdb_cached', '缓存番茄菜谱', ['tomato']);
       SharedPreferences.setMockInitialValues({
@@ -876,27 +896,30 @@ void main() {
       );
     });
 
-    test('keeps mock recipes when TheMealDB client throws', () async {
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': json.encode([_ingredient('番茄').toJson()]),
-      });
-      final prefs = await SharedPreferences.getInstance();
-      final client = _FakeMealDbApi(
-        onSearch: (_) => throw StateError('service unavailable'),
-      );
-      final container = ProviderContainer(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          mealDbApiProvider.overrideWithValue(client),
-        ],
-      );
-      addTearDown(container.dispose);
+    test(
+      'does not fall back to demo recipes when TheMealDB client throws',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'inventory_items': json.encode([_ingredient('番茄').toJson()]),
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final client = _FakeMealDbApi(
+          onSearch: (_) => throw StateError('service unavailable'),
+        );
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            mealDbApiProvider.overrideWithValue(client),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      final recipes = await container.read(recipesProvider.future);
+        final recipes = await container.read(recipesProvider.future);
 
-      expect(client.calls, 1);
-      expect(recipes, isNotEmpty);
-    });
+        expect(client.calls, 1);
+        expect(recipes, isEmpty);
+      },
+    );
   });
 }
 
@@ -947,12 +970,9 @@ Recipe _recipe(String id, String name, List<String> ingredients) {
     difficulty: 1,
     cookingMinutes: 10,
     description: '',
-    ingredients:
-        ingredients
-            .map(
-              (ingredient) => RecipeIngredient(name: ingredient, amount: '1'),
-            )
-            .toList(),
+    ingredients: ingredients
+        .map((ingredient) => RecipeIngredient(name: ingredient, amount: '1'))
+        .toList(),
     steps: const [],
   );
 }

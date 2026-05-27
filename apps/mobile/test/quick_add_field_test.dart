@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fresh_pantry/data/mock_data.dart';
 import 'package:fresh_pantry/providers/shopping_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/widgets/shopping/quick_add_field.dart';
@@ -28,47 +27,44 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('添加食材到清单...'), findsOneWidget);
-    for (final suggestion in MockData.quickSuggestions) {
-      expect(find.text('+ $suggestion'), findsNothing);
-    }
+    expect(find.textContaining('+ '), findsNothing);
   });
 
-  testWidgets(
-    'submitting a name appends an item to the shopping provider',
-    (tester) async {
-      SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
-      final prefs = await SharedPreferences.getInstance();
-      late ProviderContainer container;
+  testWidgets('submitting a name appends an item to the shopping provider', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
+    final prefs = await SharedPreferences.getInstance();
+    late ProviderContainer container;
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-          child: MaterialApp(
-            home: Scaffold(
-              body: Builder(
-                builder: (context) {
-                  container = ProviderScope.containerOf(context);
-                  return const QuickAddField();
-                },
-              ),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        child: MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                container = ProviderScope.containerOf(context);
+                return const QuickAddField();
+              },
             ),
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(container.read(shoppingProvider), isEmpty);
+    expect(container.read(shoppingProvider), isEmpty);
 
-      await tester.enterText(find.byType(TextField), '番茄');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
-      await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '番茄');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
 
-      final items = container.read(shoppingProvider);
-      expect(items, hasLength(1));
-      expect(items.single.name, '番茄');
-      // After submit the field should clear so the next entry starts blank.
-      final field = tester.widget<TextField>(find.byType(TextField));
-      expect(field.controller?.text, isEmpty);
-    },
-  );
+    final items = container.read(shoppingProvider);
+    expect(items, hasLength(1));
+    expect(items.single.name, '番茄');
+    // After submit the field should clear so the next entry starts blank.
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller?.text, isEmpty);
+  });
 }

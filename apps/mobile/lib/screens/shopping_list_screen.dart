@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../data/mock_data.dart';
+import '../models/recipe.dart';
 import '../models/shopping_item.dart';
 import '../providers/intake_review_provider.dart';
 import '../providers/inventory_provider.dart';
+import '../providers/recipe_provider.dart';
 import '../providers/shopping_provider.dart';
 import '../services/ingredient_factory.dart';
 import '../services/intake_proposal_factory.dart';
@@ -55,6 +56,17 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
     final visibleEntries = viewState.visibleGroups.entries.toList(
       growable: false,
     );
+    final recommendedRecipes = ref.watch(recommendedRecipesProvider);
+    final plannerRecipe = recommendedRecipes.isEmpty
+        ? null
+        : recommendedRecipes.first;
+    final inventoryNames = inventoryNameSet(ref.watch(inventoryProvider));
+    final plannerMissingCount = plannerRecipe == null
+        ? 0
+        : missingRecipeIngredientsForNames(
+            inventoryNames,
+            plannerRecipe,
+          ).length;
 
     return Stack(
       children: [
@@ -73,10 +85,9 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
                     bottom: false,
                     child: FkTopBar(
                       title: '购物清单',
-                      subtitle:
-                          total == 0
-                              ? '清单为空 · 在上方添加食材'
-                              : '$checkedCount/$total 已完成 · $uncheckedCount 件待购',
+                      subtitle: total == 0
+                          ? '清单为空 · 在上方添加食材'
+                          : '$checkedCount/$total 已完成 · $uncheckedCount 件待购',
                       actions: [
                         FkIconButton(
                           onTap: _quickAddFocusNode.requestFocus,
@@ -107,10 +118,9 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
                     selected: viewState.filter,
                     todoCount: uncheckedCount,
                     doneCount: checkedCount,
-                    onSelect:
-                        (filter) =>
-                            ref.read(shoppingFilterProvider.notifier).state =
-                                filter,
+                    onSelect: (filter) =>
+                        ref.read(shoppingFilterProvider.notifier).state =
+                            filter,
                   ),
                 ),
                 if (allItems.isEmpty)
@@ -126,13 +136,16 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
                       selectedFilter: viewState.filter,
                       collapsedCategories: collapsedCategories,
                       checkedCount: checkedCount,
-                      onToggleCategory:
-                          (category) => _toggleCategory(ref, category),
-                      onItemToggle:
-                          (item) => _onItemChecked(context, ref, item),
-                      onItemDelete:
-                          (item) => _deleteShoppingItem(context, ref, item),
-                      onViewRecipe: () => _openPlannerRecipe(context),
+                      onToggleCategory: (category) =>
+                          _toggleCategory(ref, category),
+                      onItemToggle: (item) =>
+                          _onItemChecked(context, ref, item),
+                      onItemDelete: (item) =>
+                          _deleteShoppingItem(context, ref, item),
+                      plannerRecipe: plannerRecipe,
+                      plannerMissingCount: plannerMissingCount,
+                      onViewRecipe: (recipe) =>
+                          _openPlannerRecipe(context, recipe),
                       onClearChecked: () => _confirmClearChecked(context, ref),
                     ),
                   ),
@@ -190,12 +203,10 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
     }
   }
 
-  void _openPlannerRecipe(BuildContext context) {
+  void _openPlannerRecipe(BuildContext context, Recipe recipe) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => RecipeDetailScreen(recipe: MockData.recipes.first),
-      ),
+      MaterialPageRoute(builder: (_) => RecipeDetailScreen(recipe: recipe)),
     );
   }
 
@@ -310,6 +321,8 @@ class _ShoppingContentSliver extends StatelessWidget {
     required this.onToggleCategory,
     required this.onItemToggle,
     required this.onItemDelete,
+    required this.plannerRecipe,
+    required this.plannerMissingCount,
     required this.onViewRecipe,
     required this.onClearChecked,
   });
@@ -321,7 +334,9 @@ class _ShoppingContentSliver extends StatelessWidget {
   final ValueChanged<String> onToggleCategory;
   final ValueChanged<ShoppingItem> onItemToggle;
   final ValueChanged<ShoppingItem> onItemDelete;
-  final VoidCallback onViewRecipe;
+  final Recipe? plannerRecipe;
+  final int plannerMissingCount;
+  final ValueChanged<Recipe> onViewRecipe;
   final VoidCallback onClearChecked;
 
   @override
@@ -334,7 +349,7 @@ class _ShoppingContentSliver extends StatelessWidget {
   int get _itemCount =>
       visibleEntries.length +
       (visibleEntries.isEmpty ? 1 : 0) +
-      1 +
+      (plannerRecipe == null ? 0 : 1) +
       (checkedCount > 0 ? 1 : 0);
 
   Widget _buildItem(BuildContext context, int index) {
@@ -358,12 +373,13 @@ class _ShoppingContentSliver extends StatelessWidget {
       extraIndex -= 1;
     }
 
-    if (extraIndex == 0) {
+    final recipe = plannerRecipe;
+    if (extraIndex == 0 && recipe != null) {
       return Padding(
         padding: const EdgeInsets.only(top: 12),
         child: SmartPlannerCard(
-          title: '再买2样食材，就能完成您的卡博纳拉意面食谱。',
-          onViewRecipe: onViewRecipe,
+          title: _plannerTitleFor(recipe),
+          onViewRecipe: () => onViewRecipe(recipe),
         ),
       );
     }
@@ -372,6 +388,13 @@ class _ShoppingContentSliver extends StatelessWidget {
       padding: const EdgeInsets.only(top: 14),
       child: _ClearDoneButton(count: checkedCount, onTap: onClearChecked),
     );
+  }
+
+  String _plannerTitleFor(Recipe recipe) {
+    if (plannerMissingCount <= 0) {
+      return '现有食材可以完成「${recipe.name}」。';
+    }
+    return '再买$plannerMissingCount样食材，就能完成「${recipe.name}」。';
   }
 }
 
@@ -630,26 +653,25 @@ class _CategoryGroup extends StatelessWidget {
           AnimatedSize(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
-            child:
-                collapsed
-                    ? const SizedBox.shrink()
-                    : FkCard(
-                      padding: EdgeInsets.zero,
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: items.length,
-                        itemBuilder: (context, index) {
-                          final item = items[index];
-                          return _ShopRow(
-                            item: item,
-                            isLast: index == items.length - 1,
-                            onToggle: () => onItemToggle(item),
-                            onDelete: () => onItemDelete(item),
-                          );
-                        },
-                      ),
+            child: collapsed
+                ? const SizedBox.shrink()
+                : FkCard(
+                    padding: EdgeInsets.zero,
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        return _ShopRow(
+                          item: item,
+                          isLast: index == items.length - 1,
+                          onToggle: () => onItemToggle(item),
+                          onDelete: () => onItemDelete(item),
+                        );
+                      },
                     ),
+                  ),
           ),
         ],
       ),
@@ -698,14 +720,13 @@ class _ShopRow extends StatelessWidget {
                     width: 2,
                   ),
                 ),
-                child:
-                    checked
-                        ? const Icon(
-                          Icons.check_rounded,
-                          size: 14,
-                          color: Colors.white,
-                        )
-                        : null,
+                child: checked
+                    ? const Icon(
+                        Icons.check_rounded,
+                        size: 14,
+                        color: Colors.white,
+                      )
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(

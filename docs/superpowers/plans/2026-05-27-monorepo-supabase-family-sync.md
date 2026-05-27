@@ -55,7 +55,7 @@ docs/superpowers/specs/2026-05-27-monorepo-supabase-family-sync-design.md
 | `supabase/config.toml` | Local Supabase CLI configuration. |
 | `supabase/migrations/*_init_family_sync_schema.sql` | Schema, RLS, helper functions, indexes, Realtime publication. |
 | `supabase/tests/family_sync_rls.sql` | RLS smoke tests for owner/member/non-member access. |
-| `supabase/seed.sql` | Deterministic local smoke data. |
+| `supabase/seed.sql` | Intentionally empty; local resets should not fill demo data. |
 
 ### Cloudflare Worker
 
@@ -745,42 +745,21 @@ alter publication supabase_realtime add table public.custom_recipes;
 alter publication supabase_realtime add table public.sync_events;
 ```
 
-- [ ] **Step 3: Add deterministic local seed**
+- [ ] **Step 3: Keep local seed empty**
 
 Create `supabase/seed.sql`:
 
 ```sql
-insert into auth.users (
-  instance_id,
-  id,
-  aud,
-  role,
-  email,
-  encrypted_password,
-  email_confirmed_at,
-  created_at,
-  updated_at
-)
-values
-  ('00000000-0000-0000-0000-000000000000', '11111111-1111-1111-1111-111111111111', 'authenticated', 'authenticated', 'owner@example.com', crypt('password', gen_salt('bf')), now(), now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '22222222-2222-2222-2222-222222222222', 'authenticated', 'authenticated', 'member@example.com', crypt('password', gen_salt('bf')), now(), now(), now()),
-  ('00000000-0000-0000-0000-000000000000', '33333333-3333-3333-3333-333333333333', 'authenticated', 'authenticated', 'outsider@example.com', crypt('password', gen_salt('bf')), now(), now(), now())
-on conflict (id) do nothing;
-
-insert into public.households (id, name, owner_id)
-values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Kunish Kitchen', '11111111-1111-1111-1111-111111111111')
-on conflict (id) do nothing;
-
-insert into public.household_members (household_id, user_id, role)
-values
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', 'owner'),
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '22222222-2222-2222-2222-222222222222', 'member')
-on conflict (household_id, user_id) do nothing;
+-- Intentionally empty.
+-- Local resets should start without demo accounts, households, or pantry data.
+-- Database tests create their own fixtures in supabase/tests.
 ```
 
 - [ ] **Step 4: Add RLS smoke tests**
 
 Create `supabase/tests/family_sync_rls.sql`:
+The test must insert its owner/member/outsider fixtures inside the test
+transaction; it must not depend on `supabase/seed.sql`.
 
 ```sql
 begin;
