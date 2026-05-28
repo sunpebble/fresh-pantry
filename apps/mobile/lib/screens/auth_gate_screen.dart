@@ -78,11 +78,12 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
     }
 
     if (session.households.isNotEmpty) {
+      final selectedId = session.selectedHouseholdId.isNotEmpty
+          ? session.selectedHouseholdId
+          : session.households.first.id;
       return ProviderScope(
         overrides: [
-          selectedHouseholdIdProvider.overrideWithValue(
-            session.households.first.id,
-          ),
+          selectedHouseholdIdProvider.overrideWithValue(selectedId),
         ],
         child: widget.authenticatedChild,
       );

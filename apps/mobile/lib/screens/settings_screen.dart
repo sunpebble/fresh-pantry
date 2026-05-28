@@ -15,6 +15,7 @@ import '../widgets/shared/fk_card.dart';
 import '../widgets/shared/fk_pill.dart';
 import '../widgets/shared/fk_section_head.dart';
 import '../widgets/shared/fk_top_bar.dart';
+import '../utils/app_dialog.dart';
 import '../widgets/settings/household_section.dart';
 import 'ai_settings_screen.dart';
 import 'my_recipes_screen.dart';
@@ -103,6 +104,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     fkToast(context, '邀请链接已复制，对方登录 App 后也会看到提醒');
   }
 
+  Future<void> _onRemoveMember(String householdId, String userId) async {
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: '移除成员',
+      content: '确定移除该成员？',
+      confirmLabel: '移除',
+      isDestructive: true,
+    );
+    if (!confirmed || !mounted) return;
+    await ref
+        .read(householdSessionControllerProvider.notifier)
+        .removeMember(householdId, userId);
+  }
+
+  Future<void> _onRevokeInvite(String householdId, String inviteId) async {
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: '撤销邀请',
+      content: '确定撤销该邀请？',
+      confirmLabel: '撤销',
+      isDestructive: true,
+    );
+    if (!confirmed || !mounted) return;
+    await ref
+        .read(householdSessionControllerProvider.notifier)
+        .revokeInvite(householdId, inviteId);
+  }
+
+  void _onSwitchHousehold(String householdId) {
+    ref
+        .read(householdSessionControllerProvider.notifier)
+        .switchHousehold(householdId);
+  }
+
   Future<void> _onReminderToggle(
     bool newValue,
     Future<void> Function() apply,
@@ -187,7 +222,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final householdSession = ref.watch(householdSessionControllerProvider);
     final household = householdSession.households.isEmpty
         ? null
-        : householdSession.households.first;
+        : householdSession.households.firstWhere(
+            (h) => h.id == householdSession.selectedHouseholdId,
+            orElse: () => householdSession.households.first,
+          );
     final reminder = ref.watch(reminderSettingsProvider);
     final reminderN = ref.read(reminderSettingsProvider.notifier);
 
@@ -238,6 +276,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onInviteEmail: household == null
                     ? null
                     : (email) => _onInviteEmail(household.id, email),
+                isOwner: household != null && household.ownerId == householdSession.currentUserId,
+                currentUserId: householdSession.currentUserId,
+                onRemoveMember: household == null
+                    ? null
+                    : (userId) => _onRemoveMember(household.id, userId),
+                ownerPendingInvites: householdSession.ownerPendingInvites,
+                onRevokeInvite: household == null
+                    ? null
+                    : (inviteId) => _onRevokeInvite(household.id, inviteId),
+                households: householdSession.households,
+                selectedHouseholdId: householdSession.selectedHouseholdId,
+                onSwitchHousehold: (id) => _onSwitchHousehold(id),
               ),
               if (permissionMissing)
                 Padding(
