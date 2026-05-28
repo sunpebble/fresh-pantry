@@ -13,6 +13,7 @@ class HouseholdSection extends StatelessWidget {
     required this.householdName,
     required this.members,
     this.onInvite,
+    this.onInviteLink,
     this.onInviteEmail,
     this.isOwner = false,
     this.currentUserId = '',
@@ -28,6 +29,7 @@ class HouseholdSection extends StatelessWidget {
   final String householdName;
   final List<HouseholdMember> members;
   final VoidCallback? onInvite;
+  final Future<void> Function()? onInviteLink;
   final Future<void> Function(String email)? onInviteEmail;
   final bool isOwner;
   final String currentUserId;
@@ -41,9 +43,9 @@ class HouseholdSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final inviteAction = onInviteEmail == null
-        ? onInvite
-        : () => _showInviteDialog(context);
+    final canInvite =
+        isOwner &&
+        (onInviteLink != null || onInviteEmail != null || onInvite != null);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -74,8 +76,11 @@ class HouseholdSection extends StatelessWidget {
                     Expanded(
                       child: households.length > 1 && onSwitchHousehold != null
                           ? DropdownButton<String>(
-                              value: selectedHouseholdId.isNotEmpty &&
-                                      households.any((h) => h.id == selectedHouseholdId)
+                              value:
+                                  selectedHouseholdId.isNotEmpty &&
+                                      households.any(
+                                        (h) => h.id == selectedHouseholdId,
+                                      )
                                   ? selectedHouseholdId
                                   : households.first.id,
                               isExpanded: true,
@@ -88,8 +93,12 @@ class HouseholdSection extends StatelessWidget {
                                       h.name,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context).textTheme.titleMedium
-                                          ?.copyWith(fontWeight: FontWeight.w700),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                     ),
                                   ),
                               ],
@@ -123,7 +132,8 @@ class HouseholdSection extends StatelessWidget {
                     ),
                   )
                 else
-                  for (final member in members) _buildMemberRow(context, member),
+                  for (final member in members)
+                    _buildMemberRow(context, member),
                 if (isOwner && ownerPendingInvites.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.md),
                   Text(
@@ -142,15 +152,17 @@ class HouseholdSection extends StatelessWidget {
                           : null,
                     ),
                 ],
-                const SizedBox(height: AppSpacing.md),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: inviteAction,
-                    icon: const Icon(Icons.person_add_alt_1_rounded),
-                    label: const Text('邀请成员'),
+                if (canInvite) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  _InviteActions(
+                    onInviteLink:
+                        onInviteLink ??
+                        (onInvite == null ? null : _legacyInviteAction),
+                    onInviteEmail: onInviteEmail == null
+                        ? null
+                        : () => _showInviteDialog(context),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -160,7 +172,8 @@ class HouseholdSection extends StatelessWidget {
   }
 
   Widget _buildMemberRow(BuildContext context, HouseholdMember member) {
-    final canRemove = isOwner &&
+    final canRemove =
+        isOwner &&
         member.userId != currentUserId &&
         member.role != 'owner' &&
         onRemoveMember != null;
@@ -201,15 +214,50 @@ class HouseholdSection extends StatelessWidget {
     );
   }
 
+  Future<void> _legacyInviteAction() async {
+    onInvite?.call();
+  }
+
   Future<void> _showEditNameDialog(BuildContext context) {
     final onEdit = onEditName;
     if (onEdit == null) return Future<void>.value();
     return showDialog<void>(
       context: context,
-      builder: (_) => _EditNameDialog(
-        currentName: householdName,
-        onSubmit: onEdit,
-      ),
+      builder: (_) =>
+          _EditNameDialog(currentName: householdName, onSubmit: onEdit),
+    );
+  }
+}
+
+class _InviteActions extends StatelessWidget {
+  const _InviteActions({this.onInviteLink, this.onInviteEmail});
+
+  final Future<void> Function()? onInviteLink;
+  final Future<void> Function()? onInviteEmail;
+
+  @override
+  Widget build(BuildContext context) {
+    final linkAction = onInviteLink;
+    final emailAction = onInviteEmail;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (linkAction != null)
+          FilledButton.icon(
+            onPressed: linkAction,
+            icon: const Icon(Icons.qr_code_2_rounded),
+            label: const Text('扫码/链接邀请'),
+          ),
+        if (linkAction != null && emailAction != null)
+          const SizedBox(height: AppSpacing.sm),
+        if (emailAction != null)
+          OutlinedButton.icon(
+            onPressed: emailAction,
+            icon: const Icon(Icons.mail_outline_rounded),
+            label: const Text('邮箱定向邀请'),
+          ),
+      ],
     );
   }
 }
@@ -255,22 +303,19 @@ class _PendingInviteRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final target = invite.email.trim().isEmpty ? '扫码/链接邀请' : invite.email;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          const Icon(
-            Icons.mail_outline,
-            color: AppColors.outline,
-            size: 22,
-          ),
+          const Icon(Icons.mail_outline, color: AppColors.outline, size: 22),
           const SizedBox(width: AppSpacing.sm + 2),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  invite.email,
+                  target,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyMedium,
@@ -342,7 +387,7 @@ class _InviteMemberDialogState extends State<_InviteMemberDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('邀请成员'),
+      title: const Text('邮箱定向邀请'),
       content: TextField(
         controller: _controller,
         enabled: !_isSubmitting,

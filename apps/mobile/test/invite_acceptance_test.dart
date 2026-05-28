@@ -60,11 +60,11 @@ class InviteRecordingGateway implements HouseholdGateway {
   @override
   Future<String> createInvite({
     required String householdId,
-    required String email,
+    String? email,
   }) async {
     if (createInviteError != null) throw createInviteError!;
     inviteHouseholdId = householdId;
-    inviteEmail = email;
+    inviteEmail = email ?? '';
     return 'https://api.fresh-pantry.kunish.eu.org/invite/abcDEF123_-';
   }
 
@@ -122,7 +122,9 @@ class InviteRecordingGateway implements HouseholdGateway {
   }
 
   @override
-  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(String householdId) {
+  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(
+    String householdId,
+  ) {
     throw UnimplementedError('Not needed by these tests.');
   }
 
@@ -132,7 +134,10 @@ class InviteRecordingGateway implements HouseholdGateway {
   }
 
   @override
-  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences) {
+  Future<void> updateCategoryPreferences(
+    String householdId,
+    Map<String, dynamic> preferences,
+  ) {
     throw UnimplementedError('Not needed by these tests.');
   }
 
@@ -148,7 +153,7 @@ void main() {
 
     final inviteUrl = await controller.createInvite(
       'household_1',
-      ' member@example.com ',
+      email: ' member@example.com ',
     );
 
     expect(
@@ -157,6 +162,21 @@ void main() {
     );
     expect(gateway.inviteHouseholdId, 'household_1');
     expect(gateway.inviteEmail, 'member@example.com');
+    expect(controller.state.isSubmitting, isFalse);
+
+    controller.dispose();
+    await gateway.close();
+  });
+
+  test('createInvite supports open household links without email', () async {
+    final gateway = InviteRecordingGateway();
+    final controller = HouseholdSessionController(gateway);
+
+    final inviteUrl = await controller.createInvite('household_1');
+
+    expect(inviteUrl, contains('/invite/'));
+    expect(gateway.inviteHouseholdId, 'household_1');
+    expect(gateway.inviteEmail, isEmpty);
     expect(controller.state.isSubmitting, isFalse);
 
     controller.dispose();

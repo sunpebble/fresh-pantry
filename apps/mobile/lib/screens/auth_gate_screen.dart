@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../household/household_models.dart';
 import '../household/household_session_controller.dart';
 import '../household/invite_token.dart';
+import '../providers/invite_link_provider.dart';
 import '../sync/sync_providers.dart';
 import '../theme/app_theme.dart';
 
@@ -31,6 +32,7 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
   String? _inviteInputError;
   String? _lastPreviewToken;
   final _dismissedInviteIds = <String>{};
+  StreamSubscription<String>? _inviteLinkSubscription;
 
   @override
   void initState() {
@@ -46,10 +48,12 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
       if (!mounted) return;
       ref.read(householdSessionControllerProvider.notifier).refreshHouseholds();
     });
+    _listenForInviteLinks();
   }
 
   @override
   void dispose() {
+    _inviteLinkSubscription?.cancel();
     _emailController.dispose();
     _householdNameController.dispose();
     _inviteController.dispose();
@@ -82,9 +86,7 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
           ? session.selectedHouseholdId
           : session.households.first.id;
       return ProviderScope(
-        overrides: [
-          selectedHouseholdIdProvider.overrideWithValue(selectedId),
-        ],
+        overrides: [selectedHouseholdIdProvider.overrideWithValue(selectedId)],
         child: widget.authenticatedChild,
       );
     }
@@ -410,6 +412,43 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
     });
   }
 
+  void _listenForInviteLinks() {
+    final source = ref.read(inviteLinkSourceProvider);
+    unawaited(
+      source
+          .consumeInitialLink()
+          .then(_handleIncomingInviteLink)
+          .catchError(_reportInviteLinkError),
+    );
+    _inviteLinkSubscription = source.incomingLinks.listen(
+      _handleIncomingInviteLink,
+      onError: _reportInviteLinkError,
+    );
+  }
+
+  void _reportInviteLinkError(Object error, [StackTrace? stackTrace]) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'fresh_pantry',
+        context: ErrorDescription('while handling an invite deep link'),
+      ),
+    );
+  }
+
+  void _handleIncomingInviteLink(String? link) {
+    if (link == null || link.isEmpty || !mounted) return;
+    final token = inviteTokenFromInput(link);
+    if (token == null) return;
+    setState(() {
+      _pendingInviteToken = token;
+      _lastPreviewToken = null;
+      _inviteInputError = null;
+      _inviteController.text = link;
+    });
+  }
+
   void _ensureInvitePreviewLoaded(String token) {
     if (_lastPreviewToken == token) return;
     _lastPreviewToken = token;
@@ -560,11 +599,13 @@ class _InvitePreviewCard extends StatelessWidget {
                 color: AppColors.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              '邀请邮箱：${preview.invitedEmail}',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            if (preview.invitedEmail.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                '邀请邮箱：${preview.invitedEmail}',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
             const SizedBox(height: AppSpacing.lg),
             Wrap(
               spacing: AppSpacing.sm,

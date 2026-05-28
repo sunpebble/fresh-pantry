@@ -41,10 +41,7 @@ abstract class HouseholdGateway {
   Future<List<Household>> loadHouseholds();
   Future<Household> createHousehold(String name);
   Future<void> uploadInitialData(String householdId);
-  Future<String> createInvite({
-    required String householdId,
-    required String email,
-  });
+  Future<String> createInvite({required String householdId, String? email});
   Future<List<HouseholdMember>> loadHouseholdMembers(String householdId);
   Future<List<HouseholdInvitePreview>> loadPendingInvites();
   Future<HouseholdInvitePreview> previewInvite(String token);
@@ -54,7 +51,10 @@ abstract class HouseholdGateway {
   Future<void> revokeInvite(String inviteId);
   Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(String householdId);
   Future<void> updateHouseholdName(String householdId, String name);
-  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences);
+  Future<void> updateCategoryPreferences(
+    String householdId,
+    Map<String, dynamic> preferences,
+  );
 }
 
 class SupabaseHouseholdGateway implements HouseholdGateway {
@@ -128,10 +128,7 @@ class SupabaseHouseholdGateway implements HouseholdGateway {
   }
 
   @override
-  Future<String> createInvite({
-    required String householdId,
-    required String email,
-  }) {
+  Future<String> createInvite({required String householdId, String? email}) {
     return _remoteRepository.createInvite(
       householdId: householdId,
       email: email,
@@ -175,7 +172,9 @@ class SupabaseHouseholdGateway implements HouseholdGateway {
   }
 
   @override
-  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(String householdId) {
+  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(
+    String householdId,
+  ) {
     return _remoteRepository.fetchOwnerPendingInvites(householdId);
   }
 
@@ -185,8 +184,14 @@ class SupabaseHouseholdGateway implements HouseholdGateway {
   }
 
   @override
-  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences) {
-    return _remoteRepository.updateCategoryPreferences(householdId, preferences);
+  Future<void> updateCategoryPreferences(
+    String householdId,
+    Map<String, dynamic> preferences,
+  ) {
+    return _remoteRepository.updateCategoryPreferences(
+      householdId,
+      preferences,
+    );
   }
 }
 
@@ -299,7 +304,8 @@ class HouseholdSessionController extends StateNotifier<HouseholdSessionState> {
       final households = await _gateway.loadHouseholds();
       final isAuthenticated = _gateway.isAuthenticated;
       final currentSelectedId = state.selectedHouseholdId;
-      final selectedId = (currentSelectedId.isNotEmpty &&
+      final selectedId =
+          (currentSelectedId.isNotEmpty &&
               households.any((h) => h.id == currentSelectedId))
           ? currentSelectedId
           : (households.isEmpty ? '' : households.first.id);
@@ -338,7 +344,9 @@ class HouseholdSessionController extends StateNotifier<HouseholdSessionState> {
     try {
       final household = await _gateway.createHousehold(trimmed);
       await _gateway.uploadInitialData(household.id);
-      final members = await _loadMembersForSelectedHousehold([household], household.id);
+      final members = await _loadMembersForSelectedHousehold([
+        household,
+      ], household.id);
       if (!mounted) return;
       state = state.copyWith(
         isSubmitting: false,
@@ -354,23 +362,15 @@ class HouseholdSessionController extends StateNotifier<HouseholdSessionState> {
     }
   }
 
-  Future<String> createInvite(String householdId, String email) async {
-    final trimmedEmail = email.trim();
-    if (trimmedEmail.isEmpty) {
-      final error = ArgumentError.value(
-        email,
-        'email',
-        'Invite email cannot be empty',
-      );
-      state = state.copyWith(error: error.toString());
-      throw error;
-    }
-
+  Future<String> createInvite(String householdId, {String? email}) async {
+    final trimmedEmail = email?.trim();
     state = state.copyWith(isSubmitting: true, error: null);
     try {
       final inviteUrl = await _gateway.createInvite(
         householdId: householdId,
-        email: trimmedEmail,
+        email: trimmedEmail == null || trimmedEmail.isEmpty
+            ? null
+            : trimmedEmail,
       );
       if (!mounted) return inviteUrl;
       state = state.copyWith(isSubmitting: false, error: null);
@@ -451,7 +451,10 @@ class HouseholdSessionController extends StateNotifier<HouseholdSessionState> {
       final households = await _gateway.loadHouseholds();
       final isAuthenticated = _gateway.isAuthenticated;
       final members = isAuthenticated
-          ? await _loadMembersForSelectedHousehold(households, state.selectedHouseholdId)
+          ? await _loadMembersForSelectedHousehold(
+              households,
+              state.selectedHouseholdId,
+            )
           : const <HouseholdMember>[];
       if (!mounted) return;
       state = state.copyWith(
@@ -487,7 +490,10 @@ class HouseholdSessionController extends StateNotifier<HouseholdSessionState> {
       final households = await _gateway.loadHouseholds();
       final isAuthenticated = _gateway.isAuthenticated;
       final members = isAuthenticated
-          ? await _loadMembersForSelectedHousehold(households, state.selectedHouseholdId)
+          ? await _loadMembersForSelectedHousehold(
+              households,
+              state.selectedHouseholdId,
+            )
           : const <HouseholdMember>[];
       if (!mounted) return;
       state = state.copyWith(
@@ -548,9 +554,7 @@ class HouseholdSessionController extends StateNotifier<HouseholdSessionState> {
     try {
       final invites = await _gateway.fetchOwnerPendingInvites(householdId);
       if (!mounted) return;
-      state = state.copyWith(
-        ownerPendingInvites: List.unmodifiable(invites),
-      );
+      state = state.copyWith(ownerPendingInvites: List.unmodifiable(invites));
     } catch (error) {
       if (!mounted) return;
       state = state.copyWith(error: error.toString());
@@ -558,7 +562,11 @@ class HouseholdSessionController extends StateNotifier<HouseholdSessionState> {
   }
 
   Future<void> switchHousehold(String householdId) async {
-    state = state.copyWith(isLoading: true, error: null, selectedHouseholdId: householdId);
+    state = state.copyWith(
+      isLoading: true,
+      error: null,
+      selectedHouseholdId: householdId,
+    );
     try {
       final members = await _gateway.loadHouseholdMembers(householdId);
       if (!mounted) return;
@@ -597,7 +605,10 @@ class HouseholdSessionController extends StateNotifier<HouseholdSessionState> {
     }
   }
 
-  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences) async {
+  Future<void> updateCategoryPreferences(
+    String householdId,
+    Map<String, dynamic> preferences,
+  ) async {
     state = state.copyWith(isSubmitting: true, error: null);
     try {
       await _gateway.updateCategoryPreferences(householdId, preferences);
@@ -619,7 +630,8 @@ class HouseholdSessionController extends StateNotifier<HouseholdSessionState> {
     String selectedHouseholdId,
   ) {
     if (households.isEmpty) return Future.value(const []);
-    final targetId = (selectedHouseholdId.isNotEmpty &&
+    final targetId =
+        (selectedHouseholdId.isNotEmpty &&
             households.any((h) => h.id == selectedHouseholdId))
         ? selectedHouseholdId
         : households.first.id;

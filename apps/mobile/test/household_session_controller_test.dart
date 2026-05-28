@@ -40,10 +40,7 @@ class FakeHouseholdGateway implements HouseholdGateway {
   Future<void> uploadInitialData(String householdId) async {}
 
   @override
-  Future<String> createInvite({
-    required String householdId,
-    required String email,
-  }) {
+  Future<String> createInvite({required String householdId, String? email}) {
     throw UnimplementedError('Not needed by these tests.');
   }
 
@@ -96,7 +93,9 @@ class FakeHouseholdGateway implements HouseholdGateway {
   }
 
   @override
-  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(String householdId) async {
+  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(
+    String householdId,
+  ) async {
     return ownerPendingInvites;
   }
 
@@ -113,7 +112,10 @@ class FakeHouseholdGateway implements HouseholdGateway {
   }
 
   @override
-  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences) async {
+  Future<void> updateCategoryPreferences(
+    String householdId,
+    Map<String, dynamic> preferences,
+  ) async {
     updatedHouseholdId = householdId;
     updatedCategoryPreferences = preferences;
   }
@@ -327,32 +329,35 @@ void main() {
     expect(controller.state.error, contains('not authorized'));
   });
 
-  test('revokeInvite calls gateway and refreshes owner pending invites', () async {
-    final gateway = FakeHouseholdGateway()
-      ..isAuthenticated = true
-      ..households.add(
-        const Household(
-          id: 'household_1',
-          name: 'Home',
-          ownerId: 'owner_1',
-          defaultStorageArea: 'fridge',
-        ),
-      )
-      ..ownerPendingInvites.addAll([
-        OwnerPendingInvite(
-          id: 'invite_1',
-          email: 'pending@example.com',
-          expiresAt: DateTime.now().add(const Duration(days: 7)),
-          createdAt: DateTime.now(),
-        ),
-      ]);
-    final controller = HouseholdSessionController(gateway);
-    await controller.refreshHouseholds();
+  test(
+    'revokeInvite calls gateway and refreshes owner pending invites',
+    () async {
+      final gateway = FakeHouseholdGateway()
+        ..isAuthenticated = true
+        ..households.add(
+          const Household(
+            id: 'household_1',
+            name: 'Home',
+            ownerId: 'owner_1',
+            defaultStorageArea: 'fridge',
+          ),
+        )
+        ..ownerPendingInvites.addAll([
+          OwnerPendingInvite(
+            id: 'invite_1',
+            email: 'pending@example.com',
+            expiresAt: DateTime.now().add(const Duration(days: 7)),
+            createdAt: DateTime.now(),
+          ),
+        ]);
+      final controller = HouseholdSessionController(gateway);
+      await controller.refreshHouseholds();
 
-    await controller.revokeInvite('household_1', 'invite_1');
+      await controller.revokeInvite('household_1', 'invite_1');
 
-    expect(gateway.revokedInviteId, 'invite_1');
-  });
+      expect(gateway.revokedInviteId, 'invite_1');
+    },
+  );
 
   test('revokeInvite exposes error in state on failure', () async {
     final gateway = FakeHouseholdGateway()
@@ -374,56 +379,59 @@ void main() {
     expect(controller.state.error, contains('not authorized'));
   });
 
-  test('switchHousehold updates selectedHouseholdId and reloads members', () async {
-    final gateway = FakeHouseholdGateway()
-      ..isAuthenticated = true
-      ..households.addAll(const [
-        Household(
-          id: 'household_1',
-          name: 'Home',
-          ownerId: 'owner_1',
-          defaultStorageArea: 'fridge',
-        ),
-        Household(
-          id: 'household_2',
-          name: 'Office',
-          ownerId: 'owner_1',
-          defaultStorageArea: 'pantry',
-        ),
-      ])
-      ..members.addAll(const [
-        HouseholdMember(
-          householdId: 'household_1',
-          userId: 'owner_1',
-          role: 'owner',
-          email: 'owner@example.com',
-        ),
-        HouseholdMember(
-          householdId: 'household_2',
-          userId: 'owner_1',
-          role: 'owner',
-          email: 'owner@example.com',
-        ),
-        HouseholdMember(
-          householdId: 'household_2',
-          userId: 'member_2',
-          role: 'member',
-          email: 'colleague@example.com',
-        ),
+  test(
+    'switchHousehold updates selectedHouseholdId and reloads members',
+    () async {
+      final gateway = FakeHouseholdGateway()
+        ..isAuthenticated = true
+        ..households.addAll(const [
+          Household(
+            id: 'household_1',
+            name: 'Home',
+            ownerId: 'owner_1',
+            defaultStorageArea: 'fridge',
+          ),
+          Household(
+            id: 'household_2',
+            name: 'Office',
+            ownerId: 'owner_1',
+            defaultStorageArea: 'pantry',
+          ),
+        ])
+        ..members.addAll(const [
+          HouseholdMember(
+            householdId: 'household_1',
+            userId: 'owner_1',
+            role: 'owner',
+            email: 'owner@example.com',
+          ),
+          HouseholdMember(
+            householdId: 'household_2',
+            userId: 'owner_1',
+            role: 'owner',
+            email: 'owner@example.com',
+          ),
+          HouseholdMember(
+            householdId: 'household_2',
+            userId: 'member_2',
+            role: 'member',
+            email: 'colleague@example.com',
+          ),
+        ]);
+      final controller = HouseholdSessionController(gateway);
+      await controller.refreshHouseholds();
+
+      expect(controller.state.selectedHouseholdId, 'household_1');
+
+      await controller.switchHousehold('household_2');
+
+      expect(controller.state.selectedHouseholdId, 'household_2');
+      expect(controller.state.householdMembers.map((m) => m.email), [
+        'owner@example.com',
+        'colleague@example.com',
       ]);
-    final controller = HouseholdSessionController(gateway);
-    await controller.refreshHouseholds();
-
-    expect(controller.state.selectedHouseholdId, 'household_1');
-
-    await controller.switchHousehold('household_2');
-
-    expect(controller.state.selectedHouseholdId, 'household_2');
-    expect(
-      controller.state.householdMembers.map((m) => m.email),
-      ['owner@example.com', 'colleague@example.com'],
-    );
-  });
+    },
+  );
 
   test('updateHouseholdName calls gateway and refreshes households', () async {
     final gateway = FakeHouseholdGateway()

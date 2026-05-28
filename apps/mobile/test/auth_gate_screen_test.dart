@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fresh_pantry/app.dart';
 import 'package:fresh_pantry/household/household_models.dart';
 import 'package:fresh_pantry/household/household_session_controller.dart';
+import 'package:fresh_pantry/providers/invite_link_provider.dart';
 import 'package:fresh_pantry/screens/auth_gate_screen.dart';
+import 'package:fresh_pantry/services/invite_link_service.dart';
 import 'package:fresh_pantry/sync/sync_providers.dart';
 
 class FakeHouseholdGateway implements HouseholdGateway {
@@ -57,10 +59,7 @@ class FakeHouseholdGateway implements HouseholdGateway {
   Future<void> uploadInitialData(String householdId) async {}
 
   @override
-  Future<String> createInvite({
-    required String householdId,
-    required String email,
-  }) {
+  Future<String> createInvite({required String householdId, String? email}) {
     throw UnimplementedError('Not needed by these tests.');
   }
 
@@ -129,7 +128,9 @@ class FakeHouseholdGateway implements HouseholdGateway {
   }
 
   @override
-  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(String householdId) {
+  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(
+    String householdId,
+  ) {
     throw UnimplementedError('Not needed by these tests.');
   }
 
@@ -139,7 +140,10 @@ class FakeHouseholdGateway implements HouseholdGateway {
   }
 
   @override
-  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences) {
+  Future<void> updateCategoryPreferences(
+    String householdId,
+    Map<String, dynamic> preferences,
+  ) {
     throw UnimplementedError('Not needed by these tests.');
   }
 
@@ -347,6 +351,36 @@ void main() {
   });
 
   testWidgets(
+    'AuthGateScreen previews invite links received while app is open',
+    (tester) async {
+      final gateway = FakeHouseholdGateway(
+        isAuthenticated: true,
+        initialHouseholds: const [
+          Household(
+            id: 'household_1',
+            name: 'Home',
+            ownerId: 'owner_1',
+            defaultStorageArea: 'fridge',
+          ),
+        ],
+      );
+      final linkSource = InMemoryInviteLinkSource();
+      addTearDown(linkSource.close);
+
+      await tester.pumpWidget(_wrap(gateway, inviteLinkSource: linkSource));
+      await tester.pumpAndSettle();
+
+      expect(find.text('App Shell'), findsOneWidget);
+
+      linkSource.emit('com.kunish.freshpantry://invite/abcDEF123_-');
+      await tester.pumpAndSettle();
+
+      expect(find.text('家庭邀请'), findsOneWidget);
+      expect(find.text('Kunish Shared Kitchen'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'AuthGateScreen shows authenticated child after households load',
     (tester) async {
       await tester.pumpWidget(
@@ -445,9 +479,14 @@ Widget _wrap(
   FakeHouseholdGateway gateway, {
   Widget child = const Text('App Shell'),
   String? initialInviteToken,
+  InviteLinkSource? inviteLinkSource,
 }) {
   return ProviderScope(
-    overrides: [householdGatewayProvider.overrideWithValue(gateway)],
+    overrides: [
+      householdGatewayProvider.overrideWithValue(gateway),
+      if (inviteLinkSource != null)
+        inviteLinkSourceProvider.overrideWithValue(inviteLinkSource),
+    ],
     child: MaterialApp(
       home: AuthGateScreen(
         authenticatedChild: child,

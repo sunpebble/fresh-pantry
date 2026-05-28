@@ -20,13 +20,14 @@ void main() {
           body: HouseholdSection(
             householdName: 'Kunish Kitchen',
             members: const [],
+            isOwner: true,
             onInviteEmail: (_) async {},
           ),
         ),
       ),
     );
 
-    await tester.tap(find.text('邀请成员'));
+    await tester.tap(find.text('邮箱定向邀请'));
     await tester.pumpAndSettle();
 
     expect(find.text('成员邮箱'), findsOneWidget);
@@ -40,6 +41,7 @@ void main() {
           body: HouseholdSection(
             householdName: 'Kunish Kitchen',
             members: const [],
+            isOwner: true,
             onInviteEmail: (email) async {
               submittedEmail = email;
             },
@@ -48,7 +50,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('邀请成员'));
+    await tester.tap(find.text('邮箱定向邀请'));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.widgetWithText(TextField, '成员邮箱'),
@@ -114,6 +116,54 @@ void main() {
     },
   );
 
+  testWidgets('SettingsScreen creates open invite link for current household', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final gateway = HouseholdGatewayStub(
+      households: const [
+        Household(
+          id: 'household_1',
+          name: 'Kunish Kitchen',
+          ownerId: 'owner_1',
+          defaultStorageArea: 'fridge',
+        ),
+      ],
+      members: const [
+        HouseholdMember(
+          householdId: 'household_1',
+          userId: 'owner_1',
+          role: 'owner',
+          email: 'owner@example.com',
+        ),
+      ],
+      isAuthenticated: true,
+      emitInitialAuthState: true,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          notificationServiceProvider.overrideWithValue(NotificationService()),
+          householdGatewayProvider.overrideWithValue(gateway),
+        ],
+        child: const MaterialApp(home: SettingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('扫码/链接邀请'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.inviteHouseholdId, 'household_1');
+    expect(gateway.inviteEmail, isEmpty);
+    expect(find.text('邀请链接已创建'), findsOneWidget);
+    expect(find.text('分享链接或二维码，家人登录后即可加入'), findsOneWidget);
+    expect(find.text('分享二维码'), findsOneWidget);
+  });
+
   testWidgets(
     'SettingsScreen creates invite for current household and copies link',
     (tester) async {
@@ -146,7 +196,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Kunish Kitchen'), findsNWidgets(2));
-      await tester.tap(find.text('邀请成员'));
+      await tester.tap(find.text('邮箱定向邀请'));
       await tester.pumpAndSettle();
       await tester.enterText(
         find.widgetWithText(TextField, '成员邮箱'),
@@ -157,7 +207,7 @@ void main() {
 
       expect(gateway.inviteHouseholdId, 'household_1');
       expect(gateway.inviteEmail, 'member@example.com');
-      expect(find.text('邀请已创建'), findsOneWidget);
+      expect(find.text('邀请链接已创建'), findsOneWidget);
       expect(find.text('member@example.com'), findsOneWidget);
       expect(find.text('复制链接'), findsOneWidget);
     },

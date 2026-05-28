@@ -7,8 +7,10 @@ import 'app.dart';
 import 'backend/backend_config_provider.dart';
 import 'config/backend_config.dart';
 import 'providers/ai_draft_provider.dart';
+import 'providers/invite_link_provider.dart';
 import 'providers/notification_service_provider.dart';
 import 'providers/storage_service_provider.dart';
+import 'services/invite_link_service.dart';
 import 'services/notification_service.dart';
 import 'services/share_intent_service.dart';
 import 'storage/custom_recipe_repo.dart';
@@ -51,6 +53,7 @@ void main() async {
         shoppingRepoProvider.overrideWithValue(shoppingRepo),
         customRecipeRepoProvider.overrideWithValue(customRecipeRepo),
         systemShareSourceProvider.overrideWithValue(createSystemShareSource()),
+        inviteLinkSourceProvider.overrideWithValue(createInviteLinkSource()),
         backendConfigProvider.overrideWithValue(backendConfig),
       ],
       child: const FreshPantryApp(),

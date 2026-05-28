@@ -1,6 +1,6 @@
 begin;
 
-select plan(52);
+select plan(54);
 
 create or replace function pg_temp.authenticate_as(user_id uuid, user_email text)
 returns void
@@ -230,6 +230,23 @@ values (
 );
 
 insert into public.household_invites (
+  id,
+  household_id,
+  email,
+  token_hash,
+  expires_at,
+  created_by
+)
+values (
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  null,
+  'open-invite-token',
+  now() + interval '7 days',
+  '11111111-1111-1111-1111-111111111111'
+);
+
+insert into public.household_invites (
   household_id,
   email,
   token_hash,
@@ -343,7 +360,7 @@ select throws_ok(
 select is(
   (select count(*) from public.list_pending_household_invites()),
   0::bigint,
-  'wrong email cannot list pending invite reminders'
+  'wrong email cannot list email-bound pending invite reminders'
 );
 
 select throws_ok(
@@ -351,6 +368,20 @@ select throws_ok(
   '42501',
   'Invite email does not match authenticated user',
   'wrong email cannot accept invite by id'
+);
+
+select is(
+  (
+    select invited_email
+    from public.preview_household_invite('open-invite-token')
+  ),
+  '',
+  'open invite preview has no invited email'
+);
+
+select lives_ok(
+  $$ select public.accept_household_invite('open-invite-token') $$,
+  'open invite can be accepted without a matching email'
 );
 
 select pg_temp.authenticate_as('33333333-3333-3333-3333-333333333333', 'outsider@example.com');

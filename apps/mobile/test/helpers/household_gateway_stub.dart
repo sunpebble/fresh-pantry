@@ -48,10 +48,10 @@ class HouseholdGatewayStub implements HouseholdGateway {
   @override
   Future<String> createInvite({
     required String householdId,
-    required String email,
+    String? email,
   }) async {
     inviteHouseholdId = householdId;
-    inviteEmail = email;
+    inviteEmail = email ?? '';
     return inviteUrl;
   }
 
@@ -109,7 +109,9 @@ class HouseholdGatewayStub implements HouseholdGateway {
   }
 
   @override
-  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(String householdId) async {
+  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(
+    String householdId,
+  ) async {
     return ownerPendingInvites;
   }
 
@@ -124,7 +126,10 @@ class HouseholdGatewayStub implements HouseholdGateway {
   }
 
   @override
-  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences) async {
+  Future<void> updateCategoryPreferences(
+    String householdId,
+    Map<String, dynamic> preferences,
+  ) async {
     updatedHouseholdId = householdId;
     updatedCategoryPreferences = preferences;
   }

@@ -49,10 +49,7 @@ class FakeBootstrapGateway implements HouseholdGateway {
   }
 
   @override
-  Future<String> createInvite({
-    required String householdId,
-    required String email,
-  }) {
+  Future<String> createInvite({required String householdId, String? email}) {
     throw UnimplementedError('Not needed by these tests.');
   }
 
@@ -95,7 +92,9 @@ class FakeBootstrapGateway implements HouseholdGateway {
   }
 
   @override
-  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(String householdId) {
+  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(
+    String householdId,
+  ) {
     throw UnimplementedError('Not needed by these tests.');
   }
 
@@ -105,7 +104,10 @@ class FakeBootstrapGateway implements HouseholdGateway {
   }
 
   @override
-  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences) {
+  Future<void> updateCategoryPreferences(
+    String householdId,
+    Map<String, dynamic> preferences,
+  ) {
     throw UnimplementedError('Not needed by these tests.');
   }
 
@@ -135,10 +137,7 @@ class RecordingRemotePantryRepository implements RemotePantryRepository {
   }
 
   @override
-  Future<String> createInvite({
-    required String householdId,
-    required String email,
-  }) {
+  Future<String> createInvite({required String householdId, String? email}) {
     throw UnimplementedError('Not needed by these tests.');
   }
 
@@ -178,7 +177,9 @@ class RecordingRemotePantryRepository implements RemotePantryRepository {
   }
 
   @override
-  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(String householdId) {
+  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(
+    String householdId,
+  ) {
     throw UnimplementedError('Not needed by these tests.');
   }
 
@@ -188,7 +189,10 @@ class RecordingRemotePantryRepository implements RemotePantryRepository {
   }
 
   @override
-  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences) {
+  Future<void> updateCategoryPreferences(
+    String householdId,
+    Map<String, dynamic> preferences,
+  ) {
     throw UnimplementedError('Not needed by these tests.');
   }
 

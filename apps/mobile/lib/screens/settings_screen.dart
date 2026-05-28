@@ -34,6 +34,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  String? _ownerInviteRefreshHouseholdId;
+
   Future<void> _onEditName(String householdId, String newName) async {
     await ref
         .read(householdSessionControllerProvider.notifier)
@@ -108,27 +110,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _showSimpleDialog('导入完成', '请重启 App 以加载新数据。');
   }
 
+  Future<void> _onInviteLink(String householdId) async {
+    final inviteUrl = await ref
+        .read(householdSessionControllerProvider.notifier)
+        .createInvite(householdId);
+    if (!mounted) return;
+    await InviteResultSheet.show(context, inviteUrl: inviteUrl);
+    await ref
+        .read(householdSessionControllerProvider.notifier)
+        .refreshOwnerPendingInvites(householdId);
+  }
+
   Future<void> _onInviteEmail(String householdId, String email) async {
     final inviteUrl = await ref
         .read(householdSessionControllerProvider.notifier)
-        .createInvite(householdId, email);
+        .createInvite(householdId, email: email);
     if (!mounted) return;
     await InviteResultSheet.show(
       context,
       inviteUrl: inviteUrl,
       invitedEmail: email.trim(),
     );
+    await ref
+        .read(householdSessionControllerProvider.notifier)
+        .refreshOwnerPendingInvites(householdId);
   }
 
   Future<void> _onRemoveMember(String householdId, String userId) async {
-    final confirmed = await showAppConfirmDialog(
-      context,
-      title: '移除成员',
-      content: '确定移除该成员？',
-      confirmLabel: '移除',
-      isDestructive: true,
-    );
-    if (!confirmed || !mounted) return;
     await ref
         .read(householdSessionControllerProvider.notifier)
         .removeMember(householdId, userId);
@@ -149,9 +157,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _onSwitchHousehold(String householdId) {
+    _ownerInviteRefreshHouseholdId = null;
     ref
         .read(householdSessionControllerProvider.notifier)
         .switchHousehold(householdId);
+  }
+
+  void _ensureOwnerPendingInvitesLoaded(String householdId, bool isOwner) {
+    if (!isOwner) {
+      _ownerInviteRefreshHouseholdId = null;
+      return;
+    }
+    if (_ownerInviteRefreshHouseholdId == householdId) return;
+    _ownerInviteRefreshHouseholdId = householdId;
+    Future.microtask(() {
+      if (!mounted) return;
+      ref
+          .read(householdSessionControllerProvider.notifier)
+          .refreshOwnerPendingInvites(householdId);
+    });
   }
 
   Future<void> _onReminderToggle(
@@ -245,7 +269,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             (h) => h.id == householdSession.selectedHouseholdId,
             orElse: () => householdSession.households.first,
           );
-    final categoryPrefs = household?.categoryPreferences ?? const <String, dynamic>{};
+    final isOwner =
+        household != null &&
+        household.ownerId == householdSession.currentUserId;
+    if (household != null) {
+      _ensureOwnerPendingInvitesLoaded(household.id, isOwner);
+    }
+    final categoryPrefs =
+        household?.categoryPreferences ?? const <String, dynamic>{};
     final selectedPrefs = <String>{
       for (final entry in categoryPrefs.entries)
         if (entry.value == true) entry.key,
@@ -300,10 +331,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 members: household == null
                     ? const []
                     : householdSession.householdMembers,
-                onInviteEmail: household == null
+                onInviteLink: household == null || !isOwner
+                    ? null
+                    : () => _onInviteLink(household.id),
+                onInviteEmail: household == null || !isOwner
                     ? null
                     : (email) => _onInviteEmail(household.id, email),
-                isOwner: household != null && household.ownerId == householdSession.currentUserId,
+                isOwner: isOwner,
                 currentUserId: householdSession.currentUserId,
                 onRemoveMember: household == null
                     ? null
@@ -452,7 +486,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               label: tag,
                               selected: selectedPrefs.contains(tag),
                               onTap: () {
-                                final newPrefs = Map<String, dynamic>.from(categoryPrefs);
+                                final newPrefs = Map<String, dynamic>.from(
+                                  categoryPrefs,
+                                );
                                 if (selectedPrefs.contains(tag)) {
                                   newPrefs[tag] = false;
                                 } else {
@@ -460,8 +496,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 }
                                 if (household != null) {
                                   ref
-                                      .read(householdSessionControllerProvider.notifier)
-                                      .updateCategoryPreferences(household.id, newPrefs);
+                                      .read(
+                                        householdSessionControllerProvider
+                                            .notifier,
+                                      )
+                                      .updateCategoryPreferences(
+                                        household.id,
+                                        newPrefs,
+                                      );
                                 }
                               },
                             ),
@@ -534,10 +576,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 }
 
 class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({
-    required this.householdName,
-    required this.userEmail,
-  });
+  const _ProfileCard({required this.householdName, required this.userEmail});
 
   final String householdName;
   final String userEmail;
