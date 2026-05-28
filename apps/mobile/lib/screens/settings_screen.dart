@@ -18,6 +18,7 @@ import '../widgets/shared/fk_section_head.dart';
 import '../widgets/shared/fk_top_bar.dart';
 import '../utils/app_dialog.dart';
 import '../widgets/settings/household_section.dart';
+import '../widgets/settings/invite_result_sheet.dart';
 import 'ai_settings_screen.dart';
 import 'my_recipes_screen.dart';
 
@@ -111,9 +112,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final inviteUrl = await ref
         .read(householdSessionControllerProvider.notifier)
         .createInvite(householdId, email);
-    await Clipboard.setData(ClipboardData(text: inviteUrl));
     if (!mounted) return;
-    fkToast(context, '邀请链接已复制，对方登录 App 后也会看到提醒');
+    await InviteResultSheet.show(
+      context,
+      inviteUrl: inviteUrl,
+      invitedEmail: email.trim(),
+    );
   }
 
   Future<void> _onRemoveMember(String householdId, String userId) async {

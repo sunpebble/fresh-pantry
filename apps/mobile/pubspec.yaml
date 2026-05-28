@@ -47,6 +47,8 @@ dependencies:
   uuid: ^4.5.3
   crypto: ^3.0.7
   app_links: ^7.1.0
+  share_plus: ^11.0.0
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

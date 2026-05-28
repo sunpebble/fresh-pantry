@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fresh_pantry/household/household_models.dart';
@@ -131,18 +130,6 @@ void main() {
         ],
         emitInitialAuthState: true,
       );
-      String? capturedClipboard;
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-            if (call.method == 'Clipboard.setData') {
-              capturedClipboard = (call.arguments as Map)['text'] as String;
-            }
-            return null;
-          });
-      addTearDown(() {
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(SystemChannels.platform, null);
-      });
 
       await tester.pumpWidget(
         ProviderScope(
@@ -170,8 +157,9 @@ void main() {
 
       expect(gateway.inviteHouseholdId, 'household_1');
       expect(gateway.inviteEmail, 'member@example.com');
-      expect(capturedClipboard, stubInviteUrl);
-      expect(find.textContaining('对方登录 App 后也会看到提醒'), findsOneWidget);
+      expect(find.text('邀请已创建'), findsOneWidget);
+      expect(find.text('member@example.com'), findsOneWidget);
+      expect(find.text('复制链接'), findsOneWidget);
     },
   );
 }
