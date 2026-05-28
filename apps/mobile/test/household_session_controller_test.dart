@@ -100,6 +100,24 @@ class FakeHouseholdGateway implements HouseholdGateway {
     return ownerPendingInvites;
   }
 
+  var updatedHouseholdName = '';
+  var updatedHouseholdId = '';
+  Map<String, dynamic>? updatedCategoryPreferences;
+  Object? updateHouseholdNameError;
+
+  @override
+  Future<void> updateHouseholdName(String householdId, String name) async {
+    if (updateHouseholdNameError != null) throw updateHouseholdNameError!;
+    updatedHouseholdId = householdId;
+    updatedHouseholdName = name;
+  }
+
+  @override
+  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences) async {
+    updatedHouseholdId = householdId;
+    updatedCategoryPreferences = preferences;
+  }
+
   void emitAuthStateChange() {
     authStateController.add(null);
   }
@@ -405,5 +423,65 @@ void main() {
       controller.state.householdMembers.map((m) => m.email),
       ['owner@example.com', 'colleague@example.com'],
     );
+  });
+
+  test('updateHouseholdName calls gateway and refreshes households', () async {
+    final gateway = FakeHouseholdGateway()
+      ..isAuthenticated = true
+      ..households.add(
+        const Household(
+          id: 'household_1',
+          name: 'Old Name',
+          ownerId: 'owner_1',
+          defaultStorageArea: 'fridge',
+        ),
+      );
+    final controller = HouseholdSessionController(gateway);
+    await controller.refreshHouseholds();
+
+    await controller.updateHouseholdName('household_1', 'New Name');
+
+    expect(gateway.updatedHouseholdId, 'household_1');
+    expect(gateway.updatedHouseholdName, 'New Name');
+  });
+
+  test('updateHouseholdName rejects empty name', () async {
+    final gateway = FakeHouseholdGateway()
+      ..isAuthenticated = true
+      ..households.add(
+        const Household(
+          id: 'household_1',
+          name: 'Home',
+          ownerId: 'owner_1',
+          defaultStorageArea: 'fridge',
+        ),
+      );
+    final controller = HouseholdSessionController(gateway);
+    await controller.refreshHouseholds();
+
+    await controller.updateHouseholdName('household_1', '  ');
+
+    expect(controller.state.error, contains('不能为空'));
+    expect(gateway.updatedHouseholdName, isEmpty);
+  });
+
+  test('updateCategoryPreferences calls gateway', () async {
+    final gateway = FakeHouseholdGateway()
+      ..isAuthenticated = true
+      ..households.add(
+        const Household(
+          id: 'household_1',
+          name: 'Home',
+          ownerId: 'owner_1',
+          defaultStorageArea: 'fridge',
+        ),
+      );
+    final controller = HouseholdSessionController(gateway);
+    await controller.refreshHouseholds();
+
+    await controller.updateCategoryPreferences('household_1', {'高蛋白': true});
+
+    expect(gateway.updatedHouseholdId, 'household_1');
+    expect(gateway.updatedCategoryPreferences, {'高蛋白': true});
   });
 }

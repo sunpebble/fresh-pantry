@@ -4,12 +4,14 @@ class Household {
     required this.name,
     required this.ownerId,
     required this.defaultStorageArea,
+    this.categoryPreferences = const {},
   });
 
   final String id;
   final String name;
   final String ownerId;
   final String defaultStorageArea;
+  final Map<String, dynamic> categoryPreferences;
 
   factory Household.fromJson(Map<String, dynamic> json) {
     return Household(
@@ -17,6 +19,9 @@ class Household {
       name: json['name'] as String? ?? '',
       ownerId: json['owner_id'] as String? ?? '',
       defaultStorageArea: json['default_storage_area'] as String? ?? 'fridge',
+      categoryPreferences: json['category_preferences'] is Map
+          ? Map<String, dynamic>.from(json['category_preferences'] as Map)
+          : const {},
     );
   }
 }

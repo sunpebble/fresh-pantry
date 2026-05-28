@@ -126,6 +126,16 @@ class InviteRecordingGateway implements HouseholdGateway {
     throw UnimplementedError('Not needed by these tests.');
   }
 
+  @override
+  Future<void> updateHouseholdName(String householdId, String name) {
+    throw UnimplementedError('Not needed by these tests.');
+  }
+
+  @override
+  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences) {
+    throw UnimplementedError('Not needed by these tests.');
+  }
+
   Future<void> close() {
     return authStateController.close();
   }

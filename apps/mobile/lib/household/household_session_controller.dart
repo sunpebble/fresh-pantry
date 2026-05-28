@@ -53,6 +53,8 @@ abstract class HouseholdGateway {
   Future<void> removeMember(String targetUserId);
   Future<void> revokeInvite(String inviteId);
   Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(String householdId);
+  Future<void> updateHouseholdName(String householdId, String name);
+  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences);
 }
 
 class SupabaseHouseholdGateway implements HouseholdGateway {
@@ -175,6 +177,16 @@ class SupabaseHouseholdGateway implements HouseholdGateway {
   @override
   Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(String householdId) {
     return _remoteRepository.fetchOwnerPendingInvites(householdId);
+  }
+
+  @override
+  Future<void> updateHouseholdName(String householdId, String name) {
+    return _remoteRepository.updateHouseholdName(householdId, name);
+  }
+
+  @override
+  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences) {
+    return _remoteRepository.updateCategoryPreferences(householdId, preferences);
   }
 }
 
@@ -559,6 +571,46 @@ class HouseholdSessionController extends StateNotifier<HouseholdSessionState> {
     } catch (error) {
       if (!mounted) return;
       state = state.copyWith(isLoading: false, error: error.toString());
+    }
+  }
+
+  Future<void> updateHouseholdName(String householdId, String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      state = state.copyWith(error: '家庭名称不能为空');
+      return;
+    }
+
+    state = state.copyWith(isSubmitting: true, error: null);
+    try {
+      await _gateway.updateHouseholdName(householdId, trimmed);
+      final households = await _gateway.loadHouseholds();
+      if (!mounted) return;
+      state = state.copyWith(
+        isSubmitting: false,
+        error: null,
+        households: List.unmodifiable(households),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      state = state.copyWith(isSubmitting: false, error: error.toString());
+    }
+  }
+
+  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences) async {
+    state = state.copyWith(isSubmitting: true, error: null);
+    try {
+      await _gateway.updateCategoryPreferences(householdId, preferences);
+      final households = await _gateway.loadHouseholds();
+      if (!mounted) return;
+      state = state.copyWith(
+        isSubmitting: false,
+        error: null,
+        households: List.unmodifiable(households),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      state = state.copyWith(isSubmitting: false, error: error.toString());
     }
   }
 

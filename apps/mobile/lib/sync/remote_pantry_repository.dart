@@ -151,6 +151,8 @@ abstract class RemotePantryRepository {
   Future<void> removeMember(String targetUserId);
   Future<void> revokeInvite(String inviteId);
   Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(String householdId);
+  Future<void> updateHouseholdName(String householdId, String name);
+  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences);
   Future<List<Map<String, dynamic>>> loadInventory(String householdId);
   Future<void> upsertInventory(
     String householdId,
@@ -383,6 +385,42 @@ class SupabaseRemotePantryRepository implements RemotePantryRepository {
         .whereType<Map>()
         .map((row) => OwnerPendingInvite.fromJson(Map<String, dynamic>.from(row)))
         .toList(growable: false);
+  }
+
+  @override
+  Future<void> updateHouseholdName(String householdId, String name) async {
+    final trimmedId = householdId.trim();
+    if (!_isUuid(trimmedId)) {
+      throw ArgumentError.value(householdId, 'householdId', 'Invalid household id');
+    }
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Household name cannot be empty');
+    }
+    if (_client.auth.currentUser == null) {
+      throw StateError('Cannot update household without a signed-in user.');
+    }
+
+    await _client
+        .from('households')
+        .update({'name': trimmedName})
+        .eq('id', trimmedId);
+  }
+
+  @override
+  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences) async {
+    final trimmedId = householdId.trim();
+    if (!_isUuid(trimmedId)) {
+      throw ArgumentError.value(householdId, 'householdId', 'Invalid household id');
+    }
+    if (_client.auth.currentUser == null) {
+      throw StateError('Cannot update preferences without a signed-in user.');
+    }
+
+    await _client
+        .from('households')
+        .update({'category_preferences': preferences})
+        .eq('id', trimmedId);
   }
 
   @override
