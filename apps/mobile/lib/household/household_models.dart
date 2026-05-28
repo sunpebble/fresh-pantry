@@ -84,3 +84,26 @@ class HouseholdInvitePreview {
     );
   }
 }
+
+class OwnerPendingInvite {
+  const OwnerPendingInvite({
+    required this.id,
+    required this.email,
+    required this.expiresAt,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String email;
+  final DateTime expiresAt;
+  final DateTime createdAt;
+
+  factory OwnerPendingInvite.fromJson(Map<String, dynamic> json) {
+    return OwnerPendingInvite(
+      id: json['id'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      expiresAt: DateTime.parse(json['expires_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
+}
