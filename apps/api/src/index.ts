@@ -44,8 +44,16 @@ function inviteFallback(token: string): Response {
 export default {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    const method = request.method.toUpperCase();
+    const isReadMethod = method === "GET" || method === "HEAD";
 
     if (url.pathname === "/health") {
+      if (!isReadMethod) {
+        return new Response("Method Not Allowed", {
+          status: 405,
+          headers: { Allow: "GET, HEAD" },
+        });
+      }
       return json({
         service: "fresh-pantry-api",
         ok: true,
@@ -55,6 +63,12 @@ export default {
 
     const inviteMatch = url.pathname.match(/^\/invite\/([^/]+)$/);
     if (inviteMatch) {
+      if (!isReadMethod) {
+        return new Response("Method Not Allowed", {
+          status: 405,
+          headers: { Allow: "GET, HEAD" },
+        });
+      }
       const token = safeDecodePathSegment(inviteMatch[1]);
       if (token === null || !INVITE_TOKEN_PATTERN.test(token)) {
         return new Response("Invalid invite token", { status: 400 });

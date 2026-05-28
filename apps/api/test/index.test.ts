@@ -54,4 +54,26 @@ describe("fresh-pantry-api", () => {
     expect(response.status).toBe(400);
     await expect(response.text()).resolves.toContain("Invalid invite token");
   });
+
+  it("returns 405 for POST /health", async () => {
+    const response = await worker.fetch(
+      new Request("https://api.fresh-pantry.kunish.eu.org/health", {
+        method: "POST",
+      }),
+    );
+
+    expect(response.status).toBe(405);
+    expect(response.headers.get("allow")).toBe("GET, HEAD");
+  });
+
+  it("returns 405 for POST /invite/<token>", async () => {
+    const response = await worker.fetch(
+      new Request("https://api.fresh-pantry.kunish.eu.org/invite/abcDEF123_-", {
+        method: "POST",
+      }),
+    );
+
+    expect(response.status).toBe(405);
+    expect(response.headers.get("allow")).toBe("GET, HEAD");
+  });
 });
