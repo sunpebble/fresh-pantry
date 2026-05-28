@@ -108,8 +108,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Kunish Kitchen'), findsOneWidget);
-      expect(find.text('owner@example.com'), findsOneWidget);
+      expect(find.text('Kunish Kitchen'), findsNWidgets(2));
+      expect(find.text('owner@example.com'), findsNWidgets(2));
       expect(find.text('member@example.com'), findsOneWidget);
       expect(find.text('登录后会显示家庭成员'), findsNothing);
     },
@@ -158,7 +158,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Kunish Kitchen'), findsOneWidget);
+      expect(find.text('Kunish Kitchen'), findsNWidgets(2));
       await tester.tap(find.text('邀请成员'));
       await tester.pumpAndSettle();
       await tester.enterText(
