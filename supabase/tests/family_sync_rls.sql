@@ -1,6 +1,6 @@
 begin;
 
-select plan(49);
+select plan(52);
 
 create or replace function pg_temp.authenticate_as(user_id uuid, user_email text)
 returns void
@@ -301,6 +301,27 @@ select throws_ok(
   '28000',
   'Authentication required',
   'pending invite list requires auth uid'
+);
+
+select throws_ok(
+  $$ select public.remove_household_member('22222222-2222-2222-2222-222222222222'::uuid) $$,
+  '28000',
+  'Authentication required',
+  'remove_household_member requires auth uid'
+);
+
+select throws_ok(
+  $$ select public.revoke_household_invite('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'::uuid) $$,
+  '28000',
+  'Authentication required',
+  'revoke_household_invite requires auth uid'
+);
+
+select throws_ok(
+  $$ select * from public.list_owner_pending_invites('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid) $$,
+  '28000',
+  'Authentication required',
+  'list_owner_pending_invites requires auth uid'
 );
 
 select pg_temp.authenticate_as('22222222-2222-2222-2222-222222222222', 'member@example.com');

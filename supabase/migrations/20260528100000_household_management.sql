@@ -6,8 +6,8 @@ security definer
 set search_path = public
 as $$
 declare
-  v_household_id uuid;
-  v_caller_id uuid := (select auth.uid());
+  matched_household_id uuid;
+  current_user_id uuid := (select auth.uid());
 begin
   if v_caller_id is null then
     raise exception 'Authentication required' using errcode = '28000';
@@ -49,8 +49,8 @@ security definer
 set search_path = public
 as $$
 declare
-  v_household_id uuid;
-  v_caller_id uuid := (select auth.uid());
+  matched_household_id uuid;
+  current_user_id uuid := (select auth.uid());
 begin
   if v_caller_id is null then
     raise exception 'Authentication required' using errcode = '28000';
@@ -94,7 +94,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_caller_id uuid := (select auth.uid());
+  current_user_id uuid := (select auth.uid());
 begin
   if v_caller_id is null then
     raise exception 'Authentication required' using errcode = '28000';
