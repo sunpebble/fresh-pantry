@@ -178,4 +178,54 @@ void main() {
     expect(find.byType(DropdownButton<String>), findsNothing);
     expect(find.text('Solo Kitchen'), findsOneWidget);
   });
+
+  testWidgets('HouseholdSection shows edit icon for owner', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: HouseholdSection(
+            householdName: 'Kunish Kitchen',
+            members: const [
+              HouseholdMember(
+                householdId: 'household_1',
+                userId: 'owner_1',
+                role: 'owner',
+                email: 'owner@example.com',
+              ),
+            ],
+            isOwner: true,
+            currentUserId: 'owner_1',
+            onEditName: (_) async {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
+  });
+
+  testWidgets('HouseholdSection hides edit icon for non-owner', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: HouseholdSection(
+            householdName: 'Kunish Kitchen',
+            members: const [
+              HouseholdMember(
+                householdId: 'household_1',
+                userId: 'member_1',
+                role: 'member',
+                email: 'member@example.com',
+              ),
+            ],
+            isOwner: false,
+            currentUserId: 'member_1',
+            onEditName: (_) async {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.edit_outlined), findsNothing);
+  });
 }

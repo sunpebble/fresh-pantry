@@ -112,4 +112,20 @@ class HouseholdGatewayStub implements HouseholdGateway {
   Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(String householdId) async {
     return ownerPendingInvites;
   }
+
+  var updatedHouseholdName = '';
+  var updatedHouseholdId = '';
+  Map<String, dynamic>? updatedCategoryPreferences;
+
+  @override
+  Future<void> updateHouseholdName(String householdId, String name) async {
+    updatedHouseholdId = householdId;
+    updatedHouseholdName = name;
+  }
+
+  @override
+  Future<void> updateCategoryPreferences(String householdId, Map<String, dynamic> preferences) async {
+    updatedHouseholdId = householdId;
+    updatedCategoryPreferences = preferences;
+  }
 }

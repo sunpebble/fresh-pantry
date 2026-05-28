@@ -22,6 +22,7 @@ class HouseholdSection extends StatelessWidget {
     this.households = const [],
     this.selectedHouseholdId = '',
     this.onSwitchHousehold,
+    this.onEditName,
   });
 
   final String householdName;
@@ -36,6 +37,7 @@ class HouseholdSection extends StatelessWidget {
   final List<Household> households;
   final String selectedHouseholdId;
   final ValueChanged<String>? onSwitchHousehold;
+  final Future<void> Function(String newName)? onEditName;
 
   @override
   Widget build(BuildContext context) {
@@ -103,6 +105,13 @@ class HouseholdSection extends StatelessWidget {
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                     ),
+                    if (isOwner && onEditName != null)
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        color: AppColors.onSurfaceVariant,
+                        onPressed: () => _showEditNameDialog(context),
+                        tooltip: '编辑家庭名称',
+                      ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -189,6 +198,18 @@ class HouseholdSection extends StatelessWidget {
     return showDialog<void>(
       context: context,
       builder: (_) => _InviteMemberDialog(onSubmit: onSubmit),
+    );
+  }
+
+  Future<void> _showEditNameDialog(BuildContext context) {
+    final onEdit = onEditName;
+    if (onEdit == null) return Future<void>.value();
+    return showDialog<void>(
+      context: context,
+      builder: (_) => _EditNameDialog(
+        currentName: householdName,
+        onSubmit: onEdit,
+      ),
     );
   }
 }
@@ -336,6 +357,75 @@ class _InviteMemberDialogState extends State<_InviteMemberDialog> {
         FilledButton(
           onPressed: _isSubmitting ? null : _submit,
           child: const Text('发送邀请'),
+        ),
+      ],
+    );
+  }
+}
+
+class _EditNameDialog extends StatefulWidget {
+  const _EditNameDialog({required this.currentName, required this.onSubmit});
+
+  final String currentName;
+  final Future<void> Function(String newName) onSubmit;
+
+  @override
+  State<_EditNameDialog> createState() => _EditNameDialogState();
+}
+
+class _EditNameDialogState extends State<_EditNameDialog> {
+  late final _controller = TextEditingController(text: widget.currentName);
+  var _isSubmitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_controller.text.trim().isEmpty) {
+      setState(() => _error = '家庭名称不能为空');
+      return;
+    }
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
+    try {
+      await widget.onSubmit(_controller.text.trim());
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+        _error = error.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('编辑家庭名称'),
+      content: TextField(
+        controller: _controller,
+        enabled: !_isSubmitting,
+        autofocus: true,
+        textInputAction: TextInputAction.done,
+        onSubmitted: (_) => _submit(),
+        decoration: InputDecoration(labelText: '家庭名称', errorText: _error),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: _isSubmitting ? null : _submit,
+          child: const Text('保存'),
         ),
       ],
     );

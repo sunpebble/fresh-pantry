@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../household/household_session_controller.dart';
+import '../providers/custom_recipe_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/notification_service_provider.dart';
 import '../providers/reminder_settings_provider.dart';
@@ -32,7 +33,18 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  final Set<String> _selectedPrefs = {'高蛋白', '低脂', '素食'};
+  Future<void> _onEditName(String householdId, String newName) async {
+    await ref
+        .read(householdSessionControllerProvider.notifier)
+        .updateHouseholdName(householdId, newName);
+  }
+
+  String _currentUserEmail(HouseholdSessionState session) {
+    for (final member in session.householdMembers) {
+      if (member.userId == session.currentUserId) return member.email;
+    }
+    return session.email;
+  }
 
   Future<void> _onExportTap() async {
     late final String json;
@@ -219,6 +231,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final shoppingCount = ref.watch(
       shoppingProvider.select((items) => items.length),
     );
+    final recipeCount = ref.watch(
+      customRecipesProvider.select((items) => items.length),
+    );
     final householdSession = ref.watch(householdSessionControllerProvider);
     final household = householdSession.households.isEmpty
         ? null
@@ -226,6 +241,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             (h) => h.id == householdSession.selectedHouseholdId,
             orElse: () => householdSession.households.first,
           );
+    final categoryPrefs = household?.categoryPreferences ?? const <String, dynamic>{};
+    final selectedPrefs = <String>{
+      for (final entry in categoryPrefs.entries)
+        if (entry.value == true) entry.key,
+    };
     final reminder = ref.watch(reminderSettingsProvider);
     final reminderN = ref.read(reminderSettingsProvider.notifier);
 
@@ -255,7 +275,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                child: const _ProfileCard(),
+                child: _ProfileCard(
+                  householdName: household?.name ?? '未加入家庭',
+                  userEmail: _currentUserEmail(householdSession),
+                ),
               ),
               const SizedBox(height: 14),
               Padding(
@@ -264,7 +287,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   items: [
                     ('食材', '$inventoryCount', AppColors.primary),
                     ('采购', '$shoppingCount', AppColors.fkWarn),
-                    ('收藏菜谱', '12', AppColors.fkDanger),
+                    ('收藏菜谱', '$recipeCount', AppColors.fkDanger),
                   ],
                 ),
               ),
@@ -288,6 +311,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 households: householdSession.households,
                 selectedHouseholdId: householdSession.selectedHouseholdId,
                 onSwitchHousehold: (id) => _onSwitchHousehold(id),
+                onEditName: household == null
+                    ? null
+                    : (newName) => _onEditName(household.id, newName),
               ),
               if (permissionMissing)
                 Padding(
@@ -420,14 +446,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ])
                             _PrefChip(
                               label: tag,
-                              selected: _selectedPrefs.contains(tag),
-                              onTap: () => setState(() {
-                                if (_selectedPrefs.contains(tag)) {
-                                  _selectedPrefs.remove(tag);
+                              selected: selectedPrefs.contains(tag),
+                              onTap: () {
+                                final newPrefs = Map<String, dynamic>.from(categoryPrefs);
+                                if (selectedPrefs.contains(tag)) {
+                                  newPrefs[tag] = false;
                                 } else {
-                                  _selectedPrefs.add(tag);
+                                  newPrefs[tag] = true;
                                 }
-                              }),
+                                if (household != null) {
+                                  ref
+                                      .read(householdSessionControllerProvider.notifier)
+                                      .updateCategoryPreferences(household.id, newPrefs);
+                                }
+                              },
                             ),
                         ],
                       ),
@@ -498,7 +530,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 }
 
 class _ProfileCard extends StatelessWidget {
-  const _ProfileCard();
+  const _ProfileCard({
+    required this.householdName,
+    required this.userEmail,
+  });
+
+  final String householdName;
+  final String userEmail;
 
   @override
   Widget build(BuildContext context) {
@@ -506,14 +544,14 @@ class _ProfileCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          const _ProfileAvatar(),
+          _ProfileAvatar(letter: _avatarLetter(userEmail)),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '小米的厨房',
+                  householdName,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: AppColors.onSurface,
@@ -521,7 +559,7 @@ class _ProfileCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '管理冰箱 90 天 · 减少浪费 23 件',
+                  userEmail,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.onSurfaceVariant,
                   ),
@@ -538,10 +576,17 @@ class _ProfileCard extends StatelessWidget {
       ),
     );
   }
+
+  static String _avatarLetter(String email) {
+    if (email.isEmpty) return '?';
+    return email[0].toUpperCase();
+  }
 }
 
 class _ProfileAvatar extends StatelessWidget {
-  const _ProfileAvatar();
+  const _ProfileAvatar({required this.letter});
+
+  final String letter;
 
   @override
   Widget build(BuildContext context) {
@@ -558,7 +603,7 @@ class _ProfileAvatar extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Text(
-        '米',
+        letter,
         style: Theme.of(context).textTheme.displaySmall?.copyWith(
           fontWeight: FontWeight.w700,
           color: Colors.white,
