@@ -35,6 +35,7 @@ String resolveSupabaseAuthRedirectUrl({bool isWeb = kIsWeb, Uri? webBaseUri}) {
 abstract class HouseholdGateway {
   Stream<void> get authStateChanges;
   bool get isAuthenticated;
+  String? get currentUserId;
 
   Future<void> sendOtp(String email);
   Future<List<Household>> loadHouseholds();
@@ -49,6 +50,9 @@ abstract class HouseholdGateway {
   Future<HouseholdInvitePreview> previewInvite(String token);
   Future<void> acceptInvite(String token);
   Future<void> acceptInviteById(String inviteId);
+  Future<void> removeMember(String targetUserId);
+  Future<void> revokeInvite(String inviteId);
+  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(String householdId);
 }
 
 class SupabaseHouseholdGateway implements HouseholdGateway {
@@ -68,6 +72,9 @@ class SupabaseHouseholdGateway implements HouseholdGateway {
 
   @override
   bool get isAuthenticated => _client.auth.currentUser != null;
+
+  @override
+  String? get currentUserId => _client.auth.currentUser?.id;
 
   @override
   Stream<void> get authStateChanges {
@@ -153,6 +160,21 @@ class SupabaseHouseholdGateway implements HouseholdGateway {
   @override
   Future<void> acceptInviteById(String inviteId) {
     return _remoteRepository.acceptInviteById(inviteId);
+  }
+
+  @override
+  Future<void> removeMember(String targetUserId) {
+    return _remoteRepository.removeMember(targetUserId);
+  }
+
+  @override
+  Future<void> revokeInvite(String inviteId) {
+    return _remoteRepository.revokeInvite(inviteId);
+  }
+
+  @override
+  Future<List<OwnerPendingInvite>> fetchOwnerPendingInvites(String householdId) {
+    return _remoteRepository.fetchOwnerPendingInvites(householdId);
   }
 }
 
