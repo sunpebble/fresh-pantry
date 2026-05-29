@@ -1,21 +1,19 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fresh_pantry/models/recipe.dart';
 import 'package:fresh_pantry/providers/_persistence_queue.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/storage/custom_recipe_repo.dart';
-import 'package:fresh_pantry/sync/sync_ids.dart';
+import 'package:fresh_pantry/sync/sync_enqueue.dart';
 import 'package:fresh_pantry/sync/sync_operation.dart';
-import 'package:fresh_pantry/sync/sync_providers.dart';
-import 'package:uuid/uuid.dart';
 
 const customRecipesStorageKey = CustomRecipeRepo.storageKey;
-const _syncOperationIds = Uuid();
 
 class CustomRecipeNotifier extends Notifier<List<Recipe>>
-    with PersistenceQueue {
+    with PersistenceQueue, SyncEnqueue<List<Recipe>> {
   late CustomRecipeRepo _repo;
+
+  @override
+  SyncEntityType get syncEntityType => SyncEntityType.customRecipe;
 
   @override
   List<Recipe> build() {
@@ -36,39 +34,9 @@ class CustomRecipeNotifier extends Notifier<List<Recipe>>
     });
   }
 
-  Future<void> _enqueueSync({
-    required String entityId,
-    required SyncOperationType operation,
-    required Map<String, dynamic> patch,
-    int? baseVersion,
-  }) {
-    final householdId = ref.read(selectedHouseholdIdProvider).trim();
-    if (householdId.isEmpty || entityId.trim().isEmpty) {
-      return Future.value();
-    }
-
-    return ref
-        .read(syncOutboxRepoProvider)
-        .enqueue(
-          SyncOperation(
-            id: _syncOperationIds.v4(),
-            householdId: householdId,
-            entityType: SyncEntityType.customRecipe,
-            entityId: entityId,
-            operation: operation,
-            patch: patch,
-            baseVersion: baseVersion,
-            clientId: ref.read(syncClientIdProvider),
-            createdAt: DateTime.now().toUtc(),
-          ),
-        )
-        .then((_) => unawaited(ref.read(syncPushPendingProvider)()));
-  }
-
   Recipe _withSyncId(Recipe recipe) {
-    final householdId = ref.read(selectedHouseholdIdProvider).trim();
-    if (householdId.isEmpty || isUuid(recipe.id)) return recipe;
-    return recipe.copyWith(id: newSyncEntityId());
+    final id = syncIdFor(recipe.id);
+    return id == recipe.id ? recipe : recipe.copyWith(id: id);
   }
 
   Future<void> replaceFromRemote(List<Recipe> recipes) {
@@ -82,7 +50,7 @@ class CustomRecipeNotifier extends Notifier<List<Recipe>>
     }
 
     await _mutate((current) => [...current, recipeToAdd]);
-    await _enqueueSync(
+    await enqueueSync(
       entityId: recipeToAdd.id,
       operation: SyncOperationType.create,
       patch: recipeToAdd.toJson(),
@@ -106,7 +74,7 @@ class CustomRecipeNotifier extends Notifier<List<Recipe>>
       next[index] = updatedRecipe;
       return next;
     });
-    await _enqueueSync(
+    await enqueueSync(
       entityId: id,
       operation: SyncOperationType.update,
       patch: updatedRecipe.toJson(),
@@ -129,7 +97,7 @@ class CustomRecipeNotifier extends Notifier<List<Recipe>>
       return next;
     });
     final deletedAt = DateTime.now().toUtc();
-    await _enqueueSync(
+    await enqueueSync(
       entityId: id,
       operation: SyncOperationType.delete,
       patch: {'deletedAt': deletedAt.toIso8601String()},

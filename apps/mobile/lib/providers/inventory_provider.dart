@@ -1,18 +1,15 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:uuid/uuid.dart';
 import '../models/frequent_item.dart';
 import '../models/ingredient.dart';
+import '../models/ingredient_identity.dart';
 import '../models/proposal.dart';
 import '../models/storage_area.dart';
 import '../data/food_categories.dart';
 import '../data/food_knowledge.dart';
 import '../storage/inventory_repo.dart';
+import '../sync/sync_enqueue.dart';
 import '../sync/sync_operation.dart';
-import '../sync/sync_providers.dart';
-import '../sync/sync_ids.dart';
 import '../utils/ingredient_normalizer.dart';
 import '_persistence_queue.dart';
 import 'storage_service_provider.dart';
@@ -23,7 +20,6 @@ const inventoryItemsStorageKey = 'inventory_items';
 const addHistoryStorageKey = 'add_history';
 const inventoryFilterAll = '全部';
 const inventoryFilterNotFresh = '不新鲜';
-const _syncOperationIds = Uuid();
 
 bool isNotFreshIngredient(Ingredient item) {
   return item.state == FreshnessState.expiringSoon ||
@@ -61,8 +57,11 @@ int notFreshIngredientCount(Iterable<Ingredient> items) {
 }
 
 class InventoryNotifier extends Notifier<List<Ingredient>>
-    with PersistenceQueue {
+    with PersistenceQueue, SyncEnqueue<List<Ingredient>> {
   late InventoryRepo _repo;
+
+  @override
+  SyncEntityType get syncEntityType => SyncEntityType.inventoryItem;
 
   @override
   List<Ingredient> build() {
@@ -74,50 +73,9 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
     _repo.saveItems(items);
   }
 
-  Future<void> _enqueueSync({
-    required String entityId,
-    required SyncOperationType operation,
-    required Map<String, dynamic> patch,
-    int? baseVersion,
-  }) {
-    final householdId = ref.read(selectedHouseholdIdProvider).trim();
-    if (householdId.isEmpty || entityId.trim().isEmpty) {
-      return Future.value();
-    }
-
-    final outbox = ref.read(syncOutboxRepoProvider);
-    return outbox
-        .enqueue(
-          SyncOperation(
-            id: _syncOperationIds.v4(),
-            householdId: householdId,
-            entityType: SyncEntityType.inventoryItem,
-            entityId: entityId,
-            operation: operation,
-            patch: patch,
-            baseVersion: baseVersion,
-            clientId: ref.read(syncClientIdProvider),
-            createdAt: DateTime.now().toUtc(),
-          ),
-        )
-        .then((_) => unawaited(ref.read(syncPushPendingProvider)()));
-  }
-
-  Future<void> _enqueueSyncBatch(List<_PendingInventorySync> operations) async {
-    for (final operation in operations) {
-      await _enqueueSync(
-        entityId: operation.entityId,
-        operation: operation.operation,
-        patch: operation.patch,
-        baseVersion: operation.baseVersion,
-      );
-    }
-  }
-
   Ingredient _withSyncId(Ingredient item) {
-    final householdId = ref.read(selectedHouseholdIdProvider).trim();
-    if (householdId.isEmpty || isUuid(item.id)) return item;
-    return item.copyWith(id: newSyncEntityId());
+    final id = syncIdFor(item.id);
+    return id == item.id ? item : item.copyWith(id: id);
   }
 
   Future<void> replaceFromRemote(List<Ingredient> items) async {
@@ -147,7 +105,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
       state = prior;
       rethrow;
     }
-    await _enqueueSync(
+    await enqueueSync(
       entityId: itemToAdd.id,
       operation: SyncOperationType.create,
       patch: itemToAdd.toJson(),
@@ -167,7 +125,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
       rethrow;
     }
     final deletedAt = DateTime.now().toUtc();
-    await _enqueueSync(
+    await enqueueSync(
       entityId: removed.id,
       operation: SyncOperationType.delete,
       patch: {'deletedAt': deletedAt.toIso8601String()},
@@ -182,7 +140,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
     updated.insert(clampedIndex, normalizedItem);
     state = updated;
     await queuePersistence(() => _save(updated));
-    await _enqueueSync(
+    await enqueueSync(
       entityId: normalizedItem.id,
       operation: SyncOperationType.create,
       patch: normalizedItem.toJson(),
@@ -207,7 +165,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
       state = prior;
       rethrow;
     }
-    await _enqueueSync(
+    await enqueueSync(
       entityId: updatedItem.id,
       operation: SyncOperationType.update,
       patch: updatedItem.toJson(),
@@ -222,7 +180,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
     List<IntakeProposal> proposals,
   ) async {
     var current = [...state];
-    final syncOperations = <_PendingInventorySync>[];
+    final syncOperations = <SyncEnqueueOp>[];
     final appliedIds = <String>{};
     for (final p in proposals) {
       if (!p.selected) continue;
@@ -233,14 +191,20 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
       // draft across launches). A perishable / non-matching item falls back to
       // a new row, which can never corrupt an unrelated row.
       final mergeIndex = p.action == IntakeAction.mergeInto
-          ? _findMergeTarget(current, p)
+          ? IngredientIdentity.resolveMergeTarget(
+              name: p.name,
+              unit: p.unit,
+              storage: p.storage,
+              category: p.category,
+              inventory: current,
+            )
           : -1;
 
       if (mergeIndex < 0) {
         final item = _withSyncId(_ingredientFromProposal(p));
         current = [...current, item];
         syncOperations.add(
-          _PendingInventorySync(
+          SyncEnqueueOp(
             entityId: item.id,
             operation: SyncOperationType.create,
             patch: item.toJson(),
@@ -257,7 +221,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
       );
       current = [...current]..[mergeIndex] = updatedItem;
       syncOperations.add(
-        _PendingInventorySync(
+        SyncEnqueueOp(
           entityId: updatedItem.id,
           operation: SyncOperationType.intake,
           patch: updatedItem.toJson(),
@@ -276,34 +240,8 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
       state = prior;
       rethrow;
     }
-    await _enqueueSyncBatch(syncOperations);
+    await enqueueSyncBatch(syncOperations);
     return appliedIds;
-  }
-
-  /// Resolves the row a `mergeInto` proposal should merge into, by the domain
-  /// merge rule (name+unit+storage) against the CURRENT inventory. Returns -1
-  /// — meaning "create a new row instead" — when the item is Perishable (every
-  /// intake is a new Batch), when no current row matches, or when the matching
-  /// row's quantity is non-numeric (merging would silently discard its stock).
-  int _findMergeTarget(List<Ingredient> current, IntakeProposal p) {
-    if (_isPerishableProposal(p)) return -1;
-    final name = p.name.trim().toLowerCase();
-    final unit = p.unit.trim();
-    if (name.isEmpty || unit.isEmpty) return -1;
-    for (var i = 0; i < current.length; i++) {
-      final row = current[i];
-      if (row.name.trim().toLowerCase() != name) continue;
-      if (row.unit.trim() != unit) continue;
-      if (row.storage != p.storage) continue;
-      if (double.tryParse(row.quantity.trim()) == null) return -1;
-      return i;
-    }
-    return -1;
-  }
-
-  bool _isPerishableProposal(IntakeProposal p) {
-    return FoodCategories.isPerishable(p.category) ||
-        FoodKnowledge.isPerishableName(p.name);
   }
 
   Future<void> applyDeductionProposals(
@@ -329,7 +267,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
     }
 
     final removalIndices = <int>{};
-    final syncOperations = <_PendingInventorySync>[];
+    final syncOperations = <SyncEnqueueOp>[];
     deductByIndex.forEach((index, totalDeduct) {
       final existing = current[index];
       final existingQty = double.tryParse(existing.quantity.trim());
@@ -341,7 +279,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
         removalIndices.add(index);
         final deletedAt = DateTime.now().toUtc();
         syncOperations.add(
-          _PendingInventorySync(
+          SyncEnqueueOp(
             entityId: existing.id,
             operation: SyncOperationType.delete,
             patch: {'deletedAt': deletedAt.toIso8601String()},
@@ -354,7 +292,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
         );
         current[index] = updatedItem;
         syncOperations.add(
-          _PendingInventorySync(
+          SyncEnqueueOp(
             entityId: updatedItem.id,
             operation: SyncOperationType.deduction,
             patch: updatedItem.toJson(),
@@ -379,7 +317,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
       state = prior;
       rethrow;
     }
-    await _enqueueSyncBatch(syncOperations);
+    await enqueueSyncBatch(syncOperations);
   }
 
   DeductionCandidate? _chosenCandidate(DeductionProposal p) {
@@ -472,14 +410,14 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
     updated.removeAt(sourceIndex);
     state = updated;
     await queuePersistence(() => _save(updated));
-    await _enqueueSync(
+    await enqueueSync(
       entityId: mergedTarget.id,
       operation: SyncOperationType.update,
       patch: mergedTarget.toJson(),
       baseVersion: target.remoteVersion,
     );
     final deletedAt = DateTime.now().toUtc();
-    await _enqueueSync(
+    await enqueueSync(
       entityId: source.id,
       operation: SyncOperationType.delete,
       patch: {'deletedAt': deletedAt.toIso8601String()},
@@ -502,19 +440,6 @@ final inventoryProvider = NotifierProvider<InventoryNotifier, List<Ingredient>>(
   InventoryNotifier.new,
 );
 
-class _PendingInventorySync {
-  const _PendingInventorySync({
-    required this.entityId,
-    required this.operation,
-    required this.patch,
-    this.baseVersion,
-  });
-
-  final String entityId;
-  final SyncOperationType operation;
-  final Map<String, dynamic> patch;
-  final int? baseVersion;
-}
 
 class _AddHistoryNotifier extends Notifier<List<FrequentItem>> {
   late InventoryRepo _repo;

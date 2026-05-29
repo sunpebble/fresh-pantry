@@ -265,6 +265,34 @@ void main() {
     expect(operation.patch, containsPair('name', 'Tomato Pasta'));
     expect(operation.patch, containsPair('id', operation.entityId));
   });
+
+  test('local-only (no household) mutation does not enqueue', () async {
+    final adapter = InMemoryStorageAdapter();
+    final outbox = SyncOutboxRepo(adapter);
+    final container = _container(
+      adapter: adapter,
+      outbox: outbox,
+      householdId: '',
+    );
+    addTearDown(container.dispose);
+
+    await container.read(inventoryProvider.notifier).add(
+          const Ingredient(
+            name: 'Rice',
+            quantity: '1',
+            unit: 'kg',
+            imageUrl: '',
+            freshnessPercent: 1,
+            state: FreshnessState.fresh,
+            category: FoodCategories.other,
+          ),
+        );
+
+    // No household to sync to: skipping is the correct local-first behaviour,
+    // so the outbox stays empty rather than accumulating un-syncable ops.
+    expect(outbox.loadPending(), isEmpty);
+    expect(container.read(inventoryProvider).single.name, 'Rice');
+  });
 }
 
 final _uuidPattern = RegExp(
@@ -277,6 +305,7 @@ ProviderContainer _container({
   required SyncOutboxRepo outbox,
   InventoryRepo? inventoryRepo,
   ShoppingRepo? shoppingRepo,
+  String householdId = 'household_1',
 }) {
   return ProviderContainer(
     overrides: [
@@ -289,7 +318,7 @@ ProviderContainer _container({
       ),
       customRecipeRepoProvider.overrideWithValue(CustomRecipeRepo(adapter)),
       syncOutboxRepoProvider.overrideWithValue(outbox),
-      selectedHouseholdIdProvider.overrideWithValue('household_1'),
+      selectedHouseholdIdProvider.overrideWithValue(householdId),
       syncClientIdProvider.overrideWithValue('client_1'),
       syncPushPendingProvider.overrideWithValue(() async {}),
     ],

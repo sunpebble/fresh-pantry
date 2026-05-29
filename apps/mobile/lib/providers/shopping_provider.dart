@@ -1,23 +1,18 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:uuid/uuid.dart';
 import '../models/ingredient.dart';
 import '../models/shopping_item.dart';
 import '../data/food_knowledge.dart';
 import '../storage/shopping_item_normalizer.dart';
 import '../storage/shopping_repo.dart';
+import '../sync/sync_enqueue.dart';
 import '../sync/sync_operation.dart';
-import '../sync/sync_providers.dart';
-import '../sync/sync_ids.dart';
 import '_persistence_queue.dart';
 import 'storage_service_provider.dart';
 
 export 'storage_service_provider.dart' show shoppingSeedProvider;
 
 const shoppingItemsStorageKey = 'shopping_items';
-const _syncOperationIds = Uuid();
 
 enum ShoppingFilter { all, todo, done }
 
@@ -87,8 +82,11 @@ Map<String, List<ShoppingItem>> filterShoppingGroups(
 }
 
 class ShoppingNotifier extends Notifier<List<ShoppingItem>>
-    with PersistenceQueue {
+    with PersistenceQueue, SyncEnqueue<List<ShoppingItem>> {
   late ShoppingRepo _repo;
+
+  @override
+  SyncEntityType get syncEntityType => SyncEntityType.shoppingItem;
 
   @override
   List<ShoppingItem> build() {
@@ -100,40 +98,9 @@ class ShoppingNotifier extends Notifier<List<ShoppingItem>>
     _repo.saveItems(items);
   }
 
-  Future<void> _enqueueSync({
-    required SyncEntityType entityType,
-    required String entityId,
-    required SyncOperationType operation,
-    required Map<String, dynamic> patch,
-    int? baseVersion,
-  }) {
-    final householdId = ref.read(selectedHouseholdIdProvider).trim();
-    if (householdId.isEmpty || entityId.trim().isEmpty) {
-      return Future.value();
-    }
-
-    return ref
-        .read(syncOutboxRepoProvider)
-        .enqueue(
-          SyncOperation(
-            id: _syncOperationIds.v4(),
-            householdId: householdId,
-            entityType: entityType,
-            entityId: entityId,
-            operation: operation,
-            patch: patch,
-            baseVersion: baseVersion,
-            clientId: ref.read(syncClientIdProvider),
-            createdAt: DateTime.now().toUtc(),
-          ),
-        )
-        .then((_) => unawaited(ref.read(syncPushPendingProvider)()));
-  }
-
   ShoppingItem _withSyncId(ShoppingItem item) {
-    final householdId = ref.read(selectedHouseholdIdProvider).trim();
-    if (householdId.isEmpty || isUuid(item.id)) return item;
-    return item.copyWith(id: newSyncEntityId());
+    final id = syncIdFor(item.id);
+    return id == item.id ? item : item.copyWith(id: id);
   }
 
   Future<void> replaceFromRemote(List<ShoppingItem> items) async {
@@ -166,8 +133,7 @@ class ShoppingNotifier extends Notifier<List<ShoppingItem>>
       state = prior;
       rethrow;
     }
-    await _enqueueSync(
-      entityType: SyncEntityType.shoppingItem,
+    await enqueueSync(
       entityId: normalizedItem.id,
       operation: SyncOperationType.create,
       patch: normalizedItem.toJson(),
@@ -192,8 +158,7 @@ class ShoppingNotifier extends Notifier<List<ShoppingItem>>
       rethrow;
     }
     final deletedAt = DateTime.now().toUtc();
-    await _enqueueSync(
-      entityType: SyncEntityType.shoppingItem,
+    await enqueueSync(
       entityId: id,
       operation: SyncOperationType.delete,
       patch: {'deletedAt': deletedAt.toIso8601String()},
@@ -226,8 +191,7 @@ class ShoppingNotifier extends Notifier<List<ShoppingItem>>
       state = prior;
       rethrow;
     }
-    await _enqueueSync(
-      entityType: SyncEntityType.shoppingItem,
+    await enqueueSync(
       entityId: id,
       operation: SyncOperationType.toggleChecked,
       patch: {'isChecked': toggled!.isChecked},
