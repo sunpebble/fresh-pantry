@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fresh_pantry/household/household_models.dart';
-import 'package:fresh_pantry/widgets/settings/household_section.dart';
+import 'package:fresh_pantry/widgets/household/household_section.dart';
 
 void main() {
   testWidgets('HouseholdSection renders members and invite action', (

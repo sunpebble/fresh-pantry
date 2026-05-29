@@ -7,7 +7,7 @@ import 'package:fresh_pantry/providers/notification_service_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/settings_screen.dart';
 import 'package:fresh_pantry/services/notification_service.dart';
-import 'package:fresh_pantry/widgets/settings/household_section.dart';
+import 'package:fresh_pantry/widgets/household/household_section.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'helpers/household_gateway_stub.dart';

@@ -23,7 +23,7 @@ import '../widgets/shared/fk_pill.dart';
 import '../widgets/shared/fk_section_head.dart';
 import '../widgets/shared/fk_top_bar.dart';
 import '../utils/app_dialog.dart';
-import '../widgets/settings/household_section.dart';
+import '../widgets/household/household_section.dart';
 import '../widgets/settings/invite_result_sheet.dart';
 import 'ai_settings_screen.dart';
 import 'my_recipes_screen.dart';
