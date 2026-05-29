@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/draft_field.dart';
@@ -10,22 +11,34 @@ import '../utils/app_snackbar.dart';
 import '../widgets/shared/ai_busy_overlay.dart';
 import '../widgets/shared/ai_draft_field.dart';
 
-class RecipeDraftReviewScreen extends ConsumerWidget {
+class RecipeDraftReviewScreen extends ConsumerStatefulWidget {
   const RecipeDraftReviewScreen({super.key, this.regenerate});
 
   /// Optional callback used when "重新生成" is tapped.
   /// Called with the original `sourceUrl`. If null, button is hidden.
   final Future<void> Function(String url)? regenerate;
 
+  @override
+  ConsumerState<RecipeDraftReviewScreen> createState() =>
+      _RecipeDraftReviewScreenState();
+}
+
+class _RecipeDraftReviewScreenState
+    extends ConsumerState<RecipeDraftReviewScreen> {
   static const _actionButtonHeight = 48.0;
 
+  bool _saving = false;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final state = ref.watch(aiDraftProvider);
     final draft = state.recipeDraft;
     if (draft == null) {
       return const Scaffold(body: Center(child: Text('草稿已丢失')));
     }
+    // Disable every action while AI is regenerating OR a save is in flight,
+    // so a double-tap on 确认入库 cannot append two identical recipes.
+    final busy = state.isRunning || _saving;
     return Scaffold(
       appBar: AppBar(title: const Text('审核 AI 草稿')),
       body: Stack(
@@ -119,16 +132,14 @@ class RecipeDraftReviewScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (regenerate != null && draft.sourceUrl != null) ...[
+            if (widget.regenerate != null && draft.sourceUrl != null) ...[
               SizedBox(
                 height: _actionButtonHeight,
                 child: OutlinedButton(
                   key: const Key('recipe_review_regenerate'),
                   style: _outlinedActionStyle(context),
                   onPressed:
-                      state.isRunning
-                          ? null
-                          : () => regenerate!(draft.sourceUrl!),
+                      busy ? null : () => widget.regenerate!(draft.sourceUrl!),
                   child: const Text('重新生成'),
                 ),
               ),
@@ -143,13 +154,12 @@ class RecipeDraftReviewScreen extends ConsumerWidget {
                     child: OutlinedButton(
                       key: const Key('recipe_review_discard'),
                       style: _outlinedActionStyle(context),
-                      onPressed:
-                          state.isRunning
-                              ? null
-                              : () {
-                                ref.read(aiDraftProvider.notifier).clear();
-                                Navigator.of(context).maybePop();
-                              },
+                      onPressed: busy
+                          ? null
+                          : () {
+                              ref.read(aiDraftProvider.notifier).clear();
+                              Navigator.of(context).maybePop();
+                            },
                       child: const Text('丢弃'),
                     ),
                   ),
@@ -159,30 +169,7 @@ class RecipeDraftReviewScreen extends ConsumerWidget {
                     child: FilledButton(
                       key: const Key('recipe_review_confirm'),
                       style: _filledActionStyle(context),
-                      onPressed:
-                          state.isRunning
-                              ? null
-                              : () async {
-                                final validationMessage =
-                                    _draftValidationMessage(draft);
-                                if (validationMessage != null) {
-                                  showAppSnackBar(context, validationMessage);
-                                  return;
-                                }
-                                try {
-                                  await ref
-                                      .read(customRecipesProvider.notifier)
-                                      .add(draft.toRecipe());
-                                } on Object {
-                                  if (context.mounted) {
-                                    showAppSnackBar(context, '保存失败，请重试');
-                                  }
-                                  return;
-                                }
-                                if (!context.mounted) return;
-                                ref.read(aiDraftProvider.notifier).clear();
-                                Navigator.of(context).maybePop();
-                              },
+                      onPressed: busy ? null : () => _confirm(draft),
                       child: const Text('确认入库'),
                     ),
                   ),
@@ -193,6 +180,27 @@ class RecipeDraftReviewScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _confirm(RecipeDraft draft) async {
+    if (_saving) return;
+    final validationMessage = _draftValidationMessage(draft);
+    if (validationMessage != null) {
+      showAppSnackBar(context, validationMessage);
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await ref.read(customRecipesProvider.notifier).add(draft.toRecipe());
+    } on Object {
+      if (mounted) showAppSnackBar(context, '保存失败，请重试');
+      return;
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+    if (!mounted) return;
+    ref.read(aiDraftProvider.notifier).clear();
+    Navigator.of(context).maybePop();
   }
 
   ButtonStyle _outlinedActionStyle(BuildContext context) {
@@ -330,6 +338,7 @@ class _IntEditorState extends State<_IntEditor> {
         TextField(
           controller: _controller,
           keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           autofocus: true,
         ),
         const SizedBox(height: AppSpacing.sm),

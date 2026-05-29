@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import '../theme/fk_category_palette.dart';
 import '../utils/app_snackbar.dart';
 import '../utils/dashboard_greeting.dart';
+import '../utils/safe_push.dart';
 import '../widgets/dashboard/expiring_fallback_card.dart';
 import '../widgets/dashboard/low_stock_card.dart';
 import '../widgets/recipe_card.dart';
@@ -108,9 +109,13 @@ Future<void> _addToShoppingList(
   WidgetRef ref,
   Ingredient item,
 ) async {
-  final added = await ref
-      .read(shoppingProvider.notifier)
-      .addFromIngredient(item);
+  final bool added;
+  try {
+    added = await ref.read(shoppingProvider.notifier).addFromIngredient(item);
+  } catch (_) {
+    if (context.mounted) showAppSnackBar(context, '加入购物清单失败，请重试');
+    return;
+  }
   if (!context.mounted) return;
   showAppSnackBar(
     context,
@@ -259,6 +264,14 @@ class _TodayRecommendationSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final recommendedRecipes = ref.watch(recommendedRecipesProvider);
     if (recommendedRecipes.isEmpty) {
+      // Show a loader while the first recipe fetch is still in flight, so the
+      // section doesn't read as an empty flicker before recipes pop in.
+      if (ref.watch(recipesProvider).isLoading) {
+        return const SizedBox(
+          height: 120,
+          child: Center(child: CircularProgressIndicator()),
+        );
+      }
       return const SizedBox(height: 100);
     }
 
@@ -286,7 +299,8 @@ class _TodayRecommendationSection extends ConsumerWidget {
               inventoryNames,
               todayRecipe,
             ),
-            onTap: () => Navigator.of(context).push(
+            onTap: () => pushRouteOnce(
+              context,
               MaterialPageRoute(
                 builder: (_) => RecipeDetailScreen(recipe: todayRecipe),
               ),

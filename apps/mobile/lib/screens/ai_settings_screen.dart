@@ -52,6 +52,7 @@ class _AiSettingsScreenState extends ConsumerState<AiSettingsScreen> {
   late final TextEditingController _timeout;
 
   bool _testing = false;
+  bool _saving = false;
   ConnectionTestResult? _testResult;
 
   @override
@@ -83,8 +84,14 @@ class _AiSettingsScreenState extends ConsumerState<AiSettingsScreen> {
   }
 
   Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _saving = true);
     final next = _currentInputs();
-    await ref.read(aiSettingsProvider.notifier).save(next);
+    try {
+      await ref.read(aiSettingsProvider.notifier).save(next);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
     if (!mounted) return;
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
@@ -165,8 +172,14 @@ class _AiSettingsScreenState extends ConsumerState<AiSettingsScreen> {
           const SizedBox(height: AppSpacing.lg),
           FilledButton(
             key: const Key('ai_save'),
-            onPressed: _save,
-            child: const Text('保存'),
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('保存'),
           ),
           const SizedBox(height: AppSpacing.md),
           const Text(

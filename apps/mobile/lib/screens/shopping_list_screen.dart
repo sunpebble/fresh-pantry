@@ -15,6 +15,7 @@ import '../theme/app_theme.dart';
 import '../theme/fk_category_palette.dart';
 import '../utils/app_dialog.dart';
 import '../utils/app_snackbar.dart';
+import '../utils/safe_push.dart';
 import '../widgets/shared/cat_icon.dart';
 import '../widgets/shared/category_icon.dart';
 import '../widgets/shared/fk_card.dart';
@@ -204,7 +205,7 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
   }
 
   void _openPlannerRecipe(BuildContext context, Recipe recipe) {
-    Navigator.push(
+    pushRouteOnce(
       context,
       MaterialPageRoute(builder: (_) => RecipeDetailScreen(recipe: recipe)),
     );
@@ -220,37 +221,67 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
     if (!confirmed || !context.mounted) return;
     final items = ref.read(shoppingProvider);
     final checkedItems = items.where((item) => item.isChecked).toList();
+    final notifier = ref.read(shoppingProvider.notifier);
+    var removed = 0;
     for (final item in checkedItems) {
-      ref.read(shoppingProvider.notifier).remove(item.id);
+      try {
+        await notifier.remove(item.id);
+        removed++;
+      } catch (_) {
+        // Keep clearing the rest; the snackbar reports the real removed count.
+      }
     }
+    if (!context.mounted) return;
     showAppSnackBar(
       context,
-      '已清理 ${checkedItems.length} 个已购项目',
-      backgroundColor: AppColors.primary,
+      removed == checkedItems.length
+          ? '已清理 $removed 个已购项目'
+          : '已清理 $removed/${checkedItems.length} 个，部分失败请重试',
+      backgroundColor: removed == 0 ? AppColors.error : AppColors.primary,
     );
   }
 
-  void _deleteShoppingItem(
+  Future<void> _deleteShoppingItem(
     BuildContext context,
     WidgetRef ref,
     ShoppingItem item,
-  ) {
-    ref.read(shoppingProvider.notifier).remove(item.id);
+  ) async {
+    try {
+      await ref.read(shoppingProvider.notifier).remove(item.id);
+    } catch (_) {
+      if (context.mounted) showAppSnackBar(context, '删除失败，请重试');
+      return;
+    }
+    if (!context.mounted) return;
     showAppSnackBar(
       context,
       '「${item.name}」已删除',
       backgroundColor: AppColors.error,
       actionLabel: '撤销',
       actionTextColor: AppColors.onError,
-      onAction: () {
-        ref.read(shoppingProvider.notifier).add(item);
+      onAction: () async {
+        try {
+          await ref.read(shoppingProvider.notifier).add(item);
+        } catch (_) {
+          if (context.mounted) showAppSnackBar(context, '撤销失败，请重试');
+        }
       },
     );
   }
 
-  void _onItemChecked(BuildContext context, WidgetRef ref, ShoppingItem item) {
+  Future<void> _onItemChecked(
+    BuildContext context,
+    WidgetRef ref,
+    ShoppingItem item,
+  ) async {
     final wasChecked = item.isChecked;
-    ref.read(shoppingProvider.notifier).toggleCheck(item.id);
+    try {
+      await ref.read(shoppingProvider.notifier).toggleCheck(item.id);
+    } catch (_) {
+      if (context.mounted) showAppSnackBar(context, '操作失败，请重试');
+      return;
+    }
+    if (!context.mounted) return;
     if (!wasChecked) {
       showAppSnackBar(
         context,
@@ -293,18 +324,29 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
     final shopping = ref.read(shoppingProvider.notifier);
     for (final item in checked) {
       if (appliedIds.contains('ix_${item.id}')) {
-        await shopping.remove(item.id);
+        try {
+          await shopping.remove(item.id);
+        } catch (_) {
+          // Item entered inventory but couldn't be cleared from the list;
+          // leave it checked so a later attempt can retry the removal.
+        }
       }
     }
   }
 
-  void _addItemToInventory(
+  Future<void> _addItemToInventory(
     BuildContext context,
     WidgetRef ref,
     ShoppingItem item,
-  ) {
+  ) async {
     final ingredient = IngredientFactory.fromShoppingItem(item);
-    ref.read(inventoryProvider.notifier).add(ingredient);
+    try {
+      await ref.read(inventoryProvider.notifier).add(ingredient);
+    } catch (_) {
+      if (context.mounted) showAppSnackBar(context, '加入库存失败，请重试');
+      return;
+    }
+    if (!context.mounted) return;
     showAppSnackBar(
       context,
       '已添加「${item.name}」到库存',

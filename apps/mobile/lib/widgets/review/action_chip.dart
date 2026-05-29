@@ -39,9 +39,14 @@ class ProposalActionChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(label,
-                style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w600, color: fg)),
+            Flexible(
+              child: Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                  style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w600, color: fg)),
+            ),
             const SizedBox(width: 4),
             Icon(Icons.keyboard_arrow_down, size: 14, color: fg),
           ],

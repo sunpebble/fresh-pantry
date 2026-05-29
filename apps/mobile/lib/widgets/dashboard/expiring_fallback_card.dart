@@ -55,6 +55,8 @@ class ExpiringFallbackCard extends ConsumerWidget {
                 const SizedBox(height: 2),
                 Text(
                   recipe.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,

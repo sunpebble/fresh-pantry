@@ -24,15 +24,20 @@ class _QuickAddFieldState extends ConsumerState<QuickAddField> {
 
   Future<void> _submit(String value) async {
     final trimmed = value.trim();
-    if (trimmed.isNotEmpty) {
-      final added = await ref
+    if (trimmed.isEmpty) return;
+    final bool added;
+    try {
+      added = await ref
           .read(shoppingProvider.notifier)
           .addFromSuggestion(trimmed);
-      if (!mounted) return;
-      _controller.clear();
-      FocusManager.instance.primaryFocus?.unfocus();
-      _showAddResult(trimmed, added);
+    } catch (_) {
+      if (mounted) showAppSnackBar(context, '添加失败，请重试');
+      return;
     }
+    if (!mounted) return;
+    _controller.clear();
+    FocusManager.instance.primaryFocus?.unfocus();
+    _showAddResult(trimmed, added);
   }
 
   void _showAddResult(String name, bool added) {

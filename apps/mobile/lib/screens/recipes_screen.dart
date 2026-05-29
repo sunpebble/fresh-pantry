@@ -6,6 +6,7 @@ import '../providers/custom_recipe_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/recipe_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/safe_push.dart';
 import '../widgets/recipe_card.dart';
 import '../widgets/shared/fk_icon_button.dart';
 import '../widgets/shared/fk_top_bar.dart';
@@ -64,7 +65,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   }
 
   void _openCustomRecipeForm() {
-    Navigator.of(context).push(
+    pushRouteOnce(
+      context,
       MaterialPageRoute(builder: (_) => const CustomRecipeFormScreen()),
     );
   }
@@ -122,6 +124,18 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
             )
             .toList();
 
+    final fetchFailed = ref
+        .watch(recipesFetchProvider)
+        .maybeWhen(data: (r) => r.fetchFailed, orElse: () => false);
+    // Show the skeleton while a fetch-backed tab is still loading with nothing
+    // yet (not just explore), to avoid flashing a misleading empty state on
+    // first launch; the local-only `mine` tab keeps its empty state.
+    final showSkeleton =
+        allAsync.isLoading && searched.isEmpty && _tab != _RecipeTab.mine;
+    // On the explore tab, distinguish a real fetch failure from "no recipes".
+    final showError =
+        fetchFailed && searched.isEmpty && _tab == _RecipeTab.explore;
+
     return SafeArea(
       bottom: false,
       child: Column(
@@ -165,12 +179,15 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
               child: _ExpiringBanner(count: expiringNames.length),
             ),
           Expanded(
-            child:
-                allAsync.isLoading && _tab == _RecipeTab.explore
-                    ? const _RecipeSkeletonList()
-                    : searched.isEmpty
-                    ? _EmptyState(tab: _tab, query: q)
-                    : ListView.separated(
+            child: showSkeleton
+                ? const _RecipeSkeletonList()
+                : showError
+                ? _RecipeErrorState(
+                    onRetry: () => ref.invalidate(recipesFetchProvider),
+                  )
+                : searched.isEmpty
+                ? _EmptyState(tab: _tab, query: q)
+                : ListView.separated(
                       padding: _listPadding,
                       itemCount: searched.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 12),
@@ -186,7 +203,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                           matchedCount: matched,
                           useExpiring: useExpiring,
                           onTap:
-                              () => Navigator.of(context).push(
+                              () => pushRouteOnce(
+                                context,
                                 MaterialPageRoute(
                                   builder:
                                       (_) =>
@@ -543,6 +561,35 @@ class _RecipeSearchField extends StatelessWidget {
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecipeErrorState extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _RecipeErrorState({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.huge),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '菜谱加载失败，请检查网络后重试',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            OutlinedButton(onPressed: onRetry, child: const Text('重试')),
           ],
         ),
       ),

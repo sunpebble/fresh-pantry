@@ -7,6 +7,7 @@ import '../providers/shopping_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/fk_category_palette.dart';
 import '../utils/app_snackbar.dart';
+import '../utils/safe_push.dart';
 import '../utils/storage_labels.dart';
 import '../widgets/shared/cat_icon.dart';
 import '../widgets/shared/category_icon.dart';
@@ -258,7 +259,8 @@ class _ExpiringRow extends ConsumerWidget {
             label: '查看 ${item.name} 详情',
             button: true,
             child: GestureDetector(
-              onTap: () => Navigator.of(context).push(
+              onTap: () => pushRouteOnce(
+                context,
                 MaterialPageRoute(
                   builder: (_) => IngredientDetailScreen(ingredient: item),
                 ),
@@ -337,13 +339,19 @@ class _ExpiringRow extends ConsumerWidget {
     );
   }
 
-  void _markUsed(BuildContext context, WidgetRef ref) {
+  Future<void> _markUsed(BuildContext context, WidgetRef ref) async {
     final index = inventoryIndexOf(ref.read(inventoryProvider), item);
     if (index == -1) {
       showAppSnackBar(context, '未找到「${item.name}」库存项');
       return;
     }
-    ref.read(inventoryProvider.notifier).remove(index);
+    try {
+      await ref.read(inventoryProvider.notifier).remove(index);
+    } catch (_) {
+      if (context.mounted) showAppSnackBar(context, '操作失败，请重试');
+      return;
+    }
+    if (!context.mounted) return;
     showAppSnackBar(
       context,
       '「${item.name}」已标记使用',

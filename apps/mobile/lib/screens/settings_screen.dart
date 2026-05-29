@@ -135,9 +135,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _onInviteLink(String householdId) async {
-    final inviteUrl = await ref
-        .read(householdSessionControllerProvider.notifier)
-        .createInvite(householdId);
+    final String inviteUrl;
+    try {
+      inviteUrl = await ref
+          .read(householdSessionControllerProvider.notifier)
+          .createInvite(householdId);
+    } catch (_) {
+      if (!mounted) return;
+      final error = ref.read(householdSessionControllerProvider).error;
+      showAppSnackBar(
+        context,
+        error ?? '创建邀请失败，请重试',
+        backgroundColor: AppColors.error,
+      );
+      return;
+    }
     if (!mounted) return;
     await InviteResultSheet.show(context, inviteUrl: inviteUrl);
     await ref
@@ -164,6 +176,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await ref
         .read(householdSessionControllerProvider.notifier)
         .removeMember(householdId, userId);
+    if (!mounted) return;
+    final error = ref.read(householdSessionControllerProvider).error;
+    if (error != null) {
+      showAppSnackBar(context, error, backgroundColor: AppColors.error);
+    }
   }
 
   Future<void> _onRevokeInvite(String householdId, String inviteId) async {
@@ -178,6 +195,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await ref
         .read(householdSessionControllerProvider.notifier)
         .revokeInvite(householdId, inviteId);
+    if (!mounted) return;
+    final error = ref.read(householdSessionControllerProvider).error;
+    if (error != null) {
+      showAppSnackBar(context, error, backgroundColor: AppColors.error);
+    }
   }
 
   Future<void> _onDissolveHousehold(String householdId, String name) async {

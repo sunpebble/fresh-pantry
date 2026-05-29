@@ -101,8 +101,12 @@ Future<void> runBulkLowStockAdd(
   final shopping = ref.read(shoppingProvider.notifier);
   var addedCount = 0;
   for (final item in items) {
-    final added = await shopping.addFromSuggestion(item.name);
-    if (added) addedCount++;
+    try {
+      final added = await shopping.addFromSuggestion(item.name);
+      if (added) addedCount++;
+    } catch (_) {
+      // Skip failed adds; the toast below reports the count actually added.
+    }
   }
   if (!context.mounted) return;
   fkToast(context, '已加入 $addedCount 项到购物清单');

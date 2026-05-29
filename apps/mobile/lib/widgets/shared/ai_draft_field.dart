@@ -59,8 +59,14 @@ class AiDraftFieldChip<T> extends StatelessWidget {
     if (editorBuilder == null) return;
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: EdgeInsets.only(
+          left: AppSpacing.lg,
+          right: AppSpacing.lg,
+          top: AppSpacing.lg,
+          bottom: AppSpacing.lg + MediaQuery.of(ctx).viewInsets.bottom,
+        ),
         child: editorBuilder!(field.value, (next) {
           onChanged(field.editedTo(next));
           Navigator.of(ctx).pop();

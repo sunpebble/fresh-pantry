@@ -45,6 +45,7 @@ class RecipeDetailScreen extends ConsumerStatefulWidget {
 
 class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   final Set<int> _completedSteps = <int>{};
+  bool _addingToCart = false;
 
   @override
   void didUpdateWidget(covariant RecipeDetailScreen oldWidget) {
@@ -66,19 +67,28 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   }
 
   Future<void> _addMissingToCart(List<RecipeIngredient> missing) async {
+    if (_addingToCart) return;
+    setState(() => _addingToCart = true);
     var addedCount = 0;
-    for (final ing in missing) {
-      final added = await ref
-          .read(shoppingProvider.notifier)
-          .add(
-            ShoppingItem(
-              id: '${ShoppingItem.newId()}_${ing.name}',
-              name: ing.name,
-              detail: ing.amount,
-              category: FoodKnowledge.categoryFor(ing.name),
-            ),
-          );
-      if (added) addedCount++;
+    try {
+      for (final ing in missing) {
+        final added = await ref
+            .read(shoppingProvider.notifier)
+            .add(
+              ShoppingItem(
+                id: '${ShoppingItem.newId()}_${ing.name}',
+                name: ing.name,
+                detail: ing.amount,
+                category: FoodKnowledge.categoryFor(ing.name),
+              ),
+            );
+        if (added) addedCount++;
+      }
+    } on Object {
+      if (mounted) showAppSnackBar(context, '加入购物清单失败，请重试');
+      return;
+    } finally {
+      if (mounted) setState(() => _addingToCart = false);
     }
     if (!mounted) return;
     showAppSnackBar(
@@ -208,6 +218,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   const SizedBox(height: 10),
                   _AddMissingCta(
                     count: missing.length,
+                    loading: _addingToCart,
                     onTap: () => _addMissingToCart(missing),
                   ),
                 ],
@@ -550,7 +561,12 @@ class _StatusMark extends StatelessWidget {
 class _AddMissingCta extends StatelessWidget {
   final int count;
   final VoidCallback onTap;
-  const _AddMissingCta({required this.count, required this.onTap});
+  final bool loading;
+  const _AddMissingCta({
+    required this.count,
+    required this.onTap,
+    this.loading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -558,7 +574,7 @@ class _AddMissingCta extends StatelessWidget {
       button: true,
       label: '一键加购缺少的 $count 件',
       child: GestureDetector(
-        onTap: onTap,
+        onTap: loading ? null : onTap,
         behavior: HitTestBehavior.opaque,
         child: Container(
           width: double.infinity,
@@ -570,14 +586,24 @@ class _AddMissingCta extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.shopping_cart_outlined,
-                size: 16,
-                color: AppColors.primaryContainer,
-              ),
+              if (loading)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primaryContainer,
+                  ),
+                )
+              else
+                const Icon(
+                  Icons.shopping_cart_outlined,
+                  size: 16,
+                  color: AppColors.primaryContainer,
+                ),
               const SizedBox(width: 6),
               Text(
-                '一键加购缺少的 $count 件',
+                loading ? '正在加入…' : '一键加购缺少的 $count 件',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,

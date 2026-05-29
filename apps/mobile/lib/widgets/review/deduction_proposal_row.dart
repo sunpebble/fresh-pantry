@@ -65,6 +65,8 @@ class DeductionProposalRow extends StatelessWidget {
                   children: [
                     Text(
                       p.recipeIngredientName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,

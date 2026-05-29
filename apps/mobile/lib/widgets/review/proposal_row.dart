@@ -85,10 +85,13 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
               ProvenanceBadge(origin: p.origin, userEdited: p.userEdited),
               const SizedBox(width: 8),
               Expanded(child: _name(p)),
-              ProposalActionChip.intake(
-                intakeAction: p.action,
-                mergeTargetLabel: p.mergeTargetLabel,
-                onToggle: widget.onToggleAction,
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 160),
+                child: ProposalActionChip.intake(
+                  intakeAction: p.action,
+                  mergeTargetLabel: p.mergeTargetLabel,
+                  onToggle: widget.onToggleAction,
+                ),
               ),
             ],
           ),
@@ -126,17 +129,44 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
                     style: TextStyle(color: AppColors.outline, fontSize: 12),
                   ),
                   const SizedBox(width: 6),
-                  InlineNumberStepper(
-                    value: (p.shelfLifeDays ?? 0).toString(),
-                    onChanged:
-                        (v) => widget.onChanged(
-                          p.copyWith(
-                            shelfLifeDays: int.tryParse(v) ?? 0,
-                            userEdited: true,
+                  if ((p.shelfLifeDays ?? 0) <= 0)
+                    // null/0 means "no expiry" (e.g. non-perishables); show an
+                    // explicit unset affordance instead of a misleading "0 天",
+                    // so an item can never be confirmed as expired-on-arrival.
+                    GestureDetector(
+                      onTap: () => widget.onChanged(
+                        p.copyWith(shelfLifeDays: 7, userEdited: true),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainer,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Text(
+                          '未设置 · 点按设置',
+                          style: TextStyle(
+                            color: AppColors.outline,
+                            fontSize: 12,
                           ),
                         ),
-                    suffix: '天',
-                  ),
+                      ),
+                    )
+                  else
+                    InlineNumberStepper(
+                      value: p.shelfLifeDays!.toString(),
+                      min: 1,
+                      onChanged: (v) => widget.onChanged(
+                        p.copyWith(
+                          shelfLifeDays: int.tryParse(v) ?? 1,
+                          userEdited: true,
+                        ),
+                      ),
+                      suffix: '天',
+                    ),
                 ],
               ),
               _categoryChip(p),

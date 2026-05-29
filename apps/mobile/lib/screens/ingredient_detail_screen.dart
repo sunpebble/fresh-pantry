@@ -69,9 +69,15 @@ class IngredientDetailScreen extends ConsumerStatefulWidget {
 class _IngredientDetailScreenState
     extends ConsumerState<IngredientDetailScreen> {
   Future<void> _addToShoppingList(Ingredient item) async {
-    final added = await ref
-        .read(shoppingProvider.notifier)
-        .addFromIngredient(item);
+    final bool added;
+    try {
+      added = await ref
+          .read(shoppingProvider.notifier)
+          .addFromIngredient(item);
+    } catch (_) {
+      if (mounted) showAppSnackBar(context, '加入购物清单失败，请重试');
+      return;
+    }
     if (!mounted) return;
     showAppSnackBar(
       context,
@@ -115,7 +121,13 @@ class _IngredientDetailScreenState
     );
     if (!mounted || !confirmed) return;
 
-    ref.read(inventoryProvider.notifier).remove(index);
+    try {
+      await ref.read(inventoryProvider.notifier).remove(index);
+    } catch (_) {
+      if (mounted) showAppSnackBar(context, '删除失败，请重试');
+      return;
+    }
+    if (!mounted) return;
     Navigator.of(context).pop(IngredientDetailResult.deleted(item, index));
   }
 

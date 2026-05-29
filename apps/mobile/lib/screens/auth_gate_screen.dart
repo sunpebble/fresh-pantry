@@ -31,6 +31,7 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
   String? _pendingInviteToken;
   String? _inviteInputError;
   String? _lastPreviewToken;
+  String? _emailError;
   final _dismissedInviteIds = <String>{};
   StreamSubscription<String>? _inviteLinkSubscription;
 
@@ -148,7 +149,15 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
                       autofillHints: const [AutofillHints.email],
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.done,
-                      decoration: const InputDecoration(labelText: '邮箱'),
+                      decoration: InputDecoration(
+                        labelText: '邮箱',
+                        errorText: _emailError,
+                      ),
+                      onChanged: (_) {
+                        if (_emailError != null) {
+                          setState(() => _emailError = null);
+                        }
+                      },
                       onSubmitted: (_) => _sendOtp(),
                     ),
                     if (session.error != null) ...[
@@ -390,9 +399,14 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
   }
 
   void _sendOtp() {
-    ref
-        .read(householdSessionControllerProvider.notifier)
-        .sendOtp(_emailController.text);
+    final email = _emailController.text.trim();
+    if (email.isEmpty ||
+        !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      setState(() => _emailError = '请输入有效的邮箱地址');
+      return;
+    }
+    setState(() => _emailError = null);
+    ref.read(householdSessionControllerProvider.notifier).sendOtp(email);
   }
 
   void _createHousehold() {

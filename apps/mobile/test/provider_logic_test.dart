@@ -964,6 +964,28 @@ void main() {
         expect(recipes, isEmpty);
       },
     );
+
+    test('recipesFetchProvider flags fetchFailed when every term fails', () async {
+      SharedPreferences.setMockInitialValues({
+        'inventory_items': json.encode([_ingredient('番茄').toJson()]),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final client = _FakeMealDbApi(
+        onSearch: (_) => throw StateError('service unavailable'),
+      );
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          mealDbApiProvider.overrideWithValue(client),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final result = await container.read(recipesFetchProvider.future);
+
+      expect(result.recipes, isEmpty);
+      expect(result.fetchFailed, isTrue);
+    });
   });
 }
 

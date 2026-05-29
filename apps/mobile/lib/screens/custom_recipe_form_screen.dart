@@ -725,12 +725,14 @@ class _CustomRecipeFormScreenState
       ).push(MaterialPageRoute(builder: (_) => const AiSettingsScreen()));
       return;
     }
+    // Both the error snackbar and the success path touch `context` after the
+    // await above; guard once here so popping the form mid-parse stays safe.
+    if (!mounted) return;
     if (state.error != null) {
       _showError(state.error!.message);
       return;
     }
     if (state.recipeDraft == null) return;
-    if (!mounted) return;
     _applyRecipeDraft(state.recipeDraft!);
     showAppSnackBar(context, 'AI 已填入，请核对后保存');
   }

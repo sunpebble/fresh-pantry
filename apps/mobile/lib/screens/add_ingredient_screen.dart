@@ -20,6 +20,7 @@ import '../utils/app_dialog.dart';
 import '../utils/app_snackbar.dart';
 import '../utils/expiry_calculator.dart';
 import '../utils/storage_labels.dart';
+import '../widgets/shared/ai_busy_overlay.dart';
 import '../widgets/shared/expiry_range_picker.dart';
 import '../widgets/shared/freshness_meter.dart';
 import '../widgets/shared/pill_chip.dart';
@@ -58,6 +59,7 @@ class AddIngredientScreen extends ConsumerStatefulWidget {
 class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _quantityController;
+  final FocusNode _quantityFocus = FocusNode();
 
   String _selectedCategory = FoodCategories.dairyAndEggs;
   IconType _selectedStorage = IconType.fridge;
@@ -72,6 +74,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
   bool _shelfLifeManuallySelected = false;
   bool _usesCustomDateRange = false;
   bool _isSaving = false;
+  bool _isParsing = false;
   String _resolvedImageUrl = '';
 
   static const _categories = FoodCategories.values;
@@ -227,6 +230,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
     _nameController.removeListener(_onNameChanged);
     _nameController.dispose();
     _quantityController.dispose();
+    _quantityFocus.dispose();
     super.dispose();
   }
 
@@ -361,6 +365,21 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
       return;
     }
 
+    // A blank quantity defaults to "1"; but an explicit 0 / negative / lone "."
+    // would persist a meaningless inventory row, so reject it before saving.
+    final quantityText = _quantityController.text.trim();
+    if (quantityText.isNotEmpty) {
+      final parsedQty = double.tryParse(quantityText);
+      if (parsedQty == null || parsedQty <= 0) {
+        showAppSnackBar(
+          context,
+          '请输入有效数量（需大于 0）',
+          backgroundColor: AppColors.error,
+        );
+        return;
+      }
+    }
+
     final ingredient = _buildIngredientFromForm(name);
     setState(() => _isSaving = true);
 
@@ -384,8 +403,23 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
 
       _showAddedSnackBar(name, addedItem);
 
+      // The AI-prefill push has no app bar / back button — return to the
+      // origin tab after a successful add instead of stranding a blank form.
+      if (widget.prefillOnly) {
+        Navigator.of(context).pop();
+        return;
+      }
+
       if (navigateToInventory) {
         ref.navigateToTab(FkTab.fridge);
+      }
+    } on Object {
+      if (mounted) {
+        showAppSnackBar(
+          context,
+          '保存失败，请重试',
+          backgroundColor: AppColors.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -457,10 +491,13 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
       backgroundColor: AppColors.primary,
       actionLabel: '撤销',
       actionTextColor: AppColors.onPrimary,
-      onAction: () {
+      onAction: () async {
         final index = inventoryIndexOf(ref.read(inventoryProvider), addedItem);
-        if (index != -1) {
-          ref.read(inventoryProvider.notifier).remove(index);
+        if (index == -1) return;
+        try {
+          await ref.read(inventoryProvider.notifier).remove(index);
+        } catch (_) {
+          if (mounted) showAppSnackBar(context, '撤销失败，请重试');
         }
       },
     );
@@ -484,6 +521,22 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_isEditing,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop || !_isEditing) return;
+        _confirmEditBackThenPop();
+      },
+      child: Stack(
+        children: [
+          _buildForm(context),
+          if (_isParsing) const Positioned.fill(child: AiBusyOverlay()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildForm(BuildContext context) {
     return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       behavior: HitTestBehavior.translucent,
@@ -536,6 +589,8 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
               controller: _nameController,
               hintText: '例如：牛奶、鸡蛋、番茄...',
               fontSize: AppFontSize.lg,
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => _quantityFocus.requestFocus(),
             ),
             if (_autoFilled) ...[
               const SizedBox(height: AppSpacing.sm),
@@ -596,6 +651,8 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
                     controller: _quantityController,
                     hintText: '1',
                     keyboardType: _decimalKeyboardType,
+                    focusNode: _quantityFocus,
+                    textInputAction: TextInputAction.done,
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
@@ -962,6 +1019,31 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
     );
   }
 
+  Future<void> _confirmEditBackThenPop() async {
+    if (_editFormMatchesInitial()) {
+      if (mounted) Navigator.of(context).maybePop();
+      return;
+    }
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: '丢弃更改',
+      content: '确定要丢弃对「${widget.initialIngredient?.name ?? ''}」的修改吗？',
+      confirmLabel: '丢弃',
+      isDestructive: true,
+    );
+    if (!mounted || !confirmed) return;
+    Navigator.of(context).maybePop();
+  }
+
+  /// Edit mode is "dirty" when the form no longer matches the row being edited.
+  bool _editFormMatchesInitial() {
+    final initial = widget.initialIngredient;
+    if (initial == null) return true;
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return false;
+    return _matchesInitialIngredient(_buildIngredientFromForm(name), initial);
+  }
+
   Future<void> _confirmDiscard() async {
     if (_nameController.text.isEmpty && _quantityController.text.isEmpty) {
       _discardChanges();
@@ -987,10 +1069,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
       width: double.infinity,
       height: 48,
       child: TextButton(
-        onPressed:
-            _isEditing
-                ? () => Navigator.of(context).maybePop()
-                : _confirmDiscard,
+        onPressed: _isEditing ? _confirmEditBackThenPop : _confirmDiscard,
         child: Text(
           _isEditing ? '取消' : '丢弃',
           style: GoogleFonts.plusJakartaSans(
@@ -1140,50 +1219,57 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
   Future<void> _runIngredientFlow({
     required Future<List<IngredientDraft>> Function() runner,
   }) async {
+    final List<IngredientDraft> drafts;
+    setState(() => _isParsing = true);
     try {
-      final drafts = await runner();
-      if (!mounted) return;
-      if (drafts.isEmpty) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('未识别到食材')));
-        return;
-      }
-      final inventory = ref.read(inventoryProvider);
-      final proposals = IntakeProposalFactory.fromDrafts(drafts, inventory);
-      // A single draft that would merge into an existing row must go through
-      // the review pipeline so the merge actually happens; the append-only
-      // prefill add form would otherwise create a duplicate row. A single
-      // brand-new item keeps the richer prefill form.
-      if (proposals.length == 1 &&
-          proposals.first.action == IntakeAction.newRow) {
-        final ingredient = drafts.first.toIngredient();
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder:
-                (_) => AddIngredientScreen(
-                  initialIngredient: ingredient,
-                  prefillOnly: true,
-                ),
-          ),
-        );
-        return;
-      }
-      ref.read(intakeReviewProvider.notifier).seed(proposals);
-      await Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => const IntakeReviewScreen()));
+      drafts = await runner();
     } on AiNotConfiguredException {
       if (!mounted) return;
       Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (_) => const AiSettingsScreen()));
+      return;
     } on AiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.message)));
+      return;
+    } finally {
+      if (mounted) setState(() => _isParsing = false);
     }
+
+    if (!mounted) return;
+    if (drafts.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('未识别到食材')));
+      return;
+    }
+    final inventory = ref.read(inventoryProvider);
+    final proposals = IntakeProposalFactory.fromDrafts(drafts, inventory);
+    // A single draft that would merge into an existing row must go through
+    // the review pipeline so the merge actually happens; the append-only
+    // prefill add form would otherwise create a duplicate row. A single
+    // brand-new item keeps the richer prefill form.
+    if (proposals.length == 1 &&
+        proposals.first.action == IntakeAction.newRow) {
+      final ingredient = drafts.first.toIngredient();
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder:
+              (_) => AddIngredientScreen(
+                initialIngredient: ingredient,
+                prefillOnly: true,
+              ),
+        ),
+      );
+      return;
+    }
+    ref.read(intakeReviewProvider.notifier).seed(proposals);
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const IntakeReviewScreen()));
   }
 
   // ─── Shared helpers ─────────────────────────────────────────────────
@@ -1208,12 +1294,18 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
     String? hintText,
     double fontSize = 16,
     TextInputType? keyboardType,
+    FocusNode? focusNode,
+    TextInputAction? textInputAction,
+    ValueChanged<String>? onSubmitted,
   }) {
     return _FilledInput(
       controller: controller,
       hintText: hintText,
       fontSize: fontSize,
       keyboardType: keyboardType,
+      focusNode: focusNode,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
       inputFormatters:
           keyboardType == _decimalKeyboardType ? _decimalInputFormatters : null,
     );
@@ -1308,6 +1400,9 @@ class _FilledInput extends StatefulWidget {
     this.fontSize = 16,
     this.keyboardType,
     this.inputFormatters,
+    this.focusNode,
+    this.textInputAction,
+    this.onSubmitted,
   });
 
   final TextEditingController controller;
@@ -1315,6 +1410,9 @@ class _FilledInput extends StatefulWidget {
   final double fontSize;
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
+  final FocusNode? focusNode;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
 
   @override
   State<_FilledInput> createState() => _FilledInputState();
@@ -1341,7 +1439,10 @@ class _FilledInputState extends State<_FilledInput> {
         ),
         child: TextField(
           controller: widget.controller,
+          focusNode: widget.focusNode,
           keyboardType: widget.keyboardType,
+          textInputAction: widget.textInputAction,
+          onSubmitted: widget.onSubmitted,
           inputFormatters: widget.inputFormatters,
           style: GoogleFonts.manrope(
             fontSize: widget.fontSize,

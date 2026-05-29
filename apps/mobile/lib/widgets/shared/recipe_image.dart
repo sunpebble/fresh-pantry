@@ -45,6 +45,18 @@ class _RecipeImageState extends State<RecipeImage> {
       return widget.fallback;
     }
 
+    // Decode into the layout box (scaled by DPR) rather than full resolution,
+    // so ~1600px camera/remote covers don't decode at full size into small
+    // recipe cards / thumbnails (memory spikes + scroll jank on low-RAM).
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cacheWidth = widget.width != null && widget.width! > 0
+        ? (widget.width! * dpr).round()
+        : null;
+    final cacheHeight =
+        cacheWidth == null && widget.height != null && widget.height! > 0
+        ? (widget.height! * dpr).round()
+        : null;
+
     if (_isDataImage(source)) {
       final bytes = _dataImageBytes(source);
       if (bytes == null) {
@@ -56,6 +68,8 @@ class _RecipeImageState extends State<RecipeImage> {
         width: widget.width,
         height: widget.height,
         fit: widget.fit,
+        cacheWidth: cacheWidth,
+        cacheHeight: cacheHeight,
         semanticLabel: widget.semanticLabel,
         errorBuilder: (_, _, _) => widget.fallback,
       );
@@ -66,6 +80,8 @@ class _RecipeImageState extends State<RecipeImage> {
       width: widget.width,
       height: widget.height,
       fit: widget.fit,
+      cacheWidth: cacheWidth,
+      cacheHeight: cacheHeight,
       semanticLabel: widget.semanticLabel,
       errorBuilder: (_, _, _) => widget.fallback,
     );

@@ -157,9 +157,15 @@ class ShoppingNotifier extends Notifier<List<ShoppingItem>>
       return false;
     }
 
+    final prior = state;
     final updated = [...state, normalizedItem];
     state = updated;
-    await queuePersistence(() => _save(updated));
+    try {
+      await queuePersistence(() => _save(updated), rethrowError: true);
+    } catch (_) {
+      state = prior;
+      rethrow;
+    }
     await _enqueueSync(
       entityType: SyncEntityType.shoppingItem,
       entityId: normalizedItem.id,
@@ -177,8 +183,14 @@ class ShoppingNotifier extends Notifier<List<ShoppingItem>>
       return;
     }
 
+    final prior = state;
     state = updated;
-    await queuePersistence(() => _save(updated));
+    try {
+      await queuePersistence(() => _save(updated), rethrowError: true);
+    } catch (_) {
+      state = prior;
+      rethrow;
+    }
     final deletedAt = DateTime.now().toUtc();
     await _enqueueSync(
       entityType: SyncEntityType.shoppingItem,
@@ -206,8 +218,14 @@ class ShoppingNotifier extends Notifier<List<ShoppingItem>>
       return;
     }
 
+    final prior = state;
     state = updated;
-    await queuePersistence(() => _save(updated));
+    try {
+      await queuePersistence(() => _save(updated), rethrowError: true);
+    } catch (_) {
+      state = prior;
+      rethrow;
+    }
     await _enqueueSync(
       entityType: SyncEntityType.shoppingItem,
       entityId: id,

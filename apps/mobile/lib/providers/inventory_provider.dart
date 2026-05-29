@@ -135,12 +135,18 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
         ? normalizedItem.copyWith(addedAt: DateTime.now())
         : normalizedItem;
     final itemToAdd = refreshIngredientFreshness(stampedItem);
+    final prior = state;
     final updated = [...state, itemToAdd];
     state = updated;
-    await queuePersistence(() async {
-      await _save(updated);
-      await ref.read(_addHistoryProvider.notifier).record(itemToAdd);
-    });
+    try {
+      await queuePersistence(() async {
+        await _save(updated);
+        await ref.read(_addHistoryProvider.notifier).record(itemToAdd);
+      }, rethrowError: true);
+    } catch (_) {
+      state = prior;
+      rethrow;
+    }
     await _enqueueSync(
       entityId: itemToAdd.id,
       operation: SyncOperationType.create,
@@ -151,9 +157,15 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
   Future<void> remove(int index) async {
     if (index < 0 || index >= state.length) return;
     final removed = state[index];
+    final prior = state;
     final updated = [...state]..removeAt(index);
     state = updated;
-    await queuePersistence(() => _save(updated));
+    try {
+      await queuePersistence(() => _save(updated), rethrowError: true);
+    } catch (_) {
+      state = prior;
+      rethrow;
+    }
     final deletedAt = DateTime.now().toUtc();
     await _enqueueSync(
       entityId: removed.id,
@@ -186,9 +198,15 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
         ? normalizedItem.copyWith(addedAt: state[index].addedAt)
         : normalizedItem;
     final updatedItem = refreshIngredientFreshness(stampedItem);
+    final prior = state;
     updated[index] = updatedItem;
     state = updated;
-    await queuePersistence(() => _save(updated));
+    try {
+      await queuePersistence(() => _save(updated), rethrowError: true);
+    } catch (_) {
+      state = prior;
+      rethrow;
+    }
     await _enqueueSync(
       entityId: updatedItem.id,
       operation: SyncOperationType.update,

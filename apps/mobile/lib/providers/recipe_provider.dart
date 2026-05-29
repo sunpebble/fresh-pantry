@@ -69,43 +69,66 @@ List<RecipeIngredient> missingRecipeIngredientsForNames(
       .toList();
 }
 
-/// Recipes discovered from the user's current inventory.
+/// Raw inventory-driven recipe fetch, plus a `fetchFailed` flag set when there
+/// WERE terms to fetch but every request failed (e.g. offline). This lets the
+/// UI tell a real network failure apart from a genuinely empty result, while
+/// [recipesProvider] keeps its non-throwing "degrade to empty" contract.
 ///
 /// Uses `.select` so unrelated inventory mutations (expiry refresh, freshness
 /// recalculation, addedAt timestamps) do not trigger a recipe refetch. The
 /// only dependency is the first three ingredient names, translated to English.
-final recipesProvider = FutureProvider<List<Recipe>>((ref) async {
-  final englishTerms = ref.watch(
-    inventoryProvider.select(
-      (items) => items
-          .take(3)
-          .map((i) => FoodKnowledge.englishName(i.name))
-          .whereType<String>()
-          .toSet() // deduplicate (e.g. multiple egg items)
-          .toList(growable: false),
-    ),
-  );
-  final recipeSearchRepository = ref.watch(recipeSearchRepositoryProvider);
+final recipesFetchProvider =
+    FutureProvider<({List<Recipe> recipes, bool fetchFailed})>((ref) async {
+      final englishTerms = ref.watch(
+        inventoryProvider.select(
+          (items) => items
+              .take(3)
+              .map((i) => FoodKnowledge.englishName(i.name))
+              .whereType<String>()
+              .toSet() // deduplicate (e.g. multiple egg items)
+              .toList(growable: false),
+        ),
+      );
+      final recipeSearchRepository = ref.watch(recipeSearchRepositoryProvider);
 
-  final allRecipes = <Recipe>[];
-  final seenIds = <String>{};
+      final allRecipes = <Recipe>[];
+      final seenIds = <String>{};
+      var anyTermSucceeded = false;
+      var anyTermFailed = false;
 
-  for (final term in englishTerms) {
-    try {
-      final results = await recipeSearchRepository.searchByName(term);
-      for (final recipe in results) {
-        if (seenIds.add(recipe.id)) {
-          allRecipes.add(recipe);
+      for (final term in englishTerms) {
+        try {
+          final results = await recipeSearchRepository.searchByName(term);
+          anyTermSucceeded = true;
+          for (final recipe in results) {
+            if (seenIds.add(recipe.id)) {
+              allRecipes.add(recipe);
+            }
+          }
+        } catch (e) {
+          anyTermFailed = true;
+          if (kDebugMode) {
+            debugPrint('Error fetching recipes for "$term": $e');
+          }
         }
       }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Error fetching recipes for "$term": $e');
-      }
-    }
-  }
 
-  return allRecipes;
+      // All terms failed (and there were some) → a real fetch failure, not
+      // "no recipes" — so the explore tab can offer a retry instead.
+      final fetchFailed =
+          englishTerms.isNotEmpty && !anyTermSucceeded && anyTermFailed;
+      return (recipes: allRecipes, fetchFailed: fetchFailed);
+    });
+
+/// Recipes discovered from the user's current inventory.
+///
+/// Derives from [recipesFetchProvider] and deliberately resolves to an empty
+/// list (never throws) on fetch failure, so consumers like
+/// [recommendedRecipesProvider] degrade gracefully. Watch
+/// [recipesFetchProvider] when you also need to know whether the fetch failed.
+final recipesProvider = FutureProvider<List<Recipe>>((ref) async {
+  final result = await ref.watch(recipesFetchProvider.future);
+  return result.recipes;
 });
 
 /// Stable string signature of the lowercased inventory name set. Used as the

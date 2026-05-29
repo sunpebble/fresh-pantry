@@ -44,28 +44,9 @@ class RecipeCategoryChips extends StatelessWidget {
   }
 
   Future<String?> _promptCustomCategory(BuildContext context) {
-    final controller = TextEditingController();
     return showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('自定义分类'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: '例如：日料'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.of(dialogContext).pop(controller.text.trim()),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
+      builder: (_) => const _CustomCategoryDialog(),
     );
   }
 
@@ -82,6 +63,49 @@ class RecipeCategoryChips extends StatelessWidget {
             selected: category == selected,
             onTap: () => _handleSelection(context, category),
           ),
+      ],
+    );
+  }
+}
+
+/// Dialog body for entering a freeform category. Kept as a StatefulWidget so the
+/// [TextEditingController] is disposed in [State.dispose] — after the dialog
+/// route is fully removed — rather than mid-exit-animation (which would touch a
+/// disposed controller).
+class _CustomCategoryDialog extends StatefulWidget {
+  const _CustomCategoryDialog();
+
+  @override
+  State<_CustomCategoryDialog> createState() => _CustomCategoryDialogState();
+}
+
+class _CustomCategoryDialogState extends State<_CustomCategoryDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('自定义分类'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: const InputDecoration(hintText: '例如：日料'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+          child: const Text('确定'),
+        ),
       ],
     );
   }

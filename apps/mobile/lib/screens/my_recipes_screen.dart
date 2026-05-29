@@ -6,6 +6,7 @@ import '../providers/custom_recipe_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/recipe_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/safe_push.dart';
 import '../widgets/recipe_card.dart';
 import 'custom_recipe_detail_screen.dart';
 import 'custom_recipe_form_screen.dart';
@@ -40,7 +41,8 @@ class MyRecipesScreen extends ConsumerWidget {
               ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          Navigator.of(context).push(
+          pushRouteOnce(
+            context,
             MaterialPageRoute(
               builder: (context) => const CustomRecipeFormScreen(),
             ),
@@ -87,7 +89,8 @@ class _EmptyMyRecipesState extends StatelessWidget {
             const SizedBox(height: AppSpacing.xl),
             FilledButton.icon(
               onPressed:
-                  () => Navigator.of(context).push(
+                  () => pushRouteOnce(
+                    context,
                     MaterialPageRoute(
                       builder: (context) => const CustomRecipeFormScreen(),
                     ),
@@ -134,7 +137,8 @@ class _MyRecipeCard extends ConsumerWidget {
   }
 
   void _openRecipe(BuildContext context) {
-    Navigator.of(context).push(
+    pushRouteOnce(
+      context,
       MaterialPageRoute(
         builder: (context) => CustomRecipeDetailScreen(recipeId: recipe.id),
       ),
@@ -147,7 +151,8 @@ class _MyRecipeCard extends ConsumerWidget {
     String value,
   ) async {
     if (value == 'edit') {
-      Navigator.of(context).push(
+      pushRouteOnce(
+        context,
         MaterialPageRoute(
           builder: (context) => CustomRecipeFormScreen(recipe: recipe),
         ),
