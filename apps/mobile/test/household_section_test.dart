@@ -352,6 +352,38 @@ void main() {
     expect(find.byIcon(Icons.edit_outlined), findsNothing);
   });
 
+  testWidgets('incoming invites render and accept fires', (tester) async {
+    var acceptedId = '';
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: HouseholdSection(
+          householdName: '我家',
+          members: const [],
+          incomingInvites: const [
+            HouseholdInvitePreview(
+              inviteId: 'inv1',
+              householdId: 'h9',
+              householdName: '李家',
+              ownerEmail: 'owner@ex.com',
+              invitedEmail: 'me@ex.com',
+              memberCount: 3,
+              inventoryCount: 12,
+              shoppingCount: 0,
+              customRecipeCount: 0,
+            ),
+          ],
+          onAcceptInvite: (id) async => acceptedId = id,
+        ),
+      ),
+    ));
+
+    expect(find.text('收到的邀请'), findsOneWidget);
+    expect(find.text('李家'), findsOneWidget);
+    await tester.tap(find.text('接受'));
+    await tester.pumpAndSettle();
+    expect(acceptedId, 'inv1');
+  });
+
   testWidgets('member sees 退出家庭, owner does not', (tester) async {
     var left = false;
     await tester.pumpWidget(MaterialApp(

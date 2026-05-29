@@ -26,6 +26,8 @@ class HouseholdSection extends StatelessWidget {
     this.onSwitchHousehold,
     this.onEditName,
     this.onLeaveHousehold,
+    this.incomingInvites = const <HouseholdInvitePreview>[],
+    this.onAcceptInvite,
   });
 
   final String householdName;
@@ -44,6 +46,8 @@ class HouseholdSection extends StatelessWidget {
   final ValueChanged<String>? onSwitchHousehold;
   final Future<void> Function(String newName)? onEditName;
   final Future<void> Function()? onLeaveHousehold;
+  final List<HouseholdInvitePreview> incomingInvites;
+  final Future<void> Function(String inviteId)? onAcceptInvite;
 
   @override
   Widget build(BuildContext context) {
@@ -129,6 +133,22 @@ class HouseholdSection extends StatelessWidget {
                       ),
                   ],
                 ),
+                if (incomingInvites.isNotEmpty && onAcceptInvite != null) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    '收到的邀请',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: AppColors.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  for (final invite in incomingInvites)
+                    _IncomingInviteRow(
+                      invite: invite,
+                      onAccept: () => onAcceptInvite!(invite.inviteId),
+                    ),
+                ],
                 const SizedBox(height: AppSpacing.md),
                 if (members.isEmpty)
                   Text(
@@ -381,6 +401,46 @@ class _PendingInviteRow extends StatelessWidget {
               onPressed: onRevoke,
               tooltip: '撤销邀请',
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IncomingInviteRow extends StatelessWidget {
+  const _IncomingInviteRow({required this.invite, required this.onAccept});
+
+  final HouseholdInvitePreview invite;
+  final Future<void> Function() onAccept;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          const Icon(Icons.mail_outline, color: AppColors.outline, size: 22),
+          const SizedBox(width: AppSpacing.sm + 2),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(invite.householdName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium),
+                Text(
+                  '来自 ${invite.ownerEmail} · ${invite.inventoryCount} 项库存 · ${invite.memberCount} 名成员',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          FilledButton(onPressed: onAccept, child: const Text('接受')),
         ],
       ),
     );
