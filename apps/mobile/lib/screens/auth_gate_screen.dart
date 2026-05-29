@@ -10,6 +10,18 @@ import '../providers/invite_link_provider.dart';
 import '../sync/sync_providers.dart';
 import '../theme/app_theme.dart';
 
+/// The active household for the signed-in session: the explicit selection when
+/// it still resolves to a joined household, otherwise the first household, or
+/// empty when the user has none (local-only).
+String selectedHouseholdIdForSession(HouseholdSessionState session) {
+  if (session.households.isEmpty) return '';
+  final selected = session.selectedHouseholdId;
+  final isJoined =
+      selected.isNotEmpty &&
+      session.households.any((household) => household.id == selected);
+  return isJoined ? selected : session.households.first.id;
+}
+
 class AuthGateScreen extends ConsumerStatefulWidget {
   const AuthGateScreen({
     super.key,
@@ -64,6 +76,18 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(householdSessionControllerProvider);
+
+    // Project the session's active household into the root-container backing so
+    // the root-stored notifiers (inventory/shopping/recipes) enqueue against the
+    // right household. Done from a listener (runs outside build) rather than a
+    // nested ProviderScope override, which can never reach those root providers.
+    ref.listen<String>(
+      householdSessionControllerProvider.select(selectedHouseholdIdForSession),
+      (_, householdId) {
+        ref.read(selectedHouseholdIdStateProvider.notifier).state = householdId;
+      },
+    );
+
     final pendingInviteToken = _pendingInviteToken;
 
     if (pendingInviteToken != null && session.isAuthenticated) {
@@ -83,13 +107,9 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
     }
 
     if (session.households.isNotEmpty) {
-      final selectedId = session.selectedHouseholdId.isNotEmpty
-          ? session.selectedHouseholdId
-          : session.households.first.id;
-      return ProviderScope(
-        overrides: [selectedHouseholdIdProvider.overrideWithValue(selectedId)],
-        child: widget.authenticatedChild,
-      );
+      // The active household reaches the notifiers via the root-container
+      // projection above, so the child renders in the same (root) scope.
+      return widget.authenticatedChild;
     }
 
     if (session.isLoading) {

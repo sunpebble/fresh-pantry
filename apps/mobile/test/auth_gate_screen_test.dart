@@ -4,11 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fresh_pantry/app.dart';
+import 'package:fresh_pantry/data/food_categories.dart';
 import 'package:fresh_pantry/household/household_models.dart';
 import 'package:fresh_pantry/household/household_session_controller.dart';
+import 'package:fresh_pantry/models/ingredient.dart';
 import 'package:fresh_pantry/providers/invite_link_provider.dart';
+import 'package:fresh_pantry/providers/inventory_provider.dart';
+import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/auth_gate_screen.dart';
 import 'package:fresh_pantry/services/invite_link_service.dart';
+import 'package:fresh_pantry/storage/in_memory_storage_adapter.dart';
+import 'package:fresh_pantry/storage/inventory_repo.dart';
+import 'package:fresh_pantry/sync/sync_operation.dart';
+import 'package:fresh_pantry/sync/sync_outbox_repo.dart';
 import 'package:fresh_pantry/sync/sync_providers.dart';
 
 class FakeHouseholdGateway implements HouseholdGateway {
@@ -461,6 +469,59 @@ void main() {
   );
 
   testWidgets(
+    'inventory mutations from the authenticated subtree sync to the active household',
+    (tester) async {
+      // Reproduces the production widget tree: a root ProviderScope (where the
+      // global notifiers live) wrapping AuthGateScreen, which exposes the
+      // selected household to its authenticated subtree. A regression guard for
+      // the nested-ProviderScope override trap: an override applied only to the
+      // authenticated subtree never reached the root-stored InventoryNotifier,
+      // so every add/edit/delete silently no-opped (empty household) and never
+      // synced — the other household members never saw it.
+      final adapter = InMemoryStorageAdapter();
+      final outbox = SyncOutboxRepo(adapter);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            householdGatewayProvider.overrideWithValue(
+              FakeHouseholdGateway(
+                isAuthenticated: true,
+                initialHouseholds: const [
+                  Household(
+                    id: 'household_1',
+                    name: 'Home',
+                    ownerId: 'owner_1',
+                    defaultStorageArea: 'fridge',
+                  ),
+                ],
+              ),
+            ),
+            storageAdapterProvider.overrideWithValue(adapter),
+            inventoryRepoProvider.overrideWithValue(InventoryRepo(adapter)),
+            syncOutboxRepoProvider.overrideWithValue(outbox),
+            syncClientIdProvider.overrideWithValue('client_1'),
+            syncPushPendingProvider.overrideWithValue(() async {}),
+          ],
+          child: MaterialApp(
+            home: AuthGateScreen(
+              authenticatedChild: const _InventoryAdderProbe(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('add-inventory')));
+      await tester.pumpAndSettle();
+
+      final operation = outbox.loadPending().single;
+      expect(operation.householdId, 'household_1');
+      expect(operation.entityType, SyncEntityType.inventoryItem);
+      expect(operation.operation, SyncOperationType.create);
+    },
+  );
+
+  testWidgets(
     'AuthGateScreen shows authenticated child after auth state changes',
     (tester) async {
       final gateway = FakeHouseholdGateway();
@@ -501,6 +562,29 @@ void main() {
     expect(find.byType(AuthGateScreen), findsOneWidget);
     expect(find.text('登录 Fresh Pantry'), findsOneWidget);
   });
+}
+
+class _InventoryAdderProbe extends ConsumerWidget {
+  const _InventoryAdderProbe();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return TextButton(
+      key: const Key('add-inventory'),
+      onPressed: () => ref.read(inventoryProvider.notifier).add(
+        const Ingredient(
+          name: 'Rice',
+          quantity: '1',
+          unit: 'kg',
+          imageUrl: '',
+          freshnessPercent: 1,
+          state: FreshnessState.fresh,
+          category: FoodCategories.other,
+        ),
+      ),
+      child: const Text('add'),
+    );
+  }
 }
 
 Widget _wrap(
