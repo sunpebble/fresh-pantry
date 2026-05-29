@@ -1,6 +1,5 @@
-import '../data/food_categories.dart';
-import '../data/food_knowledge.dart';
 import '../models/ingredient.dart';
+import '../models/ingredient_identity.dart';
 import '../models/proposal.dart';
 import '../models/storage_area.dart';
 
@@ -68,32 +67,22 @@ class ProposalPlanner {
         .toList();
   }
 
-  /// Implements ADR-0001 merge rule γ: perishables always new Batch;
-  /// non-perishables merge when name+unit+storage match.
+  /// Implements ADR-0001 merge rule γ via [IngredientIdentity]: perishables
+  /// always new Batch; non-perishables merge when name×unit×storage match and
+  /// the target row's quantity is numeric.
   static IntakeDefaultAction computeIntakeDefaultAction({
     required IntakeCandidate candidate,
     required List<Ingredient> inventory,
   }) {
-    // A Perishable always creates a new Batch. Consult the knowledge base by
-    // name too, so a perishable purchase whose category is missing or defaulted
-    // to "其他" is not silently merged into an aging row.
-    if (FoodCategories.isPerishable(candidate.category) ||
-        FoodKnowledge.isPerishableName(candidate.name)) {
-      return const IntakeDefaultAction.newRow();
-    }
-    final candidateName = candidate.name.trim().toLowerCase();
-    final candidateUnit = candidate.unit.trim();
-    if (candidateName.isEmpty || candidateUnit.isEmpty) {
-      return const IntakeDefaultAction.newRow();
-    }
-    for (var i = 0; i < inventory.length; i++) {
-      final row = inventory[i];
-      if (row.name.trim().isEmpty) continue;
-      if (row.name.trim().toLowerCase() != candidateName) continue;
-      if (row.unit.trim() != candidateUnit) continue;
-      if (row.storage != candidate.storage) continue;
-      return IntakeDefaultAction.mergeInto(i);
-    }
-    return const IntakeDefaultAction.newRow();
+    final index = IngredientIdentity.resolveMergeTarget(
+      name: candidate.name,
+      unit: candidate.unit,
+      storage: candidate.storage,
+      category: candidate.category,
+      inventory: inventory,
+    );
+    return index < 0
+        ? const IntakeDefaultAction.newRow()
+        : IntakeDefaultAction.mergeInto(index);
   }
 }

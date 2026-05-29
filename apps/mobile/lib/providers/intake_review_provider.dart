@@ -3,8 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/food_categories.dart';
-import '../data/food_knowledge.dart';
+import '../models/ingredient_identity.dart';
 import '../models/proposal.dart';
 import '../models/storage_area.dart';
 import 'inventory_provider.dart';
@@ -79,7 +78,11 @@ class IntakeReviewNotifier extends Notifier<IntakeReviewState>
             }
             // Perishables always create a new Batch; never let the user toggle
             // one into a merge.
-            if (p.action == IntakeAction.newRow && _isPerishable(p)) {
+            if (p.action == IntakeAction.newRow &&
+                IngredientIdentity.isPerishable(
+                  category: p.category,
+                  name: p.name,
+                )) {
               return p;
             }
             final next =
@@ -103,15 +106,12 @@ class IntakeReviewNotifier extends Notifier<IntakeReviewState>
     _schedulePersistDraft();
   }
 
-  bool _isPerishable(IntakeProposal p) =>
-      FoodCategories.isPerishable(p.category) ||
-      FoodKnowledge.isPerishableName(p.name);
-
   /// Keeps the Review action consistent with the domain rule after an edit:
   /// if a change makes the proposal Perishable, drop any stale `mergeInto` so
   /// the UI reflects that perishables always create a new Batch.
   IntakeProposal _coerceActionForRules(IntakeProposal p) {
-    if (p.action == IntakeAction.mergeInto && _isPerishable(p)) {
+    if (p.action == IntakeAction.mergeInto &&
+        IngredientIdentity.isPerishable(category: p.category, name: p.name)) {
       return p.copyWith(action: IntakeAction.newRow);
     }
     return p;

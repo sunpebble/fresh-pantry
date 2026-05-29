@@ -8,6 +8,9 @@ A self-use household pantry app: tracks fridge/pantry stock, signals expiry, sug
 One row in inventory; identity = `name × unit × Storage Area × (Batch for Perishables)`.
 _Avoid_: using "ingredient" for recipe-required food — say "recipe ingredient" or "required food".
 
+**Ingredient Identity** (`IngredientIdentity`):
+The single module that owns the identity rule above — decides whether an **Intake** merges into an existing row or starts a new **Batch** (perishable, blank, unit/storage mismatch, or non-numeric target quantity → new row). Both the proposal-time default (`ProposalPlanner`) and apply-time re-resolution (`InventoryNotifier`) call through it, so the displayed default can never drift from what apply does. Implements ADR-0001.
+
 **Batch**:
 A per-intake identity component for **Perishables** — every intake creates a new row carrying its own expiry, even if another row with the same name already exists.
 
