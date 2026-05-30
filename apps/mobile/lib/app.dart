@@ -18,6 +18,7 @@ import 'providers/notification_sync_provider.dart';
 import 'services/share_intent_service.dart';
 import 'household/invite_token.dart';
 import 'sync/household_content_sync.dart';
+import 'sync/sync_flush_coordinator.dart';
 import 'widgets/common/bottom_nav_bar.dart';
 import 'widgets/common/search_overlay.dart';
 
@@ -146,11 +147,13 @@ class _AppShellState extends ConsumerState<AppShell> {
     // SafeArea 常驻树中、仅切换 top,避免 home/非 home 间结构变动重建 IndexedStack
     // (会丢子页面 State 并反复重启 sync 订阅)。首页 top: false → hero(含其内部
     // Header)自己铺到物理顶并让出状态栏。
-    final pages = HouseholdContentSync(
-      child: SafeArea(
-        top: !isHome,
-        bottom: false,
-        child: IndexedStack(index: currentIndex, children: _screens),
+    final pages = SyncFlushCoordinator(
+      child: HouseholdContentSync(
+        child: SafeArea(
+          top: !isHome,
+          bottom: false,
+          child: IndexedStack(index: currentIndex, children: _screens),
+        ),
       ),
     );
 
