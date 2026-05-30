@@ -1,62 +1,54 @@
-import 'dart:convert';
+import 'package:drift/drift.dart';
+
 import '../models/shopping_item.dart';
+// The drift-generated shopping row data class is also named `ShoppingItem`,
+// which collides with the model imported above. Hide it; the repo only needs
+// the database + table accessors, never the generated row type directly.
+import 'drift/app_database.dart' hide ShoppingItem;
+import 'drift/entity_row_codec.dart';
 import 'shopping_item_normalizer.dart';
-import 'storage_adapter.dart';
 
 class ShoppingRepo {
-  static const _shoppingKey = 'shopping_items';
+  ShoppingRepo(this._db);
 
-  final StorageAdapter _adapter;
+  final AppDatabase _db;
   List<ShoppingItem>? _hydratedSeed;
 
-  ShoppingRepo(this._adapter);
-
-  void hydrate(List<ShoppingItem> seed) {
-    _hydratedSeed = seed;
-  }
+  void hydrate(List<ShoppingItem> seed) => _hydratedSeed = seed;
 
   List<ShoppingItem> loadAll() {
-    if (_hydratedSeed != null) {
-      final result = _hydratedSeed!;
-      _hydratedSeed = null;
-      return result;
-    }
-    final json = _adapter.read(_shoppingKey);
-    if (json == null) return [];
+    final seed = _hydratedSeed;
+    _hydratedSeed = null;
+    return seed ?? const [];
+  }
 
-    final decoded = _decodeListOrNull(json);
-    // Top-level blob present but not a list: salvage nothing, but signal
-    // failure so an empty result never auto-overwrites the good blob.
-    if (decoded == null) return [];
-
-    // Parse item-by-item: skip only individual bad entries, keep the rest.
+  Future<List<ShoppingItem>> loadAllFor(String householdId) async {
+    final rows = await (_db.select(_db.shoppingItems)
+          ..where((t) => t.householdId.equals(householdId)))
+        .get();
     final items = <ShoppingItem>[];
-    for (final entry in decoded) {
-      if (entry is! Map) continue;
+    for (final row in rows) {
       try {
-        items.add(
-          normalizeShoppingItemCategory(
-            ShoppingItem.fromJson(Map<String, dynamic>.from(entry)),
-          ),
-        );
+        items.add(normalizeShoppingItemCategory(shoppingFromRow(row)));
       } catch (_) {
-        // Skip this malformed entry only; keep already-parsed items.
+        // skip malformed
       }
     }
     return deduplicateShoppingItems(items);
   }
 
-  List<dynamic>? _decodeListOrNull(String source) {
-    try {
-      final decoded = json.decode(source);
-      return decoded is List ? decoded : null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  void saveItems(List<ShoppingItem> items) {
-    final jsonStr = json.encode(items.map((e) => e.toJson()).toList());
-    _adapter.write(_shoppingKey, jsonStr);
+  Future<void> saveItems(String householdId, List<ShoppingItem> items) {
+    return _db.transaction(() async {
+      await (_db.delete(_db.shoppingItems)
+            ..where((t) => t.householdId.equals(householdId)))
+          .go();
+      await _db.batch((b) {
+        b.insertAll(
+          _db.shoppingItems,
+          items.map((s) => shoppingCompanionFor(householdId, s)),
+          mode: InsertMode.insertOrReplace,
+        );
+      });
+    });
   }
 }
