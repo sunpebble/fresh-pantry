@@ -21,6 +21,7 @@ import 'sync/household_content_sync.dart';
 import 'sync/sync_flush_coordinator.dart';
 import 'widgets/common/bottom_nav_bar.dart';
 import 'widgets/common/search_overlay.dart';
+import 'widgets/common/sync_status_banner.dart';
 
 String _localizedTitle(BuildContext context) {
   final locale = Localizations.localeOf(context);
@@ -177,6 +178,12 @@ class _AppShellState extends ConsumerState<AppShell> {
                   height: MediaQuery.paddingOf(context).top,
                   child: const ColoredBox(color: AppColors.primary),
                 ),
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SyncStatusBanner(),
+              ),
               if (isSearchActive) const SearchOverlay(),
             ],
           ),

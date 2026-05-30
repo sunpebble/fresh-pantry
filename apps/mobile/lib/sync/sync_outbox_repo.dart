@@ -20,6 +20,15 @@ class SyncOutboxRepo implements OutboxReader {
   @override
   List<SyncOperation> loadPending() => _cache;
 
+  /// 待同步操作数的实时流(供同步状态提示条订阅)。
+  Stream<int> watchPendingCount() {
+    final query = _db.selectOnly(_db.syncOutbox)
+      ..addColumns([_db.syncOutbox.id.count()]);
+    return query
+        .map((row) => row.read(_db.syncOutbox.id.count()) ?? 0)
+        .watchSingle();
+  }
+
   Future<void> enqueue(SyncOperation operation) async {
     await _db.into(_db.syncOutbox).insertOnConflictUpdate(
           outboxCompanionFor(operation),
