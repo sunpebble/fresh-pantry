@@ -1,62 +1,64 @@
 import 'dart:convert';
+
+import 'package:drift/drift.dart';
+
+import '../db/app_database.dart';
 import '../models/recipe.dart';
-import 'storage_adapter.dart';
 
 class CustomRecipeRepo {
-  static const storageKey = 'custom_recipes';
+  CustomRecipeRepo(this._db);
 
-  final StorageAdapter _adapter;
-  List<Recipe>? _hydratedSeed;
+  final AppDatabase _db;
 
-  CustomRecipeRepo(this._adapter);
+  final Map<String, List<Recipe>> _seed = {};
 
-  void hydrate(List<Recipe> seed) {
-    _hydratedSeed = seed;
+  void hydrate(String householdId, List<Recipe> recipes) {
+    _seed[householdId] = List<Recipe>.unmodifiable(recipes);
   }
 
-  List<Recipe> loadAll() {
-    if (_hydratedSeed != null) {
-      final result = _hydratedSeed!;
-      _hydratedSeed = null;
-      return result;
-    }
-    final saved = _adapter.read(storageKey);
-    if (saved == null) return [];
+  List<Recipe> loadAll(String householdId) =>
+      _seed[householdId] ?? const <Recipe>[];
 
-    final decoded = _decodeListOrNull(saved);
-    // Top-level blob present but not a list: salvage nothing rather than let an
-    // empty result auto-overwrite the still-intact stored JSON.
-    if (decoded == null) return [];
-
-    // Parse item-by-item: skip only individual bad entries, keep the rest.
-    final recipes = <Recipe>[];
-    for (final entry in decoded) {
-      if (entry is! Map) continue;
+  Future<List<Recipe>> loadAllFor(String householdId) async {
+    final rows = await (_db.select(_db.customRecipes)
+          ..where((t) => t.householdId.equals(householdId)))
+        .get();
+    final result = <Recipe>[];
+    for (final row in rows) {
       try {
-        final recipe = Recipe.fromJson(Map<String, dynamic>.from(entry));
-        if (recipe.id.isNotEmpty && recipe.name.isNotEmpty) {
-          recipes.add(recipe);
-        }
+        if (row.id.isEmpty) continue;
+        final recipe = _decode(row);
+        if (recipe.id.isEmpty || recipe.name.isEmpty) continue;
+        result.add(recipe);
       } catch (_) {
-        // Skip this malformed entry only; keep already-parsed recipes.
+        continue;
       }
     }
-    return recipes;
+    return result;
   }
 
-  List<dynamic>? _decodeListOrNull(String source) {
-    try {
-      final decoded = json.decode(source);
-      return decoded is List ? decoded : null;
-    } catch (_) {
-      return null;
-    }
+  Future<void> saveRecipes(String householdId, List<Recipe> recipes) async {
+    await _db.transaction(() async {
+      await (_db.delete(_db.customRecipes)
+            ..where((t) => t.householdId.equals(householdId)))
+          .go();
+      for (final recipe in recipes) {
+        await _db.into(_db.customRecipes).insertOnConflictUpdate(
+              _encode(householdId, recipe),
+            );
+      }
+    });
   }
 
-  void saveRecipes(List<Recipe> recipes) {
-    _adapter.write(
-      storageKey,
-      json.encode(recipes.map((recipe) => recipe.toJson()).toList()),
+  CustomRecipesCompanion _encode(String householdId, Recipe recipe) {
+    return CustomRecipesCompanion.insert(
+      id: recipe.id,
+      householdId: householdId,
+      payload: jsonEncode(recipe.toJson()),
     );
+  }
+
+  Recipe _decode(CustomRecipe row) {
+    return Recipe.fromJson(jsonDecode(row.payload) as Map<String, dynamic>);
   }
 }
