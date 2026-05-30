@@ -15,6 +15,7 @@ import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/services/share_intent_service.dart';
 import 'helpers/fake_notification_service.dart';
 import 'helpers/household_gateway_stub.dart';
+import 'support/test_database.dart';
 
 void main() {
   setUpAll(() {
@@ -24,17 +25,16 @@ void main() {
   testWidgets('custom expiry picker uses a Chinese date range dialog', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': '[]',
-      'shopping_items': '[]',
-      'add_history': '{}',
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),
@@ -65,17 +65,16 @@ void main() {
       tester.platformDispatcher.localesTestValue = const [Locale('en', 'US')];
       addTearDown(tester.platformDispatcher.clearAllTestValues);
 
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': '[]',
-        'shopping_items': '[]',
-        'add_history': '{}',
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(database: db),
             systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
             notificationServiceProvider.overrideWithValue(
               FakeNotificationService(),
@@ -106,17 +105,16 @@ void main() {
   testWidgets(
     'custom expiry range picker keeps the system status bar visible',
     (tester) async {
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': '[]',
-        'shopping_items': '[]',
-        'add_history': '{}',
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(database: db),
             systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
             notificationServiceProvider.overrideWithValue(
               FakeNotificationService(),
@@ -155,17 +153,16 @@ void main() {
   testWidgets('custom expiry range picker omits combined range header', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': '[]',
-      'shopping_items': '[]',
-      'add_history': '{}',
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),
@@ -204,17 +201,16 @@ void main() {
   testWidgets('custom expiry range picker uses wheel date selection', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': '[]',
-      'shopping_items': '[]',
-      'add_history': '{}',
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),
@@ -252,17 +248,16 @@ void main() {
   testWidgets(
     'custom expiry wheel expands range instead of snapping to bounds',
     (tester) async {
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': '[]',
-        'shopping_items': '[]',
-        'add_history': '{}',
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(database: db),
             systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
             notificationServiceProvider.overrideWithValue(
               FakeNotificationService(),
@@ -309,17 +304,16 @@ void main() {
   testWidgets('expiration quick presets are labeled as days from now', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': '[]',
-      'shopping_items': '[]',
-      'add_history': '{}',
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),
@@ -345,17 +339,16 @@ void main() {
   testWidgets('custom expiry range picker starts on selected preset range', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': '[]',
-      'shopping_items': '[]',
-      'add_history': '{}',
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),

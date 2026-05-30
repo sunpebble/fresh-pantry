@@ -8,13 +8,18 @@ import 'package:fresh_pantry/models/storage_area.dart';
 import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/recipe_detail_screen.dart';
+import 'package:fresh_pantry/storage/drift/app_database.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/test_database.dart';
 
 void main() {
   testWidgets('recipe detail toggles step progress and hides 0/0 boundary', (
     tester,
   ) async {
     final prefs = await _prefs();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final recipe = Recipe(
       id: 'steps',
       name: '两步菜',
@@ -26,7 +31,9 @@ void main() {
       steps: const ['切菜', '装盘'],
     );
 
-    await tester.pumpWidget(_app(prefs, RecipeDetailScreen(recipe: recipe)));
+    await tester.pumpWidget(
+      _app(prefs, RecipeDetailScreen(recipe: recipe), database: db),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('0/2'), findsOneWidget);
@@ -36,7 +43,7 @@ void main() {
 
     final emptyRecipe = recipe.copyWith(id: 'empty', steps: const []);
     await tester.pumpWidget(
-      _app(prefs, RecipeDetailScreen(recipe: emptyRecipe)),
+      _app(prefs, RecipeDetailScreen(recipe: emptyRecipe), database: db),
     );
     await tester.pumpAndSettle();
 
@@ -48,6 +55,8 @@ void main() {
     tester,
   ) async {
     final prefs = await _prefs();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final inventory = [
       Ingredient(
         name: '葱',
@@ -72,7 +81,12 @@ void main() {
     );
 
     await tester.pumpWidget(
-      _app(prefs, RecipeDetailScreen(recipe: recipe), inventory: inventory),
+      _app(
+        prefs,
+        RecipeDetailScreen(recipe: recipe),
+        database: db,
+        inventory: inventory,
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -106,6 +120,8 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final prefs = await _prefs();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final recipe = Recipe(
       id: 'start',
       name: '两步菜',
@@ -117,7 +133,9 @@ void main() {
       steps: const ['切菜', '装盘'],
     );
 
-    await tester.pumpWidget(_app(prefs, RecipeDetailScreen(recipe: recipe)));
+    await tester.pumpWidget(
+      _app(prefs, RecipeDetailScreen(recipe: recipe), database: db),
+    );
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
@@ -141,12 +159,13 @@ Future<SharedPreferences> _prefs() async {
 Widget _app(
   SharedPreferences prefs,
   Widget child, {
+  required AppDatabase database,
   List<Ingredient> inventory = const [],
 }) {
   return ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
-      inventorySeedProvider.overrideWithValue(inventory),
+      ...testStorageOverrides(database: database, inventory: inventory),
     ],
     child: MaterialApp(theme: ThemeData(useMaterial3: false), home: child),
   );

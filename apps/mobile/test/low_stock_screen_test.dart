@@ -1,12 +1,13 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fresh_pantry/data/food_categories.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/low_stock_screen.dart';
+import 'package:fresh_pantry/storage/inventory_repo.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/test_database.dart';
 
 Map<String, dynamic> _entry(int count) => {
   'count': count,
@@ -16,15 +17,20 @@ Map<String, dynamic> _entry(int count) => {
 };
 
 Future<void> _pump(WidgetTester tester) async {
-  SharedPreferences.setMockInitialValues({
-    'add_history': jsonEncode({'鸡蛋': _entry(5), '牛奶': _entry(4)}),
-  });
+  SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
+  final db = newTestDatabase();
+  addTearDown(db.close);
+  // add_history now lives in Drift; preload the frequency records on the repo
+  // and inject it so the low-stock list derives from them.
+  final inventoryRepo = InventoryRepo(db)..hydrate(const []);
+  await inventoryRepo.saveHistory({'鸡蛋': _entry(5), '牛奶': _entry(4)});
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
-        inventorySeedProvider.overrideWithValue(const []),
+        appDatabaseProvider.overrideWithValue(db),
+        inventoryRepoProvider.overrideWithValue(inventoryRepo),
       ],
       child: const MaterialApp(home: LowStockScreen()),
     ),

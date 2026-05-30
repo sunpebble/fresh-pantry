@@ -7,6 +7,8 @@ import 'package:fresh_pantry/widgets/shopping/quick_add_field.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/test_database.dart';
+
 void main() {
   setUpAll(() {
     GoogleFonts.config.allowRuntimeFetching = false;
@@ -15,12 +17,17 @@ void main() {
   testWidgets('quick add field hides suggestion chips below the input', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db, shopping: const []),
+        ],
         child: const MaterialApp(home: Scaffold(body: QuickAddField())),
       ),
     );
@@ -33,13 +40,18 @@ void main() {
   testWidgets('submitting a name appends an item to the shopping provider', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     late ProviderContainer container;
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db, shopping: const []),
+        ],
         child: MaterialApp(
           home: Scaffold(
             body: Builder(

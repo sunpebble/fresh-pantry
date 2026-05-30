@@ -6,11 +6,18 @@ import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/ai_settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/test_database.dart';
+
 Future<Widget> _harness({Map<String, Object> initial = const {}}) async {
   SharedPreferences.setMockInitialValues(initial);
   final prefs = await SharedPreferences.getInstance();
+  final db = newTestDatabase();
+  addTearDown(db.close);
   return ProviderScope(
-    overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      ...testStorageOverrides(database: db),
+    ],
     child: const MaterialApp(home: AiSettingsScreen()),
   );
 }
@@ -27,8 +34,13 @@ void main() {
   testWidgets('save button persists to provider', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final container = ProviderContainer(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        ...testStorageOverrides(database: db),
+      ],
     );
     addTearDown(container.dispose);
 
@@ -52,10 +64,15 @@ void main() {
   testWidgets('save pops back when opened from another screen', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
+        ],
         child: MaterialApp(
           home: Builder(
             builder: (context) => Scaffold(
@@ -89,8 +106,13 @@ void main() {
     var called = false;
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     await tester.pumpWidget(ProviderScope(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        ...testStorageOverrides(database: db),
+      ],
       child: MaterialApp(
         home: AiSettingsScreen(
           testConnection: (_) async {

@@ -7,6 +7,7 @@ import 'package:fresh_pantry/models/storage_area.dart';
 import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'support/test_database.dart';
 
 Future<ProviderContainer> _container({
   List<Ingredient> seed = const [],
@@ -14,6 +15,7 @@ Future<ProviderContainer> _container({
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
   return ProviderContainer(overrides: [
+    ...testStorageOverrides(database: newTestDatabase()),
     sharedPreferencesProvider.overrideWithValue(prefs),
     inventorySeedProvider.overrideWithValue(seed),
   ]);

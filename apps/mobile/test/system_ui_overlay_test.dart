@@ -13,6 +13,7 @@ import 'helpers/household_gateway_stub.dart';
 import 'package:fresh_pantry/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'support/test_database.dart';
 
 void main() {
   setUpAll(() {
@@ -22,11 +23,14 @@ void main() {
   testWidgets('uses dark system chrome on light app surfaces', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),

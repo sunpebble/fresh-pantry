@@ -11,20 +11,23 @@ import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/shopping_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/storage/custom_recipe_repo.dart';
-import 'package:fresh_pantry/storage/in_memory_storage_adapter.dart';
+import 'package:fresh_pantry/storage/drift/app_database.dart' show AppDatabase;
 import 'package:fresh_pantry/storage/inventory_repo.dart';
 import 'package:fresh_pantry/storage/shopping_repo.dart';
 import 'package:fresh_pantry/sync/sync_operation.dart';
 import 'package:fresh_pantry/sync/sync_outbox_repo.dart';
 import 'package:fresh_pantry/sync/sync_providers.dart';
 
+import 'support/test_database.dart';
+
 void main() {
   test('shopping toggle enqueues sync operation', () async {
-    final adapter = InMemoryStorageAdapter();
-    final outbox = SyncOutboxRepo(adapter);
-    final shoppingRepo = ShoppingRepo(adapter)
-      ..saveItems([
-        const ShoppingItem(
+    final db = newTestDatabase();
+    addTearDown(db.close);
+    final outbox = SyncOutboxRepo(db);
+    final shoppingRepo = ShoppingRepo(db)
+      ..hydrate(const [
+        ShoppingItem(
           id: 'item_1',
           name: 'Rice',
           detail: '',
@@ -33,7 +36,7 @@ void main() {
         ),
       ]);
     final container = _container(
-      adapter: adapter,
+      database: db,
       outbox: outbox,
       shoppingRepo: shoppingRepo,
     );
@@ -52,9 +55,10 @@ void main() {
   });
 
   test('inventory add enqueues create sync operation', () async {
-    final adapter = InMemoryStorageAdapter();
-    final outbox = SyncOutboxRepo(adapter);
-    final container = _container(adapter: adapter, outbox: outbox);
+    final db = newTestDatabase();
+    addTearDown(db.close);
+    final outbox = SyncOutboxRepo(db);
+    final container = _container(database: db, outbox: outbox);
     addTearDown(container.dispose);
 
     await container
@@ -80,9 +84,10 @@ void main() {
   });
 
   test('inventory intake new row enqueues create sync operation', () async {
-    final adapter = InMemoryStorageAdapter();
-    final outbox = SyncOutboxRepo(adapter);
-    final container = _container(adapter: adapter, outbox: outbox);
+    final db = newTestDatabase();
+    addTearDown(db.close);
+    final outbox = SyncOutboxRepo(db);
+    final container = _container(database: db, outbox: outbox);
     addTearDown(container.dispose);
 
     await container.read(inventoryProvider.notifier).applyIntakeProposals([
@@ -106,11 +111,12 @@ void main() {
   });
 
   test('inventory intake merge enqueues intake sync operation', () async {
-    final adapter = InMemoryStorageAdapter();
-    final outbox = SyncOutboxRepo(adapter);
-    final inventoryRepo = InventoryRepo(adapter)
-      ..saveItems([
-        const Ingredient(
+    final db = newTestDatabase();
+    addTearDown(db.close);
+    final outbox = SyncOutboxRepo(db);
+    final inventoryRepo = InventoryRepo(db)
+      ..hydrate(const [
+        Ingredient(
           id: _inventoryId,
           name: '米',
           quantity: '1',
@@ -124,7 +130,7 @@ void main() {
         ),
       ]);
     final container = _container(
-      adapter: adapter,
+      database: db,
       outbox: outbox,
       inventoryRepo: inventoryRepo,
     );
@@ -152,11 +158,12 @@ void main() {
   });
 
   test('inventory deduction enqueues deduction sync operation', () async {
-    final adapter = InMemoryStorageAdapter();
-    final outbox = SyncOutboxRepo(adapter);
-    final inventoryRepo = InventoryRepo(adapter)
-      ..saveItems([
-        const Ingredient(
+    final db = newTestDatabase();
+    addTearDown(db.close);
+    final outbox = SyncOutboxRepo(db);
+    final inventoryRepo = InventoryRepo(db)
+      ..hydrate(const [
+        Ingredient(
           id: _inventoryId,
           name: '葱',
           quantity: '5',
@@ -168,7 +175,7 @@ void main() {
         ),
       ]);
     final container = _container(
-      adapter: adapter,
+      database: db,
       outbox: outbox,
       inventoryRepo: inventoryRepo,
     );
@@ -195,11 +202,12 @@ void main() {
   });
 
   test('inventory deduction removal enqueues delete sync operation', () async {
-    final adapter = InMemoryStorageAdapter();
-    final outbox = SyncOutboxRepo(adapter);
-    final inventoryRepo = InventoryRepo(adapter)
-      ..saveItems([
-        const Ingredient(
+    final db = newTestDatabase();
+    addTearDown(db.close);
+    final outbox = SyncOutboxRepo(db);
+    final inventoryRepo = InventoryRepo(db)
+      ..hydrate(const [
+        Ingredient(
           id: _inventoryId,
           name: '蒜',
           quantity: '1',
@@ -211,7 +219,7 @@ void main() {
         ),
       ]);
     final container = _container(
-      adapter: adapter,
+      database: db,
       outbox: outbox,
       inventoryRepo: inventoryRepo,
     );
@@ -238,9 +246,10 @@ void main() {
   });
 
   test('custom recipe add enqueues create sync operation', () async {
-    final adapter = InMemoryStorageAdapter();
-    final outbox = SyncOutboxRepo(adapter);
-    final container = _container(adapter: adapter, outbox: outbox);
+    final db = newTestDatabase();
+    addTearDown(db.close);
+    final outbox = SyncOutboxRepo(db);
+    final container = _container(database: db, outbox: outbox);
     addTearDown(container.dispose);
 
     await container
@@ -267,10 +276,11 @@ void main() {
   });
 
   test('local-only (no household) mutation does not enqueue', () async {
-    final adapter = InMemoryStorageAdapter();
-    final outbox = SyncOutboxRepo(adapter);
+    final db = newTestDatabase();
+    addTearDown(db.close);
+    final outbox = SyncOutboxRepo(db);
     final container = _container(
-      adapter: adapter,
+      database: db,
       outbox: outbox,
       householdId: '',
     );
@@ -301,7 +311,7 @@ final _uuidPattern = RegExp(
 const _inventoryId = '00000000-0000-4000-8000-000000000001';
 
 ProviderContainer _container({
-  required InMemoryStorageAdapter adapter,
+  required AppDatabase database,
   required SyncOutboxRepo outbox,
   InventoryRepo? inventoryRepo,
   ShoppingRepo? shoppingRepo,
@@ -309,14 +319,14 @@ ProviderContainer _container({
 }) {
   return ProviderContainer(
     overrides: [
-      storageAdapterProvider.overrideWithValue(adapter),
+      appDatabaseProvider.overrideWithValue(database),
       inventoryRepoProvider.overrideWithValue(
-        inventoryRepo ?? InventoryRepo(adapter),
+        inventoryRepo ?? InventoryRepo(database),
       ),
       shoppingRepoProvider.overrideWithValue(
-        shoppingRepo ?? ShoppingRepo(adapter),
+        shoppingRepo ?? ShoppingRepo(database),
       ),
-      customRecipeRepoProvider.overrideWithValue(CustomRecipeRepo(adapter)),
+      customRecipeRepoProvider.overrideWithValue(CustomRecipeRepo(database)),
       syncOutboxRepoProvider.overrideWithValue(outbox),
       selectedHouseholdIdProvider.overrideWithValue(householdId),
       syncClientIdProvider.overrideWithValue('client_1'),

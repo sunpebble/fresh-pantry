@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +21,7 @@ import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/services/share_intent_service.dart';
 import 'helpers/fake_notification_service.dart';
 import 'helpers/household_gateway_stub.dart';
+import 'support/test_database.dart';
 
 void main() {
   setUpAll(() {
@@ -33,21 +32,26 @@ void main() {
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([
-        _ingredient(
-          '牛奶',
-        ).copyWith(category: FoodCategories.dairyAndEggs).toJson(),
-      ]),
-      'shopping_items': '[]',
       'add_history': '{}',
     });
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     late ProviderContainer container;
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [
+              _ingredient(
+                '牛奶',
+              ).copyWith(category: FoodCategories.dairyAndEggs),
+            ],
+            shopping: const [],
+          ),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),
@@ -90,11 +94,11 @@ void main() {
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({
-      'inventory_items': '[]',
-      'shopping_items': '[]',
       'add_history': '{}',
     });
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final details = FoodDetails(
       displayName: '有机全脂牛奶',
       description: 'Open Food Facts 返回的牛奶详情',
@@ -113,6 +117,11 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: const [],
+            shopping: const [],
+          ),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),
@@ -159,11 +168,11 @@ void main() {
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({
-      'inventory_items': '[]',
-      'shopping_items': '[]',
       'add_history': '{}',
     });
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final details = FoodDetails(
       displayName: '牛奶',
       description: 'Open Food Facts 记录的乳品蛋类食品。',
@@ -179,6 +188,11 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: const [],
+            shopping: const [],
+          ),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),
@@ -213,15 +227,11 @@ void main() {
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([
-        _ingredient(
-          '牛奶',
-        ).copyWith(category: FoodCategories.dairyAndEggs).toJson(),
-      ]),
-      'shopping_items': '[]',
       'add_history': '{}',
     });
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final details = FoodDetails(
       displayName: '有机全脂牛奶',
       description: 'Open Food Facts 返回的牛奶详情',
@@ -237,6 +247,15 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [
+              _ingredient(
+                '牛奶',
+              ).copyWith(category: FoodCategories.dairyAndEggs),
+            ],
+            shopping: const [],
+          ),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),
@@ -269,23 +288,28 @@ void main() {
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({
-      'inventory_items': '[]',
-      'shopping_items': jsonEncode([
-        const ShoppingItem(
-          id: 'tomato',
-          name: '番茄',
-          detail: '',
-          category: FoodCategories.freshProduce,
-        ).toJson(),
-      ]),
       'add_history': '{}',
     });
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: const [],
+            shopping: const [
+              ShoppingItem(
+                id: 'tomato',
+                name: '番茄',
+                detail: '',
+                category: FoodCategories.freshProduce,
+              ),
+            ],
+          ),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),

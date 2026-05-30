@@ -5,15 +5,28 @@ import 'package:fresh_pantry/models/proposal.dart';
 import 'package:fresh_pantry/providers/deduction_review_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/deduction_review_screen.dart';
+import 'package:fresh_pantry/storage/drift/app_database.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/test_database.dart';
+
 void main() {
+  late AppDatabase db;
+
+  setUp(() {
+    db = newTestDatabase();
+    addTearDown(db.close);
+  });
+
   testWidgets('renders proposals and confirm button', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
+        ],
         child: const MaterialApp(home: DeductionReviewScreen()),
       ),
     );
@@ -43,7 +56,10 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
+        ],
         child: const MaterialApp(home: DeductionReviewScreen()),
       ),
     );
@@ -96,7 +112,10 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
+        ],
         child: const MaterialApp(home: DeductionReviewScreen()),
       ),
     );

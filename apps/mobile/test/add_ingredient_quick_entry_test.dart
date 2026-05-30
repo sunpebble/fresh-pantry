@@ -10,12 +10,19 @@ import 'package:fresh_pantry/screens/add_ingredient_screen.dart';
 import 'package:fresh_pantry/screens/intake_review_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/test_database.dart';
+
 void main() {
   testWidgets('three quick-entry buttons render', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     await tester.pumpWidget(ProviderScope(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        ...testStorageOverrides(database: db),
+      ],
       child: const MaterialApp(home: Scaffold(body: AddIngredientScreen())),
     ));
     expect(find.byKey(const Key('quick_camera')), findsOneWidget);
@@ -26,8 +33,13 @@ void main() {
   testWidgets('text quick-entry with N≥2 results pushes review screen', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     await tester.pumpWidget(ProviderScope(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        ...testStorageOverrides(database: db),
+      ],
       child: MaterialApp(
         home: Scaffold(
           body: AddIngredientScreen(

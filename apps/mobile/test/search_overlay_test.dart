@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,20 +12,23 @@ import 'package:fresh_pantry/providers/search_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/widgets/common/search_overlay.dart';
 
+import 'support/test_database.dart';
+
 void main() {
   setUpAll(() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
   testWidgets('shows history and reuses selected term', (tester) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': '[]',
-      'shopping_items': '[]',
-      'add_history': '{}',
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final container = ProviderContainer(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        ...testStorageOverrides(database: db),
+      ],
     );
     addTearDown(container.dispose);
     container.read(searchHistoryProvider.notifier).add('苹');
@@ -57,14 +58,15 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(320, 320));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': '[]',
-      'shopping_items': '[]',
-      'add_history': '{}',
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final container = ProviderContainer(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        ...testStorageOverrides(database: db),
+      ],
     );
     addTearDown(container.dispose);
     for (var i = 0; i < 10; i += 1) {
@@ -91,25 +93,30 @@ void main() {
   });
 
   testWidgets('builds inventory and shopping results lazily', (tester) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([
-        _ingredient('苹果', category: FoodCategories.freshProduce).toJson(),
-      ]),
-      'shopping_items': jsonEncode([
-        const ShoppingItem(
-          id: 'apple-juice',
-          name: '苹果汁',
-          detail: '1 瓶',
-          category: FoodCategories.other,
-        ).toJson(),
-      ]),
-      'add_history': '{}',
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [
+              _ingredient('苹果', category: FoodCategories.freshProduce),
+            ],
+            shopping: const [
+              ShoppingItem(
+                id: 'apple-juice',
+                name: '苹果汁',
+                detail: '1 瓶',
+                category: FoodCategories.other,
+              ),
+            ],
+          ),
+        ],
         child: MaterialApp(
           theme: ThemeData(useMaterial3: false),
           home: const Scaffold(body: SearchOverlay()),

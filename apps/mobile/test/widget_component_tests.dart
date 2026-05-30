@@ -13,7 +13,6 @@ import 'package:fresh_pantry/widgets/dashboard/storage_summary_card.dart';
 import 'package:fresh_pantry/widgets/shared/category_icon.dart';
 import 'package:fresh_pantry/widgets/shared/freshness_meter.dart';
 import 'package:fresh_pantry/widgets/shared/recipe_image.dart';
-import 'package:fresh_pantry/widgets/shopping/smart_planner_card.dart';
 
 Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
 Widget _wrapProvider(Widget child) =>
@@ -203,30 +202,6 @@ void main() {
       );
       await tester.pump();
       expect(find.text('empty-fallback'), findsOneWidget);
-    });
-  });
-
-  // ── SmartPlannerCard ──────────────────────────────────────────────────────
-
-  group('SmartPlannerCard', () {
-    testWidgets('renders title', (tester) async {
-      await tester.pumpWidget(_wrap(const SmartPlannerCard(title: '番茄炒蛋')));
-      expect(find.text('番茄炒蛋'), findsOneWidget);
-    });
-
-    testWidgets('fires onViewRecipe callback', (tester) async {
-      var tapped = false;
-      await tester.pumpWidget(
-        _wrap(
-          SmartPlannerCard(title: '青椒肉丝', onViewRecipe: () => tapped = true),
-        ),
-      );
-      // The button is inside the card — find it by text or icon
-      final viewBtn = find.text('查看菜谱');
-      if (viewBtn.evaluate().isNotEmpty) {
-        await tester.tap(viewBtn);
-        expect(tapped, isTrue);
-      }
     });
   });
 

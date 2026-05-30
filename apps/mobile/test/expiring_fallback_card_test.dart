@@ -7,8 +7,11 @@ import 'package:fresh_pantry/models/recipe.dart';
 import 'package:fresh_pantry/models/storage_area.dart';
 import 'package:fresh_pantry/providers/recipe_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
+import 'package:fresh_pantry/storage/drift/app_database.dart';
 import 'package:fresh_pantry/widgets/dashboard/expiring_fallback_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/test_database.dart';
 
 Ingredient _ing({required String name, FreshnessState? state}) => Ingredient(
   name: name,
@@ -36,6 +39,13 @@ Recipe _recipe(String id, List<String> ings) => Recipe(
 );
 
 void main() {
+  late AppDatabase db;
+
+  setUp(() {
+    db = newTestDatabase();
+    addTearDown(db.close);
+  });
+
   testWidgets('renders SizedBox.shrink when no fallback', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -43,6 +53,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          appDatabaseProvider.overrideWithValue(db),
           inventorySeedProvider.overrideWithValue([_ing(name: '苹果')]),
           recipesProvider.overrideWith((ref) => Future.value([])),
         ],
@@ -62,6 +73,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          appDatabaseProvider.overrideWithValue(db),
           inventorySeedProvider.overrideWithValue([
             _ing(name: '番茄', state: FreshnessState.expiringSoon),
             _ing(name: '鸡蛋', state: FreshnessState.expiringSoon),

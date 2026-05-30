@@ -1,7 +1,8 @@
 import 'dart:async';
 
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fresh_pantry/storage/in_memory_storage_adapter.dart';
+import 'package:fresh_pantry/storage/drift/app_database.dart';
 import 'package:fresh_pantry/sync/sync_coordinator.dart';
 import 'package:fresh_pantry/sync/sync_operation.dart';
 import 'package:fresh_pantry/sync/sync_outbox_repo.dart';
@@ -72,7 +73,7 @@ void main() {
   test(
     'pushPending uploads outbox operations and removes acknowledged ones',
     () async {
-      final outbox = SyncOutboxRepo(InMemoryStorageAdapter());
+      final outbox = SyncOutboxRepo(AppDatabase(NativeDatabase.memory()));
       final remote = FakeRemoteSyncGateway();
       final coordinator = SyncCoordinator(outbox: outbox, remote: remote);
       final operation = _op('op_1');
@@ -86,7 +87,7 @@ void main() {
   );
 
   test('overlapping pushPending calls coalesce onto one in-flight run', () async {
-    final outbox = SyncOutboxRepo(InMemoryStorageAdapter());
+    final outbox = SyncOutboxRepo(AppDatabase(NativeDatabase.memory()));
     final remote = GatedRemoteSyncGateway();
     final coordinator = SyncCoordinator(outbox: outbox, remote: remote);
     await outbox.enqueue(_op('op_1'));
@@ -108,7 +109,7 @@ void main() {
   test(
     'partial push leaves the failed operation and its successors queued',
     () async {
-      final outbox = SyncOutboxRepo(InMemoryStorageAdapter());
+      final outbox = SyncOutboxRepo(AppDatabase(NativeDatabase.memory()));
       final remote = PartialRemoteSyncGateway('op_2');
       final coordinator = SyncCoordinator(outbox: outbox, remote: remote);
       await outbox.enqueue(_op('op_1'));

@@ -1,17 +1,16 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fresh_pantry/models/ingredient.dart';
 import 'package:fresh_pantry/models/recipe.dart';
-import 'package:fresh_pantry/providers/custom_recipe_provider.dart';
 import 'package:fresh_pantry/providers/recipe_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/custom_recipe_form_screen.dart';
 import 'package:fresh_pantry/screens/recipes_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'support/test_database.dart';
 
 void main() {
   testWidgets('recipes screen add button opens custom recipe form', (
@@ -19,12 +18,17 @@ void main() {
   ) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          inventorySeedProvider.overrideWithValue(const <Ingredient>[]),
+          ...testStorageOverrides(
+            database: db,
+            inventory: const <Ingredient>[],
+          ),
         ],
         child: MaterialApp(
           theme: ThemeData(useMaterial3: false),
@@ -44,13 +48,18 @@ void main() {
   testWidgets('explore tab shows recipe loading skeleton', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final pendingRecipes = Completer<List<Recipe>>();
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          inventorySeedProvider.overrideWithValue(const <Ingredient>[]),
+          ...testStorageOverrides(
+            database: db,
+            inventory: const <Ingredient>[],
+          ),
           recipesProvider.overrideWith((ref) => pendingRecipes.future),
         ],
         child: MaterialApp(
@@ -69,28 +78,32 @@ void main() {
   });
 
   testWidgets('mine tab lists saved custom recipes', (tester) async {
-    SharedPreferences.setMockInitialValues({
-      customRecipesStorageKey: json.encode([
-        Recipe(
-          id: 'custom_1',
-          name: '我的番茄面',
-          category: '家常',
-          difficulty: 2,
-          cookingMinutes: 20,
-          description: '',
-          ingredients: [RecipeIngredient(name: '番茄', amount: '2个')],
-          steps: ['煮面'],
-          tags: [],
-        ).toJson(),
-      ]),
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          inventorySeedProvider.overrideWithValue(const <Ingredient>[]),
+          ...testStorageOverrides(
+            database: db,
+            inventory: const <Ingredient>[],
+            customRecipes: [
+              Recipe(
+                id: 'custom_1',
+                name: '我的番茄面',
+                category: '家常',
+                difficulty: 2,
+                cookingMinutes: 20,
+                description: '',
+                ingredients: [RecipeIngredient(name: '番茄', amount: '2个')],
+                steps: ['煮面'],
+                tags: [],
+              ),
+            ],
+          ),
         ],
         child: MaterialApp(
           theme: ThemeData(useMaterial3: false),

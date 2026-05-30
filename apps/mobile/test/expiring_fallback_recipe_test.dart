@@ -8,6 +8,8 @@ import 'package:fresh_pantry/providers/recipe_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/test_database.dart';
+
 Ingredient _ing({
   required String name,
   FreshnessState state = FreshnessState.fresh,
@@ -42,9 +44,12 @@ Future<ProviderContainer> _container({
 }) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
+  final db = newTestDatabase();
+  addTearDown(db.close);
   final c = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      appDatabaseProvider.overrideWithValue(db),
       inventorySeedProvider.overrideWithValue(inventory),
       recipesProvider.overrideWith((ref) => Future.value(recipes)),
     ],

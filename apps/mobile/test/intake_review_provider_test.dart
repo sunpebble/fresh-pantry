@@ -9,11 +9,18 @@ import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
+import 'support/test_database.dart';
+
 Future<ProviderContainer> _container() async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
+  final db = newTestDatabase();
+  addTearDown(db.close);
   return ProviderContainer(
-    overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      ...testStorageOverrides(database: db),
+    ],
   );
 }
 
@@ -117,8 +124,13 @@ void main() {
   test('build recovers from corrupted persisted draft JSON', () async {
     SharedPreferences.setMockInitialValues({intakeReviewDraftKey: 'not-json'});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final c = ProviderContainer(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        ...testStorageOverrides(database: db),
+      ],
     );
     addTearDown(c.dispose);
 

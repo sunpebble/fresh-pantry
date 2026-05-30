@@ -6,11 +6,14 @@ import 'package:fresh_pantry/models/shopping_item.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/shopping_list_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'support/test_database.dart';
 
 void main() {
   testWidgets('sticky CTA appears when any item is checked', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final seed = [
       ShoppingItem(
         id: 'si1',
@@ -32,7 +35,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          shoppingSeedProvider.overrideWithValue(seed),
+          ...testStorageOverrides(database: db, shopping: seed),
         ],
         child: const MaterialApp(home: Scaffold(body: ShoppingListScreen())),
       ),

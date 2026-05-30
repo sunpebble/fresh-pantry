@@ -6,11 +6,18 @@ import 'package:fresh_pantry/providers/shopping_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/test_database.dart';
+
 Future<ProviderContainer> _container() async {
   SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
   final prefs = await SharedPreferences.getInstance();
+  final db = newTestDatabase();
+  addTearDown(db.close);
   return ProviderContainer(
-    overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      ...testStorageOverrides(database: db),
+    ],
   );
 }
 

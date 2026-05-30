@@ -7,11 +7,12 @@ import 'package:fresh_pantry/models/ingredient.dart';
 import 'package:fresh_pantry/models/recipe.dart';
 import 'package:fresh_pantry/models/shopping_item.dart';
 import 'package:fresh_pantry/storage/custom_recipe_repo.dart';
-import 'package:fresh_pantry/storage/in_memory_storage_adapter.dart';
 import 'package:fresh_pantry/storage/inventory_repo.dart';
 import 'package:fresh_pantry/storage/shopping_repo.dart';
 import 'package:fresh_pantry/sync/remote_pantry_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'support/test_database.dart';
 
 class FakeBootstrapGateway implements HouseholdGateway {
   final authStateController = StreamController<void>.broadcast();
@@ -316,10 +317,16 @@ void main() {
   test(
     'SupabaseHouseholdGateway uploads all local bootstrap repositories',
     () async {
-      final adapter = InMemoryStorageAdapter();
-      final inventoryRepo = InventoryRepo(adapter)
-        ..saveItems([
-          const Ingredient(
+      final db = newTestDatabase();
+      addTearDown(db.close);
+      // Seed via `hydrate` so the gateway reads the items through the same
+      // synchronous `loadAll()` path that `main.dart` injects in production.
+      // The inventory item is created offline with an empty id (assigned a
+      // server UUID on upload); shopping/recipe already carry stable local ids.
+      final inventoryRepo = InventoryRepo(db)
+        ..hydrate(const [
+          Ingredient(
+            id: '',
             name: 'Milk',
             quantity: '1',
             unit: 'box',
@@ -328,18 +335,18 @@ void main() {
             state: FreshnessState.fresh,
           ),
         ]);
-      final shoppingRepo = ShoppingRepo(adapter)
-        ..saveItems([
-          const ShoppingItem(
+      final shoppingRepo = ShoppingRepo(db)
+        ..hydrate(const [
+          ShoppingItem(
             id: 'si_1',
             name: 'Eggs',
             detail: '6 pcs',
             category: '蛋类',
           ),
         ]);
-      final customRecipeRepo = CustomRecipeRepo(adapter)
-        ..saveRecipes([
-          const Recipe(
+      final customRecipeRepo = CustomRecipeRepo(db)
+        ..hydrate(const [
+          Recipe(
             id: 'recipe_1',
             name: 'Omelette',
             category: '早餐',
@@ -364,6 +371,8 @@ void main() {
       expect(remoteRepository.inventoryRows.single['name'], 'Milk');
       expect(remoteRepository.shoppingRows.single['name'], 'Eggs');
       expect(remoteRepository.customRecipeRows.single['name'], 'Omelette');
+      // Upload assigns every non-UUID local id a fresh server UUID before
+      // pushing it remotely (the seeded 'si_1'/'recipe_1'/empty ids all qualify).
       expect(
         remoteRepository.inventoryRows.single['id'],
         matches(_uuidPattern),
@@ -373,9 +382,14 @@ void main() {
         remoteRepository.customRecipeRows.single['id'],
         matches(_uuidPattern),
       );
-      expect(inventoryRepo.loadAll().single.id, matches(_uuidPattern));
-      expect(shoppingRepo.loadAll().single.id, matches(_uuidPattern));
-      expect(customRecipeRepo.loadAll().single.id, matches(_uuidPattern));
+
+      // The same UUIDs are persisted back into the household-scoped Drift store.
+      final persistedInventory = await inventoryRepo.loadAllFor('household_1');
+      final persistedShopping = await shoppingRepo.loadAllFor('household_1');
+      final persistedRecipes = await customRecipeRepo.loadAllFor('household_1');
+      expect(persistedInventory.single.id, matches(_uuidPattern));
+      expect(persistedShopping.single.id, matches(_uuidPattern));
+      expect(persistedRecipes.single.id, matches(_uuidPattern));
     },
   );
 }

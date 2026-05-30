@@ -12,6 +12,7 @@ import 'package:fresh_pantry/widgets/household/household_section.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'helpers/household_gateway_stub.dart';
+import 'support/test_database.dart';
 
 void main() {
   testWidgets('invite button opens email input', (tester) async {
@@ -99,6 +100,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            ...testStorageOverrides(database: newTestDatabase()),
             sharedPreferencesProvider.overrideWithValue(prefs),
             notificationServiceProvider.overrideWithValue(
               NotificationService(),
@@ -148,6 +150,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            ...testStorageOverrides(database: newTestDatabase()),
             sharedPreferencesProvider.overrideWithValue(prefs),
             notificationServiceProvider.overrideWithValue(NotificationService()),
             householdGatewayProvider.overrideWithValue(gateway),

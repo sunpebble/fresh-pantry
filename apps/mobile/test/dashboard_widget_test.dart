@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,8 +16,10 @@ import 'package:fresh_pantry/providers/notification_service_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/low_stock_screen.dart';
 import 'package:fresh_pantry/services/share_intent_service.dart';
+import 'package:fresh_pantry/storage/inventory_repo.dart';
 import 'helpers/fake_notification_service.dart';
 import 'helpers/household_gateway_stub.dart';
+import 'support/test_database.dart';
 
 void main() {
   setUpAll(() {
@@ -29,20 +29,24 @@ void main() {
   testWidgets(
     'dashboard "该用了" action pushes ExpiringScreen with not-fresh items',
     (tester) async {
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': jsonEncode([
-          _ingredient('黄瓜').toJson(),
-          _ingredient('牛奶', state: FreshnessState.expiringSoon).toJson(),
-        ]),
-        'shopping_items': '[]',
-        'add_history': '{}',
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
+      final inventory = [
+        _ingredient('黄瓜'),
+        _ingredient('牛奶', state: FreshnessState.expiringSoon),
+      ];
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(
+              database: db,
+              inventory: inventory,
+              shopping: const [],
+            ),
             systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
             notificationServiceProvider.overrideWithValue(
               FakeNotificationService(),
@@ -76,22 +80,26 @@ void main() {
   testWidgets('dashboard 该用了 scroller renders every not-fresh item', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([
-        _ingredient('黄瓜').toJson(),
-        _ingredient('牛奶', state: FreshnessState.expiringSoon).toJson(),
-        _ingredient('面包', state: FreshnessState.expired).toJson(),
-        _ingredient('番茄', state: FreshnessState.expiringSoon).toJson(),
-      ]),
-      'shopping_items': '[]',
-      'add_history': '{}',
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
+    final inventory = [
+      _ingredient('黄瓜'),
+      _ingredient('牛奶', state: FreshnessState.expiringSoon),
+      _ingredient('面包', state: FreshnessState.expired),
+      _ingredient('番茄', state: FreshnessState.expiringSoon),
+    ];
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: inventory,
+            shopping: const [],
+          ),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),
@@ -118,22 +126,26 @@ void main() {
   testWidgets('dashboard 该用了 ExpiringCard uses expiryLabel as the pill', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([
-        _ingredient(
-          '面包',
-          state: FreshnessState.expired,
-        ).copyWith(expiryLabel: '已过期2天').toJson(),
-      ]),
-      'shopping_items': '[]',
-      'add_history': '{}',
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
+    final inventory = [
+      _ingredient(
+        '面包',
+        state: FreshnessState.expired,
+      ).copyWith(expiryLabel: '已过期2天'),
+    ];
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: inventory,
+            shopping: const [],
+          ),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),
@@ -157,21 +169,25 @@ void main() {
   });
 
   testWidgets('dashboard hero shows the total inventory count', (tester) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([
-        _ingredient('黄瓜').toJson(),
-        _ingredient('牛奶', state: FreshnessState.expiringSoon).toJson(),
-        _ingredient('面包', state: FreshnessState.expired).toJson(),
-      ]),
-      'shopping_items': '[]',
-      'add_history': '{}',
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
+    final inventory = [
+      _ingredient('黄瓜'),
+      _ingredient('牛奶', state: FreshnessState.expiringSoon),
+      _ingredient('面包', state: FreshnessState.expired),
+    ];
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: inventory,
+            shopping: const [],
+          ),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),
@@ -201,20 +217,24 @@ void main() {
   testWidgets(
     'dashboard hero not-fresh stat opens fridge with not-fresh filter',
     (tester) async {
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': jsonEncode([
-          _ingredient('牛奶', state: FreshnessState.expiringSoon).toJson(),
-        ]),
-        'shopping_items': '[]',
-        'add_history': '{}',
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
+      final inventory = [
+        _ingredient('牛奶', state: FreshnessState.expiringSoon),
+      ];
       late ProviderContainer container;
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(
+              database: db,
+              inventory: inventory,
+              shopping: const [],
+            ),
             systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
             notificationServiceProvider.overrideWithValue(
               FakeNotificationService(),
@@ -246,24 +266,27 @@ void main() {
   testWidgets(
     'dashboard hero low-stock stat shows real count and opens low stock screen',
     (tester) async {
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': '[]',
-        'shopping_items': '[]',
-        'add_history': jsonEncode({
-          '米': {
-            'count': 5,
-            'category': FoodCategories.other,
-            'storage': 'pantry',
-            'unit': '袋',
-          },
-        }),
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
+      final repo = InventoryRepo(db);
+      repo.hydrate(const []);
+      await repo.saveHistory({
+        '米': {
+          'count': 5,
+          'category': FoodCategories.other,
+          'storage': 'pantry',
+          'unit': '袋',
+        },
+      });
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            appDatabaseProvider.overrideWithValue(db),
+            inventoryRepoProvider.overrideWithValue(repo),
             systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
             notificationServiceProvider.overrideWithValue(
               FakeNotificationService(),
@@ -291,25 +314,25 @@ void main() {
   testWidgets(
     'dashboard category tile opens fridge filtered to that category',
     (tester) async {
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': jsonEncode([
-          _ingredient(
-            '黄瓜',
-          ).copyWith(category: FoodCategories.freshProduce).toJson(),
-          _ingredient(
-            '牛奶',
-          ).copyWith(category: FoodCategories.dairyAndEggs).toJson(),
-        ]),
-        'shopping_items': '[]',
-        'add_history': '{}',
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
+      final inventory = [
+        _ingredient('黄瓜').copyWith(category: FoodCategories.freshProduce),
+        _ingredient('牛奶').copyWith(category: FoodCategories.dairyAndEggs),
+      ];
       late ProviderContainer container;
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(
+              database: db,
+              inventory: inventory,
+              shopping: const [],
+            ),
             systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
             notificationServiceProvider.overrideWithValue(
               FakeNotificationService(),
@@ -348,18 +371,21 @@ void main() {
   testWidgets('discarding a new ingredient clears the form in place', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': '[]',
-      'shopping_items': '[]',
-      'add_history': '{}',
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     late ProviderContainer container;
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: const [],
+            shopping: const [],
+          ),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
             FakeNotificationService(),

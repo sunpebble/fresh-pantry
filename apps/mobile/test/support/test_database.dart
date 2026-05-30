@@ -1,10 +1,15 @@
 import 'package:drift/native.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+// `Override` (the ProviderScope/ProviderContainer override type) is surfaced by
+// flutter_riverpod's `misc.dart`, not the main barrel, in Riverpod 3.x.
+import 'package:flutter_riverpod/misc.dart';
 import 'package:fresh_pantry/models/ingredient.dart';
 import 'package:fresh_pantry/models/recipe.dart';
 import 'package:fresh_pantry/models/shopping_item.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
-import 'package:fresh_pantry/storage/drift/app_database.dart';
+// Scope the drift import to `AppDatabase`: the generated `app_database.g.dart`
+// also declares a `ShoppingItem` data class that would otherwise collide with
+// `models/shopping_item.dart`. The helper only needs `AppDatabase`.
+import 'package:fresh_pantry/storage/drift/app_database.dart' show AppDatabase;
 
 /// A fresh in-memory Drift database for a single test.
 ///

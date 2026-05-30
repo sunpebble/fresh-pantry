@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,23 +10,26 @@ import 'package:fresh_pantry/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/test_database.dart';
+
 void main() {
   setUpAll(() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
   testWidgets('add ingredient save shows missing field prompt', (tester) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': '[]',
-      'shopping_items': '[]',
-      'add_history': '{}',
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     late ProviderContainer container;
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
+        ],
         child: Builder(
           builder: (context) {
             container = ProviderScope.containerOf(context);
@@ -53,17 +54,21 @@ void main() {
   testWidgets('add undo removes the added item even after list changes', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([_ingredient('旧食材').toJson()]),
-      'shopping_items': '[]',
-      'add_history': '{}',
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     late ProviderContainer container;
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [_ingredient('旧食材')],
+          ),
+        ],
         child: Builder(
           builder: (context) {
             container = ProviderScope.containerOf(context);
@@ -94,20 +99,21 @@ void main() {
     'edit save updates the provided inventory index for equal items',
     (tester) async {
       final duplicateItem = _ingredient('重复食材');
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': jsonEncode([
-          duplicateItem.toJson(),
-          duplicateItem.toJson(),
-        ]),
-        'shopping_items': '[]',
-        'add_history': '{}',
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       late ProviderContainer container;
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(
+              database: db,
+              inventory: [duplicateItem, duplicateItem],
+            ),
+          ],
           child: Builder(
             builder: (context) {
               container = ProviderScope.containerOf(context);
@@ -141,17 +147,21 @@ void main() {
     (tester) async {
       final originalItem = _ingredient('原食材');
       final replacementItem = _ingredient('替代食材');
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': jsonEncode([originalItem.toJson()]),
-        'shopping_items': '[]',
-        'add_history': '{}',
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       late ProviderContainer container;
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(
+              database: db,
+              inventory: [originalItem],
+            ),
+          ],
           child: Builder(
             builder: (context) {
               container = ProviderScope.containerOf(context);
@@ -196,6 +206,5 @@ Ingredient _ingredient(String name) {
     state: FreshnessState.fresh,
     category: '测试',
     storage: IconType.fridge,
-    expiryLabel: '新鲜',
   );
 }

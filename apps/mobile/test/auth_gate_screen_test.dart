@@ -13,11 +13,12 @@ import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/auth_gate_screen.dart';
 import 'package:fresh_pantry/services/invite_link_service.dart';
-import 'package:fresh_pantry/storage/in_memory_storage_adapter.dart';
 import 'package:fresh_pantry/storage/inventory_repo.dart';
 import 'package:fresh_pantry/sync/sync_operation.dart';
 import 'package:fresh_pantry/sync/sync_outbox_repo.dart';
 import 'package:fresh_pantry/sync/sync_providers.dart';
+
+import 'support/test_database.dart';
 
 class FakeHouseholdGateway implements HouseholdGateway {
   FakeHouseholdGateway({
@@ -478,8 +479,9 @@ void main() {
       // authenticated subtree never reached the root-stored InventoryNotifier,
       // so every add/edit/delete silently no-opped (empty household) and never
       // synced — the other household members never saw it.
-      final adapter = InMemoryStorageAdapter();
-      final outbox = SyncOutboxRepo(adapter);
+      final db = newTestDatabase();
+      addTearDown(db.close);
+      final outbox = SyncOutboxRepo(db);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -496,8 +498,8 @@ void main() {
                 ],
               ),
             ),
-            storageAdapterProvider.overrideWithValue(adapter),
-            inventoryRepoProvider.overrideWithValue(InventoryRepo(adapter)),
+            appDatabaseProvider.overrideWithValue(db),
+            inventoryRepoProvider.overrideWithValue(InventoryRepo(db)),
             syncOutboxRepoProvider.overrideWithValue(outbox),
             syncClientIdProvider.overrideWithValue('client_1'),
             syncPushPendingProvider.overrideWithValue(() async {}),
@@ -549,10 +551,13 @@ void main() {
   );
 
   testWidgets('FreshPantryApp defaults to AuthGateScreen', (tester) async {
+    final db = newTestDatabase();
+    addTearDown(db.close);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           householdGatewayProvider.overrideWithValue(FakeHouseholdGateway()),
+          ...testStorageOverrides(database: db),
         ],
         child: const FreshPantryApp(),
       ),
@@ -593,9 +598,12 @@ Widget _wrap(
   String? initialInviteToken,
   InviteLinkSource? inviteLinkSource,
 }) {
+  final db = newTestDatabase();
+  addTearDown(db.close);
   return ProviderScope(
     overrides: [
       householdGatewayProvider.overrideWithValue(gateway),
+      ...testStorageOverrides(database: db),
       if (inviteLinkSource != null)
         inviteLinkSourceProvider.overrideWithValue(inviteLinkSource),
     ],

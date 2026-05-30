@@ -17,6 +17,8 @@ import 'package:fresh_pantry/widgets/inventory/ingredient_card.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/test_database.dart';
+
 void main() {
   setUpAll(() {
     GoogleFonts.config.allowRuntimeFetching = false;
@@ -25,20 +27,26 @@ void main() {
   testWidgets('inventory FK chrome: top bar + search + chips + 2-col grid', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([
-        _ingredient(name: '番茄', category: FoodCategories.freshProduce).toJson(),
-        _ingredient(
-          name: '牛奶',
-          category: FoodCategories.dairyAndEggs,
-        ).copyWith(state: FreshnessState.expiringSoon).toJson(),
-      ]),
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [
+              _ingredient(name: '番茄', category: FoodCategories.freshProduce),
+              _ingredient(
+                name: '牛奶',
+                category: FoodCategories.dairyAndEggs,
+              ).copyWith(state: FreshnessState.expiringSoon),
+            ],
+          ),
+        ],
         child: const MaterialApp(home: Scaffold(body: InventoryScreen())),
       ),
     );
@@ -64,21 +72,27 @@ void main() {
     expect(find.widgetWithText(IngredientCard, '牛奶'), findsNothing);
   });
 
-  testWidgets('filter button opens sheet and applies a category filter', (
+  testWidgets('clear-all button wipes the inventory after confirmation', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([
-        _ingredient(name: '番茄', category: FoodCategories.freshProduce).toJson(),
-        _ingredient(name: '牛奶', category: FoodCategories.dairyAndEggs).toJson(),
-      ]),
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     late ProviderContainer container;
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [
+              _ingredient(name: '番茄', category: FoodCategories.freshProduce),
+              _ingredient(name: '牛奶', category: FoodCategories.dairyAndEggs),
+            ],
+          ),
+        ],
         child: Builder(
           builder: (context) {
             container = ProviderScope.containerOf(context);
@@ -89,24 +103,45 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(container.read(selectedCategoryProvider), inventoryFilterAll);
+    expect(container.read(inventoryProvider), hasLength(2));
 
-    await tester.tap(find.byKey(const Key('inventory_filter_button')));
+    await tester.tap(find.byKey(const Key('inventory_clear_all_button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('筛选食材'), findsOneWidget);
+    // Confirmation dialog appears before anything is deleted.
+    expect(find.text('清空'), findsOneWidget);
+    await tester.tap(find.text('清空'));
+    await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.byKey(const ValueKey('inventory_filter_option_乳品蛋类')),
+    expect(container.read(inventoryProvider), isEmpty);
+    expect(find.widgetWithText(IngredientCard, '番茄'), findsNothing);
+    expect(find.widgetWithText(IngredientCard, '牛奶'), findsNothing);
+    expect(find.text('该分类下暂无食材'), findsOneWidget);
+  });
+
+  testWidgets('clear-all button is hidden when the inventory is empty', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
+        ],
+        child: const MaterialApp(home: Scaffold(body: InventoryScreen())),
+      ),
     );
     await tester.pumpAndSettle();
 
     expect(
-      container.read(selectedCategoryProvider),
-      FoodCategories.dairyAndEggs,
+      find.byKey(const Key('inventory_clear_all_button')),
+      findsNothing,
     );
-    expect(find.widgetWithText(IngredientCard, '牛奶'), findsOneWidget);
-    expect(find.widgetWithText(IngredientCard, '番茄'), findsNothing);
   });
 
   testWidgets('deletes the selected filtered inventory item by original index', (
@@ -120,18 +155,21 @@ void main() {
       name: '番茄',
       category: FoodCategories.freshProduce,
     );
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([
-        otherCategoryItem.toJson(),
-        targetCategoryItem.toJson(),
-      ]),
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     late ProviderContainer container;
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [otherCategoryItem, targetCategoryItem],
+          ),
+        ],
         child: Builder(
           builder: (context) {
             container = ProviderScope.containerOf(context);
@@ -168,18 +206,21 @@ void main() {
         name: '番茄',
         category: FoodCategories.freshProduce,
       ).copyWith(quantity: '2');
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': jsonEncode([
-          firstItem.toJson(),
-          secondItem.toJson(),
-        ]),
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       late ProviderContainer container;
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(
+              database: db,
+              inventory: [firstItem, secondItem],
+            ),
+          ],
           child: Builder(
             builder: (context) {
               container = ProviderScope.containerOf(context);
@@ -212,15 +253,16 @@ void main() {
       name: '番茄',
       category: FoodCategories.freshProduce,
     );
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([targetItem.toJson()]),
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db, inventory: [targetItem]),
           foodDetailsClientProvider.overrideWithValue(
             _FakeFoodDetailsClient(
               FoodDetails(
@@ -257,17 +299,23 @@ void main() {
   testWidgets('changing search after multi-select does not crash', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([
-        _ingredient(name: '牛奶', category: FoodCategories.dairyAndEggs).toJson(),
-        _ingredient(name: '番茄', category: FoodCategories.freshProduce).toJson(),
-      ]),
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [
+              _ingredient(name: '牛奶', category: FoodCategories.dairyAndEggs),
+              _ingredient(name: '番茄', category: FoodCategories.freshProduce),
+            ],
+          ),
+        ],
         child: const MaterialApp(home: Scaffold(body: InventoryScreen())),
       ),
     );
@@ -291,13 +339,16 @@ void main() {
         name: '牛奶',
         category: FoodCategories.dairyAndEggs,
       );
-      SharedPreferences.setMockInitialValues({'inventory_items': '[]'});
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(database: db),
             foodDetailsClientProvider.overrideWithValue(
               _FakeFoodDetailsClient(
                 FoodDetails(
@@ -335,14 +386,17 @@ void main() {
       name: '番茄',
       category: FoodCategories.freshProduce,
     );
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([targetItem.toJson()]),
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db, inventory: [targetItem]),
+        ],
         child: const MaterialApp(home: Scaffold(body: InventoryScreen())),
       ),
     );
@@ -377,11 +431,6 @@ void main() {
     );
     final thirdItem = _ingredient(name: '米饭', category: FoodCategories.other);
     SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([
-        firstItem.toJson(),
-        secondItem.toJson(),
-        thirdItem.toJson(),
-      ]),
       'add_history': jsonEncode({
         '番茄': {
           'count': 1,
@@ -392,11 +441,19 @@ void main() {
       }),
     });
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     late ProviderContainer container;
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [firstItem, secondItem, thirdItem],
+          ),
+        ],
         child: Builder(
           builder: (context) {
             container = ProviderScope.containerOf(context);
@@ -431,22 +488,28 @@ void main() {
       name: '牛奶',
       category: FoodCategories.dairyAndEggs,
     ).copyWith(state: FreshnessState.expiringSoon, expiryLabel: '明天过期');
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([targetItem.toJson()]),
-      'shopping_items': jsonEncode([
-        const ShoppingItem(
-          id: 'milk',
-          name: '牛奶',
-          detail: '',
-          category: FoodCategories.dairyAndEggs,
-        ).toJson(),
-      ]),
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [targetItem],
+            shopping: const [
+              ShoppingItem(
+                id: 'milk',
+                name: '牛奶',
+                detail: '',
+                category: FoodCategories.dairyAndEggs,
+              ),
+            ],
+          ),
+        ],
         child: const MaterialApp(home: Scaffold(body: InventoryScreen())),
       ),
     );
@@ -466,15 +529,18 @@ void main() {
       name: '番茄',
       category: FoodCategories.freshProduce,
     );
-    SharedPreferences.setMockInitialValues({
-      'inventory_items': jsonEncode([targetItem.toJson()]),
-    });
+    SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     late ProviderContainer container;
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db, inventory: [targetItem]),
+        ],
         child: Builder(
           builder: (context) {
             container = ProviderScope.containerOf(context);

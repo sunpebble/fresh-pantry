@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,8 +7,12 @@ import 'package:fresh_pantry/models/storage_area.dart';
 import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/add_ingredient_screen.dart';
+import 'package:fresh_pantry/storage/drift/app_database.dart' show AppDatabase;
+import 'package:fresh_pantry/storage/inventory_repo.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/test_database.dart';
 
 void main() {
   setUpAll(() {
@@ -29,14 +31,19 @@ void main() {
     'legacy pantry staple categories are exposed as other in inventory',
     () async {
       SharedPreferences.setMockInitialValues({
-        'inventory_items': jsonEncode([
-          _ingredient(name: '大米', category: '食品柜常备').toJson(),
-        ]),
         'add_history': '{}',
       });
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [_ingredient(name: '大米', category: '食品柜常备')],
+          ),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -55,20 +62,28 @@ void main() {
   test(
     'legacy pantry staple add history is normalized for frequent items',
     () async {
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': '[]',
-        'add_history': jsonEncode({
-          '大米': {
-            'count': 2,
-            'category': '食品柜常备',
-            'storage': 'pantry',
-            'unit': '袋',
-          },
-        }),
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
+      // add_history moved off prefs onto Drift; the seed provider hydrates items
+      // only, never the frequency memory, so seed history through a Drift-backed
+      // repo (mirrors how main.dart wires inventoryRepo.saveHistory).
+      final repo = InventoryRepo(db);
+      await repo.saveHistory(const {
+        '大米': {
+          'count': 2,
+          'category': '食品柜常备',
+          'storage': 'pantry',
+          'unit': '袋',
+        },
+      });
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          appDatabaseProvider.overrideWithValue(db),
+          inventoryRepoProvider.overrideWithValue(repo),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -83,15 +98,18 @@ void main() {
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({
-      'inventory_items': '[]',
-      'shopping_items': '[]',
       'add_history': '{}',
     });
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
+        ],
         child: const MaterialApp(home: Scaffold(body: AddIngredientScreen())),
       ),
     );

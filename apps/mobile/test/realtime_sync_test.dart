@@ -13,7 +13,7 @@ import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/shopping_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/storage/custom_recipe_repo.dart';
-import 'package:fresh_pantry/storage/in_memory_storage_adapter.dart';
+import 'package:fresh_pantry/storage/drift/app_database.dart' show AppDatabase;
 import 'package:fresh_pantry/storage/inventory_repo.dart';
 import 'package:fresh_pantry/storage/shopping_repo.dart';
 import 'package:fresh_pantry/sync/sync_coordinator.dart';
@@ -22,6 +22,8 @@ import 'package:fresh_pantry/sync/remote_pantry_repository.dart';
 import 'package:fresh_pantry/sync/sync_operation.dart';
 import 'package:fresh_pantry/sync/sync_outbox_repo.dart';
 import 'package:fresh_pantry/sync/sync_providers.dart';
+
+import 'support/test_database.dart';
 
 void main() {
   test('visibleRemoteRows ignores soft-deleted rows', () {
@@ -43,7 +45,8 @@ void main() {
   testWidgets('HouseholdContentSync loads and watches shared household rows', (
     tester,
   ) async {
-    final adapter = InMemoryStorageAdapter();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final remote = FakeRemotePantryRepository(
       inventoryRows: [_inventoryRow('11111111-1111-1111-1111-111111111111')],
       shoppingRows: [_shoppingRow('22222222-2222-2222-2222-222222222222')],
@@ -53,11 +56,11 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          storageAdapterProvider.overrideWithValue(adapter),
-          inventoryRepoProvider.overrideWithValue(InventoryRepo(adapter)),
-          shoppingRepoProvider.overrideWithValue(ShoppingRepo(adapter)),
-          customRecipeRepoProvider.overrideWithValue(CustomRecipeRepo(adapter)),
-          syncOutboxRepoProvider.overrideWithValue(SyncOutboxRepo(adapter)),
+          appDatabaseProvider.overrideWithValue(db),
+          inventoryRepoProvider.overrideWithValue(InventoryRepo(db)),
+          shoppingRepoProvider.overrideWithValue(ShoppingRepo(db)),
+          customRecipeRepoProvider.overrideWithValue(CustomRecipeRepo(db)),
+          syncOutboxRepoProvider.overrideWithValue(SyncOutboxRepo(db)),
           selectedHouseholdIdProvider.overrideWithValue('household_1'),
           remotePantryRepositoryProvider.overrideWithValue(remote),
           syncPushPendingProvider.overrideWithValue(() async {}),
@@ -104,7 +107,8 @@ void main() {
   testWidgets('transient realtime channel error is not reported as fatal', (
     tester,
   ) async {
-    final adapter = InMemoryStorageAdapter();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final remote = FakeRemotePantryRepository(
       inventoryRows: [_inventoryRow('11111111-1111-1111-1111-111111111111')],
       shoppingRows: const [],
@@ -114,11 +118,11 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          storageAdapterProvider.overrideWithValue(adapter),
-          inventoryRepoProvider.overrideWithValue(InventoryRepo(adapter)),
-          shoppingRepoProvider.overrideWithValue(ShoppingRepo(adapter)),
-          customRecipeRepoProvider.overrideWithValue(CustomRecipeRepo(adapter)),
-          syncOutboxRepoProvider.overrideWithValue(SyncOutboxRepo(adapter)),
+          appDatabaseProvider.overrideWithValue(db),
+          inventoryRepoProvider.overrideWithValue(InventoryRepo(db)),
+          shoppingRepoProvider.overrideWithValue(ShoppingRepo(db)),
+          customRecipeRepoProvider.overrideWithValue(CustomRecipeRepo(db)),
+          syncOutboxRepoProvider.overrideWithValue(SyncOutboxRepo(db)),
           selectedHouseholdIdProvider.overrideWithValue('household_1'),
           remotePantryRepositoryProvider.overrideWithValue(remote),
           syncPushPendingProvider.overrideWithValue(() async {}),
@@ -163,41 +167,47 @@ void main() {
   testWidgets(
     'HouseholdContentSync uploads legacy local rows before applying empty remote',
     (tester) async {
-      final adapter = InMemoryStorageAdapter();
-      final inventoryRepo = InventoryRepo(adapter)
-        ..saveItems([
-          const Ingredient(
-            id: 'legacy_inventory_1',
-            name: 'Watermelon',
-            quantity: '1',
-            unit: '个',
-            imageUrl: '',
-            freshnessPercent: 1,
-            state: FreshnessState.fresh,
-          ),
-        ]);
-      final shoppingRepo = ShoppingRepo(adapter)
-        ..saveItems([
-          const ShoppingItem(
-            id: 'legacy_shopping_1',
-            name: 'Yogurt',
-            detail: '',
-            category: '乳品蛋类',
-          ),
-        ]);
-      final customRecipeRepo = CustomRecipeRepo(adapter)
-        ..saveRecipes([
-          const Recipe(
-            id: 'legacy_recipe_1',
-            name: 'Fruit Bowl',
-            category: '早餐',
-            difficulty: 1,
-            cookingMinutes: 5,
-            description: '',
-            ingredients: [],
-            steps: [],
-          ),
-        ]);
+      final db = newTestDatabase();
+      addTearDown(db.close);
+      final inventoryRepo = InventoryRepo(db);
+      await inventoryRepo.saveItems('household_1', const [
+        Ingredient(
+          id: 'legacy_inventory_1',
+          name: 'Watermelon',
+          quantity: '1',
+          unit: '个',
+          imageUrl: '',
+          freshnessPercent: 1,
+          state: FreshnessState.fresh,
+        ),
+      ]);
+      inventoryRepo
+          .hydrate((await inventoryRepo.loadAllFor('household_1')));
+      final shoppingRepo = ShoppingRepo(db);
+      await shoppingRepo.saveItems('household_1', const [
+        ShoppingItem(
+          id: 'legacy_shopping_1',
+          name: 'Yogurt',
+          detail: '',
+          category: '乳品蛋类',
+        ),
+      ]);
+      shoppingRepo.hydrate((await shoppingRepo.loadAllFor('household_1')));
+      final customRecipeRepo = CustomRecipeRepo(db);
+      await customRecipeRepo.saveRecipes('household_1', const [
+        Recipe(
+          id: 'legacy_recipe_1',
+          name: 'Fruit Bowl',
+          category: '早餐',
+          difficulty: 1,
+          cookingMinutes: 5,
+          description: '',
+          ingredients: [],
+          steps: [],
+        ),
+      ]);
+      customRecipeRepo
+          .hydrate((await customRecipeRepo.loadAllFor('household_1')));
       final remote = FakeRemotePantryRepository(
         inventoryRows: [],
         shoppingRows: [],
@@ -207,11 +217,11 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            storageAdapterProvider.overrideWithValue(adapter),
+            appDatabaseProvider.overrideWithValue(db),
             inventoryRepoProvider.overrideWithValue(inventoryRepo),
             shoppingRepoProvider.overrideWithValue(shoppingRepo),
             customRecipeRepoProvider.overrideWithValue(customRecipeRepo),
-            syncOutboxRepoProvider.overrideWithValue(SyncOutboxRepo(adapter)),
+            syncOutboxRepoProvider.overrideWithValue(SyncOutboxRepo(db)),
             selectedHouseholdIdProvider.overrideWithValue('household_1'),
             remotePantryRepositoryProvider.overrideWithValue(remote),
             syncPushPendingProvider.overrideWithValue(() async {}),
@@ -243,12 +253,30 @@ void main() {
       expect(remote.shoppingRows.single['name'], 'Yogurt');
       expect(remote.customRecipeRows.single['name'], 'Fruit Bowl');
       expect(remote.inventoryRows.single['id'], matches(_uuidPattern));
-      expect(inventoryRepo.loadAll().single.id, matches(_uuidPattern));
-      expect(shoppingRepo.loadAll().single.id, matches(_uuidPattern));
-      expect(customRecipeRepo.loadAll().single.id, matches(_uuidPattern));
-      expect(inventoryRepo.loadAll().single.remoteVersion, 1);
-      expect(shoppingRepo.loadAll().single.remoteVersion, 1);
-      expect(customRecipeRepo.loadAll().single.remoteVersion, 1);
+      expect(
+        (await inventoryRepo.loadAllFor('household_1')).single.id,
+        matches(_uuidPattern),
+      );
+      expect(
+        (await shoppingRepo.loadAllFor('household_1')).single.id,
+        matches(_uuidPattern),
+      );
+      expect(
+        (await customRecipeRepo.loadAllFor('household_1')).single.id,
+        matches(_uuidPattern),
+      );
+      expect(
+        (await inventoryRepo.loadAllFor('household_1')).single.remoteVersion,
+        1,
+      );
+      expect(
+        (await shoppingRepo.loadAllFor('household_1')).single.remoteVersion,
+        1,
+      );
+      expect(
+        (await customRecipeRepo.loadAllFor('household_1')).single.remoteVersion,
+        1,
+      );
 
       await remote.close();
     },
@@ -257,7 +285,8 @@ void main() {
   testWidgets('HouseholdContentSync keeps local pending inventory rows', (
     tester,
   ) async {
-    final adapter = InMemoryStorageAdapter();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final remote = FakeRemotePantryRepository(
       inventoryRows: [_inventoryRow('11111111-1111-1111-1111-111111111111')],
       shoppingRows: [],
@@ -268,11 +297,11 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          storageAdapterProvider.overrideWithValue(adapter),
-          inventoryRepoProvider.overrideWithValue(InventoryRepo(adapter)),
-          shoppingRepoProvider.overrideWithValue(ShoppingRepo(adapter)),
-          customRecipeRepoProvider.overrideWithValue(CustomRecipeRepo(adapter)),
-          syncOutboxRepoProvider.overrideWithValue(SyncOutboxRepo(adapter)),
+          appDatabaseProvider.overrideWithValue(db),
+          inventoryRepoProvider.overrideWithValue(InventoryRepo(db)),
+          shoppingRepoProvider.overrideWithValue(ShoppingRepo(db)),
+          customRecipeRepoProvider.overrideWithValue(CustomRecipeRepo(db)),
+          syncOutboxRepoProvider.overrideWithValue(SyncOutboxRepo(db)),
           selectedHouseholdIdProvider.overrideWithValue('household_1'),
           remotePantryRepositoryProvider.overrideWithValue(remote),
           syncPushPendingProvider.overrideWithValue(() async {}),
@@ -324,20 +353,23 @@ void main() {
     'HouseholdContentSync ignores pending rows from another household',
     (tester) async {
       const pendingItemId = '55555555-5555-5555-5555-555555555555';
-      final adapter = InMemoryStorageAdapter();
-      final inventoryRepo = InventoryRepo(adapter)
-        ..saveItems([
-          const Ingredient(
-            id: pendingItemId,
-            name: 'Watermelon',
-            quantity: '1',
-            unit: '个',
-            imageUrl: '',
-            freshnessPercent: 1,
-            state: FreshnessState.fresh,
-          ),
-        ]);
-      final outbox = SyncOutboxRepo(adapter);
+      final db = newTestDatabase();
+      addTearDown(db.close);
+      final inventoryRepo = InventoryRepo(db);
+      await inventoryRepo.saveItems('household_1', const [
+        Ingredient(
+          id: pendingItemId,
+          name: 'Watermelon',
+          quantity: '1',
+          unit: '个',
+          imageUrl: '',
+          freshnessPercent: 1,
+          state: FreshnessState.fresh,
+        ),
+      ]);
+      inventoryRepo
+          .hydrate((await inventoryRepo.loadAllFor('household_1')));
+      final outbox = SyncOutboxRepo(db);
       await outbox.enqueue(
         SyncOperation(
           id: 'op_1',
@@ -345,7 +377,8 @@ void main() {
           entityType: SyncEntityType.inventoryItem,
           entityId: pendingItemId,
           operation: SyncOperationType.create,
-          patch: inventoryRepo.loadAll().single.toJson(),
+          patch:
+              (await inventoryRepo.loadAllFor('household_1')).single.toJson(),
           clientId: 'client_1',
           createdAt: DateTime.utc(2026, 5, 29),
         ),
@@ -359,11 +392,11 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            storageAdapterProvider.overrideWithValue(adapter),
+            appDatabaseProvider.overrideWithValue(db),
             inventoryRepoProvider.overrideWithValue(inventoryRepo),
-            shoppingRepoProvider.overrideWithValue(ShoppingRepo(adapter)),
+            shoppingRepoProvider.overrideWithValue(ShoppingRepo(db)),
             customRecipeRepoProvider.overrideWithValue(
-              CustomRecipeRepo(adapter),
+              CustomRecipeRepo(db),
             ),
             syncOutboxRepoProvider.overrideWithValue(outbox),
             selectedHouseholdIdProvider.overrideWithValue('household_2'),

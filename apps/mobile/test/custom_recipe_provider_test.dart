@@ -1,19 +1,29 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fresh_pantry/models/recipe.dart';
 import 'package:fresh_pantry/providers/custom_recipe_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
+import 'package:fresh_pantry/storage/custom_recipe_repo.dart';
+import 'package:fresh_pantry/storage/drift/app_database.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/test_database.dart';
 
 void main() {
   group('customRecipesProvider', () {
     test('loads an empty list when no custom recipes are saved', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -23,24 +33,35 @@ void main() {
     test('adds a recipe and persists it', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
+        ],
       );
       addTearDown(container.dispose);
 
       await container.read(customRecipesProvider.notifier).add(_recipe('r1'));
 
       expect(container.read(customRecipesProvider).single.name, '番茄炒蛋');
-      final saved = json.decode(prefs.getString(customRecipesStorageKey)!);
-      expect(saved, isA<List<dynamic>>());
-      expect(saved.single['id'], 'r1');
+      final saved = await container
+          .read(customRecipeRepoProvider)
+          .loadAllFor('');
+      expect(saved.single.id, 'r1');
     });
 
     test('concurrent adds do not lose recipes in state or storage', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -53,8 +74,10 @@ void main() {
         'r1',
         'r2',
       ]);
-      final saved = json.decode(prefs.getString(customRecipesStorageKey)!);
-      expect(saved.map((recipe) => recipe['id']), ['r1', 'r2']);
+      final saved = await container
+          .read(customRecipeRepoProvider)
+          .loadAllFor('');
+      expect(saved.map((recipe) => recipe.id), ['r1', 'r2']);
     });
 
     test(
@@ -62,8 +85,13 @@ void main() {
       () async {
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
+        final db = newTestDatabase();
+        addTearDown(db.close);
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(database: db),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -73,17 +101,26 @@ void main() {
             .add(_recipe('r1').copyWith(name: ''));
 
         expect(container.read(customRecipesProvider), isEmpty);
-        expect(prefs.getString(customRecipesStorageKey), isNull);
+        final saved = await container
+            .read(customRecipeRepoProvider)
+            .loadAllFor('');
+        expect(saved, isEmpty);
       },
     );
 
     test('updates a recipe while preserving its id', () async {
-      SharedPreferences.setMockInitialValues({
-        customRecipesStorageKey: json.encode([_recipe('r1').toJson()]),
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            customRecipes: [_recipe('r1')],
+          ),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -97,49 +134,79 @@ void main() {
     });
 
     test('removes a recipe and persists removal', () async {
-      SharedPreferences.setMockInitialValues({
-        customRecipesStorageKey: json.encode([_recipe('r1').toJson()]),
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            customRecipes: [_recipe('r1')],
+          ),
+        ],
       );
       addTearDown(container.dispose);
 
       await container.read(customRecipesProvider.notifier).remove('r1');
 
       expect(container.read(customRecipesProvider), isEmpty);
-      expect(json.decode(prefs.getString(customRecipesStorageKey)!), isEmpty);
+      final saved = await container
+          .read(customRecipeRepoProvider)
+          .loadAllFor('');
+      expect(saved, isEmpty);
     });
 
-    test('malformed saved JSON falls back to an empty list', () async {
-      SharedPreferences.setMockInitialValues({
-        customRecipesStorageKey: '{bad json',
-      });
-      final prefs = await SharedPreferences.getInstance();
-      final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-      );
-      addTearDown(container.dispose);
+    test('malformed saved row falls back to an empty list', () async {
+      final db = newTestDatabase();
+      addTearDown(db.close);
+      // A row whose payload is not valid recipe JSON must be skipped on load
+      // rather than crashing the read (the JSON-tolerance that used to live in
+      // the notifier now lives in the repo's row decoder).
+      await db
+          .into(db.customRecipes)
+          .insert(
+            CustomRecipesCompanion.insert(
+              id: 'r1',
+              householdId: const Value(''),
+              payloadJson: '{bad json',
+            ),
+          );
 
-      expect(container.read(customRecipesProvider), isEmpty);
+      final repo = CustomRecipeRepo(db);
+
+      expect(await repo.loadAllFor(''), isEmpty);
     });
 
-    test('loads valid recipes when persisted list has bad rows', () async {
-      SharedPreferences.setMockInitialValues({
-        customRecipesStorageKey: json.encode([
-          _recipe('r1').toJson(),
-          42,
-          {'id': 'r2', 'name': '黑椒鸡胸'},
-        ]),
+    test('loads valid recipes when persisted rows have bad rows', () async {
+      final db = newTestDatabase();
+      addTearDown(db.close);
+      // Mix of: a valid recipe, a non-decodable row (the old `42` non-map
+      // entry), and a partial-but-valid map missing optional fields.
+      await db.batch((b) {
+        b.insertAll(db.customRecipes, [
+          CustomRecipesCompanion.insert(
+            id: 'r1',
+            householdId: const Value(''),
+            payloadJson: jsonEncode(_recipe('r1').toJson()),
+          ),
+          CustomRecipesCompanion.insert(
+            id: 'bad',
+            householdId: const Value(''),
+            payloadJson: '42',
+          ),
+          CustomRecipesCompanion.insert(
+            id: 'r2',
+            householdId: const Value(''),
+            payloadJson: jsonEncode({'id': 'r2', 'name': '黑椒鸡胸'}),
+          ),
+        ]);
       });
-      final prefs = await SharedPreferences.getInstance();
-      final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-      );
-      addTearDown(container.dispose);
 
-      expect(container.read(customRecipesProvider).map((recipe) => recipe.id), [
+      final repo = CustomRecipeRepo(db);
+
+      expect((await repo.loadAllFor('')).map((recipe) => recipe.id), [
         'r1',
         'r2',
       ]);

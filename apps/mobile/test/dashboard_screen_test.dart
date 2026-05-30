@@ -11,6 +11,7 @@ import 'package:fresh_pantry/screens/dashboard_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'helpers/household_gateway_stub.dart';
+import 'support/test_database.dart';
 
 void main() {
   setUpAll(() {
@@ -109,16 +110,21 @@ Future<Widget> _app({
   required List<Ingredient> inventory,
   required List<Recipe> recipes,
 }) async {
-  SharedPreferences.setMockInitialValues({
-    'shopping_items': '[]',
-    'custom_recipes': '[]',
-  });
+  SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
+
+  final db = newTestDatabase();
+  addTearDown(db.close);
 
   return ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
-      inventorySeedProvider.overrideWithValue(inventory),
+      ...testStorageOverrides(
+        database: db,
+        inventory: inventory,
+        shopping: const [],
+        customRecipes: const [],
+      ),
       recipesProvider.overrideWith((ref) async => recipes),
       householdSessionControllerProvider.overrideWith(
         (ref) => HouseholdSessionController(

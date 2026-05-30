@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -16,12 +14,15 @@ import 'package:fresh_pantry/screens/custom_recipe_form_screen.dart';
 import 'package:fresh_pantry/screens/settings_screen.dart';
 import 'package:fresh_pantry/screens/my_recipes_screen.dart';
 import 'package:fresh_pantry/screens/recipe_detail_screen.dart';
+import 'package:fresh_pantry/storage/custom_recipe_repo.dart';
+import 'package:fresh_pantry/storage/drift/app_database.dart' show AppDatabase;
 import 'package:fresh_pantry/widgets/recipe_card.dart';
 import 'package:fresh_pantry/widgets/recipe_form/cooking_time_row.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'helpers/household_gateway_stub.dart';
+import 'support/test_database.dart';
 
 void main() {
   testWidgets('settings 我的食谱 link opens MyRecipesScreen', (tester) async {
@@ -31,8 +32,12 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
-    await tester.pumpWidget(_app(prefs, const SettingsScreen()));
+    await tester.pumpWidget(
+      _app(prefs, const SettingsScreen(), database: db),
+    );
     await tester.pumpAndSettle();
 
     // Scroll to bring the 我的食谱 link in the 更多 section into view.
@@ -53,12 +58,18 @@ void main() {
   });
 
   testWidgets('my recipes screen shows saved recipes', (tester) async {
-    final prefs = await _prefs({
-      customRecipesStorageKey: json.encode([_recipe('r1').toJson()]),
-    });
+    final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
-      _app(prefs, const MyRecipesScreen(), useMaterial3: false),
+      _app(
+        prefs,
+        const MyRecipesScreen(),
+        database: db,
+        customRecipes: [_recipe('r1')],
+        useMaterial3: false,
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -70,9 +81,11 @@ void main() {
     tester,
   ) async {
     final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
-      _app(prefs, const MyRecipesScreen(), useMaterial3: false),
+      _app(prefs, const MyRecipesScreen(), database: db, useMaterial3: false),
     );
     await tester.pumpAndSettle();
 
@@ -84,14 +97,21 @@ void main() {
   });
 
   testWidgets('my recipes screen keeps saved recipe order', (tester) async {
-    final prefs = await _prefs({
-      customRecipesStorageKey: json.encode([
-        _recipe('r1').copyWith(name: '早餐三明治').toJson(),
-        _recipe('r2').copyWith(name: '番茄炒蛋').toJson(),
-      ]),
-    });
+    final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
-    await tester.pumpWidget(_app(prefs, const MyRecipesScreen()));
+    await tester.pumpWidget(
+      _app(
+        prefs,
+        const MyRecipesScreen(),
+        database: db,
+        customRecipes: [
+          _recipe('r1').copyWith(name: '早餐三明治'),
+          _recipe('r2').copyWith(name: '番茄炒蛋'),
+        ],
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(
@@ -103,11 +123,18 @@ void main() {
   testWidgets('my recipes screen shows saved recipe images', (tester) async {
     const imageUrl = 'https://example.com/tomato-eggs.jpg';
     final recipe = _recipe('r1').copyWith(imageUrl: imageUrl);
-    final prefs = await _prefs({
-      customRecipesStorageKey: json.encode([recipe.toJson()]),
-    });
+    final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
-    await tester.pumpWidget(_app(prefs, const MyRecipesScreen()));
+    await tester.pumpWidget(
+      _app(
+        prefs,
+        const MyRecipesScreen(),
+        database: db,
+        customRecipes: [recipe],
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(
@@ -125,11 +152,18 @@ void main() {
   ) async {
     const imageUrl = 'https://example.com/tomato-eggs.jpg';
     final recipe = _recipe('r1').copyWith(imageUrl: imageUrl);
-    final prefs = await _prefs({
-      customRecipesStorageKey: json.encode([recipe.toJson()]),
-    });
+    final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
-    await tester.pumpWidget(_app(prefs, const MyRecipesScreen()));
+    await tester.pumpWidget(
+      _app(
+        prefs,
+        const MyRecipesScreen(),
+        database: db,
+        customRecipes: [recipe],
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(RecipeCard), findsOneWidget);
@@ -147,12 +181,19 @@ void main() {
   testWidgets('my recipe overview uses recommendation card metadata', (
     tester,
   ) async {
-    final prefs = await _prefs({
-      customRecipesStorageKey: json.encode([_recipe('r1').toJson()]),
-      'inventory_items': json.encode([_ingredient('番茄').toJson()]),
-    });
+    final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
-    await tester.pumpWidget(_app(prefs, const MyRecipesScreen()));
+    await tester.pumpWidget(
+      _app(
+        prefs,
+        const MyRecipesScreen(),
+        database: db,
+        customRecipes: [_recipe('r1')],
+        inventory: [_ingredient('番茄')],
+      ),
+    );
     await tester.pumpAndSettle();
 
     // FK redesign: "15 分钟" with a space, "食材匹配 N/N" replaces "N/N 已备".
@@ -164,12 +205,19 @@ void main() {
   });
 
   testWidgets('saved custom recipe opens detail screen', (tester) async {
-    final prefs = await _prefs({
-      customRecipesStorageKey: json.encode([_recipe('r1').toJson()]),
-      'inventory_items': json.encode([_ingredient('番茄').toJson()]),
-    });
+    final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
-    await tester.pumpWidget(_app(prefs, const MyRecipesScreen()));
+    await tester.pumpWidget(
+      _app(
+        prefs,
+        const MyRecipesScreen(),
+        database: db,
+        customRecipes: [_recipe('r1')],
+        inventory: [_ingredient('番茄')],
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('番茄炒蛋'));
@@ -184,14 +232,21 @@ void main() {
   testWidgets('recipe detail marks ingredient rows using normalized names', (
     tester,
   ) async {
-    final prefs = await _prefs({
-      'inventory_items': json.encode([_ingredient('Chicken').toJson()]),
-    });
+    final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final recipe = _recipe(
       'r1',
     ).copyWith(ingredients: [RecipeIngredient(name: 'chicken', amount: '1份')]);
 
-    await tester.pumpWidget(_app(prefs, RecipeDetailScreen(recipe: recipe)));
+    await tester.pumpWidget(
+      _app(
+        prefs,
+        RecipeDetailScreen(recipe: recipe),
+        database: db,
+        inventory: [_ingredient('Chicken')],
+      ),
+    );
     await tester.pumpAndSettle();
 
     // FK redesign: detail header shows "已有 N/M"; rows use "已有" pill, no "库存中" badge; no missing CTA when all available.
@@ -203,11 +258,18 @@ void main() {
   testWidgets(
     'custom recipe can be deleted from the list menu after confirmation',
     (tester) async {
-      final prefs = await _prefs({
-        customRecipesStorageKey: json.encode([_recipe('r1').toJson()]),
-      });
+      final prefs = await _prefs({});
+      final db = newTestDatabase();
+      addTearDown(db.close);
 
-      await tester.pumpWidget(_app(prefs, const MyRecipesScreen()));
+      await tester.pumpWidget(
+        _app(
+          prefs,
+          const MyRecipesScreen(),
+          database: db,
+          customRecipes: [_recipe('r1')],
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.byType(PopupMenuButton<String>));
@@ -229,11 +291,18 @@ void main() {
   testWidgets('custom recipe detail edit action opens edit form', (
     tester,
   ) async {
-    final prefs = await _prefs({
-      customRecipesStorageKey: json.encode([_recipe('r1').toJson()]),
-    });
+    final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
-    await tester.pumpWidget(_app(prefs, const MyRecipesScreen()));
+    await tester.pumpWidget(
+      _app(
+        prefs,
+        const MyRecipesScreen(),
+        database: db,
+        customRecipes: [_recipe('r1')],
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('番茄炒蛋'));
@@ -248,11 +317,18 @@ void main() {
   testWidgets('custom recipe detail reflects edits saved from detail edit', (
     tester,
   ) async {
-    final prefs = await _prefs({
-      customRecipesStorageKey: json.encode([_recipe('r1').toJson()]),
-    });
+    final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
-    await tester.pumpWidget(_app(prefs, const MyRecipesScreen()));
+    await tester.pumpWidget(
+      _app(
+        prefs,
+        const MyRecipesScreen(),
+        database: db,
+        customRecipes: [_recipe('r1')],
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('番茄炒蛋'));
@@ -276,11 +352,18 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(412, 1200));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      final prefs = await _prefs({
-        customRecipesStorageKey: json.encode([_multiPartRecipe('r2').toJson()]),
-      });
+      final prefs = await _prefs({});
+      final db = newTestDatabase();
+      addTearDown(db.close);
 
-      await tester.pumpWidget(_app(prefs, const MyRecipesScreen()));
+      await tester.pumpWidget(
+        _app(
+          prefs,
+          const MyRecipesScreen(),
+          database: db,
+          customRecipes: [_multiPartRecipe('r2')],
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('番茄鸡蛋汤'));
@@ -320,11 +403,18 @@ void main() {
   testWidgets(
     'custom recipe detail delete action confirms and returns to list',
     (tester) async {
-      final prefs = await _prefs({
-        customRecipesStorageKey: json.encode([_recipe('r1').toJson()]),
-      });
+      final prefs = await _prefs({});
+      final db = newTestDatabase();
+      addTearDown(db.close);
 
-      await tester.pumpWidget(_app(prefs, const MyRecipesScreen()));
+      await tester.pumpWidget(
+        _app(
+          prefs,
+          const MyRecipesScreen(),
+          database: db,
+          customRecipes: [_recipe('r1')],
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('番茄炒蛋'));
@@ -341,8 +431,12 @@ void main() {
 
   testWidgets('new recipe button opens custom recipe form', (tester) async {
     final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
-    await tester.pumpWidget(_app(prefs, const MyRecipesScreen()));
+    await tester.pumpWidget(
+      _app(prefs, const MyRecipesScreen(), database: db),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('新建食谱'));
@@ -371,8 +465,12 @@ void main() {
 
   testWidgets('custom recipe form saves a valid recipe', (tester) async {
     final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
-    await tester.pumpWidget(_app(prefs, const CustomRecipeFormScreen()));
+    await tester.pumpWidget(
+      _app(prefs, const CustomRecipeFormScreen(), database: db),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(find.widgetWithText(TextField, '食谱名称 *'), '葱油拌面');
@@ -400,8 +498,8 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    final saved = json.decode(prefs.getString(customRecipesStorageKey)!);
-    expect(saved.single['name'], '葱油拌面');
+    final saved = await _savedRecipes(db);
+    expect(saved.single.name, '葱油拌面');
   });
 
   testWidgets('custom recipe form offers upload and camera cover actions', (
@@ -468,6 +566,8 @@ void main() {
   ) async {
     const coverImage = 'data:image/png;base64,aGVsbG8=';
     final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       _app(
@@ -478,6 +578,7 @@ void main() {
             return coverImage;
           },
         ),
+        database: db,
       ),
     );
     await tester.pumpAndSettle();
@@ -513,21 +614,26 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    final saved = json.decode(prefs.getString(customRecipesStorageKey)!);
-    expect(saved.single['imageUrl'], coverImage);
+    final saved = await _savedRecipes(db);
+    expect(saved.single.imageUrl, coverImage);
   });
 
   testWidgets('edit custom recipe can clear an existing cover image', (
     tester,
   ) async {
     const imageUrl = 'https://example.com/tomato-eggs.jpg';
-    final prefs = await _prefs({
-      customRecipesStorageKey: json.encode([
-        _recipe('r1').copyWith(imageUrl: imageUrl).toJson(),
-      ]),
-    });
+    final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
-    await tester.pumpWidget(_app(prefs, const MyRecipesScreen()));
+    await tester.pumpWidget(
+      _app(
+        prefs,
+        const MyRecipesScreen(),
+        database: db,
+        customRecipes: [_recipe('r1').copyWith(imageUrl: imageUrl)],
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byType(PopupMenuButton<String>));
@@ -546,8 +652,8 @@ void main() {
     await tester.tap(find.text('保存食谱'));
     await tester.pumpAndSettle();
 
-    final saved = json.decode(prefs.getString(customRecipesStorageKey)!);
-    expect(saved.single['imageUrl'], isNull);
+    final saved = await _savedRecipes(db);
+    expect(saved.single.imageUrl, isNull);
   });
 
   testWidgets('custom recipe form dismisses the keyboard when saving', (
@@ -637,11 +743,18 @@ void main() {
   testWidgets('edit recipe preserves all ingredients and steps', (
     tester,
   ) async {
-    final prefs = await _prefs({
-      customRecipesStorageKey: json.encode([_multiPartRecipe('r2').toJson()]),
-    });
+    final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
-    await tester.pumpWidget(_app(prefs, const MyRecipesScreen()));
+    await tester.pumpWidget(
+      _app(
+        prefs,
+        const MyRecipesScreen(),
+        database: db,
+        customRecipes: [_multiPartRecipe('r2')],
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byType(PopupMenuButton<String>));
@@ -653,22 +766,25 @@ void main() {
     await tester.tap(find.text('保存食谱'));
     await tester.pumpAndSettle();
 
-    final saved = json.decode(prefs.getString(customRecipesStorageKey)!);
-    final recipe = saved.single as Map<String, dynamic>;
-    expect(recipe['id'], 'r2');
-    expect(recipe['name'], '番茄鸡蛋面');
-    expect(recipe['ingredients'], hasLength(2));
-    expect(recipe['ingredients'][0]['name'], '番茄');
-    expect(recipe['ingredients'][1]['name'], '鸡蛋');
-    expect(recipe['steps'], ['切番茄', '炒熟鸡蛋']);
+    final recipe = (await _savedRecipes(db)).single;
+    expect(recipe.id, 'r2');
+    expect(recipe.name, '番茄鸡蛋面');
+    expect(recipe.ingredients, hasLength(2));
+    expect(recipe.ingredients[0].name, '番茄');
+    expect(recipe.ingredients[1].name, '鸡蛋');
+    expect(recipe.steps, ['切番茄', '炒熟鸡蛋']);
   });
 
   testWidgets('custom recipe form ignores repeated save taps while saving', (
     tester,
   ) async {
     final prefs = await _prefs({});
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
-    await tester.pumpWidget(_app(prefs, const CustomRecipeFormScreen()));
+    await tester.pumpWidget(
+      _app(prefs, const CustomRecipeFormScreen(), database: db),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(find.widgetWithText(TextField, '食谱名称 *'), '葱油拌面');
@@ -708,7 +824,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    final saved = json.decode(prefs.getString(customRecipesStorageKey)!);
+    final saved = await _savedRecipes(db);
     expect(saved, hasLength(1));
   });
 
@@ -716,7 +832,11 @@ void main() {
     tester,
   ) async {
     final prefs = await _prefs({});
-    await tester.pumpWidget(_app(prefs, const CustomRecipeFormScreen()));
+    final db = newTestDatabase();
+    addTearDown(db.close);
+    await tester.pumpWidget(
+      _app(prefs, const CustomRecipeFormScreen(), database: db),
+    );
     await tester.pumpAndSettle();
 
     // 名称
@@ -750,7 +870,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(prefs.getString(customRecipesStorageKey), contains('番茄炒蛋'));
+    expect((await _savedRecipes(db)).single.name, '番茄炒蛋');
   });
 
   testWidgets('save with empty name shows inline error', (tester) async {
@@ -843,7 +963,11 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final prefs = await _prefs({});
-    await tester.pumpWidget(_app(prefs, const CustomRecipeFormScreen()));
+    final db = newTestDatabase();
+    addTearDown(db.close);
+    await tester.pumpWidget(
+      _app(prefs, const CustomRecipeFormScreen(), database: db),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(find.widgetWithText(TextField, '食谱名称 *'), '顺序测试');
@@ -894,9 +1018,8 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    final saved = json.decode(prefs.getString(customRecipesStorageKey)!);
-    final ingredients = saved.single['ingredients'] as List<dynamic>;
-    expect(ingredients.map((ingredient) => ingredient['name']).toList(), [
+    final ingredients = (await _savedRecipes(db)).single.ingredients;
+    expect(ingredients.map((ingredient) => ingredient.name).toList(), [
       '第二',
       '第三',
       '第一',
@@ -910,7 +1033,11 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final prefs = await _prefs({});
-    await tester.pumpWidget(_app(prefs, const CustomRecipeFormScreen()));
+    final db = newTestDatabase();
+    addTearDown(db.close);
+    await tester.pumpWidget(
+      _app(prefs, const CustomRecipeFormScreen(), database: db),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(find.widgetWithText(TextField, '食谱名称 *'), '步骤顺序');
@@ -956,8 +1083,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    final saved = json.decode(prefs.getString(customRecipesStorageKey)!);
-    expect(saved.single['steps'], ['第二步', '第三步', '第一步']);
+    expect((await _savedRecipes(db)).single.steps, ['第二步', '第三步', '第一步']);
   });
 }
 
@@ -969,12 +1095,24 @@ Future<SharedPreferences> _prefs(Map<String, Object> values) async {
 Widget _app(
   SharedPreferences prefs,
   Widget child, {
+  AppDatabase? database,
+  List<Recipe>? customRecipes,
+  List<Ingredient>? inventory,
   List<Override> overrides = const [],
   bool useMaterial3 = true,
 }) {
+  // Tests that only render existing state can let `_app` own the in-memory
+  // Drift database; tests that read persistence back pass their own `database`.
+  final db = database ?? newTestDatabase();
+  if (database == null) addTearDown(db.close);
   return ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      ...testStorageOverrides(
+        database: db,
+        customRecipes: customRecipes,
+        inventory: inventory,
+      ),
       notificationServiceProvider.overrideWithValue(NotificationService()),
       householdGatewayProvider.overrideWithValue(HouseholdGatewayStub()),
       ...overrides,
@@ -984,6 +1122,12 @@ Widget _app(
       home: Scaffold(body: child),
     ),
   );
+}
+
+/// Reads back the recipes persisted by the notifier under the local-only
+/// household (empty id), replacing the old `prefs.getString(...)` snapshot.
+Future<List<Recipe>> _savedRecipes(AppDatabase database) {
+  return CustomRecipeRepo(database).loadAllFor('');
 }
 
 class _ThrowingCustomRecipeNotifier extends CustomRecipeNotifier {

@@ -16,6 +16,7 @@ import 'package:fresh_pantry/services/share_intent_service.dart';
 import 'package:fresh_pantry/storage/shared_prefs_storage_adapter.dart';
 import 'helpers/fake_notification_service.dart';
 import 'helpers/household_gateway_stub.dart';
+import 'support/test_database.dart';
 import 'package:fresh_pantry/widgets/common/bottom_nav_bar.dart';
 import 'package:fresh_pantry/widgets/common/top_app_bar.dart';
 import 'package:fresh_pantry/widgets/shared/fk_hero_header.dart';
@@ -29,11 +30,14 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final adapter = SharedPrefsStorageAdapter(prefs);
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
           storageAdapterProvider.overrideWithValue(adapter),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
@@ -76,11 +80,14 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final adapter = SharedPrefsStorageAdapter(prefs);
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
           storageAdapterProvider.overrideWithValue(adapter),
           systemShareSourceProvider.overrideWithValue(InMemoryShareSource()),
           notificationServiceProvider.overrideWithValue(
@@ -121,11 +128,14 @@ void main() {
     final adapter = SharedPrefsStorageAdapter(prefs);
     final shareSource = _CancellableShareSource();
     addTearDown(shareSource.close);
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
           storageAdapterProvider.overrideWithValue(adapter),
           systemShareSourceProvider.overrideWithValue(shareSource),
           notificationServiceProvider.overrideWithValue(

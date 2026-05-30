@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fresh_pantry/models/ingredient.dart';
@@ -8,16 +6,18 @@ import 'package:fresh_pantry/providers/search_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/test_database.dart';
+
 Future<ProviderContainer> _container({List<Ingredient>? inventory}) async {
-  SharedPreferences.setMockInitialValues({
-    'inventory_items': json.encode(
-      (inventory ?? []).map((i) => i.toJson()).toList(),
-    ),
-    'add_history': json.encode({}),
-  });
+  SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
+  final db = newTestDatabase();
+  addTearDown(db.close);
   return ProviderContainer(
-    overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      ...testStorageOverrides(database: db, inventory: inventory ?? const []),
+    ],
   );
 }
 

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fresh_pantry/data/food_categories.dart';
@@ -6,19 +5,29 @@ import 'package:fresh_pantry/models/ingredient.dart';
 import 'package:fresh_pantry/models/storage_area.dart';
 import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
+import 'package:fresh_pantry/storage/inventory_repo.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/test_database.dart';
 
 Future<ProviderContainer> _container({
   required Map<String, dynamic> history,
   required List<Ingredient> inventory,
 }) async {
-  SharedPreferences.setMockInitialValues({
-    'add_history': jsonEncode(history),
-  });
+  SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
+  final db = newTestDatabase();
+  addTearDown(db.close);
+  // add_history is local frequency memory backed by Drift now (not the prefs
+  // blob), so seed it through a preloaded InventoryRepo: hydrate() feeds the
+  // synchronous build() snapshot and saveHistory() populates loadHistory().
+  final repo = InventoryRepo(db);
+  repo.hydrate(inventory);
+  await repo.saveHistory(history);
   return ProviderContainer(overrides: [
     sharedPreferencesProvider.overrideWithValue(prefs),
-    inventorySeedProvider.overrideWithValue(inventory),
+    appDatabaseProvider.overrideWithValue(db),
+    inventoryRepoProvider.overrideWithValue(repo),
   ]);
 }
 

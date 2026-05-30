@@ -7,6 +7,8 @@ import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/test_database.dart';
+
 Ingredient _ing({
   required String qty,
   DateTime? expiry,
@@ -27,8 +29,11 @@ void main() {
   test('mergeBatch sums qty and keeps earlier expiry', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final c = ProviderContainer(overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      appDatabaseProvider.overrideWithValue(db),
       inventorySeedProvider.overrideWithValue([
         _ing(qty: '1', expiry: DateTime(2026, 5, 30)), // 0: later expiry
         _ing(qty: '1', expiry: DateTime(2026, 5, 20)), // 1: earlier expiry
@@ -46,8 +51,11 @@ void main() {
   test('mergeBatch sourceIndex > targetIndex: sums qty and keeps earlier expiry', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final c = ProviderContainer(overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      appDatabaseProvider.overrideWithValue(db),
       inventorySeedProvider.overrideWithValue([
         _ing(qty: '3', expiry: DateTime(2026, 6, 1)), // 0: target
         _ing(qty: '2', expiry: DateTime(2026, 5, 15)), // 1: source
@@ -65,8 +73,11 @@ void main() {
   test('mergeBatch no-op when same index', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final c = ProviderContainer(overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      appDatabaseProvider.overrideWithValue(db),
       inventorySeedProvider.overrideWithValue([
         _ing(qty: '2', expiry: DateTime(2026, 5, 20)),
       ]),
@@ -79,8 +90,11 @@ void main() {
   test('mergeBatch no-op when out of range', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final c = ProviderContainer(overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      appDatabaseProvider.overrideWithValue(db),
       inventorySeedProvider.overrideWithValue([
         _ing(qty: '1'),
       ]),
@@ -103,9 +117,12 @@ void main() {
       storage: IconType.fridge,
     );
     final b = a.copyWith(unit: '瓶');
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final c = ProviderContainer(overrides: [
       sharedPreferencesProvider.overrideWithValue(
           await SharedPreferences.getInstance()),
+      appDatabaseProvider.overrideWithValue(db),
       inventorySeedProvider.overrideWithValue([a, b]),
     ]);
     final n = c.read(inventoryProvider.notifier);
@@ -127,8 +144,11 @@ void main() {
       storage: IconType.fridge,
     );
     final b = a.copyWith(storage: IconType.pantry);
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final c = ProviderContainer(overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      appDatabaseProvider.overrideWithValue(db),
       inventorySeedProvider.overrideWithValue([a, b]),
     ]);
     final n = c.read(inventoryProvider.notifier);
@@ -153,8 +173,11 @@ void main() {
     );
     final target = source.copyWith(
         quantity: '2', expiryDate: DateTime(2026, 5, 20));
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final c = ProviderContainer(overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      appDatabaseProvider.overrideWithValue(db),
       inventorySeedProvider.overrideWithValue([source, target]),
     ]);
     await c.read(inventoryProvider.notifier).mergeBatch(0, 1);

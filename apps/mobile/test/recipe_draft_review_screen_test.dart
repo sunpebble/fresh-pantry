@@ -8,6 +8,7 @@ import 'package:fresh_pantry/providers/custom_recipe_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/recipe_draft_review_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'support/test_database.dart';
 
 RecipeDraft _stub() => RecipeDraft(
   sourceUrl: 'https://x',
@@ -29,8 +30,13 @@ RecipeDraft _stub() => RecipeDraft(
 Future<ProviderContainer> _container() async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
+  final db = newTestDatabase();
+  addTearDown(db.close);
   return ProviderContainer(
-    overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      ...testStorageOverrides(database: db),
+    ],
   );
 }
 

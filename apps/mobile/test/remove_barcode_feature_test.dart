@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// `Override` (used by the `_overrides` helper below) is re-exported by
+// flutter_riverpod's `misc.dart`, not the main barrel, in Riverpod 3.x.
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fresh_pantry/household/household_session_controller.dart';
 import 'package:fresh_pantry/providers/inventory_provider.dart';
@@ -12,6 +15,7 @@ import 'package:fresh_pantry/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'helpers/household_gateway_stub.dart';
+import 'support/test_database.dart';
 
 void main() {
   setUpAll(() {
@@ -25,7 +29,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: _overrides(prefs),
         child: const MaterialApp(home: Scaffold(body: AddIngredientScreen())),
       ),
     );
@@ -44,7 +48,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: _overrides(prefs),
         child: MaterialApp(
           theme: AppTheme.lightTheme,
           home: const Scaffold(body: AddIngredientScreen()),
@@ -83,7 +87,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: _overrides(prefs),
         child: const MaterialApp(home: Scaffold(body: AddIngredientScreen())),
       ),
     );
@@ -116,7 +120,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: _overrides(prefs),
         child: const MaterialApp(home: Scaffold(body: AddIngredientScreen())),
       ),
     );
@@ -150,7 +154,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
+          ..._overrides(prefs),
           recentAdditionsProvider.overrideWithValue([]),
           householdSessionControllerProvider.overrideWith(
             (ref) => HouseholdSessionController(
@@ -174,12 +178,20 @@ void main() {
 }
 
 Future<SharedPreferences> _prefs() async {
-  SharedPreferences.setMockInitialValues({
-    'inventory_items': '[]',
-    'shopping_items': '[]',
-    'add_history': '{}',
-  });
+  SharedPreferences.setMockInitialValues({});
   return SharedPreferences.getInstance();
+}
+
+/// Storage overrides shared by every test here: SharedPreferences for the
+/// settings/cache repos plus a fresh in-memory Drift database (auto-closed)
+/// for the inventory/shopping notifiers that now read from Drift.
+List<Override> _overrides(SharedPreferences prefs) {
+  final db = newTestDatabase();
+  addTearDown(db.close);
+  return [
+    sharedPreferencesProvider.overrideWithValue(prefs),
+    ...testStorageOverrides(database: db),
+  ];
 }
 
 String _selectedCategory(WidgetTester tester) {

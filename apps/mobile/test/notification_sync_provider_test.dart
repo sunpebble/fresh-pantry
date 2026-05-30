@@ -16,6 +16,8 @@ import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/test_database.dart';
+
 void main() {
   test('does not sync when notification permission is denied', () async {
     final container = await _container(
@@ -115,10 +117,12 @@ void main() {
     });
     final prefs = await SharedPreferences.getInstance();
     final service = _RecordingNotificationService(permission: true);
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
-        inventorySeedProvider.overrideWithValue([]),
+        ...testStorageOverrides(database: db, inventory: []),
         notificationServiceProvider.overrideWithValue(service),
       ],
     );
@@ -135,10 +139,12 @@ void main() {
     });
     final prefs = await SharedPreferences.getInstance();
     final service = _RecordingNotificationService(permission: true);
+    final db = newTestDatabase();
+    addTearDown(db.close);
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
-        inventorySeedProvider.overrideWithValue([]),
+        ...testStorageOverrides(database: db, inventory: []),
         notificationServiceProvider.overrideWithValue(service),
       ],
     );
@@ -180,10 +186,12 @@ Future<ProviderContainer> _container({
 }) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
+  final db = newTestDatabase();
+  addTearDown(db.close);
   return ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
-      inventorySeedProvider.overrideWithValue(inventory),
+      ...testStorageOverrides(database: db, inventory: inventory),
       notificationServiceProvider.overrideWithValue(service),
       ...overrides,
     ],

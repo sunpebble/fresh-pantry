@@ -10,6 +10,7 @@ import 'package:fresh_pantry/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'helpers/household_gateway_stub.dart';
+import 'support/test_database.dart';
 
 void main() {
   testWidgets('debug settings include Sentry verification action', (
@@ -17,11 +18,14 @@ void main() {
   ) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
           notificationServiceProvider.overrideWithValue(NotificationService()),
           householdGatewayProvider.overrideWithValue(HouseholdGatewayStub()),
         ],
@@ -44,6 +48,8 @@ void main() {
       'inventory_items': '[{"name":"苹果"}]',
     });
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     String? capturedClipboard;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -58,6 +64,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
           notificationServiceProvider.overrideWithValue(NotificationService()),
           householdGatewayProvider.overrideWithValue(HouseholdGatewayStub()),
         ],
@@ -97,6 +104,8 @@ void main() {
       'inventory_items': '[{"name":"旧"}]',
     });
     final prefs = await SharedPreferences.getInstance();
+    final db = newTestDatabase();
+    addTearDown(db.close);
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -110,6 +119,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db),
           notificationServiceProvider.overrideWithValue(NotificationService()),
           householdGatewayProvider.overrideWithValue(HouseholdGatewayStub()),
         ],

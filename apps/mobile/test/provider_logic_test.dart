@@ -2,20 +2,25 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fresh_pantry/data/food_categories.dart';
 import 'package:fresh_pantry/models/ingredient.dart';
 import 'package:fresh_pantry/models/recipe.dart';
 import 'package:fresh_pantry/models/shopping_item.dart';
 import 'package:fresh_pantry/models/storage_area.dart';
-
-import 'package:fresh_pantry/data/food_categories.dart';
 import 'package:fresh_pantry/providers/custom_recipe_provider.dart';
 import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/recipe_provider.dart';
 import 'package:fresh_pantry/providers/shopping_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/services/themealdb_service.dart';
+import 'package:fresh_pantry/storage/drift/app_database.dart' show AppDatabase;
+import 'package:fresh_pantry/storage/inventory_repo.dart';
+import 'package:fresh_pantry/storage/shopping_item_normalizer.dart';
+import 'package:fresh_pantry/storage/shopping_repo.dart';
 import 'package:fresh_pantry/utils/expiry_calculator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/test_database.dart';
 
 void main() {
   group('provider rebuilds', () {
@@ -23,12 +28,16 @@ void main() {
       'InventoryNotifier can rebuild without reinitialization errors',
       () async {
         SharedPreferences.setMockInitialValues({
-          'inventory_items': '[]',
           'add_history': json.encode({}),
         });
         final prefs = await SharedPreferences.getInstance();
+        final db = newTestDatabase();
+        addTearDown(db.close);
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(database: db, inventory: const []),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -43,10 +52,15 @@ void main() {
     test(
       'ShoppingNotifier can rebuild without reinitialization errors',
       () async {
-        SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
+        SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
+        final db = newTestDatabase();
+        addTearDown(db.close);
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(database: db, shopping: const []),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -63,13 +77,18 @@ void main() {
     test(
       'saves inventory when add history contains old numeric counts',
       () async {
-        SharedPreferences.setMockInitialValues({
-          'inventory_items': '[]',
-          'add_history': json.encode({'牛奶': 1}),
-        });
+        SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
+        final db = newTestDatabase();
+        addTearDown(db.close);
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            appDatabaseProvider.overrideWithValue(db),
+            inventoryRepoProvider.overrideWithValue(
+              await _seededInventoryRepo(db, history: const {'牛奶': 1}),
+            ),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -78,12 +97,11 @@ void main() {
           completes,
         );
 
-        final savedInventory = json.decode(prefs.getString('inventory_items')!);
-        expect(savedInventory, isA<List<dynamic>>());
+        final savedInventory = await _persistedInventory(db);
         expect(savedInventory, hasLength(1));
-        expect(savedInventory.single['name'], '牛奶');
+        expect(savedInventory.single.name, '牛奶');
 
-        final history = json.decode(prefs.getString('add_history')!);
+        final history = await _persistedHistory(db);
         expect(history['牛奶']['count'], 2);
       },
     );
@@ -91,20 +109,28 @@ void main() {
     test(
       'updates watched frequent items immediately after add completes',
       () async {
-        SharedPreferences.setMockInitialValues({
-          'inventory_items': '[]',
-          'add_history': json.encode({
-            '鸡蛋': {
-              'count': 1,
-              'category': '蛋类',
-              'storage': 'fridge',
-              'unit': '个',
-            },
-          }),
-        });
+        SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
+        final db = newTestDatabase();
+        addTearDown(db.close);
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            appDatabaseProvider.overrideWithValue(db),
+            inventoryRepoProvider.overrideWithValue(
+              await _seededInventoryRepo(
+                db,
+                history: const {
+                  '鸡蛋': {
+                    'count': 1,
+                    'category': '蛋类',
+                    'storage': 'fridge',
+                    'unit': '个',
+                  },
+                },
+              ),
+            ),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -126,12 +152,16 @@ void main() {
       'updates inventory state before the returned future completes',
       () async {
         SharedPreferences.setMockInitialValues({
-          'inventory_items': '[]',
           'add_history': json.encode({}),
         });
         final prefs = await SharedPreferences.getInstance();
+        final db = newTestDatabase();
+        addTearDown(db.close);
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(database: db, inventory: const []),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -148,15 +178,22 @@ void main() {
 
     test('exposes only the fixed inventory filter categories', () async {
       SharedPreferences.setMockInitialValues({
-        'inventory_items': json.encode([
-          _ingredient('番茄').copyWith(category: '蔬菜').toJson(),
-          _ingredient('自定义食材').copyWith(category: '自定义分类').toJson(),
-        ]),
         'add_history': json.encode({}),
       });
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [
+              _ingredient('番茄').copyWith(category: '蔬菜'),
+              _ingredient('自定义食材').copyWith(category: '自定义分类'),
+            ],
+          ),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -170,16 +207,27 @@ void main() {
       'loads valid inventory rows when persisted list has bad rows',
       () async {
         SharedPreferences.setMockInitialValues({
-          'inventory_items': json.encode([
-            _ingredient('番茄').toJson(),
-            'bad row',
-            {'name': '牛奶', 'quantity': '1'},
-          ]),
           'add_history': json.encode({}),
         });
         final prefs = await SharedPreferences.getInstance();
+        final db = newTestDatabase();
+        addTearDown(db.close);
+        // Drift seeds are typed Ingredients, so the only representable
+        // "imperfect" row is a partial map that fromJson backfills with
+        // defaults. (Non-map junk rows are now guarded at the Drift row
+        // codec layer, covered by inventory_repo_test.) The loader must still
+        // surface every decodable row in order.
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(
+              database: db,
+              inventory: [
+                _ingredient('番茄'),
+                Ingredient.fromJson(const {'name': '牛奶', 'quantity': '1'}),
+              ],
+            ),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -192,12 +240,16 @@ void main() {
 
     test('shows newly added items first in recent additions', () async {
       SharedPreferences.setMockInitialValues({
-        'inventory_items': '[]',
         'add_history': json.encode({}),
       });
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db, inventory: const []),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -209,12 +261,16 @@ void main() {
 
     test('stamps newly added items with an added time', () async {
       SharedPreferences.setMockInitialValues({
-        'inventory_items': '[]',
         'add_history': json.encode({}),
       });
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db, inventory: const []),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -223,8 +279,8 @@ void main() {
       final item = container.read(inventoryProvider).single;
       expect(item.addedAt, isNotNull);
 
-      final savedInventory = json.decode(prefs.getString('inventory_items')!);
-      expect(savedInventory.single['addedAt'], isA<String>());
+      final savedInventory = await _persistedInventory(db);
+      expect(savedInventory.single.addedAt, isNotNull);
     });
 
     test('recalculates freshness from saved expiry dates on load', () async {
@@ -242,13 +298,18 @@ void main() {
         expiryDate: today.add(const Duration(days: 1)),
         addedAt: today.subtract(const Duration(days: 2)),
       );
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': json.encode([savedItem.toJson()]),
-        'add_history': json.encode({}),
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          appDatabaseProvider.overrideWithValue(db),
+          inventoryRepoProvider.overrideWithValue(
+            await _seededInventoryRepo(db, inventory: [savedItem]),
+          ),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -278,13 +339,18 @@ void main() {
           addedAt: today,
           shelfLifeDays: 7,
         );
-        SharedPreferences.setMockInitialValues({
-          'inventory_items': json.encode([savedItem.toJson()]),
-          'add_history': json.encode({}),
-        });
+        SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
+        final db = newTestDatabase();
+        addTearDown(db.close);
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            appDatabaseProvider.overrideWithValue(db),
+            inventoryRepoProvider.overrideWithValue(
+              await _seededInventoryRepo(db, inventory: [savedItem]),
+            ),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -303,12 +369,16 @@ void main() {
         final addedAt = DateTime.utc(2026, 4, 26, 8);
         final original = _ingredient('牛奶').copyWith(addedAt: addedAt);
         SharedPreferences.setMockInitialValues({
-          'inventory_items': json.encode([original.toJson()]),
           'add_history': json.encode({}),
         });
         final prefs = await SharedPreferences.getInstance();
+        final db = newTestDatabase();
+        addTearDown(db.close);
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(database: db, inventory: [original]),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -326,12 +396,16 @@ void main() {
       'records concurrent duplicate adds without losing history count',
       () async {
         SharedPreferences.setMockInitialValues({
-          'inventory_items': '[]',
           'add_history': json.encode({}),
         });
         final prefs = await SharedPreferences.getInstance();
+        final db = newTestDatabase();
+        addTearDown(db.close);
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(database: db, inventory: const []),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -343,7 +417,7 @@ void main() {
             .add(_ingredient('牛奶'));
         await Future.wait([first, second]);
 
-        final history = json.decode(prefs.getString('add_history')!);
+        final history = await _persistedHistory(db);
         expect(history['牛奶']['count'], 2);
 
         // Both items must end up persisted, in the order they were enqueued.
@@ -351,10 +425,9 @@ void main() {
         expect(inventoryState, hasLength(2));
         expect(inventoryState.map((item) => item.name), ['牛奶', '牛奶']);
 
-        final savedInventory =
-            json.decode(prefs.getString('inventory_items')!) as List<dynamic>;
+        final savedInventory = await _persistedInventory(db);
         expect(savedInventory, hasLength(2));
-        expect(savedInventory.map((row) => (row as Map)['name']).toList(), [
+        expect(savedInventory.map((item) => item.name).toList(), [
           '牛奶',
           '牛奶',
         ]);
@@ -364,21 +437,34 @@ void main() {
     test(
       'ignores malformed frequent item fields without hiding valid items',
       () async {
-        SharedPreferences.setMockInitialValues({
-          'inventory_items': '[]',
-          'add_history': json.encode({
-            '坏数据': {'count': 4, 'category': 123, 'storage': 456, 'unit': false},
-            '鸡蛋': {
-              'count': 2,
-              'category': '蛋类',
-              'storage': 'fridge',
-              'unit': '个',
-            },
-          }),
-        });
+        SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
+        final db = newTestDatabase();
+        addTearDown(db.close);
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            appDatabaseProvider.overrideWithValue(db),
+            inventoryRepoProvider.overrideWithValue(
+              await _seededInventoryRepo(
+                db,
+                history: const {
+                  '坏数据': {
+                    'count': 4,
+                    'category': 123,
+                    'storage': 456,
+                    'unit': false,
+                  },
+                  '鸡蛋': {
+                    'count': 2,
+                    'category': '蛋类',
+                    'storage': 'fridge',
+                    'unit': '个',
+                  },
+                },
+              ),
+            ),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -391,23 +477,29 @@ void main() {
     test(
       'inserts inventory item at the requested index without recording add history',
       () async {
-        SharedPreferences.setMockInitialValues({
-          'inventory_items': json.encode([
-            _ingredient('牛奶').toJson(),
-            _ingredient('番茄').toJson(),
-          ]),
-          'add_history': json.encode({
-            '鸡蛋': {
-              'count': 1,
-              'category': '蛋类',
-              'storage': 'fridge',
-              'unit': '个',
-            },
-          }),
-        });
+        SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
+        final db = newTestDatabase();
+        addTearDown(db.close);
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            appDatabaseProvider.overrideWithValue(db),
+            inventoryRepoProvider.overrideWithValue(
+              await _seededInventoryRepo(
+                db,
+                inventory: [_ingredient('牛奶'), _ingredient('番茄')],
+                history: const {
+                  '鸡蛋': {
+                    'count': 1,
+                    'category': '蛋类',
+                    'storage': 'fridge',
+                    'unit': '个',
+                  },
+                },
+              ),
+            ),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -420,7 +512,7 @@ void main() {
           '鸡蛋',
           '番茄',
         ]);
-        final history = json.decode(prefs.getString('add_history')!);
+        final history = await _persistedHistory(db);
         expect(history['鸡蛋']['count'], 1);
       },
     );
@@ -466,26 +558,34 @@ void main() {
 
   group('frequentItemsProvider caps and filters', () {
     test('excludes items with count < 2', () async {
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': '[]',
-        'add_history': json.encode({
-          '常用': {
-            'count': 3,
-            'category': '其他',
-            'storage': 'fridge',
-            'unit': '个',
-          },
-          '单次': {
-            'count': 1,
-            'category': '其他',
-            'storage': 'fridge',
-            'unit': '个',
-          },
-        }),
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          appDatabaseProvider.overrideWithValue(db),
+          inventoryRepoProvider.overrideWithValue(
+            await _seededInventoryRepo(
+              db,
+              history: const {
+                '常用': {
+                  'count': 3,
+                  'category': '其他',
+                  'storage': 'fridge',
+                  'unit': '个',
+                },
+                '单次': {
+                  'count': 1,
+                  'category': '其他',
+                  'storage': 'fridge',
+                  'unit': '个',
+                },
+              },
+            ),
+          ),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -504,13 +604,18 @@ void main() {
             'unit': '个',
           },
       };
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': '[]',
-        'add_history': json.encode(history),
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          appDatabaseProvider.overrideWithValue(db),
+          inventoryRepoProvider.overrideWithValue(
+            await _seededInventoryRepo(db, history: history),
+          ),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -532,15 +637,21 @@ void main() {
 
   group('ShoppingNotifier.load', () {
     test('deduplicates persisted item names', () async {
-      SharedPreferences.setMockInitialValues({
-        'shopping_items': json.encode([
-          _shoppingItem('si_1', '牛奶').toJson(),
-          _shoppingItem('si_2', '牛奶').toJson(),
-        ]),
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          appDatabaseProvider.overrideWithValue(db),
+          shoppingRepoProvider.overrideWithValue(
+            _seededShoppingRepo(db, [
+              _shoppingItem('si_1', '牛奶'),
+              _shoppingItem('si_2', '牛奶'),
+            ]),
+          ),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -550,16 +661,24 @@ void main() {
     test(
       'loads valid shopping rows when persisted list has bad rows',
       () async {
-        SharedPreferences.setMockInitialValues({
-          'shopping_items': json.encode([
-            _shoppingItem('si_1', '牛奶').toJson(),
-            42,
-            {'id': 'si_2', 'name': '鸡蛋'},
-          ]),
-        });
+        SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
+        final db = newTestDatabase();
+        addTearDown(db.close);
+        // Drift seeds are typed ShoppingItems; non-map junk rows are guarded at
+        // the row codec layer (covered by shopping_repo_test). The only
+        // representable imperfect row is a partial map fromJson backfills.
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(
+              database: db,
+              shopping: [
+                _shoppingItem('si_1', '牛奶'),
+                ShoppingItem.fromJson(const {'id': 'si_2', 'name': '鸡蛋'}),
+              ],
+            ),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -571,15 +690,21 @@ void main() {
     );
 
     test('assigns distinct ids when persisted items reuse an id', () async {
-      SharedPreferences.setMockInitialValues({
-        'shopping_items': json.encode([
-          _shoppingItem('si_same', '牛奶').toJson(),
-          _shoppingItem('si_same', '鸡蛋').toJson(),
-        ]),
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          appDatabaseProvider.overrideWithValue(db),
+          shoppingRepoProvider.overrideWithValue(
+            _seededShoppingRepo(db, [
+              _shoppingItem('si_same', '牛奶'),
+              _shoppingItem('si_same', '鸡蛋'),
+            ]),
+          ),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -591,10 +716,15 @@ void main() {
 
   group('ShoppingNotifier.add', () {
     test('ignores duplicate item names', () async {
-      SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db, shopping: const []),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -608,17 +738,22 @@ void main() {
       final items = container.read(shoppingProvider);
       expect(items.map((item) => item.name), ['牛奶']);
 
-      final savedItems = json.decode(prefs.getString('shopping_items')!);
+      final savedItems = await _persistedShopping(db);
       expect(savedItems, hasLength(1));
     });
 
     test(
       'keeps different items independent when added with the same id',
       () async {
-        SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
+        SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
+        final db = newTestDatabase();
+        addTearDown(db.close);
         final container = ProviderContainer(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(database: db, shopping: const []),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -647,10 +782,15 @@ void main() {
 
   group('ShoppingNotifier.remove', () {
     test('remove with unknown id does not crash or change state', () async {
-      SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db, shopping: const []),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -663,12 +803,18 @@ void main() {
     });
 
     test('toggleCheck toggles checked state persistently', () async {
-      SharedPreferences.setMockInitialValues({
-        'shopping_items': json.encode([_shoppingItem('si_1', '苹果').toJson()]),
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            shopping: [_shoppingItem('si_1', '苹果')],
+          ),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -682,10 +828,15 @@ void main() {
 
   group('ShoppingNotifier.addFromSuggestion', () {
     test('ignores duplicate suggestions by name', () async {
-      SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db, shopping: const []),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -696,10 +847,15 @@ void main() {
     });
 
     test('returns false for blank input', () async {
-      SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db, shopping: const []),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -711,10 +867,15 @@ void main() {
     });
 
     test('uses stable food knowledge categories for suggestions', () async {
-      SharedPreferences.setMockInitialValues({'shopping_items': '[]'});
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db, shopping: const []),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -747,22 +908,28 @@ void main() {
     });
 
     test('preserves legacy freezer storage as a freezer area', () async {
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': json.encode([
-          {
-            'name': '旧冷冻食材',
-            'quantity': '1',
-            'unit': '份',
-            'imageUrl': '',
-            'freshnessPercent': 1.0,
-            'state': 'fresh',
-            'storage': 'freezer',
-          },
-        ]),
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [
+              Ingredient.fromJson(const {
+                'name': '旧冷冻食材',
+                'quantity': '1',
+                'unit': '份',
+                'imageUrl': '',
+                'freshnessPercent': 1.0,
+                'state': 'fresh',
+                'storage': 'freezer',
+              }),
+            ],
+          ),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -868,14 +1035,17 @@ void main() {
 
   group('recipesProvider cache', () {
     test('returns no recipes without inventory terms', () async {
-      SharedPreferences.setMockInitialValues({'inventory_items': '[]'});
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final client = _FakeMealDbApi(
         onSearch: (_) => throw StateError('network should not be called'),
       );
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(database: db, inventory: const []),
           mealDbApiProvider.overrideWithValue(client),
         ],
       );
@@ -890,18 +1060,23 @@ void main() {
     test('uses cached TheMealDB recipes without calling the client', () async {
       final cachedRecipe = _recipe('mealdb_cached', '缓存番茄菜谱', ['tomato']);
       SharedPreferences.setMockInitialValues({
-        'inventory_items': json.encode([_ingredient('番茄').toJson()]),
         recipeDetailsCacheStorageKey: json.encode({
           recipeSearchCacheKeyFor('tomato'): [cachedRecipe.toJson()],
         }),
       });
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final client = _FakeMealDbApi(
         onSearch: (_) => throw StateError('network should not be called'),
       );
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [_ingredient('番茄')],
+          ),
           mealDbApiProvider.overrideWithValue(client),
         ],
       );
@@ -915,14 +1090,18 @@ void main() {
 
     test('saves TheMealDB recipes after a cache miss', () async {
       final fetchedRecipe = _recipe('mealdb_fetched', '联网番茄菜谱', ['tomato']);
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': json.encode([_ingredient('番茄').toJson()]),
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final client = _FakeMealDbApi(onSearch: (_) async => [fetchedRecipe]);
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [_ingredient('番茄')],
+          ),
           mealDbApiProvider.overrideWithValue(client),
         ],
       );
@@ -943,16 +1122,20 @@ void main() {
     test(
       'does not fall back to demo recipes when TheMealDB client throws',
       () async {
-        SharedPreferences.setMockInitialValues({
-          'inventory_items': json.encode([_ingredient('番茄').toJson()]),
-        });
+        SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
+        final db = newTestDatabase();
+        addTearDown(db.close);
         final client = _FakeMealDbApi(
           onSearch: (_) => throw StateError('service unavailable'),
         );
         final container = ProviderContainer(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
+            ...testStorageOverrides(
+              database: db,
+              inventory: [_ingredient('番茄')],
+            ),
             mealDbApiProvider.overrideWithValue(client),
           ],
         );
@@ -966,16 +1149,20 @@ void main() {
     );
 
     test('recipesFetchProvider flags fetchFailed when every term fails', () async {
-      SharedPreferences.setMockInitialValues({
-        'inventory_items': json.encode([_ingredient('番茄').toJson()]),
-      });
+      SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final db = newTestDatabase();
+      addTearDown(db.close);
       final client = _FakeMealDbApi(
         onSearch: (_) => throw StateError('service unavailable'),
       );
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          ...testStorageOverrides(
+            database: db,
+            inventory: [_ingredient('番茄')],
+          ),
           mealDbApiProvider.overrideWithValue(client),
         ],
       );
@@ -993,23 +1180,80 @@ Future<ProviderContainer> _containerWithInventory(
   List<Ingredient> inventory, {
   List<Recipe>? recipes,
   List<Recipe>? customRecipes,
+  AppDatabase? database,
 }) async {
-  SharedPreferences.setMockInitialValues({
-    'inventory_items': json.encode(
-      inventory.map((item) => item.toJson()).toList(),
-    ),
-    if (customRecipes != null)
-      customRecipesStorageKey: json.encode(
-        customRecipes.map((recipe) => recipe.toJson()).toList(),
-      ),
-  });
+  SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
+  final db = database ?? newTestDatabase();
+  if (database == null) addTearDown(db.close);
   return ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      ...testStorageOverrides(
+        database: db,
+        inventory: inventory,
+        customRecipes: customRecipes,
+      ),
       if (recipes != null) recipesProvider.overrideWith((ref) async => recipes),
     ],
   );
+}
+
+/// Reads inventory rows back from the Drift database for the local-only ('')
+/// household scope, verifying what was actually persisted (replaces the old
+/// `prefs.getString('inventory_items')` read now that inventory lives in
+/// Drift). `loadAll()` only returns the synchronous in-memory seed, so a fresh
+/// repo must hit disk via `loadAllFor` to observe what the notifier wrote.
+Future<List<Ingredient>> _persistedInventory(AppDatabase db) {
+  return InventoryRepo(db).loadAllFor('');
+}
+
+/// Reads shopping rows back from the Drift database.
+Future<List<ShoppingItem>> _persistedShopping(AppDatabase db) {
+  return ShoppingRepo(db).loadAllFor('');
+}
+
+/// Reads add-history back from the Drift database (frequency memory moved off
+/// prefs onto Drift's add_history_entries table). A fresh repo must hydrate
+/// from disk before `loadHistory()` returns the persisted map.
+Future<Map<String, dynamic>> _persistedHistory(AppDatabase db) async {
+  final repo = InventoryRepo(db);
+  await repo.hydrateHistory();
+  return repo.loadHistory();
+}
+
+/// Builds an [InventoryRepo] that mirrors how `main.dart` wires the production
+/// repo: persist the seed to Drift, then hydrate the synchronous-build() seed
+/// from `loadAllFor('')` so the notifier sees the SAME normalized + freshness-
+/// refreshed list production would (the raw seed provider path skips that
+/// transform). Add-history is persisted to Drift + cached in memory. Used
+/// whenever a test asserts load-time normalization or seeds `add_history`.
+Future<InventoryRepo> _seededInventoryRepo(
+  AppDatabase db, {
+  List<Ingredient> inventory = const [],
+  Map<String, dynamic> history = const {},
+}) async {
+  final repo = InventoryRepo(db);
+  await repo.saveItems('', inventory);
+  repo.hydrate(await repo.loadAllFor(''));
+  await repo.saveHistory(history);
+  return repo;
+}
+
+/// Builds a [ShoppingRepo] whose synchronous build() seed is the dedup +
+/// category-normalized list production yields on load (the raw seed provider
+/// path skips that transform). Mirrors `loadAllFor`'s normalization without
+/// round-tripping through Drift's id-PK insertOrReplace, which would silently
+/// collapse rows that deliberately reuse an id (a tested edge case).
+ShoppingRepo _seededShoppingRepo(
+  AppDatabase db,
+  List<ShoppingItem> shopping,
+) {
+  final repo = ShoppingRepo(db);
+  repo.hydrate(
+    deduplicateShoppingItems(shopping.map(normalizeShoppingItemCategory)),
+  );
+  return repo;
 }
 
 Ingredient _ingredient(
