@@ -98,7 +98,7 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
     state = updated;
     try {
       await queuePersistence(() async {
-        await _save(updated);
+        await _repo.upsert(activeHouseholdId, itemToAdd);
         await ref.read(_addHistoryProvider.notifier).record(itemToAdd);
       }, rethrowError: true);
     } catch (_) {

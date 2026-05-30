@@ -56,6 +56,39 @@ class InventoryRepo {
     });
   }
 
+  /// 按 id 增量 upsert 一行(热路径，避免全量 delete-all + insert-all)。
+  ///
+  /// InventoryItems 主键是 surrogate `rowPk`，不是 `id`，所以
+  /// `insertOnConflictUpdate` 无法按 id 去重——必须事务内先删该 household 作用域
+  /// 内同 id 的行，再插入，保证同一 id 重复 upsert 不留多行。
+  Future<void> upsert(String householdId, Ingredient item) {
+    return _db.transaction(() async {
+      await (_db.delete(_db.inventoryItems)
+            ..where(
+              (t) => t.householdId.equals(householdId) & t.id.equals(item.id),
+            ))
+          .go();
+      await _db
+          .into(_db.inventoryItems)
+          .insert(inventoryCompanionFor(householdId, item));
+    });
+  }
+
+  /// 本地物理删除该 household 作用域内的一行(同步层另发软删除 op 给远端)。
+  Future<void> softDelete(String householdId, String id) {
+    return (_db.delete(_db.inventoryItems)
+          ..where((t) => t.householdId.equals(householdId) & t.id.equals(id)))
+        .go();
+  }
+
+  /// 响应式读取该 household 作用域的全部行(本 Task 仅提供 + 单测覆盖，未接 UI)。
+  Stream<List<Ingredient>> watchAllFor(String householdId) {
+    return (_db.select(_db.inventoryItems)
+          ..where((t) => t.householdId.equals(householdId)))
+        .watch()
+        .map((rows) => rows.map(ingredientFromRow).toList());
+  }
+
   // --- add_history (本地频次记忆，非同步) ---
   Map<String, dynamic> loadHistory() => _history;
 
