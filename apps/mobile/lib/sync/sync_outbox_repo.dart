@@ -1,64 +1,60 @@
-import 'dart:convert';
+import 'package:drift/drift.dart';
 
-import '../storage/storage_adapter.dart';
+import '../storage/drift/app_database.dart';
+import '../storage/drift/entity_row_codec.dart';
 import 'sync_operation.dart';
 
 class SyncOutboxRepo {
-  SyncOutboxRepo(this._adapter);
+  SyncOutboxRepo(this._db);
 
-  static const storageKey = 'sync_outbox_v1';
+  final AppDatabase _db;
+  List<SyncOperation> _cache = const [];
 
-  final StorageAdapter _adapter;
+  /// 预读 outbox 到内存(main.dart / 测试 setUp 调用)。
+  Future<void> hydratePending() async {
+    _cache = await _readAll();
+  }
 
-  List<SyncOperation> loadPending() {
-    try {
-      return _loadPending();
-    } catch (_) {
-      return const [];
+  /// 同步读取(供 enqueueSync / household_content_sync 的同步路径)。
+  List<SyncOperation> loadPending() => _cache;
+
+  Future<void> enqueue(SyncOperation operation) async {
+    await _db.into(_db.syncOutbox).insertOnConflictUpdate(
+          outboxCompanionFor(operation),
+        );
+    _cache = await _readAll();
+  }
+
+  Future<void> removeAcknowledged(Set<String> operationIds) async {
+    if (operationIds.isEmpty) return;
+    await (_db.delete(_db.syncOutbox)
+          ..where((t) => t.id.isIn(operationIds)))
+        .go();
+    _cache = await _readAll();
+  }
+
+  Future<void> replaceAll(List<SyncOperation> operations) async {
+    await _db.transaction(() async {
+      await _db.delete(_db.syncOutbox).go();
+      await _db.batch((b) {
+        b.insertAll(_db.syncOutbox, operations.map(outboxCompanionFor));
+      });
+    });
+    _cache = await _readAll();
+  }
+
+  Future<List<SyncOperation>> _readAll() async {
+    final rows = await (_db.select(_db.syncOutbox)
+          ..orderBy([(t) => OrderingTerm(expression: t.createdAt)]))
+        .get();
+    final ops = <SyncOperation>[];
+    for (final row in rows) {
+      try {
+        ops.add(outboxFromRow(row));
+      } catch (_) {
+        // skip malformed op
+      }
     }
+    return ops;
   }
-
-  List<SyncOperation> _loadPending() {
-    final raw = _adapter.read(storageKey);
-    if (raw == null) return const [];
-    return _decodeOperationRows(raw).map(SyncOperation.fromJson).toList();
-  }
-
-  Future<void> enqueue(SyncOperation operation) {
-    return _save([..._loadPending(), operation]);
-  }
-
-  Future<void> removeAcknowledged(Set<String> operationIds) {
-    final pending = _loadPending()
-        .where((operation) => !operationIds.contains(operation.id))
-        .toList();
-    return _save(pending);
-  }
-
-  Future<void> replaceAll(List<SyncOperation> operations) {
-    return _save(operations);
-  }
-
-  Future<void> _save(List<SyncOperation> operations) {
-    return _adapter.write(
-      storageKey,
-      json.encode(operations.map((operation) => operation.toJson()).toList()),
-    );
-  }
-}
-
-List<Map<String, dynamic>> _decodeOperationRows(String source) {
-  final decoded = json.decode(source);
-  if (decoded is! List<dynamic>) {
-    throw const FormatException('Expected sync outbox JSON list');
-  }
-
-  return decoded
-      .map((entry) {
-        if (entry is! Map<String, dynamic>) {
-          throw const FormatException('Expected sync outbox JSON object');
-        }
-        return entry;
-      })
-      .toList(growable: false);
 }
