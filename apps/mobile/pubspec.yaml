@@ -71,6 +71,15 @@ dev_dependencies:
   drift_dev: ^2.33.0
   build_runner: ^2.4.13
 
+# workmanager_apple ships Package.swift at ios/Package.swift, which Flutter's SPM
+# integration doesn't detect (it expects ios/<plugin>/Package.swift), forcing a
+# CocoaPods fallback. The vendored copy relocates the manifest so the whole app
+# stays on Swift Package Manager. See third_party/README.md. Drop this when an
+# upstream release fixes the SPM layout.
+dependency_overrides:
+  workmanager_apple:
+    path: third_party/workmanager_apple
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
