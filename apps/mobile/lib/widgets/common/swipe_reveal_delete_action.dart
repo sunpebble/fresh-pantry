@@ -16,7 +16,7 @@ class SwipeRevealDeleteAction extends StatefulWidget {
     required this.onDelete,
     this.deleteButtonKey,
     this.actionExtent = 84,
-    this.borderRadius = const BorderRadius.all(Radius.circular(12)),
+    this.borderRadius = const BorderRadius.all(Radius.circular(AppRadius.md)),
   });
 
   @override
@@ -25,7 +25,7 @@ class SwipeRevealDeleteAction extends StatefulWidget {
 }
 
 class _SwipeRevealDeleteActionState extends State<SwipeRevealDeleteAction> {
-  static const _animationDuration = Duration(milliseconds: 180);
+  static const _animationDuration = AppDuration.normal;
 
   double _dragOffset = 0;
   bool _isDragging = false;
@@ -128,7 +128,7 @@ class _SwipeRevealDeleteActionState extends State<SwipeRevealDeleteAction> {
             ),
           AnimatedContainer(
             duration: _isDragging ? Duration.zero : _animationDuration,
-            curve: Curves.easeOutCubic,
+            curve: AppMotionCurves.standard,
             transform: Matrix4.translationValues(_dragOffset, 0, 0),
             onEnd: () {
               if (_isAnimatingClosed) {

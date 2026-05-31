@@ -19,6 +19,7 @@ import '../services/ai_ingredient_parser.dart';
 import '../utils/app_dialog.dart';
 import '../utils/app_snackbar.dart';
 import '../utils/expiry_calculator.dart';
+import '../utils/page_transitions.dart';
 import '../utils/storage_labels.dart';
 import '../widgets/shared/ai_busy_overlay.dart';
 import '../widgets/shared/expiry_range_picker.dart';
@@ -194,15 +195,13 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
       text: initialIngredient?.quantity,
     );
     if (initialIngredient != null) {
-      _selectedCategory =
-          initialIngredient.category?.isNotEmpty == true
-              ? FoodCategories.dropdownValue(initialIngredient.category)
-              : _selectedCategory;
+      _selectedCategory = initialIngredient.category?.isNotEmpty == true
+          ? FoodCategories.dropdownValue(initialIngredient.category)
+          : _selectedCategory;
       _selectedStorage = initialIngredient.storage;
-      _selectedUnit =
-          initialIngredient.unit.isNotEmpty
-              ? initialIngredient.unit
-              : _selectedUnit;
+      _selectedUnit = initialIngredient.unit.isNotEmpty
+          ? initialIngredient.unit
+          : _selectedUnit;
       _selectedExpiryDate = initialIngredient.expiryDate;
       _selectedShelfDays =
           initialIngredient.shelfLifeDays ??
@@ -323,7 +322,8 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
       // When the shelf life is unknown, use a sensible default window instead
       // of daysUntilExpiry itself — the latter makes the ratio exactly 1.0 for
       // every future date, rendering a meaningless always-full freshness bar.
-      totalShelfLifeDays: _freshnessShelfLifeDays ?? _defaultFreshnessWindowDays,
+      totalShelfLifeDays:
+          _freshnessShelfLifeDays ?? _defaultFreshnessWindowDays,
     );
   }
 
@@ -415,11 +415,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
       }
     } on Object {
       if (mounted) {
-        showAppSnackBar(
-          context,
-          '保存失败，请重试',
-          backgroundColor: AppColors.error,
-        );
+        showAppSnackBar(context, '保存失败，请重试', backgroundColor: AppColors.error);
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -443,8 +439,9 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
       storage: _selectedStorage,
       expiryDate: _selectedExpiryDate,
       expiryLabel: _expiryLabel,
-      shelfLifeDays:
-          _selectedExpiryDate == null ? null : _freshnessShelfLifeDays,
+      shelfLifeDays: _selectedExpiryDate == null
+          ? null
+          : _freshnessShelfLifeDays,
       barcode: widget.initialIngredient?.barcode,
     );
   }
@@ -722,7 +719,10 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
   Widget _buildCategoryDropdown() {
     return Container(
       decoration: fieldBoxDecoration(),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: 2,
+      ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedCategory,
@@ -738,11 +738,10 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
           ),
           dropdownColor: AppColors.surfaceContainerLowest,
           items: _categoryItems,
-          onChanged:
-              (v) => setState(() {
-                _selectedCategory = v!;
-                _categoryManuallySelected = true;
-              }),
+          onChanged: (v) => setState(() {
+            _selectedCategory = v!;
+            _categoryManuallySelected = true;
+          }),
         ),
       ),
     );
@@ -751,7 +750,10 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
   Widget _buildStorageSelector() {
     return Container(
       decoration: fieldBoxDecoration(),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: 2,
+      ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<IconType>(
           value: _selectedStorage,
@@ -767,11 +769,10 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
           ),
           dropdownColor: AppColors.surfaceContainerLowest,
           items: _storageDropdownItems,
-          onChanged:
-              (v) => setState(() {
-                _selectedStorage = v!;
-                _storageManuallySelected = true;
-              }),
+          onChanged: (v) => setState(() {
+            _selectedStorage = v!;
+            _storageManuallySelected = true;
+          }),
         ),
       ),
     );
@@ -780,7 +781,10 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
   Widget _buildUnitDropdown() {
     return Container(
       decoration: fieldBoxDecoration(),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: 2,
+      ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedUnit,
@@ -896,14 +900,13 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
                     ),
                   ),
                   GestureDetector(
-                    onTap:
-                        () => setState(() {
-                          _selectedShelfDays = null;
-                          _selectedShelfStartDate = null;
-                          _selectedExpiryDate = null;
-                          _shelfLifeManuallySelected = true;
-                          _usesCustomDateRange = false;
-                        }),
+                    onTap: () => setState(() {
+                      _selectedShelfDays = null;
+                      _selectedShelfStartDate = null;
+                      _selectedExpiryDate = null;
+                      _shelfLifeManuallySelected = true;
+                      _usesCustomDateRange = false;
+                    }),
                     child: const Icon(
                       Icons.close,
                       size: 18,
@@ -996,13 +999,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
           decoration: BoxDecoration(
             color: AppColors.primary,
             borderRadius: BorderRadius.circular(AppRadius.pill),
-            boxShadow: const [
-              BoxShadow(
-                color: AppColors.shadowWarm,
-                blurRadius: 18,
-                offset: Offset(0, 6),
-              ),
-            ],
+            boxShadow: AppShadows.strong,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1166,44 +1163,40 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
     final controller = TextEditingController();
     final text = await showDialog<String>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('粘贴食材清单'),
-            content: TextField(
-              key: const Key('quick_text_input'),
-              controller: controller,
-              maxLines: 6,
-              autofocus: true,
-              decoration: const InputDecoration(
-                hintText: '例：番茄 3 个 鸡蛋 6 颗 面条 1 把',
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                key: const Key('quick_text_parse'),
-                onPressed: () => Navigator.pop(ctx, controller.text),
-                child: const Text('解析'),
-              ),
-            ],
+      builder: (ctx) => AlertDialog(
+        title: const Text('粘贴食材清单'),
+        content: TextField(
+          key: const Key('quick_text_input'),
+          controller: controller,
+          maxLines: 6,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: '例：番茄 3 个 鸡蛋 6 颗 面条 1 把'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
           ),
+          FilledButton(
+            key: const Key('quick_text_parse'),
+            onPressed: () => Navigator.pop(ctx, controller.text),
+            child: const Text('解析'),
+          ),
+        ],
+      ),
     );
     if (text == null || text.trim().isEmpty) return;
     await _runIngredientFlow(
-      runner:
-          () => (widget.textParserOverride ??
-              (t) => AiIngredientParser.fromText(
-                t,
-                chatFn:
-                    (msgs) => AiClient.chat(
-                      settings: ref.read(aiSettingsProvider),
-                      messages: msgs,
-                      responseFormat: const {'type': 'json_object'},
-                    ),
-              ))(text.trim()),
+      runner: () =>
+          (widget.textParserOverride ??
+          (t) => AiIngredientParser.fromText(
+            t,
+            chatFn: (msgs) => AiClient.chat(
+              settings: ref.read(aiSettingsProvider),
+              messages: msgs,
+              responseFormat: const {'type': 'json_object'},
+            ),
+          ))(text.trim()),
     );
   }
 
@@ -1212,16 +1205,15 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
     final bytes = await picker(ImageSource.camera);
     if (bytes == null) return;
     await _runIngredientFlow(
-      runner:
-          () => (widget.imageParserOverride ??
-              (b) => AiIngredientParser.fromImage(
-                b,
-                chatFn:
-                    (msgs) => AiClient.chat(
-                      settings: ref.read(aiSettingsProvider),
-                      messages: msgs,
-                    ),
-              ))(bytes),
+      runner: () =>
+          (widget.imageParserOverride ??
+          (b) => AiIngredientParser.fromImage(
+            b,
+            chatFn: (msgs) => AiClient.chat(
+              settings: ref.read(aiSettingsProvider),
+              messages: msgs,
+            ),
+          ))(bytes),
     );
   }
 
@@ -1245,7 +1237,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
       if (!mounted) return;
       Navigator.of(
         context,
-      ).push(MaterialPageRoute(builder: (_) => const AiSettingsScreen()));
+      ).push(fkRoute<void>(builder: (_) => const AiSettingsScreen()));
       return;
     } on AiException catch (e) {
       if (!mounted) return;
@@ -1274,12 +1266,11 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
         proposals.first.action == IntakeAction.newRow) {
       final ingredient = drafts.first.toIngredient();
       await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder:
-              (_) => AddIngredientScreen(
-                initialIngredient: ingredient,
-                prefillOnly: true,
-              ),
+        fkRoute<void>(
+          builder: (_) => AddIngredientScreen(
+            initialIngredient: ingredient,
+            prefillOnly: true,
+          ),
         ),
       );
       return;
@@ -1287,7 +1278,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
     ref.read(intakeReviewProvider.notifier).seed(proposals);
     await Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (_) => const IntakeReviewScreen()));
+    ).push(fkRoute<void>(builder: (_) => const IntakeReviewScreen()));
   }
 
   // ─── Shared helpers ─────────────────────────────────────────────────
@@ -1295,7 +1286,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
   Widget _buildLabel(String text) {
     // 设计稿 `FormRow` 标签:低调 muted、不大写、w600(取代旧的蓝色全大写)。
     return Padding(
-      padding: const EdgeInsets.only(left: 4),
+      padding: const EdgeInsets.only(left: AppSpacing.xs),
       child: Text(
         text,
         style: GoogleFonts.manrope(
@@ -1324,8 +1315,9 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
       focusNode: focusNode,
       textInputAction: textInputAction,
       onSubmitted: onSubmitted,
-      inputFormatters:
-          keyboardType == _decimalKeyboardType ? _decimalInputFormatters : null,
+      inputFormatters: keyboardType == _decimalKeyboardType
+          ? _decimalInputFormatters
+          : null,
     );
   }
 }
@@ -1489,8 +1481,8 @@ class _FilledInputState extends State<_FilledInput> {
       skipTraversal: true,
       onFocusChange: (hasFocus) => setState(() => _hasFocus = hasFocus),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOut,
+        duration: AppDuration.fast,
+        curve: AppMotionCurves.decelerate,
         decoration: fieldBoxDecoration(focused: _hasFocus),
         child: TextField(
           controller: widget.controller,

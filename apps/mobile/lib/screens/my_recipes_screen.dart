@@ -6,6 +6,7 @@ import '../providers/custom_recipe_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/recipe_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/page_transitions.dart';
 import '../utils/safe_push.dart';
 import '../widgets/recipe_card.dart';
 import 'custom_recipe_detail_screen.dart';
@@ -22,30 +23,27 @@ class MyRecipesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('我的食谱')),
-      body:
-          recipes.isEmpty
-              ? const _EmptyMyRecipesState()
-              : ListView.builder(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                itemCount: recipes.length,
-                itemBuilder: (context, index) {
-                  final recipe = recipes[index];
-                  return _MyRecipeCard(
-                    recipe: recipe,
-                    matchedCount: matchedIngredientCountForNames(
-                      inventoryNames,
-                      recipe,
-                    ),
-                  );
-                },
-              ),
+      body: recipes.isEmpty
+          ? const _EmptyMyRecipesState()
+          : ListView.builder(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              itemCount: recipes.length,
+              itemBuilder: (context, index) {
+                final recipe = recipes[index];
+                return _MyRecipeCard(
+                  recipe: recipe,
+                  matchedCount: matchedIngredientCountForNames(
+                    inventoryNames,
+                    recipe,
+                  ),
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           pushRouteOnce(
             context,
-            MaterialPageRoute(
-              builder: (context) => const CustomRecipeFormScreen(),
-            ),
+            fkRoute<void>(builder: (context) => const CustomRecipeFormScreen()),
           );
         },
         icon: const Icon(Icons.add),
@@ -88,13 +86,12 @@ class _EmptyMyRecipesState extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.xl),
             FilledButton.icon(
-              onPressed:
-                  () => pushRouteOnce(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const CustomRecipeFormScreen(),
-                    ),
-                  ),
+              onPressed: () => pushRouteOnce(
+                context,
+                fkRoute<void>(
+                  builder: (context) => const CustomRecipeFormScreen(),
+                ),
+              ),
               icon: const Icon(Icons.add),
               label: const Text('创建第一份食谱'),
             ),
@@ -113,8 +110,9 @@ class _MyRecipeCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final subtitle =
-        recipe.description.isNotEmpty ? recipe.description : recipe.category;
+    final subtitle = recipe.description.isNotEmpty
+        ? recipe.description
+        : recipe.category;
 
     return RecipeCard(
       recipe: recipe,
@@ -122,15 +120,14 @@ class _MyRecipeCard extends ConsumerWidget {
       matchedCount: matchedCount,
       onTap: () => _openRecipe(context),
       trailing: Padding(
-        padding: const EdgeInsets.only(right: 4),
+        padding: const EdgeInsets.only(right: AppSpacing.xs),
         child: PopupMenuButton<String>(
           tooltip: '食谱操作',
           onSelected: (value) => _handleMenuSelection(context, ref, value),
-          itemBuilder:
-              (context) => const [
-                PopupMenuItem(value: 'edit', child: Text('编辑')),
-                PopupMenuItem(value: 'delete', child: Text('删除')),
-              ],
+          itemBuilder: (context) => const [
+            PopupMenuItem(value: 'edit', child: Text('编辑')),
+            PopupMenuItem(value: 'delete', child: Text('删除')),
+          ],
         ),
       ),
     );
@@ -139,7 +136,7 @@ class _MyRecipeCard extends ConsumerWidget {
   void _openRecipe(BuildContext context) {
     pushRouteOnce(
       context,
-      MaterialPageRoute(
+      fkRoute<void>(
         builder: (context) => CustomRecipeDetailScreen(recipeId: recipe.id),
       ),
     );
@@ -153,7 +150,7 @@ class _MyRecipeCard extends ConsumerWidget {
     if (value == 'edit') {
       pushRouteOnce(
         context,
-        MaterialPageRoute(
+        fkRoute<void>(
           builder: (context) => CustomRecipeFormScreen(recipe: recipe),
         ),
       );

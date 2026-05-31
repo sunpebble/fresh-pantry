@@ -16,6 +16,7 @@ import '../services/share_intent_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_snackbar.dart';
 import '../utils/clipboard_text.dart';
+import '../utils/page_transitions.dart';
 import '../utils/recipe_draft_apply.dart';
 import '../widgets/recipe_form/ai_collapsible_banner.dart';
 import '../widgets/recipe_form/ai_draft_review_banner.dart';
@@ -102,14 +103,12 @@ class _CustomRecipeFormScreenState
       text: recipe?.description ?? '',
     );
     _coverImageSource = _normalizedImageSource(recipe?.imageUrl);
-    _ingredientControllers =
-        recipe?.ingredients.isNotEmpty == true
-            ? recipe!.ingredients.map(_IngredientControllers.from).toList()
-            : [_IngredientControllers.empty()];
-    _stepEntries =
-        recipe?.steps.isNotEmpty == true
-            ? recipe!.steps.map((step) => _StepEntry(text: step)).toList()
-            : [_StepEntry()];
+    _ingredientControllers = recipe?.ingredients.isNotEmpty == true
+        ? recipe!.ingredients.map(_IngredientControllers.from).toList()
+        : [_IngredientControllers.empty()];
+    _stepEntries = recipe?.steps.isNotEmpty == true
+        ? recipe!.steps.map((step) => _StepEntry(text: step)).toList()
+        : [_StepEntry()];
 
     if (!_isEditing) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -188,30 +187,27 @@ class _CustomRecipeFormScreenState
                           sourceUrl: aiDraft.sourceUrl,
                           isLoading: isParsing,
                           onRegenerate: _onParseUrl,
-                          onDiscard:
-                              () => ref.read(aiDraftProvider.notifier).clear(),
+                          onDiscard: () =>
+                              ref.read(aiDraftProvider.notifier).clear(),
                         ),
                       ),
                     Padding(
                       padding: const EdgeInsets.only(top: AppSpacing.md),
-                      child:
-                          _coverImageSource == null
-                              ? _CoverImagePlaceholder(
-                                onUpload:
-                                    () =>
-                                        _selectCoverImage(ImageSource.gallery),
-                                onCamera:
-                                    () => _selectCoverImage(ImageSource.camera),
-                              )
-                              : _CoverImageHero(
-                                imageSource: _coverImageSource,
-                                onUpload:
-                                    () =>
-                                        _selectCoverImage(ImageSource.gallery),
-                                onCamera:
-                                    () => _selectCoverImage(ImageSource.camera),
-                                onClear: _clearCoverImage,
-                              ),
+                      child: _coverImageSource == null
+                          ? _CoverImagePlaceholder(
+                              onUpload: () =>
+                                  _selectCoverImage(ImageSource.gallery),
+                              onCamera: () =>
+                                  _selectCoverImage(ImageSource.camera),
+                            )
+                          : _CoverImageHero(
+                              imageSource: _coverImageSource,
+                              onUpload: () =>
+                                  _selectCoverImage(ImageSource.gallery),
+                              onCamera: () =>
+                                  _selectCoverImage(ImageSource.camera),
+                              onClear: _clearCoverImage,
+                            ),
                     ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(
@@ -256,11 +252,10 @@ class _CustomRecipeFormScreenState
                                 children: [
                                   RecipeCategoryChips(
                                     selected: _categoryController.text,
-                                    onChanged:
-                                        (value) => setState(() {
-                                          _categoryController.text = value;
-                                          _categoryError = null;
-                                        }),
+                                    onChanged: (value) => setState(() {
+                                      _categoryController.text = value;
+                                      _categoryError = null;
+                                    }),
                                   ),
                                   if (_categoryError != null)
                                     Padding(
@@ -315,12 +310,11 @@ class _CustomRecipeFormScreenState
                                           _difficultyController.text,
                                         ) ??
                                         3,
-                                    onChanged:
-                                        (value) => setState(() {
-                                          _difficultyController.text =
-                                              value.toString();
-                                          _difficultyError = null;
-                                        }),
+                                    onChanged: (value) => setState(() {
+                                      _difficultyController.text = value
+                                          .toString();
+                                      _difficultyError = null;
+                                    }),
                                   ),
                                   if (_difficultyError != null)
                                     Padding(
@@ -443,11 +437,10 @@ class _CustomRecipeFormScreenState
                                       const SizedBox(width: AppSpacing.sm),
                                       UnitDropdown(
                                         value: ing.unit,
-                                        onChanged:
-                                            (value) => setState(() {
-                                              ing.unit = value;
-                                              _ingredientsError = null;
-                                            }),
+                                        onChanged: (value) => setState(() {
+                                          ing.unit = value;
+                                          _ingredientsError = null;
+                                        }),
                                       ),
                                       if (i > 0)
                                         IconButton(
@@ -524,7 +517,9 @@ class _CustomRecipeFormScreenState
                                       Container(
                                         width: 32,
                                         height: 32,
-                                        margin: const EdgeInsets.only(top: 4),
+                                        margin: const EdgeInsets.only(
+                                          top: AppSpacing.xs,
+                                        ),
                                         decoration: const BoxDecoration(
                                           color: AppColors.primary,
                                           shape: BoxShape.circle,
@@ -532,12 +527,13 @@ class _CustomRecipeFormScreenState
                                         alignment: Alignment.center,
                                         child: Text(
                                           '${i + 1}',
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.labelLarge?.copyWith(
-                                            color: AppColors.onPrimary,
-                                            fontWeight: FontWeight.w800,
-                                          ),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelLarge
+                                              ?.copyWith(
+                                                color: AppColors.onPrimary,
+                                                fontWeight: FontWeight.w800,
+                                              ),
                                         ),
                                       ),
                                       const SizedBox(width: AppSpacing.md),
@@ -623,26 +619,25 @@ class _CustomRecipeFormScreenState
                   style: FilledButton.styleFrom(
                     minimumSize: const Size(double.infinity, 48),
                   ),
-                  child:
-                      _isSaving
-                          ? Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    AppColors.onPrimary,
-                                  ),
+                  child: _isSaving
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.onPrimary,
                                 ),
                               ),
-                              SizedBox(width: AppSpacing.sm),
-                              Text('保存中…'),
-                            ],
-                          )
-                          : const Text('保存食谱'),
+                            ),
+                            SizedBox(width: AppSpacing.sm),
+                            Text('保存中…'),
+                          ],
+                        )
+                      : const Text('保存食谱'),
                 ),
               ),
             ),
@@ -722,7 +717,7 @@ class _CustomRecipeFormScreenState
       if (!mounted) return;
       Navigator.of(
         context,
-      ).push(MaterialPageRoute(builder: (_) => const AiSettingsScreen()));
+      ).push(fkRoute<void>(builder: (_) => const AiSettingsScreen()));
       return;
     }
     // Both the error snackbar and the success path touch `context` after the
@@ -741,12 +736,11 @@ class _CustomRecipeFormScreenState
     return widget.urlParserOverride ??
         (u) => AiRecipeParser.fromUrl(
           u,
-          chatFn:
-              (msgs) => AiClient.chat(
-                settings: ref.read(aiSettingsProvider),
-                messages: msgs,
-                responseFormat: const {'type': 'json_object'},
-              ),
+          chatFn: (msgs) => AiClient.chat(
+            settings: ref.read(aiSettingsProvider),
+            messages: msgs,
+            responseFormat: const {'type': 'json_object'},
+          ),
         );
   }
 
@@ -828,11 +822,10 @@ class _CustomRecipeFormScreenState
     final cookingMinutes = int.tryParse(_cookingMinutesController.text.trim());
     final difficulty = int.tryParse(_difficultyController.text.trim());
     final imageUrl = _normalizedCoverImageSource();
-    final steps =
-        _stepEntries
-            .map((entry) => entry.controller.text.trim())
-            .where((step) => step.isNotEmpty)
-            .toList();
+    final steps = _stepEntries
+        .map((entry) => entry.controller.text.trim())
+        .where((step) => step.isNotEmpty)
+        .toList();
 
     final missingFields = _missingFields(
       name: name,
@@ -845,16 +838,18 @@ class _CustomRecipeFormScreenState
       setState(() {
         _nameError = missingFields.contains('食谱名称') ? '请填入食谱名称' : null;
         _categoryError = missingFields.contains('分类') ? '请选择分类' : null;
-        _cookingMinutesError =
-            missingFields.contains('有效烹饪时间') ? '请输入大于 0 的分钟数' : null;
-        _difficultyError =
-            missingFields.contains('1-5 的难度') ? '请选择 1-5 颗星' : null;
-        final ingredientErrors =
-            missingFields
-                .where((m) => ['至少一种食材', '食材名称', '食材用量'].contains(m))
-                .toList();
-        _ingredientsError =
-            ingredientErrors.isEmpty ? null : ingredientErrors.join('、');
+        _cookingMinutesError = missingFields.contains('有效烹饪时间')
+            ? '请输入大于 0 的分钟数'
+            : null;
+        _difficultyError = missingFields.contains('1-5 的难度')
+            ? '请选择 1-5 颗星'
+            : null;
+        final ingredientErrors = missingFields
+            .where((m) => ['至少一种食材', '食材名称', '食材用量'].contains(m))
+            .toList();
+        _ingredientsError = ingredientErrors.isEmpty
+            ? null
+            : ingredientErrors.join('、');
         _stepsError = missingFields.contains('至少一个步骤') ? '至少添加一个步骤' : null;
       });
       await _scrollToFirstError();
@@ -921,7 +916,7 @@ class _CustomRecipeFormScreenState
       return;
     }
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
+      fkRoute<void>(
         builder: (_) => CustomRecipeDetailScreen(recipeId: recipe.id),
       ),
     );

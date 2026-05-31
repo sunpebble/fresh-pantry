@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
+
 class ReviewBottomBar extends StatelessWidget {
   const ReviewBottomBar({
     super.key,
@@ -23,7 +25,12 @@ class ReviewBottomBar extends StatelessWidget {
     final allSelected = selectedCount == totalCount && totalCount > 0;
     final canToggleSelection = totalCount > 0;
     return SafeArea(
-      minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      minimum: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
       child: Row(
         children: [
           TextButton.icon(
@@ -37,7 +44,7 @@ class ReviewBottomBar extends StatelessWidget {
           const Spacer(),
           if (onCancel != null) ...[
             OutlinedButton(onPressed: onCancel, child: const Text('取消')),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
           ],
           FilledButton(
             onPressed: selectedCount == 0 ? null : onConfirm,

@@ -6,9 +6,11 @@ import '../providers/custom_recipe_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/recipe_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/page_transitions.dart';
 import '../utils/safe_push.dart';
 import '../widgets/recipe_card.dart';
 import '../widgets/shared/fk_icon_button.dart';
+import '../widgets/shared/fk_skeleton_card.dart';
 import '../widgets/shared/fk_top_bar.dart';
 import 'custom_recipe_detail_screen.dart';
 import 'custom_recipe_form_screen.dart';
@@ -67,7 +69,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   void _openCustomRecipeForm() {
     pushRouteOnce(
       context,
-      MaterialPageRoute(builder: (_) => const CustomRecipeFormScreen()),
+      fkRoute<void>(builder: (_) => const CustomRecipeFormScreen()),
     );
   }
 
@@ -87,14 +89,13 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
     );
 
     final expiringNames = _expiringIngredientNames(inventory);
-    final expiringRecipes =
-        recommended
-            .where(
-              (r) => r.ingredients.any(
-                (ing) => recipeIngredientMatchesInventory(ing, expiringNames),
-              ),
-            )
-            .toList();
+    final expiringRecipes = recommended
+        .where(
+          (r) => r.ingredients.any(
+            (ing) => recipeIngredientMatchesInventory(ing, expiringNames),
+          ),
+        )
+        .toList();
 
     final list = switch (_tab) {
       _RecipeTab.expiring => expiringRecipes,
@@ -103,26 +104,26 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
       _RecipeTab.mine => customRecipes,
     };
 
-    final filtered =
-        list.where((r) {
-          return switch (_time) {
-            _TimeFilter.all => true,
-            _TimeFilter.fast15 => r.cookingMinutes <= 15,
-            _TimeFilter.fast30 => r.cookingMinutes <= 30,
-          };
-        }).toList();
+    final filtered = list.where((r) {
+      return switch (_time) {
+        _TimeFilter.all => true,
+        _TimeFilter.fast15 => r.cookingMinutes <= 15,
+        _TimeFilter.fast30 => r.cookingMinutes <= 30,
+      };
+    }).toList();
 
     final q = _query.trim().toLowerCase();
     final searched = q.isEmpty
         ? filtered
         : filtered
-            .where(
-              (r) =>
-                  r.name.toLowerCase().contains(q) ||
-                  r.ingredients
-                      .any((ing) => ing.name.toLowerCase().contains(q)),
-            )
-            .toList();
+              .where(
+                (r) =>
+                    r.name.toLowerCase().contains(q) ||
+                    r.ingredients.any(
+                      (ing) => ing.name.toLowerCase().contains(q),
+                    ),
+              )
+              .toList();
 
     final fetchFailed = ref
         .watch(recipesFetchProvider)
@@ -188,39 +189,37 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                 : searched.isEmpty
                 ? _EmptyState(tab: _tab, query: q)
                 : ListView.separated(
-                      padding: _listPadding,
-                      itemCount: searched.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, i) {
-                        final recipe = searched[i];
-                        final matched = matchedIngredientCountForNames(
-                          inventoryNames,
-                          recipe,
-                        );
-                        final useExpiring = _tab == _RecipeTab.expiring;
-                        return RecipeCard(
-                          recipe: recipe,
-                          matchedCount: matched,
-                          useExpiring: useExpiring,
-                          onTap:
-                              () => pushRouteOnce(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (_) =>
-                                          _tab == _RecipeTab.mine
-                                              ? CustomRecipeDetailScreen(
-                                                recipeId: recipe.id,
-                                              )
-                                              : RecipeDetailScreen(
-                                                recipe: recipe,
-                                                useExpiring: useExpiring,
-                                              ),
-                                ),
-                              ),
-                        );
-                      },
-                    ),
+                    padding: _listPadding,
+                    itemCount: searched.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppSpacing.md),
+                    itemBuilder: (context, i) {
+                      final recipe = searched[i];
+                      final matched = matchedIngredientCountForNames(
+                        inventoryNames,
+                        recipe,
+                      );
+                      final useExpiring = _tab == _RecipeTab.expiring;
+                      final usesHero = _tab != _RecipeTab.mine;
+                      return RecipeCard(
+                        recipe: recipe,
+                        matchedCount: matched,
+                        useExpiring: useExpiring,
+                        heroTag: usesHero ? 'recipe-image-${recipe.id}' : null,
+                        onTap: () => pushRouteOnce(
+                          context,
+                          fkRoute<void>(
+                            builder: (_) => _tab == _RecipeTab.mine
+                                ? CustomRecipeDetailScreen(recipeId: recipe.id)
+                                : RecipeDetailScreen(
+                                    recipe: recipe,
+                                    useExpiring: useExpiring,
+                                  ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -366,7 +365,7 @@ class _TimeFilterRow extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: _timeFilterPadding,
         itemCount: filters.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
         itemBuilder: (_, i) {
           final (value, label) = filters[i];
           final active = value == selected;
@@ -405,7 +404,10 @@ class _ExpiringBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: 10,
+      ),
       decoration: BoxDecoration(
         color: AppColors.fkWarnSoft,
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -417,7 +419,7 @@ class _ExpiringBanner extends StatelessWidget {
             size: 16,
             color: AppColors.fkWarnInk,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               '优先使用 $count 件临期食材',
@@ -442,70 +444,7 @@ class _RecipeSkeletonList extends StatelessWidget {
       padding: _listPadding,
       itemCount: 3,
       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
-      itemBuilder: (_, _) => const _RecipeSkeletonCard(),
-    );
-  }
-}
-
-class _RecipeSkeletonCard extends StatelessWidget {
-  const _RecipeSkeletonCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 130,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.outline),
-      ),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Row(
-        children: [
-          Container(
-            width: 104,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainer,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _SkeletonLine(widthFactor: 0.75),
-                SizedBox(height: AppSpacing.md),
-                _SkeletonLine(widthFactor: 0.55),
-                SizedBox(height: AppSpacing.md),
-                _SkeletonLine(widthFactor: 0.35),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SkeletonLine extends StatelessWidget {
-  const _SkeletonLine({required this.widthFactor});
-
-  final double widthFactor;
-
-  @override
-  Widget build(BuildContext context) {
-    return FractionallySizedBox(
-      widthFactor: widthFactor,
-      alignment: Alignment.centerLeft,
-      child: Container(
-        height: 12,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainer,
-          borderRadius: BorderRadius.circular(AppRadius.xs),
-        ),
-      ),
+      itemBuilder: (_, _) => const FkRecipeSkeletonCard(),
     );
   }
 }
@@ -514,10 +453,7 @@ class _RecipeSearchField extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
 
-  const _RecipeSearchField({
-    required this.controller,
-    required this.onChanged,
-  });
+  const _RecipeSearchField({required this.controller, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -533,7 +469,7 @@ class _RecipeSearchField extends StatelessWidget {
           color: AppColors.surfaceContainer,
           borderRadius: BorderRadius.circular(AppRadius.chip),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
         child: Row(
           children: [
             const Icon(
@@ -541,7 +477,7 @@ class _RecipeSearchField extends StatelessWidget {
               size: 18,
               color: AppColors.onSurfaceVariant,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: TextField(
                 controller: controller,
@@ -584,9 +520,9 @@ class _RecipeErrorState extends StatelessWidget {
           children: [
             Text(
               '菜谱加载失败，请检查网络后重试',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: AppColors.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.onSurfaceVariant,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.md),

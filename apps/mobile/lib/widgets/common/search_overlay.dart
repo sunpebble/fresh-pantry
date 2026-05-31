@@ -14,8 +14,10 @@ import '../../providers/search_provider.dart';
 import '../../providers/shopping_provider.dart';
 import '../../screens/ingredient_detail_screen.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/page_transitions.dart';
 import '../../utils/storage_labels.dart';
 import '../shared/category_icon.dart';
+import '../shared/fk_entrance.dart';
 import '../shared/recipe_image.dart';
 
 const _searchDebounceDuration = Duration(milliseconds: 150);
@@ -94,7 +96,7 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
     final ingredient = _ingredientForDetails(details);
     _close();
     navigator.push(
-      MaterialPageRoute(
+      fkRoute<void>(
         builder: (_) => IngredientDetailScreen(ingredient: ingredient),
       ),
     );
@@ -309,11 +311,8 @@ class _SearchHistoryPanel extends ConsumerWidget {
                         ),
                       ),
                       TextButton(
-                        onPressed:
-                            () =>
-                                ref
-                                    .read(searchHistoryProvider.notifier)
-                                    .clear(),
+                        onPressed: () =>
+                            ref.read(searchHistoryProvider.notifier).clear(),
                         child: Text(
                           '清除',
                           style: GoogleFonts.manrope(
@@ -346,10 +345,9 @@ class _SearchHistoryPanel extends ConsumerWidget {
                           ),
                         ),
                         trailing: GestureDetector(
-                          onTap:
-                              () => ref
-                                  .read(searchHistoryProvider.notifier)
-                                  .remove(term),
+                          onTap: () => ref
+                              .read(searchHistoryProvider.notifier)
+                              .remove(term),
                           child: const Icon(
                             Icons.close,
                             size: 16,
@@ -444,14 +442,29 @@ class _SearchResultsList extends StatelessWidget {
   Widget build(BuildContext context) {
     final rows = _rows();
     if (rows.isEmpty) {
-      return _EmptySearchResults();
+      return FkEntrance(child: _EmptySearchResults());
     }
 
+    // Track a separate counter for content rows (inventory / shopping /
+    // foodDetails) so stagger indices stay compact and meaningful.
+    var contentIndex = 0;
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       itemCount: rows.length,
       itemExtentBuilder: (index, dimensions) => rows[index].extent,
-      itemBuilder: (context, index) => _buildRow(rows[index]),
+      itemBuilder: (context, index) {
+        final row = rows[index];
+        final isContent =
+            row.kind == _SearchResultRowKind.inventory ||
+            row.kind == _SearchResultRowKind.shopping ||
+            row.kind == _SearchResultRowKind.foodDetails;
+        final widget = _buildRow(row);
+        if (isContent) {
+          final i = contentIndex++;
+          return FkEntrance(index: i, child: widget);
+        }
+        return widget;
+      },
     );
   }
 
@@ -774,17 +787,16 @@ class _InventoryResultTile extends StatelessWidget {
           color: AppColors.onSurfaceVariant,
         ),
       ),
-      trailing:
-          item.expiryLabel != null
-              ? Text(
-                item.expiryLabel!,
-                style: GoogleFonts.manrope(
-                  fontSize: AppFontSize.xs,
-                  color: statusColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              )
-              : null,
+      trailing: item.expiryLabel != null
+          ? Text(
+              item.expiryLabel!,
+              style: GoogleFonts.manrope(
+                fontSize: AppFontSize.xs,
+                color: statusColor,
+                fontWeight: FontWeight.w600,
+              ),
+            )
+          : null,
       onTap: onTap,
     );
   }
@@ -810,8 +822,9 @@ class _ShoppingResultTile extends StatelessWidget {
         style: GoogleFonts.manrope(
           fontSize: AppFontSize.md,
           fontWeight: FontWeight.w600,
-          color:
-              item.isChecked ? AppColors.onSurfaceVariant : AppColors.onSurface,
+          color: item.isChecked
+              ? AppColors.onSurfaceVariant
+              : AppColors.onSurface,
           decoration: item.isChecked ? TextDecoration.lineThrough : null,
         ),
       ),

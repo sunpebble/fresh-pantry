@@ -32,8 +32,8 @@ class AiCollapsibleBannerState extends State<AiCollapsibleBanner> {
   @override
   Widget build(BuildContext context) {
     return AnimatedSize(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
+      duration: AppDuration.slow,
+      curve: AppMotionCurves.decelerate,
       child: _expanded ? _buildExpanded(context) : _buildCollapsed(context),
     );
   }
@@ -58,9 +58,9 @@ class AiCollapsibleBannerState extends State<AiCollapsibleBanner> {
               child: Text(
                 '✨ 粘贴链接，AI 自动填表',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             Container(
@@ -75,9 +75,9 @@ class AiCollapsibleBannerState extends State<AiCollapsibleBanner> {
               child: Text(
                 '展开',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.onPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  color: AppColors.onPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -100,9 +100,9 @@ class AiCollapsibleBannerState extends State<AiCollapsibleBanner> {
         children: [
           Text(
             '✨ 用 AI 一键导入',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: AppColors.onPrimary,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(color: AppColors.onPrimary),
           ),
           const SizedBox(height: AppSpacing.sm),
           TextField(

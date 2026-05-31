@@ -126,7 +126,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField), '苹');
     await tester.pump(const Duration(milliseconds: 200));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('库存食材'), findsOneWidget);
     expect(find.text('购物清单'), findsOneWidget);

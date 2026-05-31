@@ -12,6 +12,7 @@ import '../utils/app_snackbar.dart';
 import '../widgets/shared/cat_icon.dart';
 import '../widgets/shared/category_icon.dart';
 import '../widgets/shared/fk_card.dart';
+import '../widgets/shared/fk_check_circle.dart';
 import '../widgets/shared/fk_top_bar.dart';
 
 /// 库存不足(常买补货)页 — 设计稿 `screens-2.jsx::LowStockScreen`。
@@ -123,7 +124,8 @@ class _LowStockScreenState extends ConsumerState<LowStockScreen> {
 
   void _toggle(String name) {
     setState(() {
-      final current = _selected ??
+      final current =
+          _selected ??
           ref.read(lowStockItemsProvider).map((i) => i.name).toSet();
       _selected = current.contains(name)
           ? (current..remove(name))
@@ -168,7 +170,7 @@ class _CategoryGroup extends StatelessWidget {
                 Text(
                   name,
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
+                    fontSize: AppFontSize.md,
                     fontWeight: FontWeight.w700,
                     color: AppColors.onSurface,
                   ),
@@ -177,7 +179,7 @@ class _CategoryGroup extends StatelessWidget {
                 Text(
                   '${items.length} 项',
                   style: GoogleFonts.manrope(
-                    fontSize: 12,
+                    fontSize: AppFontSize.sm,
                     color: AppColors.onSurfaceVariant,
                   ),
                 ),
@@ -237,13 +239,13 @@ class _LowRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              _CheckCircle(checked: checked),
+              FkCheckCircle(checked: checked, onTap: onToggle, size: 22),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Text(
                   item.name,
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
+                    fontSize: AppFontSize.md,
                     fontWeight: FontWeight.w700,
                     color: AppColors.onSurface,
                   ),
@@ -252,7 +254,7 @@ class _LowRow extends StatelessWidget {
               Text(
                 '买过 ${item.count} 次',
                 style: GoogleFonts.manrope(
-                  fontSize: 11,
+                  fontSize: AppFontSize.xs,
                   color: AppColors.onSurfaceVariant,
                 ),
               ),
@@ -260,32 +262,6 @@ class _LowRow extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _CheckCircle extends StatelessWidget {
-  final bool checked;
-  const _CheckCircle({required this.checked});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      width: 22,
-      height: 22,
-      decoration: BoxDecoration(
-        color: checked ? AppColors.primary : Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: checked ? AppColors.primary : AppColors.hair,
-          width: 2,
-        ),
-      ),
-      alignment: Alignment.center,
-      child: checked
-          ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
-          : null,
     );
   }
 }
@@ -331,15 +307,7 @@ class _StickyCta extends StatelessWidget {
             decoration: BoxDecoration(
               color: enabled ? AppColors.primary : AppColors.surfaceContainer,
               borderRadius: BorderRadius.circular(AppRadius.lg),
-              boxShadow: enabled
-                  ? const [
-                      BoxShadow(
-                        color: AppColors.shadowWarm,
-                        blurRadius: 18,
-                        offset: Offset(0, 6),
-                      ),
-                    ]
-                  : null,
+              boxShadow: enabled ? AppShadows.strong : null,
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -411,7 +379,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               '暂无需补货的常买项',
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
+                fontSize: AppFontSize.lg,
                 fontWeight: FontWeight.w700,
                 color: AppColors.onSurface,
               ),
@@ -421,7 +389,7 @@ class _EmptyState extends StatelessWidget {
               '买过 3 次以上、当前不在库的食材会出现在这里',
               textAlign: TextAlign.center,
               style: GoogleFonts.manrope(
-                fontSize: 12,
+                fontSize: AppFontSize.sm,
                 color: AppColors.onSurfaceVariant,
               ),
             ),

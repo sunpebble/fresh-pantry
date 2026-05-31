@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/shopping_item.dart';
 import '../../theme/app_theme.dart';
+import '../shared/fk_check_circle.dart';
 
 class ShoppingItemTile extends StatelessWidget {
   final ShoppingItem item;
@@ -20,41 +21,22 @@ class ShoppingItemTile extends StatelessWidget {
           onTap: onTap,
           child: AnimatedOpacity(
             opacity: item.isChecked ? 0.6 : 1.0,
-            duration: const Duration(milliseconds: 200),
+            duration: AppDuration.slow,
             child: Container(
               padding: const EdgeInsets.all(AppSpacing.lg),
               decoration: BoxDecoration(
-                color:
-                    item.isChecked
-                        ? AppColors.surfaceContainerLow.withValues(alpha: 0.5)
-                        : AppColors.surfaceContainerLowest,
+                color: item.isChecked
+                    ? AppColors.surfaceContainerLow.withValues(alpha: 0.5)
+                    : AppColors.surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Row(
                 children: [
                   // Checkbox
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color:
-                          item.isChecked
-                              ? AppColors.primary
-                              : Colors.transparent,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border:
-                          item.isChecked
-                              ? null
-                              : Border.all(color: AppColors.outline, width: 2),
-                    ),
-                    child:
-                        item.isChecked
-                            ? const Icon(
-                              Icons.check,
-                              color: AppColors.onPrimary,
-                              size: 16,
-                            )
-                            : null,
+                  FkCheckCircle(
+                    checked: item.isChecked,
+                    onTap: onTap,
+                    size: 24,
                   ),
                   const SizedBox(width: AppSpacing.lg),
                   // Info
@@ -66,8 +48,9 @@ class ShoppingItemTile extends StatelessWidget {
                       style: GoogleFonts.manrope(
                         fontWeight: FontWeight.w600,
                         color: AppColors.onSurface,
-                        decoration:
-                            item.isChecked ? TextDecoration.lineThrough : null,
+                        decoration: item.isChecked
+                            ? TextDecoration.lineThrough
+                            : null,
                       ),
                     ),
                   ),

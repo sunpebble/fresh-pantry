@@ -9,6 +9,7 @@ import 'package:fresh_pantry/providers/recipe_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/custom_recipe_form_screen.dart';
 import 'package:fresh_pantry/screens/recipes_screen.dart';
+import 'package:fresh_pantry/widgets/shared/fk_skeleton_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'support/test_database.dart';
 
@@ -73,7 +74,7 @@ void main() {
     await tester.tap(find.text('探索'));
     await tester.pump();
 
-    expect(find.byType(FractionallySizedBox), findsNWidgets(9));
+    expect(find.byType(FkRecipeSkeletonCard), findsNWidgets(3));
     expect(find.text('暂无可探索的菜谱'), findsNothing);
   });
 

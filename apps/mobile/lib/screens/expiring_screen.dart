@@ -7,6 +7,7 @@ import '../providers/shopping_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/fk_category_palette.dart';
 import '../utils/app_snackbar.dart';
+import '../utils/page_transitions.dart';
 import '../utils/safe_push.dart';
 import '../utils/storage_labels.dart';
 import '../widgets/shared/cat_icon.dart';
@@ -35,9 +36,7 @@ class ExpiringScreen extends ConsumerWidget {
     final soonCount = ref.watch(
       expiringItemsProvider.select(
         (items) =>
-            items
-                .where((i) => i.state == FreshnessState.expiringSoon)
-                .length,
+            items.where((i) => i.state == FreshnessState.expiringSoon).length,
       ),
     );
 
@@ -56,11 +55,9 @@ class ExpiringScreen extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
               child: _RemindShortcut(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const SettingsScreen(),
-                  ),
-                ),
+                onTap: () => Navigator.of(
+                  context,
+                ).push(fkRoute<void>(builder: (_) => const SettingsScreen())),
               ),
             ),
             const SizedBox(height: AppSpacing.xl),
@@ -262,7 +259,7 @@ class _ExpiringRow extends ConsumerWidget {
             child: GestureDetector(
               onTap: () => pushRouteOnce(
                 context,
-                MaterialPageRoute(
+                fkRoute<void>(
                   builder: (_) => IngredientDetailScreen(ingredient: item),
                 ),
               ),

@@ -20,6 +20,7 @@ class RecipeCard extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback? onTap;
   final bool useExpiring;
+  final Object? heroTag;
 
   const RecipeCard({
     super.key,
@@ -30,6 +31,7 @@ class RecipeCard extends StatelessWidget {
     this.trailing,
     this.onTap,
     this.useExpiring = false,
+    this.heroTag,
   });
 
   @override
@@ -55,10 +57,14 @@ class RecipeCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Cover(recipe: recipe, useExpiring: useExpiring),
+              _Cover(
+                recipe: recipe,
+                useExpiring: useExpiring,
+                heroTag: heroTag,
+              ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -76,10 +82,10 @@ class RecipeCard extends StatelessWidget {
                               color: AppColors.onSurface,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.xs),
                           DefaultTextStyle.merge(
                             style: GoogleFonts.manrope(
-                              fontSize: 11,
+                              fontSize: AppFontSize.xs,
                               color: AppColors.onSurfaceVariant,
                               height: 1.2,
                             ),
@@ -107,7 +113,7 @@ class RecipeCard extends StatelessWidget {
                               Text(
                                 ingredientLabel ?? '食材匹配 $matched/$total',
                                 style: GoogleFonts.manrope(
-                                  fontSize: 11,
+                                  fontSize: AppFontSize.xs,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.primary,
                                 ),
@@ -117,14 +123,14 @@ class RecipeCard extends StatelessWidget {
                                 Text(
                                   '缺 $missing 件',
                                   style: GoogleFonts.manrope(
-                                    fontSize: 11,
+                                    fontSize: AppFontSize.xs,
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.fkDanger,
                                   ),
                                 ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.xs),
                           Container(
                             height: 4,
                             decoration: BoxDecoration(
@@ -143,7 +149,7 @@ class RecipeCard extends StatelessWidget {
                             ),
                           ),
                           if (recipe.tags.isNotEmpty) ...[
-                            const SizedBox(height: 8),
+                            const SizedBox(height: AppSpacing.sm),
                             SizedBox(
                               height: 22,
                               child: ListView(
@@ -151,7 +157,7 @@ class RecipeCard extends StatelessWidget {
                                 children: [
                                   for (final tag in recipe.tags.take(2)) ...[
                                     FkPill(label: tag, sm: true),
-                                    const SizedBox(width: 4),
+                                    const SizedBox(width: AppSpacing.xs),
                                   ],
                                 ],
                               ),
@@ -175,33 +181,38 @@ class RecipeCard extends StatelessWidget {
 class _Cover extends StatelessWidget {
   final Recipe recipe;
   final bool useExpiring;
-  const _Cover({required this.recipe, required this.useExpiring});
+  final Object? heroTag;
+  const _Cover({required this.recipe, required this.useExpiring, this.heroTag});
 
   @override
   Widget build(BuildContext context) {
+    final cover = ClipRRect(
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(AppRadius.xl),
+        bottomLeft: Radius.circular(AppRadius.xl),
+      ),
+      child: RecipeImage(
+        imageSource: recipe.imageUrl,
+        fit: BoxFit.cover,
+        fallback: Container(
+          color: AppColors.primarySoft,
+          alignment: Alignment.center,
+          child: const Icon(
+            Icons.restaurant_rounded,
+            size: 32,
+            color: AppColors.primary,
+          ),
+        ),
+      ),
+    );
+    final wrappedCover = heroTag == null
+        ? cover
+        : Hero(tag: heroTag!, child: cover);
     return SizedBox(
       width: 120,
       child: Stack(
         children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(AppRadius.xl),
-              bottomLeft: Radius.circular(AppRadius.xl),
-            ),
-            child: RecipeImage(
-              imageSource: recipe.imageUrl,
-              fit: BoxFit.cover,
-              fallback: Container(
-                color: AppColors.primarySoft,
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.restaurant_rounded,
-                  size: 32,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ),
+          wrappedCover,
           if (useExpiring)
             Positioned(
               top: 8,

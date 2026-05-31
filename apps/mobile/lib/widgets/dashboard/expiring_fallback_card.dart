@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/recipe_provider.dart';
 import '../../screens/recipe_detail_screen.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/page_transitions.dart';
 import '../shared/fk_card.dart';
 import '../shared/pill_chip.dart';
 import '../shared/recipe_image.dart';
@@ -20,9 +21,9 @@ class ExpiringFallbackCard extends ConsumerWidget {
 
     return FkCard(
       padding: EdgeInsets.zero,
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => RecipeDetailScreen(recipe: recipe)),
-      ),
+      onTap: () => Navigator.of(
+        context,
+      ).push(fkRoute<void>(builder: (_) => RecipeDetailScreen(recipe: recipe))),
       child: SizedBox(
         height: 130,
         child: Row(
@@ -52,7 +53,7 @@ class ExpiringFallbackCard extends ConsumerWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -63,7 +64,7 @@ class ExpiringFallbackCard extends ConsumerWidget {
                         const Text(
                           '用临期食材',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: AppFontSize.xs,
                             fontWeight: FontWeight.w600,
                             color: AppColors.fkWarn,
                             letterSpacing: 1,
@@ -75,7 +76,7 @@ class ExpiringFallbackCard extends ConsumerWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 16,
+                            fontSize: AppFontSize.lg,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -87,7 +88,7 @@ class ExpiringFallbackCard extends ConsumerWidget {
                         Text(
                           '可用 ${covered.length} 件临期食材',
                           style: const TextStyle(
-                            fontSize: 12,
+                            fontSize: AppFontSize.sm,
                             color: AppColors.outline,
                           ),
                         ),
@@ -97,12 +98,14 @@ class ExpiringFallbackCard extends ConsumerWidget {
                           runSpacing: 4,
                           children: covered
                               .take(3)
-                              .map((name) => PillChip(
-                                    label: name,
-                                    backgroundColor: AppColors.fkWarnSoft,
-                                    foregroundColor:
-                                        AppColors.onSecondaryContainer,
-                                  ))
+                              .map(
+                                (name) => PillChip(
+                                  label: name,
+                                  backgroundColor: AppColors.fkWarnSoft,
+                                  foregroundColor:
+                                      AppColors.onSecondaryContainer,
+                                ),
+                              )
                               .toList(),
                         ),
                       ],

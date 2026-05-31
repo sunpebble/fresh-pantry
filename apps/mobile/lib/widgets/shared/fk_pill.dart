@@ -94,7 +94,7 @@ class FkPill extends StatelessWidget {
     final fg = foregroundColor ?? AppColors.onSurfaceVariant;
     final body = Container(
       padding: EdgeInsets.symmetric(
-        horizontal: sm ? 8 : 10,
+        horizontal: sm ? AppSpacing.sm : 10,
         vertical: sm ? 3 : 5,
       ),
       decoration: BoxDecoration(
@@ -110,12 +110,12 @@ class FkPill extends StatelessWidget {
               data: IconThemeData(color: fg, size: sm ? 11 : 12),
               child: leading!,
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpacing.xs),
           ],
           Text(
             label,
             style: GoogleFonts.manrope(
-              fontSize: sm ? 11 : 12,
+              fontSize: sm ? AppFontSize.xs : AppFontSize.sm,
               fontWeight: FontWeight.w600,
               color: fg,
               letterSpacing: -0.1,

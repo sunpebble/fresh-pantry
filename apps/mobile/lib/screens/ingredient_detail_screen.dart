@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../theme/fk_category_palette.dart';
 import '../utils/app_dialog.dart';
 import '../utils/app_snackbar.dart';
+import '../utils/page_transitions.dart';
 import '../utils/storage_labels.dart';
 import '../widgets/shared/cat_icon.dart';
 import '../widgets/shared/category_icon.dart';
@@ -57,9 +58,18 @@ class IngredientDetailResult {
 ///   subtle dot grid。中央是 92×92 软玻璃 avatar + CatIcon。
 /// - 主体:数量/天数 split card → 食材信息 list → 操作行(加购 / 编辑 / 删除)。
 class IngredientDetailScreen extends ConsumerStatefulWidget {
-  const IngredientDetailScreen({super.key, required this.ingredient});
+  const IngredientDetailScreen({
+    super.key,
+    required this.ingredient,
+    this.heroTag,
+  });
 
   final Ingredient ingredient;
+
+  /// Optional Hero tag forwarded from the navigation source (e.g. the inventory
+  /// grid card). When non-null the detail header avatar is wrapped in a [Hero]
+  /// with this tag so it animates from the card.
+  final Object? heroTag;
 
   @override
   ConsumerState<IngredientDetailScreen> createState() =>
@@ -71,9 +81,7 @@ class _IngredientDetailScreenState
   Future<void> _addToShoppingList(Ingredient item) async {
     final bool added;
     try {
-      added = await ref
-          .read(shoppingProvider.notifier)
-          .addFromIngredient(item);
+      added = await ref.read(shoppingProvider.notifier).addFromIngredient(item);
     } catch (_) {
       if (mounted) showAppSnackBar(context, '加入购物清单失败，请重试');
       return;
@@ -91,17 +99,16 @@ class _IngredientDetailScreenState
     if (index == -1) return;
 
     final updatedName = await Navigator.of(context).push<String>(
-      MaterialPageRoute(
-        builder:
-            (_) => Scaffold(
-              backgroundColor: AppColors.surface,
-              body: SafeArea(
-                child: AddIngredientScreen(
-                  initialIngredient: item,
-                  inventoryIndex: index,
-                ),
-              ),
+      fkRoute<String>(
+        builder: (_) => Scaffold(
+          backgroundColor: AppColors.surface,
+          body: SafeArea(
+            child: AddIngredientScreen(
+              initialIngredient: item,
+              inventoryIndex: index,
             ),
+          ),
+        ),
       ),
     );
     if (!mounted || updatedName == null) return;
@@ -151,13 +158,11 @@ class _IngredientDetailScreenState
       backgroundColor: AppColors.surface,
       body: detailsAsync.when(
         data: (details) => _buildBody(item, details, isInventoryItem),
-        loading:
-            () => const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            ),
-        error:
-            (_, _) =>
-                _buildBody(item, fallbackFoodDetailsFor(item), isInventoryItem),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+        error: (_, _) =>
+            _buildBody(item, fallbackFoodDetailsFor(item), isInventoryItem),
       ),
     );
   }
@@ -189,9 +194,15 @@ class _IngredientDetailScreenState
                   onBack: () => Navigator.of(context).maybePop(),
                   onEdit: isInventoryItem ? () => _editItem(item) : null,
                   onDelete: isInventoryItem ? () => _confirmDelete(item) : null,
+                  heroTag: widget.heroTag,
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 32),
+                  padding: const EdgeInsets.fromLTRB(
+                    18,
+                    18,
+                    18,
+                    AppSpacing.huge,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -255,6 +266,10 @@ class _DetailHero extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
+  /// Matches the [IngredientCard.heroTag] supplied by the inventory grid so the
+  /// avatar box flies from the card to this header. Null means no Hero.
+  final Object? heroTag;
+
   const _DetailHero({
     required this.catId,
     required this.palette,
@@ -265,7 +280,32 @@ class _DetailHero extends StatelessWidget {
     required this.onBack,
     required this.onEdit,
     required this.onDelete,
+    this.heroTag,
   });
+
+  Widget _buildAvatarBox() {
+    final box = Container(
+      width: 92,
+      height: 92,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(AppRadius.xxl),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadowSoft,
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Center(
+        child: CatIcon(category: catId, size: 64, color: palette.ink),
+      ),
+    );
+    if (heroTag == null) return box;
+    return Hero(tag: heroTag!, child: box);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -374,7 +414,7 @@ class _DetailHero extends StatelessWidget {
                           child: const Icon(Icons.edit_outlined, size: 18),
                         ),
                       if (onDelete != null) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         FkIconButton(
                           onTap: onDelete!,
                           foregroundColor: AppColors.fkDanger,
@@ -388,36 +428,17 @@ class _DetailHero extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xxl,
+                    AppSpacing.lg,
+                    AppSpacing.xxl,
+                    AppSpacing.xxl,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 92,
-                        height: 92,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.6),
-                          ),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: AppColors.shadowSoft,
-                              blurRadius: 24,
-                              offset: Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: CatIcon(
-                            category: catId,
-                            size: 64,
-                            color: palette.ink,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+                      _buildAvatarBox(),
+                      const SizedBox(height: AppSpacing.md),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -427,7 +448,7 @@ class _DetailHero extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.plusJakartaSans(
-                                fontSize: 28,
+                                fontSize: AppFontSize.xxxl,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -0.4,
                                 color: AppColors.onSurface,
@@ -440,7 +461,7 @@ class _DetailHero extends StatelessWidget {
                           ],
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(
                         '$categoryName · $zoneLabel',
                         style: GoogleFonts.manrope(
@@ -490,7 +511,7 @@ class _QtyAndFreshnessCard extends StatelessWidget {
           children: [
             Expanded(
               child: Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 decoration: const BoxDecoration(
                   border: Border(
                     right: BorderSide(color: AppColors.hair, width: 0.5),
@@ -506,7 +527,7 @@ class _QtyAndFreshnessCard extends StatelessWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 child: _StatColumn(
                   label: '新鲜度',
                   value: '$percent',
@@ -545,12 +566,12 @@ class _StatColumn extends StatelessWidget {
         Text(
           label,
           style: GoogleFonts.manrope(
-            fontSize: 11,
+            fontSize: AppFontSize.xs,
             fontWeight: FontWeight.w600,
             color: AppColors.onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpacing.xs),
         Row(
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
@@ -563,7 +584,7 @@ class _StatColumn extends StatelessWidget {
                 style: AppTypography.heroSubStat.copyWith(color: valueColor),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpacing.xs),
             Text(
               unit,
               style: GoogleFonts.manrope(
@@ -574,11 +595,11 @@ class _StatColumn extends StatelessWidget {
           ],
         ),
         if (hint != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             hint!,
             style: GoogleFonts.manrope(
-              fontSize: 11,
+              fontSize: AppFontSize.xs,
               color: AppColors.onSurfaceVariant,
             ),
           ),
@@ -607,14 +628,18 @@ class _InfoList extends StatelessWidget {
         children: [
           for (var i = 0; i < rows.length; i++)
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.md,
+                AppSpacing.lg,
+                AppSpacing.md,
+              ),
               decoration: BoxDecoration(
-                border:
-                    i == rows.length - 1
-                        ? null
-                        : const Border(
-                          bottom: BorderSide(color: AppColors.hair, width: 0.5),
-                        ),
+                border: i == rows.length - 1
+                    ? null
+                    : const Border(
+                        bottom: BorderSide(color: AppColors.hair, width: 0.5),
+                      ),
               ),
               child: Row(
                 children: [
@@ -632,7 +657,7 @@ class _InfoList extends StatelessWidget {
                       rows[i].$2,
                       textAlign: TextAlign.right,
                       style: GoogleFonts.manrope(
-                        fontSize: 14,
+                        fontSize: AppFontSize.md,
                         fontWeight: FontWeight.w600,
                         color: AppColors.onSurface,
                       ),
@@ -664,7 +689,7 @@ class _ActionRow extends StatelessWidget {
             onTap: onAddToShopping,
             behavior: HitTestBehavior.opaque,
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
               decoration: BoxDecoration(
                 color: AppColors.primarySoft,
                 borderRadius: BorderRadius.circular(AppRadius.chip),

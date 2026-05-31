@@ -43,7 +43,7 @@ class CategoryChips extends StatelessWidget {
                   categories: scrollableCategories,
                   selectedCategory: selectedCategory,
                   onSelected: onSelected,
-                  padding: const EdgeInsets.only(right: 24),
+                  padding: const EdgeInsets.only(right: AppSpacing.xxl),
                 ),
               ),
             ],
@@ -117,7 +117,7 @@ class _CategoryChip extends StatelessWidget {
       child: GestureDetector(
         onTap: () => onSelected(category),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: AppDuration.slow,
           height: 40,
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),

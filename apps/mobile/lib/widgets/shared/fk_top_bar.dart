@@ -31,7 +31,8 @@ class FkTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Widget? left = leading ??
+    final Widget? left =
+        leading ??
         (onBack != null
             ? FkIconButton(
                 onTap: onBack,
@@ -41,13 +42,18 @@ class FkTopBar extends StatelessWidget {
 
     return Container(
       color: backgroundColor,
-      padding: EdgeInsets.fromLTRB(18, dense ? 8 : 14, 18, dense ? 8 : 14),
+      padding: EdgeInsets.fromLTRB(
+        18,
+        dense ? AppSpacing.sm : 14,
+        18,
+        dense ? AppSpacing.sm : 14,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (left != null) ...[
             Padding(
-              padding: EdgeInsets.only(top: dense ? 0 : 4),
+              padding: EdgeInsets.only(top: dense ? 0 : AppSpacing.xs),
               child: left,
             ),
             const SizedBox(width: 10),
@@ -81,12 +87,12 @@ class FkTopBar extends StatelessWidget {
             ),
           ),
           if (actions.isNotEmpty) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 for (var i = 0; i < actions.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 8),
+                  if (i > 0) const SizedBox(width: AppSpacing.sm),
                   actions[i],
                 ],
               ],

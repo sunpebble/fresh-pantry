@@ -34,14 +34,14 @@ class FkSectionHead extends StatelessWidget {
           Text(
             title,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 16,
+              fontSize: AppFontSize.lg,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.2,
               color: AppColors.onSurface,
             ),
           ),
           if (count != null) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             Text(
               '$count',
               style: GoogleFonts.manrope(

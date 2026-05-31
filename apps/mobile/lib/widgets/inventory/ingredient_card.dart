@@ -8,6 +8,7 @@ import '../../utils/storage_labels.dart';
 import '../shared/cat_icon.dart';
 import '../shared/category_icon.dart';
 import '../shared/fk_pill.dart';
+import '../shared/fk_pressable.dart';
 import '../shared/zone_icon.dart';
 
 /// 旧 API:freshness 状态 → 徽章配色。保留供未迁移的 caller(测试)读取。
@@ -26,11 +27,18 @@ class IngredientCard extends StatelessWidget {
   final VoidCallback? onBuyAgain;
   final VoidCallback? onTap;
 
+  /// Optional Hero tag for the category-icon avatar. When non-null the avatar
+  /// is wrapped in a [Hero] so it can fly to the detail screen. Callers that
+  /// render multiple cards (the inventory grid) must supply a unique tag per
+  /// card; omitting the tag (the default) is safe and produces no Hero at all.
+  final Object? heroTag;
+
   const IngredientCard({
     super.key,
     required this.ingredient,
     this.onBuyAgain,
     this.onTap,
+    this.heroTag,
   });
 
   @override
@@ -47,17 +55,11 @@ class IngredientCard extends StatelessWidget {
     final progressColor = isExpired ? style.bg : style.fg;
 
     final card = Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadowSoft,
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: AppShadows.soft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,17 +68,7 @@ class IngredientCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: palette.tint,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: CatIcon(category: catId, size: 30, color: palette.ink),
-                ),
-              ),
+              _buildAvatar(catId, palette),
               const Spacer(),
               ?statusBadge,
             ],
@@ -87,7 +79,7 @@ class IngredientCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 14,
+              fontSize: AppFontSize.md,
               fontWeight: FontWeight.w700,
               color: AppColors.onSurface.withValues(
                 alpha: isExpired ? 0.6 : 1.0,
@@ -97,7 +89,7 @@ class IngredientCard extends StatelessWidget {
           const SizedBox(height: 2),
           DefaultTextStyle.merge(
             style: GoogleFonts.manrope(
-              fontSize: 11,
+              fontSize: AppFontSize.xs,
               color: AppColors.onSurfaceVariant,
               height: 1.2,
             ),
@@ -127,9 +119,17 @@ class IngredientCard extends StatelessWidget {
               color: AppColors.surfaceContainer,
               borderRadius: BorderRadius.circular(2),
             ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: progress.clamp(0.05, 1.0),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress.clamp(0.05, 1.0)),
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : AppDuration.slow,
+              curve: AppMotionCurves.standard,
+              builder: (context, value, child) => FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: value,
+                child: child,
+              ),
               child: Container(
                 decoration: BoxDecoration(
                   color: progressColor,
@@ -140,9 +140,8 @@ class IngredientCard extends StatelessWidget {
           ),
           if (onBuyAgain != null && !isFresh) ...[
             const SizedBox(height: 10),
-            GestureDetector(
+            FkAnimatedPressable(
               onTap: onBuyAgain,
-              behavior: HitTestBehavior.opaque,
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 6),
@@ -154,7 +153,7 @@ class IngredientCard extends StatelessWidget {
                 child: Text(
                   '加购',
                   style: GoogleFonts.manrope(
-                    fontSize: 11,
+                    fontSize: AppFontSize.xs,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primaryContainer,
                   ),
@@ -167,11 +166,23 @@ class IngredientCard extends StatelessWidget {
     );
 
     if (onTap == null) return card;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: card,
+    return FkAnimatedPressable(onTap: onTap, child: card);
+  }
+
+  Widget _buildAvatar(String catId, FkCatColors palette) {
+    final avatar = Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: palette.tint,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Center(
+        child: CatIcon(category: catId, size: 30, color: palette.ink),
+      ),
     );
+    if (heroTag == null) return avatar;
+    return Hero(tag: heroTag!, child: avatar);
   }
 
   /// 右上小角徽 — 设计稿用 expiryLabel 作为内容;fresh 状态不显示。

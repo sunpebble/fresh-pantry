@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/navigation_provider.dart';
 import '../../theme/app_theme.dart';
 import '../shared/fk_nav_icon.dart';
+import '../shared/fk_pressable.dart';
 
 class _NavItem {
   final String icon;
@@ -31,8 +32,8 @@ class BottomNavBar extends ConsumerWidget {
 
     return ClipRRect(
       borderRadius: const BorderRadius.only(
-        topLeft: Radius.circular(24),
-        topRight: Radius.circular(24),
+        topLeft: Radius.circular(AppRadius.xxl),
+        topRight: Radius.circular(AppRadius.xxl),
       ),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
@@ -40,8 +41,8 @@ class BottomNavBar extends ConsumerWidget {
           decoration: BoxDecoration(
             color: AppColors.surface.withValues(alpha: 0.92),
             borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
+              topLeft: Radius.circular(AppRadius.xxl),
+              topRight: Radius.circular(AppRadius.xxl),
             ),
             border: const Border(
               top: BorderSide(color: AppColors.hair, width: 0.5),
@@ -50,7 +51,12 @@ class BottomNavBar extends ConsumerWidget {
           child: SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.sm,
+                AppSpacing.sm,
+                AppSpacing.sm,
+                AppSpacing.xs,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -58,15 +64,15 @@ class BottomNavBar extends ConsumerWidget {
                   for (final (index, item) in _items.indexed)
                     index == FkTab.add
                         ? _PrimaryFab(
-                          icon: item.icon,
-                          onTap: () => ref.navigateToTab(index),
-                        )
+                            icon: item.icon,
+                            onTap: () => ref.navigateToTab(index),
+                          )
                         : _TabButton(
-                          icon: item.icon,
-                          label: item.label,
-                          active: index == currentIndex,
-                          onTap: () => ref.navigateToTab(index),
-                        ),
+                            icon: item.icon,
+                            label: item.label,
+                            active: index == currentIndex,
+                            onTap: () => ref.navigateToTab(index),
+                          ),
                 ],
               ),
             ),
@@ -96,11 +102,14 @@ class _TabButton extends StatelessWidget {
       selected: active,
       button: true,
       label: label,
-      child: GestureDetector(
+      child: FkAnimatedPressable(
         onTap: onTap,
-        behavior: HitTestBehavior.opaque,
+        haptic: HapticKind.selection,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -131,23 +140,17 @@ class _PrimaryFab extends StatelessWidget {
     return Semantics(
       button: true,
       label: '添加食材',
-      child: GestureDetector(
+      child: FkAnimatedPressable(
         onTap: onTap,
-        behavior: HitTestBehavior.opaque,
+        haptic: HapticKind.light,
         child: Container(
           width: AppSize.profileAvatar - AppSpacing.xs,
           height: AppSize.profileAvatar - AppSpacing.xs,
-          margin: const EdgeInsets.only(bottom: 4),
+          margin: const EdgeInsets.only(bottom: AppSpacing.xs),
           decoration: const BoxDecoration(
             color: AppColors.primary,
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.shadowWarm,
-                blurRadius: 18,
-                offset: Offset(0, 6),
-              ),
-            ],
+            boxShadow: AppShadows.strong,
           ),
           alignment: Alignment.center,
           child: FkNavIcon(

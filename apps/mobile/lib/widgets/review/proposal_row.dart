@@ -55,18 +55,16 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
   Widget build(BuildContext context) {
     final p = widget.proposal;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color:
-            p.selected
-                ? AppColors.surfaceContainerLowest
-                : AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
+        color: p.selected
+            ? AppColors.surfaceContainerLowest
+            : AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(
-          color:
-              p.selected
-                  ? AppColors.primary.withValues(alpha: 0.3)
-                  : AppColors.hair,
+          color: p.selected
+              ? AppColors.primary.withValues(alpha: 0.3)
+              : AppColors.hair,
         ),
       ),
       child: Column(
@@ -81,9 +79,9 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
                   color: p.selected ? AppColors.primary : AppColors.outline,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               ProvenanceBadge(origin: p.origin, userEdited: p.userEdited),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(child: _name(p)),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 160),
@@ -95,7 +93,7 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: 12,
             runSpacing: 8,
@@ -106,18 +104,20 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
                 children: [
                   const Text(
                     '数量',
-                    style: TextStyle(color: AppColors.outline, fontSize: 12),
+                    style: TextStyle(
+                      color: AppColors.outline,
+                      fontSize: AppFontSize.sm,
+                    ),
                   ),
                   const SizedBox(width: 6),
                   InlineNumberStepper(
                     value: p.quantity,
                     min: 1,
-                    onChanged:
-                        (v) => widget.onChanged(
-                          p.copyWith(quantity: v, userEdited: true),
-                        ),
+                    onChanged: (v) => widget.onChanged(
+                      p.copyWith(quantity: v, userEdited: true),
+                    ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpacing.xs),
                   _unitChip(p),
                 ],
               ),
@@ -126,7 +126,10 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
                 children: [
                   const Text(
                     '保质期',
-                    style: TextStyle(color: AppColors.outline, fontSize: 12),
+                    style: TextStyle(
+                      color: AppColors.outline,
+                      fontSize: AppFontSize.sm,
+                    ),
                   ),
                   const SizedBox(width: 6),
                   if ((p.shelfLifeDays ?? 0) <= 0)
@@ -144,13 +147,13 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.surfaceContainer,
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
                         ),
                         child: const Text(
                           '未设置 · 点按设置',
                           style: TextStyle(
                             color: AppColors.outline,
-                            fontSize: 12,
+                            fontSize: AppFontSize.sm,
                           ),
                         ),
                       ),
@@ -184,14 +187,20 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
         onTap: () => setState(() => _editingName = true),
         child: Text(
           p.name.isEmpty ? '(无名)' : p.name,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          style: const TextStyle(
+            fontSize: AppFontSize.lg,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       );
     }
     return TextField(
       controller: _nameCtrl,
       autofocus: true,
-      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+      style: const TextStyle(
+        fontSize: AppFontSize.lg,
+        fontWeight: FontWeight.w700,
+      ),
       decoration: const InputDecoration(
         isDense: true,
         border: InputBorder.none,
@@ -248,10 +257,9 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
         final chosen = await PickerSheet.show<String>(
           context,
           title: '分类',
-          options:
-              FoodCategories.values
-                  .map((c) => PickerOption(value: c, label: c))
-                  .toList(),
+          options: FoodCategories.values
+              .map((c) => PickerOption(value: c, label: c))
+              .toList(),
           selected: p.category,
         );
         if (chosen != null) {
@@ -268,10 +276,9 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
         final chosen = await PickerSheet.show<IconType>(
           context,
           title: '存储位置',
-          options:
-              IconType.values
-                  .map((i) => PickerOption(value: i, label: storageLabelFor(i)))
-                  .toList(),
+          options: IconType.values
+              .map((i) => PickerOption(value: i, label: storageLabelFor(i)))
+              .toList(),
           selected: p.storage,
         );
         if (chosen != null) {
@@ -288,12 +295,12 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: AppColors.surfaceContainer,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
         ),
         child: Text(
           label,
           style: const TextStyle(
-            fontSize: 12,
+            fontSize: AppFontSize.sm,
             fontWeight: FontWeight.w600,
             color: AppColors.onSurface,
           ),

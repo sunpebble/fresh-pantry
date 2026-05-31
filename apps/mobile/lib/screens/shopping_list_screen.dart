@@ -13,11 +13,12 @@ import '../theme/app_theme.dart';
 import '../theme/fk_category_palette.dart';
 import '../utils/app_dialog.dart';
 import '../utils/app_snackbar.dart';
+import '../utils/page_transitions.dart';
 import '../widgets/shared/cat_icon.dart';
 import '../widgets/shared/category_icon.dart';
 import '../widgets/shared/fk_card.dart';
+import '../widgets/shared/fk_entrance.dart';
 import '../widgets/shared/fk_dashed_border.dart';
-import '../widgets/shared/fk_icon_button.dart';
 import '../widgets/shared/fk_top_bar.dart';
 import '../widgets/shopping/quick_add_field.dart';
 
@@ -26,24 +27,11 @@ import '../widgets/shopping/quick_add_field.dart';
 /// FK top bar + 大渐变进度卡(本次采购进度 + 大数字 done/total + percent + 白色
 /// 进度条)+ 待购/已购 filter chip + 按品类分组 FkCard(每行圆形 check + 名称 +
 /// detail + 删除 icon)+ 清空已完成 dashed CTA。
-class ShoppingListScreen extends ConsumerStatefulWidget {
+class ShoppingListScreen extends ConsumerWidget {
   const ShoppingListScreen({super.key});
 
   @override
-  ConsumerState<ShoppingListScreen> createState() => _ShoppingListScreenState();
-}
-
-class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
-  final _quickAddFocusNode = FocusNode();
-
-  @override
-  void dispose() {
-    _quickAddFocusNode.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final viewState = ref.watch(shoppingListViewProvider);
     final collapsedCategories = ref.watch(collapsedShoppingCategoriesProvider);
     final allItems = viewState.items;
@@ -73,12 +61,6 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
                       subtitle: total == 0
                           ? '清单为空 · 在上方添加食材'
                           : '$checkedCount/$total 已完成 · $uncheckedCount 件待购',
-                      actions: [
-                        FkIconButton(
-                          onTap: _quickAddFocusNode.requestFocus,
-                          child: const Icon(Icons.add_rounded, size: 18),
-                        ),
-                      ],
                     ),
                   ),
                 ),
@@ -94,8 +76,13 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
-                    child: QuickAddField(focusNode: _quickAddFocusNode),
+                    padding: const EdgeInsets.fromLTRB(
+                      18,
+                      14,
+                      18,
+                      AppSpacing.sm,
+                    ),
+                    child: const QuickAddField(),
                   ),
                 ),
                 SliverToBoxAdapter(
@@ -140,7 +127,12 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
             right: 0,
             bottom: 0,
             child: SafeArea(
-              minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              minimum: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                AppSpacing.md,
+              ),
               child: FilledButton(
                 key: const Key('shopping_to_intake_cta'),
                 style: FilledButton.styleFrom(
@@ -283,7 +275,7 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
     ref.read(intakeReviewProvider.notifier).seed(proposals);
 
     final appliedIds = await Navigator.of(context).push<Set<String>>(
-      MaterialPageRoute(
+      fkRoute<Set<String>>(
         builder: (_) => const IntakeReviewScreen(title: '已购买项入库'),
       ),
     );
@@ -364,13 +356,16 @@ class _ShoppingContentSliver extends StatelessWidget {
   Widget _buildItem(BuildContext context, int index) {
     if (index < visibleEntries.length) {
       final entry = visibleEntries[index];
-      return _CategoryGroup(
-        title: entry.key,
-        items: entry.value,
-        collapsed: collapsedCategories.contains(entry.key),
-        onToggleCollapse: () => onToggleCategory(entry.key),
-        onItemToggle: onItemToggle,
-        onItemDelete: onItemDelete,
+      return FkEntrance(
+        index: index,
+        child: _CategoryGroup(
+          title: entry.key,
+          items: entry.value,
+          collapsed: collapsedCategories.contains(entry.key),
+          onToggleCollapse: () => onToggleCategory(entry.key),
+          onItemToggle: onItemToggle,
+          onItemDelete: onItemDelete,
+        ),
       );
     }
 
@@ -393,7 +388,7 @@ class _FilterEmptyMessage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 32),
+      padding: const EdgeInsets.only(top: AppSpacing.huge),
       child: Center(
         child: Text(
           filter == ShoppingFilter.todo ? '没有待购项目' : '没有已购项目',
@@ -421,7 +416,7 @@ class _ProgressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final percent = (progress.clamp(0.0, 1.0) * 100).round();
     return FkCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       gradient: const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -440,12 +435,12 @@ class _ProgressCard extends StatelessWidget {
                     Text(
                       '本次采购进度',
                       style: GoogleFonts.manrope(
-                        fontSize: 11,
+                        fontSize: AppFontSize.xs,
                         fontWeight: FontWeight.w500,
                         color: Colors.white.withValues(alpha: 0.85),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.xs),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
@@ -453,7 +448,7 @@ class _ProgressCard extends StatelessWidget {
                         Text(
                           '$done',
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 32,
+                            fontSize: AppFontSize.huge,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
                             height: 1,
@@ -476,14 +471,14 @@ class _ProgressCard extends StatelessWidget {
               Text(
                 '$percent%',
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 28,
+                  fontSize: AppFontSize.xxxl,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Container(
             height: 6,
             decoration: BoxDecoration(
@@ -532,7 +527,7 @@ class _FilterChipRow extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 18),
         itemCount: chips.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
         itemBuilder: (_, i) {
           final (label, value, count) = chips[i];
           final active = value == selected;
@@ -540,7 +535,10 @@ class _FilterChipRow extends StatelessWidget {
             onTap: () => onSelect(value),
             behavior: HitTestBehavior.opaque,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: AppSpacing.sm,
+              ),
               decoration: BoxDecoration(
                 color: active ? AppColors.primary : Colors.white,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -552,7 +550,7 @@ class _FilterChipRow extends StatelessWidget {
               child: Text(
                 count > 0 ? '$label · $count' : label,
                 style: GoogleFonts.manrope(
-                  fontSize: 12,
+                  fontSize: AppFontSize.sm,
                   fontWeight: FontWeight.w600,
                   color: active ? Colors.white : AppColors.onSurface,
                 ),
@@ -599,7 +597,12 @@ class _CategoryGroup extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               onTap: onToggleCollapse,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xs,
+                  AppSpacing.sm,
+                  AppSpacing.xs,
+                  AppSpacing.sm,
+                ),
                 child: Row(
                   children: [
                     AnimatedRotation(
@@ -614,7 +617,7 @@ class _CategoryGroup extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     CatIcon(category: catId, size: 20, color: palette.ink),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
                         title,
@@ -628,7 +631,7 @@ class _CategoryGroup extends StatelessWidget {
                     Text(
                       '${items.length}',
                       style: GoogleFonts.manrope(
-                        fontSize: 11,
+                        fontSize: AppFontSize.xs,
                         color: AppColors.onSurfaceVariant,
                       ),
                     ),
@@ -715,7 +718,7 @@ class _ShopRow extends StatelessWidget {
                       )
                     : null,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -723,7 +726,7 @@ class _ShopRow extends StatelessWidget {
                     Text(
                       item.name,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
+                        fontSize: AppFontSize.md,
                         fontWeight: FontWeight.w700,
                         color: AppColors.onSurface,
                         decoration: checked ? TextDecoration.lineThrough : null,
@@ -734,7 +737,7 @@ class _ShopRow extends StatelessWidget {
                       Text(
                         item.detail,
                         style: GoogleFonts.manrope(
-                          fontSize: 11,
+                          fontSize: AppFontSize.xs,
                           color: AppColors.onSurfaceVariant,
                         ),
                       ),
@@ -746,7 +749,7 @@ class _ShopRow extends StatelessWidget {
                 onTap: onDelete,
                 behavior: HitTestBehavior.opaque,
                 child: const Padding(
-                  padding: EdgeInsets.all(4),
+                  padding: EdgeInsets.all(AppSpacing.xs),
                   child: Icon(
                     Icons.close_rounded,
                     size: 18,
@@ -777,12 +780,12 @@ class _ClearDoneButton extends StatelessWidget {
         color: AppColors.hair,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
           alignment: Alignment.center,
           child: Text(
             '清空已完成 ($count)',
             style: GoogleFonts.manrope(
-              fontSize: 12,
+              fontSize: AppFontSize.sm,
               fontWeight: FontWeight.w600,
               color: AppColors.onSurfaceVariant,
             ),
@@ -798,43 +801,45 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                shape: BoxShape.circle,
+    return FkEntrance(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.shopping_basket_outlined,
+                  size: 32,
+                  color: AppColors.primary,
+                ),
               ),
-              child: const Icon(
-                Icons.shopping_basket_outlined,
-                size: 32,
-                color: AppColors.primary,
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                '购物清单为空',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: AppFontSize.lg,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onSurface,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '购物清单为空',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.onSurface,
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                '在上方输入框添加需要购买的食材',
+                style: GoogleFonts.manrope(
+                  fontSize: AppFontSize.sm,
+                  color: AppColors.onSurfaceVariant,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '在上方输入框添加需要购买的食材',
-              style: GoogleFonts.manrope(
-                fontSize: 12,
-                color: AppColors.onSurfaceVariant,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

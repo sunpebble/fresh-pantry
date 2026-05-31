@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/app_theme.dart';
+import 'fk_shimmer.dart';
 
 /// 设计稿 `ui.jsx::FKImgPlaceholder` — 135° 斜纹 + 居中小字 label。
 ///
@@ -24,27 +25,29 @@ class FkImagePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            CustomPaint(painter: _StripePainter(tint)),
-            if (label != null)
-              Center(
-                child: Text(
-                  label!,
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 10,
-                    color: AppColors.outline,
-                    letterSpacing: 0.4,
+    return FkShimmer(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              CustomPaint(painter: _StripePainter(tint)),
+              if (label != null)
+                Center(
+                  child: Text(
+                    label!,
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 10,
+                      color: AppColors.outline,
+                      letterSpacing: 0.4,
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

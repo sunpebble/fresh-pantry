@@ -26,24 +26,18 @@ class DeductionProposalRow extends StatelessWidget {
     final p = proposal;
     final chosen = p.candidates.firstWhere(
       (c) => c.inventoryRowIndex == p.chosenIndex,
-      orElse:
-          () =>
-              p.candidates.isEmpty
-                  ? const DeductionCandidate(
-                    inventoryRowIndex: -1,
-                    displayLabel: '',
-                  )
-                  : p.candidates.first,
+      orElse: () => p.candidates.isEmpty
+          ? const DeductionCandidate(inventoryRowIndex: -1, displayLabel: '')
+          : p.candidates.first,
     );
     final isSkip = p.action == DeductionAction.skip;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color:
-            isSkip
-                ? AppColors.surfaceContainerLow
-                : AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
+        color: isSkip
+            ? AppColors.surfaceContainerLow
+            : AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: AppColors.hair),
       ),
       child: Column(
@@ -58,7 +52,7 @@ class DeductionProposalRow extends StatelessWidget {
                   color: p.selected ? AppColors.primary : AppColors.outline,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,7 +62,7 @@ class DeductionProposalRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: AppFontSize.lg,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -76,7 +70,7 @@ class DeductionProposalRow extends StatelessWidget {
                       Text(
                         '菜谱需要 ${p.requiredQty}',
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: AppFontSize.sm,
                           color: AppColors.outline,
                         ),
                       ),
@@ -90,29 +84,28 @@ class DeductionProposalRow extends StatelessWidget {
             ],
           ),
           if (!isSkip && p.candidates.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             GestureDetector(
               onTap: () async {
                 final picked = await PickerSheet.show<int>(
                   context,
                   title: '扣减来源批次',
-                  options:
-                      p.candidates
-                          .map(
-                            (c) => PickerOption(
-                              value: c.inventoryRowIndex,
-                              label: c.displayLabel,
-                            ),
-                          )
-                          .toList(),
+                  options: p.candidates
+                      .map(
+                        (c) => PickerOption(
+                          value: c.inventoryRowIndex,
+                          label: c.displayLabel,
+                        ),
+                      )
+                      .toList(),
                   selected: p.chosenIndex,
                 );
                 if (picked != null) onChooseCandidate(picked);
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
                 ),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceContainer,
@@ -143,12 +136,15 @@ class DeductionProposalRow extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
                 const Text(
                   '扣减',
-                  style: TextStyle(color: AppColors.outline, fontSize: 12),
+                  style: TextStyle(
+                    color: AppColors.outline,
+                    fontSize: AppFontSize.sm,
+                  ),
                 ),
                 const SizedBox(width: 6),
                 InlineNumberStepper(
@@ -159,10 +155,13 @@ class DeductionProposalRow extends StatelessWidget {
               ],
             ),
           ] else if (p.candidates.isEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             const Text(
               '库存中没有匹配项,这条将被跳过。',
-              style: TextStyle(color: AppColors.outline, fontSize: 12),
+              style: TextStyle(
+                color: AppColors.outline,
+                fontSize: AppFontSize.sm,
+              ),
             ),
           ],
         ],

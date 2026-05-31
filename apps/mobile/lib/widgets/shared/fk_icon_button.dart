@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
+import 'fk_pressable.dart';
 
 /// 设计稿 `ui.jsx::FKIconBtn` — 圆形单 icon 按钮。
 ///
@@ -39,39 +40,32 @@ class FkIconButton extends StatelessWidget {
     final fg = primary
         ? Colors.white
         : (foregroundColor ?? AppColors.onSurface);
-    final effectiveShadow = shadows ??
+    final effectiveShadow =
+        shadows ??
         (primary
-            ? const [
-                BoxShadow(
-                  color: AppColors.shadowWarm,
-                  blurRadius: 18,
-                  offset: Offset(0, 6),
-                ),
-              ]
+            ? AppShadows.strong
             : const [
                 BoxShadow(
-                  color: Color(0x0F000000),
+                  color: AppColors.subtleShadow,
                   blurRadius: 3,
                   offset: Offset(0, 1),
                 ),
               ]);
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        width: size,
-        height: size,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: bg,
-          shape: BoxShape.circle,
-          boxShadow: effectiveShadow,
-        ),
-        child: IconTheme.merge(
-          data: IconThemeData(color: fg, size: primary ? 26 : 18),
-          child: child,
-        ),
+    final box = Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: bg,
+        shape: BoxShape.circle,
+        boxShadow: effectiveShadow,
+      ),
+      child: IconTheme.merge(
+        data: IconThemeData(color: fg, size: primary ? 26 : 18),
+        child: child,
       ),
     );
+    if (onTap == null) return box;
+    return FkAnimatedPressable(onTap: onTap, child: box);
   }
 }

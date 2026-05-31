@@ -34,7 +34,10 @@ class AlertCard extends StatelessWidget {
       button: onConsume != null || onAddToCart != null,
       label: name,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.lg,
+        ),
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -94,7 +97,7 @@ class AlertCard extends StatelessWidget {
                               decoration: const BoxDecoration(
                                 color: AppColors.surfaceContainer,
                                 borderRadius: BorderRadius.all(
-                                  Radius.circular(4),
+                                  Radius.circular(AppRadius.xs),
                                 ),
                               ),
                               child: Text(
@@ -210,7 +213,10 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.sm,
+      ),
       constraints: const BoxConstraints(minWidth: 70),
       decoration: BoxDecoration(
         color: badgeBg,
@@ -251,7 +257,10 @@ class _ActionButton extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.sm,
+          ),
           decoration: BoxDecoration(
             color: AppColors.surfaceContainerLow,
             borderRadius: BorderRadius.circular(AppRadius.pill),

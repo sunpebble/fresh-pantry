@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/app_theme.dart';
+import 'fk_pressable.dart';
 
 /// 项目通用 pill 样式 chip,支持可选 leading icon、可选选中态、可选点击。
 ///
@@ -93,6 +94,6 @@ class PillChip extends StatelessWidget {
     );
 
     if (onTap == null) return body;
-    return GestureDetector(onTap: onTap, child: body);
+    return FkAnimatedPressable(onTap: onTap, child: body);
   }
 }

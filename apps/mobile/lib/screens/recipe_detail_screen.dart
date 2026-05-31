@@ -14,6 +14,7 @@ import '../providers/shopping_provider.dart';
 import '../services/deduction_proposal_factory.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_snackbar.dart';
+import '../utils/page_transitions.dart';
 import '../widgets/shared/fk_card.dart';
 import '../widgets/shared/fk_dashed_border.dart';
 import '../widgets/shared/fk_icon_button.dart';
@@ -121,14 +122,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       widget.recipe,
     );
 
-    final stepProgress =
-        widget.recipe.steps.isEmpty
-            ? 0.0
-            : _completedSteps.length / widget.recipe.steps.length;
+    final stepProgress = widget.recipe.steps.isEmpty
+        ? 0.0
+        : _completedSteps.length / widget.recipe.steps.length;
 
-    final isFavorite = ref.watch(
-      isRecipeFavoriteProvider(widget.recipe.id),
-    );
+    final isFavorite = ref.watch(isRecipeFavoriteProvider(widget.recipe.id));
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -147,20 +145,25 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             onDelete: widget.onDelete,
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 20, 18, 32),
+            padding: const EdgeInsets.fromLTRB(
+              18,
+              AppSpacing.xl,
+              18,
+              AppSpacing.huge,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   widget.recipe.name,
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 24,
+                    fontSize: AppFontSize.xxl,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.4,
                     color: AppColors.onSurface,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 DefaultTextStyle.merge(
                   style: GoogleFonts.manrope(
                     fontSize: 13,
@@ -173,7 +176,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                         size: 13,
                         color: AppColors.onSurfaceVariant,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: AppSpacing.xs),
                       Text('${widget.recipe.cookingMinutes} 分钟'),
                       const SizedBox(width: 14),
                       const Icon(
@@ -181,7 +184,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                         size: 13,
                         color: AppColors.onSurfaceVariant,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: AppSpacing.xs),
                       Text(widget.recipe.difficultyLabel),
                     ],
                   ),
@@ -191,14 +194,14 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   Text(
                     widget.recipe.description,
                     style: GoogleFonts.manrope(
-                      fontSize: 14,
+                      fontSize: AppFontSize.md,
                       height: 1.6,
                       color: AppColors.onSurfaceVariant,
                     ),
                   ),
                 ],
                 if (widget.recipe.tags.isNotEmpty || widget.useExpiring) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
@@ -234,14 +237,14 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     onTap: () => _addMissingToCart(missing),
                   ),
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xxl),
                 _StepsSection(
                   steps: widget.recipe.steps,
                   completed: _completedSteps,
                   progress: stepProgress,
                   onToggleStep: _toggleStep,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.xl),
                 FilledButton.icon(
                   key: const Key('recipe_cooked_action'),
                   icon: const Icon(Icons.restaurant),
@@ -254,7 +257,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     );
                     ref.read(deductionReviewProvider.notifier).seed(proposals);
                     await Navigator.of(context).push(
-                      MaterialPageRoute(
+                      fkRoute<void>(
                         builder: (_) => const DeductionReviewScreen(),
                       ),
                     );
@@ -299,17 +302,20 @@ class _HeroSection extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          RecipeImage(
-            imageSource: recipe.imageUrl,
-            fit: BoxFit.cover,
-            semanticLabel: recipe.name,
-            fallback: Container(
-              color: AppColors.primarySoft,
-              alignment: Alignment.center,
-              child: const Icon(
-                Icons.restaurant_rounded,
-                size: 64,
-                color: AppColors.primary,
+          Hero(
+            tag: 'recipe-image-${recipe.id}',
+            child: RecipeImage(
+              imageSource: recipe.imageUrl,
+              fit: BoxFit.cover,
+              semanticLabel: recipe.name,
+              fallback: Container(
+                color: AppColors.primarySoft,
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.restaurant_rounded,
+                  size: 64,
+                  color: AppColors.primary,
+                ),
               ),
             ),
           ),
@@ -337,7 +343,7 @@ class _HeroSection extends StatelessWidget {
           SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+              padding: const EdgeInsets.fromLTRB(18, AppSpacing.sm, 18, 0),
               child: Row(
                 children: [
                   FkIconButton(
@@ -358,7 +364,7 @@ class _HeroSection extends StatelessWidget {
                         child: const Icon(Icons.edit_outlined, size: 18),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                   ],
                   if (isCustom && onDelete != null) ...[
                     Tooltip(
@@ -373,13 +379,14 @@ class _HeroSection extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                   ],
                   FkIconButton(
                     onTap: onToggleFavorite,
                     onImage: true,
-                    foregroundColor:
-                        isFavorite ? AppColors.fkDanger : AppColors.onSurface,
+                    foregroundColor: isFavorite
+                        ? AppColors.fkDanger
+                        : AppColors.onSurface,
                     child: Icon(
                       isFavorite
                           ? Icons.favorite_rounded
@@ -420,7 +427,7 @@ class _IngredientsSection extends StatelessWidget {
             Text(
               '食材清单',
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
+                fontSize: AppFontSize.lg,
                 fontWeight: FontWeight.w700,
                 color: AppColors.onSurface,
               ),
@@ -429,7 +436,7 @@ class _IngredientsSection extends StatelessWidget {
             Text(
               '已有 $matched/${recipe.ingredients.length}',
               style: GoogleFonts.manrope(
-                fontSize: 12,
+                fontSize: AppFontSize.sm,
                 color: AppColors.onSurfaceVariant,
               ),
             ),
@@ -479,21 +486,20 @@ class _IngredientRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: ValueKey('ingredient_$index'),
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: isAvailable ? Colors.transparent : AppColors.fkDangerSoft,
-        border:
-            isLast
-                ? null
-                : const Border(
-                  bottom: BorderSide(color: AppColors.hair, width: 0.5),
-                ),
+        border: isLast
+            ? null
+            : const Border(
+                bottom: BorderSide(color: AppColors.hair, width: 0.5),
+              ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _StatusMark(isAvailable: isAvailable),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -501,10 +507,11 @@ class _IngredientRow extends StatelessWidget {
                 Text(
                   ingredient.name,
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
+                    fontSize: AppFontSize.md,
                     fontWeight: FontWeight.w600,
-                    color:
-                        isAvailable ? AppColors.onSurface : AppColors.fkDanger,
+                    color: isAvailable
+                        ? AppColors.onSurface
+                        : AppColors.fkDanger,
                   ),
                 ),
                 if (ingredient.amount.trim().isNotEmpty) ...[
@@ -512,7 +519,7 @@ class _IngredientRow extends StatelessWidget {
                   Text(
                     ingredient.amount,
                     style: GoogleFonts.manrope(
-                      fontSize: 11,
+                      fontSize: AppFontSize.xs,
                       color: AppColors.onSurfaceVariant,
                     ),
                   ),
@@ -522,32 +529,32 @@ class _IngredientRow extends StatelessWidget {
           ),
           isAvailable
               ? FkPill(
-                label: '已有',
-                sm: true,
-                backgroundColor: AppColors.primarySoft,
-                foregroundColor: AppColors.primaryContainer,
-              )
+                  label: '已有',
+                  sm: true,
+                  backgroundColor: AppColors.primarySoft,
+                  foregroundColor: AppColors.primaryContainer,
+                )
               : FkDashedBorder(
-                radius: AppRadius.pill,
-                color: AppColors.fkDanger,
-                fillColor: Colors.white,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  child: Text(
-                    '缺少',
-                    style: GoogleFonts.manrope(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.fkDanger,
-                      letterSpacing: -0.1,
-                      height: 1.2,
+                  radius: AppRadius.pill,
+                  color: AppColors.fkDanger,
+                  fillColor: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    child: Text(
+                      '缺少',
+                      style: GoogleFonts.manrope(
+                        fontSize: AppFontSize.xs,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.fkDanger,
+                        letterSpacing: -0.1,
+                        height: 1.2,
+                      ),
                     ),
                   ),
                 ),
-              ),
         ],
       ),
     );
@@ -609,7 +616,7 @@ class _AddMissingCta extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
           decoration: BoxDecoration(
             color: AppColors.primarySoft,
             borderRadius: BorderRadius.circular(AppRadius.chip),
@@ -672,7 +679,7 @@ class _StepsSection extends StatelessWidget {
             Text(
               '烹饪步骤',
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
+                fontSize: AppFontSize.lg,
                 fontWeight: FontWeight.w700,
                 color: AppColors.onSurface,
               ),
@@ -682,7 +689,7 @@ class _StepsSection extends StatelessWidget {
               Text(
                 '${completed.length}/${steps.length}',
                 style: GoogleFonts.manrope(
-                  fontSize: 12,
+                  fontSize: AppFontSize.sm,
                   color: AppColors.onSurfaceVariant,
                 ),
               ),
@@ -699,7 +706,7 @@ class _StepsSection extends StatelessWidget {
               minHeight: 4,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
         ] else
           const SizedBox(height: 10),
         ListView.separated(
@@ -708,13 +715,12 @@ class _StepsSection extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           itemCount: steps.length,
           separatorBuilder: (_, _) => const SizedBox(height: 10),
-          itemBuilder:
-              (_, index) => _StepRow(
-                index: index,
-                text: steps[index],
-                completed: completed.contains(index),
-                onTap: () => onToggleStep(index),
-              ),
+          itemBuilder: (_, index) => _StepRow(
+            index: index,
+            text: steps[index],
+            completed: completed.contains(index),
+            onTap: () => onToggleStep(index),
+          ),
         ),
       ],
     );
@@ -738,7 +744,7 @@ class _StepRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return FkCard(
       key: ValueKey('step_$index'),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       onTap: onTap,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -751,37 +757,35 @@ class _StepRow extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child:
-                completed
-                    ? const Icon(
-                      Icons.check_rounded,
-                      size: 14,
-                      color: Colors.white,
-                    )
-                    : Text(
-                      '${index + 1}',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primaryContainer,
-                      ),
+            child: completed
+                ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                : Text(
+                    '${index + 1}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: AppFontSize.sm,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryContainer,
                     ),
+                  ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(top: 3),
-              child: Text(
-                text,
+              child: AnimatedDefaultTextStyle(
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : AppDuration.normal,
+                curve: AppMotionCurves.standard,
                 style: GoogleFonts.manrope(
-                  fontSize: 14,
+                  fontSize: AppFontSize.md,
                   height: 1.5,
-                  color:
-                      completed
-                          ? AppColors.onSurfaceVariant
-                          : AppColors.onSurface,
+                  color: completed
+                      ? AppColors.onSurfaceVariant
+                      : AppColors.onSurface,
                   decoration: completed ? TextDecoration.lineThrough : null,
                 ),
+                child: Text(text),
               ),
             ),
           ),
@@ -810,13 +814,7 @@ class _StartCookingButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.primary,
             borderRadius: BorderRadius.circular(AppRadius.lg),
-            boxShadow: const [
-              BoxShadow(
-                color: AppColors.shadowWarm,
-                blurRadius: 18,
-                offset: Offset(0, 6),
-              ),
-            ],
+            boxShadow: AppShadows.strong,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,

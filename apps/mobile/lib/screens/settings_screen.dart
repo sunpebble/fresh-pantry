@@ -17,7 +17,9 @@ import '../services/backup_service.dart';
 import '../sync/sync_providers.dart';
 import '../theme/app_theme.dart';
 import '../utils/fk_toast.dart';
+import '../utils/page_transitions.dart';
 import '../widgets/shared/fk_card.dart';
+import '../widgets/shared/fk_entrance.dart';
 import '../widgets/shared/fk_pill.dart';
 import '../widgets/shared/fk_section_head.dart';
 import '../widgets/shared/fk_top_bar.dart';
@@ -280,7 +282,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       : '${household?.name ?? ''} · ${householdSession.householdMembers.length} 名成员',
                   icon: Icons.home_rounded,
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const HouseholdScreen()),
+                    fkRoute<void>(builder: (_) => const HouseholdScreen()),
                   ),
                   isLast: true,
                 ),
@@ -291,7 +293,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     horizontal: AppSpacing.xl,
                   ),
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(AppSpacing.md),
                     decoration: BoxDecoration(
                       color: AppColors.fkWarnSoft,
                       borderRadius: BorderRadius.circular(AppRadius.md),
@@ -457,7 +459,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         sub: '添加和管理私房菜单',
                         icon: Icons.menu_book_rounded,
                         onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
+                          fkRoute<void>(
                             builder: (_) => const MyRecipesScreen(),
                           ),
                         ),
@@ -467,7 +469,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         sub: '配置模型与连接',
                         icon: Icons.auto_awesome_outlined,
                         onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
+                          fkRoute<void>(
                             builder: (_) => const AiSettingsScreen(),
                           ),
                         ),
@@ -524,7 +526,7 @@ class _ProfileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FkCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Row(
         children: [
           _ProfileAvatar(letter: _avatarLetter(userEmail)),
@@ -607,25 +609,29 @@ class _StatRow extends StatelessWidget {
         for (var i = 0; i < items.length; i++) ...[
           if (i > 0) const SizedBox(width: AppSpacing.sm + 2),
           Expanded(
-            child: FkCard(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                children: [
-                  Text(
-                    items[i].$2,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: items[i].$3,
+            child: FkEntrance(
+              index: i,
+              child: FkCard(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  children: [
+                    Text(
+                      items[i].$2,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: items[i].$3,
+                          ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    items[i].$1,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.onSurfaceVariant,
+                    const SizedBox(height: 2),
+                    Text(
+                      items[i].$1,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -776,7 +782,7 @@ class _LinkRow extends StatelessWidget {
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -836,12 +842,15 @@ class _ActionRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: 14,
+        ),
         child: Row(
           children: [
             if (icon != null) ...[
               Icon(icon, size: AppSize.iconMd, color: color),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
             ],
             Expanded(
               child: Column(

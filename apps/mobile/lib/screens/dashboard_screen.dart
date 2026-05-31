@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import '../theme/fk_category_palette.dart';
 import '../utils/app_snackbar.dart';
 import '../utils/dashboard_greeting.dart';
+import '../utils/page_transitions.dart';
 import '../utils/safe_push.dart';
 import '../widgets/common/top_app_bar.dart';
 import '../widgets/dashboard/expiring_fallback_card.dart';
@@ -20,14 +21,14 @@ import '../widgets/dashboard/low_stock_card.dart';
 import '../widgets/recipe_card.dart';
 import '../widgets/shared/cat_icon.dart';
 import '../widgets/shared/category_icon.dart';
+import '../widgets/shared/fk_entrance.dart';
 import '../widgets/shared/fk_hero_header.dart';
-import '../widgets/shared/fk_icon_button.dart';
 import '../widgets/shared/fk_pill.dart';
 import '../widgets/shared/fk_section_head.dart';
+import '../widgets/shared/fk_skeleton_card.dart';
 import 'expiring_screen.dart';
 import 'low_stock_screen.dart';
 import 'recipe_detail_screen.dart';
-import 'settings_screen.dart';
 
 /// FreshKeeper 首页 — 设计稿 `screens-1.jsx::HomeScreen`。
 ///
@@ -53,11 +54,17 @@ class DashboardScreen extends ConsumerWidget {
           _DashboardHero(),
           _ExpiringItemsSection(),
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            padding: EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: AppSpacing.sm,
+            ),
             child: LowStockCard(),
           ),
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            padding: EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: AppSpacing.sm,
+            ),
             child: ExpiringFallbackCard(),
           ),
           _CategorySection(),
@@ -172,10 +179,7 @@ class _DashboardHero extends ConsumerWidget {
       onSoonTap: () => openInventory(inventoryFilterNotFresh),
       onLowStockTap: () => Navigator.of(
         context,
-      ).push(MaterialPageRoute(builder: (_) => const LowStockScreen())),
-      onSettings: () => Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
+      ).push(fkRoute<void>(builder: (_) => const LowStockScreen())),
     );
   }
 }
@@ -199,7 +203,7 @@ class _ExpiringItemsSection extends ConsumerWidget {
           actionLabel: '全部',
           onAction: () => Navigator.of(
             context,
-          ).push(MaterialPageRoute(builder: (_) => const ExpiringScreen())),
+          ).push(fkRoute<void>(builder: (_) => const ExpiringScreen())),
         ),
         SizedBox(
           height: 168,
@@ -210,9 +214,12 @@ class _ExpiringItemsSection extends ConsumerWidget {
             separatorBuilder: (_, _) => const SizedBox(width: 10),
             itemBuilder: (_, i) {
               final item = expiringItems[i];
-              return _ExpiringCard(
-                item: item,
-                onAdd: () => _addToShoppingList(context, ref, item),
+              return FkEntrance(
+                index: i,
+                child: _ExpiringCard(
+                  item: item,
+                  onAdd: () => _addToShoppingList(context, ref, item),
+                ),
               );
             },
           ),
@@ -241,9 +248,11 @@ class _CategorySection extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18),
           child: categoryCounts.isEmpty
-              ? const _DashboardEmptyState(
-                  icon: Icons.category_outlined,
-                  label: '还没有分类数据',
+              ? FkEntrance(
+                  child: const _DashboardEmptyState(
+                    icon: Icons.category_outlined,
+                    label: '还没有分类数据',
+                  ),
                 )
               : _CategoryGrid(
                   counts: categoryCounts,
@@ -269,9 +278,17 @@ class _TodayRecommendationSection extends ConsumerWidget {
       // Show a loader while the first recipe fetch is still in flight, so the
       // section doesn't read as an empty flicker before recipes pop in.
       if (ref.watch(recipesProvider).isLoading) {
-        return const SizedBox(
-          height: 120,
-          child: Center(child: CircularProgressIndicator()),
+        return const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 18),
+          child: Column(
+            children: [
+              FkRecipeSkeletonCard(),
+              SizedBox(height: AppSpacing.md),
+              FkRecipeSkeletonCard(),
+              SizedBox(height: AppSpacing.md),
+              FkRecipeSkeletonCard(),
+            ],
+          ),
         );
       }
       return const SizedBox(height: 100);
@@ -301,9 +318,10 @@ class _TodayRecommendationSection extends ConsumerWidget {
               inventoryNames,
               todayRecipe,
             ),
+            heroTag: 'recipe-image-${todayRecipe.id}',
             onTap: () => pushRouteOnce(
               context,
-              MaterialPageRoute(
+              fkRoute<void>(
                 builder: (_) => RecipeDetailScreen(recipe: todayRecipe),
               ),
             ),
@@ -361,7 +379,6 @@ class _HeroSection extends StatelessWidget {
   final VoidCallback onUrgentTap;
   final VoidCallback onSoonTap;
   final VoidCallback onLowStockTap;
-  final VoidCallback onSettings;
 
   const _HeroSection({
     required this.greeting,
@@ -373,7 +390,6 @@ class _HeroSection extends StatelessWidget {
     required this.onUrgentTap,
     required this.onSoonTap,
     required this.onLowStockTap,
-    required this.onSettings,
   });
 
   @override
@@ -405,11 +421,11 @@ class _HeroSection extends StatelessWidget {
                               color: Colors.white.withValues(alpha: 0.75),
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.xs),
                           Text(
                             '你的冰箱状态',
                             style: GoogleFonts.plusJakartaSans(
-                              fontSize: 24,
+                              fontSize: AppFontSize.xxl,
                               fontWeight: FontWeight.w700,
                               letterSpacing: -0.4,
                               color: Colors.white,
@@ -418,15 +434,8 @@ class _HeroSection extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     const HouseholdChip(),
-                    const SizedBox(width: 8),
-                    FkIconButton(
-                      backgroundColor: Colors.white.withValues(alpha: 0.18),
-                      foregroundColor: Colors.white,
-                      onTap: onSettings,
-                      child: const Icon(Icons.notifications_outlined),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 22),
@@ -439,13 +448,13 @@ class _HeroSection extends StatelessWidget {
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Text(
                         '件食材 · $categoryCount 类',
                         style: GoogleFonts.manrope(
-                          fontSize: 14,
+                          fontSize: AppFontSize.md,
                           fontWeight: FontWeight.w500,
                           color: Colors.white.withValues(alpha: 0.85),
                         ),
@@ -453,33 +462,42 @@ class _HeroSection extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Row(
                   children: [
                     Expanded(
-                      child: _MiniStat(
-                        label: '已过期',
-                        count: urgent,
-                        accent: AppColors.fkDanger,
-                        onTap: onUrgentTap,
+                      child: FkEntrance(
+                        index: 0,
+                        child: _MiniStat(
+                          label: '已过期',
+                          count: urgent,
+                          accent: AppColors.fkDanger,
+                          onTap: onUrgentTap,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
-                      child: _MiniStat(
-                        label: '即将过期',
-                        count: soon,
-                        accent: AppColors.fkWarn,
-                        onTap: onSoonTap,
+                      child: FkEntrance(
+                        index: 1,
+                        child: _MiniStat(
+                          label: '即将过期',
+                          count: soon,
+                          accent: AppColors.fkWarn,
+                          onTap: onSoonTap,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
-                      child: _MiniStat(
-                        label: '库存不足',
-                        count: lowStock,
-                        accent: Colors.white,
-                        onTap: onLowStockTap,
+                      child: FkEntrance(
+                        index: 2,
+                        child: _MiniStat(
+                          label: '库存不足',
+                          count: lowStock,
+                          accent: Colors.white,
+                          onTap: onLowStockTap,
+                        ),
                       ),
                     ),
                   ],
@@ -508,10 +526,13 @@ class _MiniStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final body = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: 10,
+      ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -525,11 +546,11 @@ class _MiniStat extends StatelessWidget {
               height: 1,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             label,
             style: GoogleFonts.manrope(
-              fontSize: 11,
+              fontSize: AppFontSize.xs,
               color: Colors.white.withValues(alpha: 0.85),
             ),
           ),
@@ -570,17 +591,11 @@ class _ExpiringCard extends StatelessWidget {
       width: 132,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadowSoft,
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: AppShadows.soft,
         border: Border(top: BorderSide(color: topBorder, width: 3)),
       ),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -589,7 +604,7 @@ class _ExpiringCard extends StatelessWidget {
             height: 56,
             decoration: BoxDecoration(
               color: palette.tint,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.chip),
             ),
             child: Center(
               child: CatIcon(category: catId, size: 36, color: palette.ink),
@@ -601,7 +616,7 @@ class _ExpiringCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 14,
+              fontSize: AppFontSize.md,
               fontWeight: FontWeight.w700,
               color: AppColors.onSurface,
             ),
@@ -610,11 +625,11 @@ class _ExpiringCard extends StatelessWidget {
           Text(
             '${item.quantity}${item.unit}',
             style: GoogleFonts.manrope(
-              fontSize: 11,
+              fontSize: AppFontSize.xs,
               color: AppColors.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           if (item.expiryLabel != null)
             FkPill(
               label: item.expiryLabel!,
@@ -652,43 +667,49 @@ class _CategoryGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         final entry = entries[index];
         final palette = FkCategoryPalette.of(entry.key);
-        return GestureDetector(
-          onTap: () => onTap(entry.key),
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            decoration: BoxDecoration(
-              color: palette.tint,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CatIcon(category: entry.key, size: 28, color: palette.ink),
-                const SizedBox(height: 4),
-                Text(
-                  FkCategoryPalette.names[entry.key] ?? entry.key,
-                  style: GoogleFonts.manrope(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: palette.ink,
+        return FkEntrance(
+          index: index,
+          child: GestureDetector(
+            onTap: () => onTap(entry.key),
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              decoration: BoxDecoration(
+                color: palette.tint,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xs,
+                vertical: 10,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CatIcon(category: entry.key, size: 28, color: palette.ink),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    FkCategoryPalette.names[entry.key] ?? entry.key,
+                    style: GoogleFonts.manrope(
+                      fontSize: AppFontSize.xs,
+                      fontWeight: FontWeight.w600,
+                      color: palette.ink,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${entry.value}',
-                  style: GoogleFonts.manrope(
-                    fontSize: 11,
-                    color: palette.ink.withValues(alpha: 0.7),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${entry.value}',
+                    style: GoogleFonts.manrope(
+                      fontSize: AppFontSize.xs,
+                      color: palette.ink.withValues(alpha: 0.7),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );

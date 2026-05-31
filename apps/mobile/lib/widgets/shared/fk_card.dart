@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
+import 'fk_pressable.dart';
 
 /// FreshKeeper 主卡 — 圆角 20、白底、两层软阴影。
 ///
@@ -18,7 +19,7 @@ class FkCard extends StatelessWidget {
   const FkCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(AppSpacing.lg),
     this.onTap,
     this.backgroundColor,
     this.borderRadius = AppRadius.xl,
@@ -36,20 +37,11 @@ class FkCard extends StatelessWidget {
             : null,
         gradient: gradient,
         borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: shadows ?? _kDefaultShadow,
+        boxShadow: shadows ?? AppShadows.card,
       ),
       child: child,
     );
     if (onTap == null) return inner;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: inner,
-    );
+    return FkAnimatedPressable(onTap: onTap, child: inner);
   }
 }
-
-const List<BoxShadow> _kDefaultShadow = [
-  BoxShadow(color: AppColors.shadowSoft, blurRadius: 2, offset: Offset(0, 1)),
-  BoxShadow(color: AppColors.shadowSoft, blurRadius: 16, offset: Offset(0, 4)),
-];
