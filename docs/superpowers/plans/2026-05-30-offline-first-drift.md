@@ -1864,6 +1864,9 @@ git commit -m "feat(ui): offline / pending-sync status banner"
 
 ## Task 13: 增量写入 + 响应式读 (Phase 6) — 退役全量 replace
 
+> **❌ SKIPPED（2026-05-31，有意不做）。** 本 Task 曾实现（`2de04ee`）后回滚（`64fadf5`）。回滚根因：`add()` 改 `upsert(household, itemToAdd)`，而 `upsert` 事务内执行 `DELETE WHERE household_id=H AND id=item.id`；在 **local-only（无 household）** 场景 `syncIdFor` 不分配 uuid，`itemToAdd.id` 保持空串，于是 `DELETE ... id=''` 命中作用域内**所有空 id 行**（local-only 行 id 普遍为空，见 surrogate PK 设计），把既有物品全部删光，只留新增一条——**local-only 数据丢失**。
+> 决策：正式放弃。该数据规模下（家庭库存通常几十条）全量 `saveItems`（事务内 delete-all + batch insert）本就是毫秒级，增量收益不抵 local-only 空 id 语义的复杂度与已验证的数据丢失风险（YAGNI）。若未来要做，须按 `rowPk` 而非 `id` 增量，或仅在已加入 household（id 为非空 uuid）时启用。
+
 **Files:**
 - Modify: `apps/mobile/lib/storage/inventory_repo.dart`、`shopping_repo.dart`、`custom_recipe_repo.dart`(增 `upsert`/`softDelete`/`watchAllFor`)
 - Modify: `apps/mobile/lib/providers/inventory_provider.dart`(热路径 `add/remove/update` 改增量)

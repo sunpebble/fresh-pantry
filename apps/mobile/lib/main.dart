@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:workmanager/workmanager.dart';
 import 'app.dart';
 import 'backend/backend_config_provider.dart';
 import 'config/backend_config.dart';
@@ -21,6 +23,7 @@ import 'storage/drift/app_database.dart';
 import 'storage/inventory_repo.dart';
 import 'storage/shared_prefs_storage_adapter.dart';
 import 'storage/shopping_repo.dart';
+import 'sync/background_sync.dart';
 import 'sync/sync_outbox_repo.dart';
 
 void main() async {
@@ -75,6 +78,11 @@ Future<void> _runFreshPantry() async {
   customRecipeRepo.hydrate(await customRecipeRepo.loadAllFor(''));
   await outboxRepo.hydratePending();
 
+  // Periodic background outbox drain (Android/iOS only; a no-op elsewhere). The
+  // reliable sync path remains the foreground/reconnect flush — this only
+  // narrows the gap when the app is killed and the user doesn't reopen it.
+  await _scheduleBackgroundSync();
+
   runApp(
     SentryWidget(
       child: ProviderScope(
@@ -96,5 +104,27 @@ Future<void> _runFreshPantry() async {
         child: const FreshPantryApp(),
       ),
     ),
+  );
+}
+
+/// Schedules the periodic background outbox drain on platforms with a
+/// WorkManager backend (Android / iOS). Desktop and web have none, so this is a
+/// no-op there. [ExistingWorkPolicy.keep] avoids stacking duplicate periodic
+/// work across relaunches. iOS execution timing is system-throttled and not
+/// guaranteed — the foreground/reconnect flush stays the dependable path.
+Future<void> _scheduleBackgroundSync() async {
+  final supportsWorkManager =
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+  if (!supportsWorkManager) return;
+
+  await Workmanager().initialize(backgroundSyncDispatcher);
+  await Workmanager().registerPeriodicTask(
+    backgroundSyncUniqueName,
+    backgroundSyncTask,
+    frequency: const Duration(minutes: 15),
+    constraints: Constraints(networkType: NetworkType.connected),
+    existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
   );
 }
