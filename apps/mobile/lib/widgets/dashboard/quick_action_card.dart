@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/app_theme.dart';
+import '../shared/fk_pressable.dart';
 
 class QuickActionCard extends StatelessWidget {
   final IconData icon;
@@ -28,7 +29,7 @@ class QuickActionCard extends StatelessWidget {
     return Semantics(
       button: true,
       label: semanticLabel ?? '$title, $subtitle',
-      child: GestureDetector(
+      child: FkAnimatedPressable(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.xl),
