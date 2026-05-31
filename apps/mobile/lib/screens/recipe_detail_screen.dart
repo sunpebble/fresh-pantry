@@ -767,8 +767,11 @@ class _StepRow extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(top: 3),
-              child: Text(
-                text,
+              child: AnimatedDefaultTextStyle(
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : AppDuration.normal,
+                curve: AppMotionCurves.standard,
                 style: GoogleFonts.manrope(
                   fontSize: 14,
                   height: 1.5,
@@ -777,6 +780,7 @@ class _StepRow extends StatelessWidget {
                       : AppColors.onSurface,
                   decoration: completed ? TextDecoration.lineThrough : null,
                 ),
+                child: Text(text),
               ),
             ),
           ),

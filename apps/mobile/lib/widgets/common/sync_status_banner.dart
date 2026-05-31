@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/sync_status_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_motion.dart';
 
 /// Lightweight banner surfacing offline / pending-sync state.
 ///
@@ -15,39 +16,54 @@ class SyncStatusBanner extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final status = ref.watch(syncStatusProvider);
-    if (!status.showBanner) return const SizedBox.shrink();
 
-    final label = status.online
-        ? '同步中 · ${status.pendingCount} 条待同步'
-        : status.pendingCount > 0
-            ? '离线 · ${status.pendingCount} 条待同步'
-            : '离线';
+    final label = status.showBanner
+        ? (status.online
+              ? '同步中 · ${status.pendingCount} 条待同步'
+              : status.pendingCount > 0
+              ? '离线 · ${status.pendingCount} 条待同步'
+              : '离线')
+        : null;
 
-    return Material(
-      color: status.online ? AppColors.primary : AppColors.onSurfaceVariant,
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          child: Row(
-            children: [
-              Icon(
-                status.online ? Icons.sync : Icons.cloud_off,
-                size: 16,
-                color: AppColors.onPrimary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: AppColors.onPrimary,
-                  fontSize: 12,
+    return AnimatedSize(
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : AppDuration.normal,
+      curve: AppMotionCurves.standard,
+      alignment: Alignment.topCenter,
+      child: status.showBanner
+          ? Material(
+              color: status.online
+                  ? AppColors.primary
+                  : AppColors.onSurfaceVariant,
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        status.online ? Icons.sync : Icons.cloud_off,
+                        size: 16,
+                        color: AppColors.onPrimary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        label!,
+                        style: const TextStyle(
+                          color: AppColors.onPrimary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
+            )
+          : const SizedBox.shrink(),
     );
   }
 }

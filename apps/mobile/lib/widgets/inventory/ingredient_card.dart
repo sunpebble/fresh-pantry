@@ -125,9 +125,17 @@ class IngredientCard extends StatelessWidget {
               color: AppColors.surfaceContainer,
               borderRadius: BorderRadius.circular(2),
             ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: progress.clamp(0.05, 1.0),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress.clamp(0.05, 1.0)),
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : AppDuration.slow,
+              curve: AppMotionCurves.standard,
+              builder: (context, value, child) => FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: value,
+                child: child,
+              ),
               child: Container(
                 decoration: BoxDecoration(
                   color: progressColor,
