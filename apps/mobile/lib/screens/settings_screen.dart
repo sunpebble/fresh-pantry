@@ -19,6 +19,7 @@ import '../theme/app_theme.dart';
 import '../utils/fk_toast.dart';
 import '../utils/page_transitions.dart';
 import '../widgets/shared/fk_card.dart';
+import '../widgets/shared/fk_entrance.dart';
 import '../widgets/shared/fk_pill.dart';
 import '../widgets/shared/fk_section_head.dart';
 import '../widgets/shared/fk_top_bar.dart';
@@ -608,25 +609,29 @@ class _StatRow extends StatelessWidget {
         for (var i = 0; i < items.length; i++) ...[
           if (i > 0) const SizedBox(width: AppSpacing.sm + 2),
           Expanded(
-            child: FkCard(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                children: [
-                  Text(
-                    items[i].$2,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: items[i].$3,
+            child: FkEntrance(
+              index: i,
+              child: FkCard(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  children: [
+                    Text(
+                      items[i].$2,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: items[i].$3,
+                          ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    items[i].$1,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.onSurfaceVariant,
+                    const SizedBox(height: 2),
+                    Text(
+                      items[i].$1,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

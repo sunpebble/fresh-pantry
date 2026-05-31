@@ -17,6 +17,7 @@ import '../../theme/app_theme.dart';
 import '../../utils/page_transitions.dart';
 import '../../utils/storage_labels.dart';
 import '../shared/category_icon.dart';
+import '../shared/fk_entrance.dart';
 import '../shared/recipe_image.dart';
 
 const _searchDebounceDuration = Duration(milliseconds: 150);
@@ -441,14 +442,29 @@ class _SearchResultsList extends StatelessWidget {
   Widget build(BuildContext context) {
     final rows = _rows();
     if (rows.isEmpty) {
-      return _EmptySearchResults();
+      return FkEntrance(child: _EmptySearchResults());
     }
 
+    // Track a separate counter for content rows (inventory / shopping /
+    // foodDetails) so stagger indices stay compact and meaningful.
+    var contentIndex = 0;
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       itemCount: rows.length,
       itemExtentBuilder: (index, dimensions) => rows[index].extent,
-      itemBuilder: (context, index) => _buildRow(rows[index]),
+      itemBuilder: (context, index) {
+        final row = rows[index];
+        final isContent =
+            row.kind == _SearchResultRowKind.inventory ||
+            row.kind == _SearchResultRowKind.shopping ||
+            row.kind == _SearchResultRowKind.foodDetails;
+        final widget = _buildRow(row);
+        if (isContent) {
+          final i = contentIndex++;
+          return FkEntrance(index: i, child: widget);
+        }
+        return widget;
+      },
     );
   }
 

@@ -21,6 +21,7 @@ import '../widgets/dashboard/low_stock_card.dart';
 import '../widgets/recipe_card.dart';
 import '../widgets/shared/cat_icon.dart';
 import '../widgets/shared/category_icon.dart';
+import '../widgets/shared/fk_entrance.dart';
 import '../widgets/shared/fk_hero_header.dart';
 import '../widgets/shared/fk_pill.dart';
 import '../widgets/shared/fk_section_head.dart';
@@ -207,9 +208,12 @@ class _ExpiringItemsSection extends ConsumerWidget {
             separatorBuilder: (_, _) => const SizedBox(width: 10),
             itemBuilder: (_, i) {
               final item = expiringItems[i];
-              return _ExpiringCard(
-                item: item,
-                onAdd: () => _addToShoppingList(context, ref, item),
+              return FkEntrance(
+                index: i,
+                child: _ExpiringCard(
+                  item: item,
+                  onAdd: () => _addToShoppingList(context, ref, item),
+                ),
               );
             },
           ),
@@ -238,9 +242,11 @@ class _CategorySection extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18),
           child: categoryCounts.isEmpty
-              ? const _DashboardEmptyState(
-                  icon: Icons.category_outlined,
-                  label: '还没有分类数据',
+              ? FkEntrance(
+                  child: const _DashboardEmptyState(
+                    icon: Icons.category_outlined,
+                    label: '还没有分类数据',
+                  ),
                 )
               : _CategoryGrid(
                   counts: categoryCounts,
@@ -453,29 +459,38 @@ class _HeroSection extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: _MiniStat(
-                        label: '已过期',
-                        count: urgent,
-                        accent: AppColors.fkDanger,
-                        onTap: onUrgentTap,
+                      child: FkEntrance(
+                        index: 0,
+                        child: _MiniStat(
+                          label: '已过期',
+                          count: urgent,
+                          accent: AppColors.fkDanger,
+                          onTap: onUrgentTap,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _MiniStat(
-                        label: '即将过期',
-                        count: soon,
-                        accent: AppColors.fkWarn,
-                        onTap: onSoonTap,
+                      child: FkEntrance(
+                        index: 1,
+                        child: _MiniStat(
+                          label: '即将过期',
+                          count: soon,
+                          accent: AppColors.fkWarn,
+                          onTap: onSoonTap,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _MiniStat(
-                        label: '库存不足',
-                        count: lowStock,
-                        accent: Colors.white,
-                        onTap: onLowStockTap,
+                      child: FkEntrance(
+                        index: 2,
+                        child: _MiniStat(
+                          label: '库存不足',
+                          count: lowStock,
+                          accent: Colors.white,
+                          onTap: onLowStockTap,
+                        ),
                       ),
                     ),
                   ],
@@ -648,43 +663,46 @@ class _CategoryGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         final entry = entries[index];
         final palette = FkCategoryPalette.of(entry.key);
-        return GestureDetector(
-          onTap: () => onTap(entry.key),
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            decoration: BoxDecoration(
-              color: palette.tint,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CatIcon(category: entry.key, size: 28, color: palette.ink),
-                const SizedBox(height: 4),
-                Text(
-                  FkCategoryPalette.names[entry.key] ?? entry.key,
-                  style: GoogleFonts.manrope(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: palette.ink,
+        return FkEntrance(
+          index: index,
+          child: GestureDetector(
+            onTap: () => onTap(entry.key),
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              decoration: BoxDecoration(
+                color: palette.tint,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CatIcon(category: entry.key, size: 28, color: palette.ink),
+                  const SizedBox(height: 4),
+                  Text(
+                    FkCategoryPalette.names[entry.key] ?? entry.key,
+                    style: GoogleFonts.manrope(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: palette.ink,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${entry.value}',
-                  style: GoogleFonts.manrope(
-                    fontSize: 11,
-                    color: palette.ink.withValues(alpha: 0.7),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${entry.value}',
+                    style: GoogleFonts.manrope(
+                      fontSize: 11,
+                      color: palette.ink.withValues(alpha: 0.7),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );

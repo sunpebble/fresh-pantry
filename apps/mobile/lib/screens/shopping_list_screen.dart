@@ -17,6 +17,7 @@ import '../utils/page_transitions.dart';
 import '../widgets/shared/cat_icon.dart';
 import '../widgets/shared/category_icon.dart';
 import '../widgets/shared/fk_card.dart';
+import '../widgets/shared/fk_entrance.dart';
 import '../widgets/shared/fk_dashed_border.dart';
 import '../widgets/shared/fk_top_bar.dart';
 import '../widgets/shopping/quick_add_field.dart';
@@ -345,13 +346,16 @@ class _ShoppingContentSliver extends StatelessWidget {
   Widget _buildItem(BuildContext context, int index) {
     if (index < visibleEntries.length) {
       final entry = visibleEntries[index];
-      return _CategoryGroup(
-        title: entry.key,
-        items: entry.value,
-        collapsed: collapsedCategories.contains(entry.key),
-        onToggleCollapse: () => onToggleCategory(entry.key),
-        onItemToggle: onItemToggle,
-        onItemDelete: onItemDelete,
+      return FkEntrance(
+        index: index,
+        child: _CategoryGroup(
+          title: entry.key,
+          items: entry.value,
+          collapsed: collapsedCategories.contains(entry.key),
+          onToggleCollapse: () => onToggleCategory(entry.key),
+          onItemToggle: onItemToggle,
+          onItemDelete: onItemDelete,
+        ),
       );
     }
 
@@ -779,43 +783,45 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                shape: BoxShape.circle,
+    return FkEntrance(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.shopping_basket_outlined,
+                  size: 32,
+                  color: AppColors.primary,
+                ),
               ),
-              child: const Icon(
-                Icons.shopping_basket_outlined,
-                size: 32,
-                color: AppColors.primary,
+              const SizedBox(height: 16),
+              Text(
+                '购物清单为空',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onSurface,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '购物清单为空',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.onSurface,
+              const SizedBox(height: 4),
+              Text(
+                '在上方输入框添加需要购买的食材',
+                style: GoogleFonts.manrope(
+                  fontSize: 12,
+                  color: AppColors.onSurfaceVariant,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '在上方输入框添加需要购买的食材',
-              style: GoogleFonts.manrope(
-                fontSize: 12,
-                color: AppColors.onSurfaceVariant,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
