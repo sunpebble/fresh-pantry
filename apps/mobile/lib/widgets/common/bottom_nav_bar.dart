@@ -142,13 +142,7 @@ class _PrimaryFab extends StatelessWidget {
           decoration: const BoxDecoration(
             color: AppColors.primary,
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.shadowWarm,
-                blurRadius: 18,
-                offset: Offset(0, 6),
-              ),
-            ],
+            boxShadow: AppShadows.strong,
           ),
           alignment: Alignment.center,
           child: FkNavIcon(

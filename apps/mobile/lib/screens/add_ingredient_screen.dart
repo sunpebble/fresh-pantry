@@ -999,13 +999,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
           decoration: BoxDecoration(
             color: AppColors.primary,
             borderRadius: BorderRadius.circular(AppRadius.pill),
-            boxShadow: const [
-              BoxShadow(
-                color: AppColors.shadowWarm,
-                blurRadius: 18,
-                offset: Offset(0, 6),
-              ),
-            ],
+            boxShadow: AppShadows.strong,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,

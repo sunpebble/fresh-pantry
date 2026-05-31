@@ -307,15 +307,7 @@ class _StickyCta extends StatelessWidget {
             decoration: BoxDecoration(
               color: enabled ? AppColors.primary : AppColors.surfaceContainer,
               borderRadius: BorderRadius.circular(AppRadius.lg),
-              boxShadow: enabled
-                  ? const [
-                      BoxShadow(
-                        color: AppColors.shadowWarm,
-                        blurRadius: 18,
-                        offset: Offset(0, 6),
-                      ),
-                    ]
-                  : null,
+              boxShadow: enabled ? AppShadows.strong : null,
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,

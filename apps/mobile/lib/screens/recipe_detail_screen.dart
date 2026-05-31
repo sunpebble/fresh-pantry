@@ -809,13 +809,7 @@ class _StartCookingButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.primary,
             borderRadius: BorderRadius.circular(AppRadius.lg),
-            boxShadow: const [
-              BoxShadow(
-                color: AppColors.shadowWarm,
-                blurRadius: 18,
-                offset: Offset(0, 6),
-              ),
-            ],
+            boxShadow: AppShadows.strong,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,

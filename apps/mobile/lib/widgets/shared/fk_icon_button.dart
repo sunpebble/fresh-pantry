@@ -43,13 +43,7 @@ class FkIconButton extends StatelessWidget {
     final effectiveShadow =
         shadows ??
         (primary
-            ? const [
-                BoxShadow(
-                  color: AppColors.shadowWarm,
-                  blurRadius: 18,
-                  offset: Offset(0, 6),
-                ),
-              ]
+            ? AppShadows.strong
             : const [
                 BoxShadow(
                   color: Color(0x0F000000),

@@ -37,7 +37,7 @@ class FkCard extends StatelessWidget {
             : null,
         gradient: gradient,
         borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: shadows ?? _kDefaultShadow,
+        boxShadow: shadows ?? AppShadows.card,
       ),
       child: child,
     );
@@ -45,8 +45,3 @@ class FkCard extends StatelessWidget {
     return FkAnimatedPressable(onTap: onTap, child: inner);
   }
 }
-
-const List<BoxShadow> _kDefaultShadow = [
-  BoxShadow(color: AppColors.shadowSoft, blurRadius: 2, offset: Offset(0, 1)),
-  BoxShadow(color: AppColors.shadowSoft, blurRadius: 16, offset: Offset(0, 4)),
-];
