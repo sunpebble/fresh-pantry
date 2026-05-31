@@ -27,11 +27,18 @@ class IngredientCard extends StatelessWidget {
   final VoidCallback? onBuyAgain;
   final VoidCallback? onTap;
 
+  /// Optional Hero tag for the category-icon avatar. When non-null the avatar
+  /// is wrapped in a [Hero] so it can fly to the detail screen. Callers that
+  /// render multiple cards (the inventory grid) must supply a unique tag per
+  /// card; omitting the tag (the default) is safe and produces no Hero at all.
+  final Object? heroTag;
+
   const IngredientCard({
     super.key,
     required this.ingredient,
     this.onBuyAgain,
     this.onTap,
+    this.heroTag,
   });
 
   @override
@@ -67,17 +74,7 @@ class IngredientCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: palette.tint,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: CatIcon(category: catId, size: 30, color: palette.ink),
-                ),
-              ),
+              _buildAvatar(catId, palette),
               const Spacer(),
               ?statusBadge,
             ],
@@ -168,6 +165,22 @@ class IngredientCard extends StatelessWidget {
 
     if (onTap == null) return card;
     return FkAnimatedPressable(onTap: onTap, child: card);
+  }
+
+  Widget _buildAvatar(String catId, FkCatColors palette) {
+    final avatar = Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: palette.tint,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Center(
+        child: CatIcon(category: catId, size: 30, color: palette.ink),
+      ),
+    );
+    if (heroTag == null) return avatar;
+    return Hero(tag: heroTag!, child: avatar);
   }
 
   /// 右上小角徽 — 设计稿用 expiryLabel 作为内容;fresh 状态不显示。

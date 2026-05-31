@@ -58,9 +58,18 @@ class IngredientDetailResult {
 ///   subtle dot grid。中央是 92×92 软玻璃 avatar + CatIcon。
 /// - 主体:数量/天数 split card → 食材信息 list → 操作行(加购 / 编辑 / 删除)。
 class IngredientDetailScreen extends ConsumerStatefulWidget {
-  const IngredientDetailScreen({super.key, required this.ingredient});
+  const IngredientDetailScreen({
+    super.key,
+    required this.ingredient,
+    this.heroTag,
+  });
 
   final Ingredient ingredient;
+
+  /// Optional Hero tag forwarded from the navigation source (e.g. the inventory
+  /// grid card). When non-null the detail header avatar is wrapped in a [Hero]
+  /// with this tag so it animates from the card.
+  final Object? heroTag;
 
   @override
   ConsumerState<IngredientDetailScreen> createState() =>
@@ -185,6 +194,7 @@ class _IngredientDetailScreenState
                   onBack: () => Navigator.of(context).maybePop(),
                   onEdit: isInventoryItem ? () => _editItem(item) : null,
                   onDelete: isInventoryItem ? () => _confirmDelete(item) : null,
+                  heroTag: widget.heroTag,
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(18, 18, 18, 32),
@@ -251,6 +261,10 @@ class _DetailHero extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
+  /// Matches the [IngredientCard.heroTag] supplied by the inventory grid so the
+  /// avatar box flies from the card to this header. Null means no Hero.
+  final Object? heroTag;
+
   const _DetailHero({
     required this.catId,
     required this.palette,
@@ -261,7 +275,32 @@ class _DetailHero extends StatelessWidget {
     required this.onBack,
     required this.onEdit,
     required this.onDelete,
+    this.heroTag,
   });
+
+  Widget _buildAvatarBox() {
+    final box = Container(
+      width: 92,
+      height: 92,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadowSoft,
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Center(
+        child: CatIcon(category: catId, size: 64, color: palette.ink),
+      ),
+    );
+    if (heroTag == null) return box;
+    return Hero(tag: heroTag!, child: box);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -388,31 +427,7 @@ class _DetailHero extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 92,
-                        height: 92,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.6),
-                          ),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: AppColors.shadowSoft,
-                              blurRadius: 24,
-                              offset: Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: CatIcon(
-                            category: catId,
-                            size: 64,
-                            color: palette.ink,
-                          ),
-                        ),
-                      ),
+                      _buildAvatarBox(),
                       const SizedBox(height: 12),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
