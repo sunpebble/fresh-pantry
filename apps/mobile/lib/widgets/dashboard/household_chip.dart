@@ -64,7 +64,7 @@ class HouseholdChip extends ConsumerWidget {
                 width: 8,
                 height: 8,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFE5484D),
+                  color: AppColors.fkAlert,
                   shape: BoxShape.circle,
                 ),
               ),

@@ -46,7 +46,7 @@ class FkIconButton extends StatelessWidget {
             ? AppShadows.strong
             : const [
                 BoxShadow(
-                  color: Color(0x0F000000),
+                  color: AppColors.subtleShadow,
                   blurRadius: 3,
                   offset: Offset(0, 1),
                 ),

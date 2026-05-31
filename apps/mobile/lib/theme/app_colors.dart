@@ -30,6 +30,12 @@ class AppColors {
   static const fkDanger = tertiary;
   static const fkDangerSoft = tertiaryContainer;
 
+  // 成功绿 — toast check icon / 完成态强调。
+  static const fkSuccess = Color(0xFF5CC9A7);
+
+  // 警示红 — 邀请角标 / 未读数徽章 (纯红,有别于 fkDanger 珊瑚色)。
+  static const fkAlert = Color(0xFFE5484D);
+
   // 「用临期」火苗强调色 — 设计稿 (`screens-3.jsx`) 对临期 fire 标签用更暖的橙
   // #B26A1F,刻意区别于 soon 状态 ink(onSecondaryContainer #9B7A2A)。
   static const fkWarnInk = Color(0xFFB26A1F);
