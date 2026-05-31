@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/intake_review_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/app_snackbar.dart';
 import '../widgets/review/base_review_screen.dart';
 import '../widgets/review/proposal_row.dart';
 import '../widgets/review/review_bottom_bar.dart';
@@ -29,17 +30,13 @@ class _IntakeReviewScreenState extends ConsumerState<IntakeReviewScreen> {
       final inventoryN = ref.read(inventoryProvider.notifier);
       final appliedIds = await n.applyToInventory(inventoryN);
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('已入库')));
+      showAppSnackBar(context, '已入库');
       // Return the applied proposal ids so callers (e.g. the shopping list)
       // only remove the source rows whose intake actually landed.
       Navigator.of(context).maybePop(appliedIds);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('入库失败，请重试')));
+      showAppSnackBar(context, '入库失败，请重试');
     } finally {
       if (mounted) setState(() => _isConfirming = false);
     }

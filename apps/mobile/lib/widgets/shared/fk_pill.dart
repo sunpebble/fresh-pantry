@@ -94,7 +94,7 @@ class FkPill extends StatelessWidget {
     final fg = foregroundColor ?? AppColors.onSurfaceVariant;
     final body = Container(
       padding: EdgeInsets.symmetric(
-        horizontal: sm ? 8 : 10,
+        horizontal: sm ? AppSpacing.sm : 10,
         vertical: sm ? 3 : 5,
       ),
       decoration: BoxDecoration(

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/deduction_review_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../theme/app_spacing.dart';
+import '../utils/app_snackbar.dart';
 import '../widgets/review/base_review_screen.dart';
 import '../widgets/review/deduction_proposal_row.dart';
 import '../widgets/review/review_bottom_bar.dart';
@@ -30,15 +31,11 @@ class _DeductionReviewScreenState extends ConsumerState<DeductionReviewScreen> {
       final inv = ref.read(inventoryProvider.notifier);
       await n.applyToInventory(inv);
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('已扣减库存')));
+      showAppSnackBar(context, '已扣减库存');
       Navigator.of(context).maybePop();
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('扣减失败，请重试')));
+      showAppSnackBar(context, '扣减失败，请重试');
     } finally {
       if (mounted) setState(() => _isConfirming = false);
     }
