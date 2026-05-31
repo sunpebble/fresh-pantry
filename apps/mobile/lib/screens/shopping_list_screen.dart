@@ -17,7 +17,6 @@ import '../widgets/shared/cat_icon.dart';
 import '../widgets/shared/category_icon.dart';
 import '../widgets/shared/fk_card.dart';
 import '../widgets/shared/fk_dashed_border.dart';
-import '../widgets/shared/fk_icon_button.dart';
 import '../widgets/shared/fk_top_bar.dart';
 import '../widgets/shopping/quick_add_field.dart';
 
@@ -26,24 +25,11 @@ import '../widgets/shopping/quick_add_field.dart';
 /// FK top bar + 大渐变进度卡(本次采购进度 + 大数字 done/total + percent + 白色
 /// 进度条)+ 待购/已购 filter chip + 按品类分组 FkCard(每行圆形 check + 名称 +
 /// detail + 删除 icon)+ 清空已完成 dashed CTA。
-class ShoppingListScreen extends ConsumerStatefulWidget {
+class ShoppingListScreen extends ConsumerWidget {
   const ShoppingListScreen({super.key});
 
   @override
-  ConsumerState<ShoppingListScreen> createState() => _ShoppingListScreenState();
-}
-
-class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
-  final _quickAddFocusNode = FocusNode();
-
-  @override
-  void dispose() {
-    _quickAddFocusNode.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final viewState = ref.watch(shoppingListViewProvider);
     final collapsedCategories = ref.watch(collapsedShoppingCategoriesProvider);
     final allItems = viewState.items;
@@ -73,12 +59,6 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
                       subtitle: total == 0
                           ? '清单为空 · 在上方添加食材'
                           : '$checkedCount/$total 已完成 · $uncheckedCount 件待购',
-                      actions: [
-                        FkIconButton(
-                          onTap: _quickAddFocusNode.requestFocus,
-                          child: const Icon(Icons.add_rounded, size: 18),
-                        ),
-                      ],
                     ),
                   ),
                 ),
@@ -95,7 +75,7 @@ class _ShoppingListScreenState extends ConsumerState<ShoppingListScreen> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
-                    child: QuickAddField(focusNode: _quickAddFocusNode),
+                    child: const QuickAddField(),
                   ),
                 ),
                 SliverToBoxAdapter(

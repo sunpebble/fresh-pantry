@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/navigation_provider.dart';
-import '../../screens/ai_settings_screen.dart';
+import '../../screens/settings_screen.dart';
 
 /// 首页 Header 固定高度 — Dashboard hero 用它换算顶部留白,使蓝色铺到状态栏
 /// 后面时问候文案不会被浮在上方的 Header 压住。
@@ -55,11 +55,11 @@ class TopAppBar extends ConsumerWidget {
                     Icons.settings_outlined,
                     color: Colors.white,
                   ),
-                  tooltip: 'AI 设置',
+                  tooltip: '设置',
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const AiSettingsScreen(),
+                        builder: (_) => const SettingsScreen(),
                       ),
                     );
                   },

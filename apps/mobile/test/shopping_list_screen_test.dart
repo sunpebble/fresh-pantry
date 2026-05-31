@@ -115,31 +115,4 @@ void main() {
     expect(container.read(shoppingProvider), isEmpty);
     expect(find.text('「番茄」已删除'), findsOneWidget);
   });
-
-  testWidgets('top add button focuses the quick add field', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
-    final db = newTestDatabase();
-    addTearDown(db.close);
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          ...testStorageOverrides(database: db, shopping: const []),
-        ],
-        child: const MaterialApp(home: Scaffold(body: ShoppingListScreen())),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    final fieldBefore = tester.widget<EditableText>(find.byType(EditableText));
-    expect(fieldBefore.focusNode.hasFocus, isFalse);
-
-    await tester.tap(find.byIcon(Icons.add_rounded));
-    await tester.pump();
-
-    final fieldAfter = tester.widget<EditableText>(find.byType(EditableText));
-    expect(fieldAfter.focusNode.hasFocus, isTrue);
-  });
 }

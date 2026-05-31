@@ -21,13 +21,11 @@ import '../widgets/recipe_card.dart';
 import '../widgets/shared/cat_icon.dart';
 import '../widgets/shared/category_icon.dart';
 import '../widgets/shared/fk_hero_header.dart';
-import '../widgets/shared/fk_icon_button.dart';
 import '../widgets/shared/fk_pill.dart';
 import '../widgets/shared/fk_section_head.dart';
 import 'expiring_screen.dart';
 import 'low_stock_screen.dart';
 import 'recipe_detail_screen.dart';
-import 'settings_screen.dart';
 
 /// FreshKeeper 首页 — 设计稿 `screens-1.jsx::HomeScreen`。
 ///
@@ -173,9 +171,6 @@ class _DashboardHero extends ConsumerWidget {
       onLowStockTap: () => Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (_) => const LowStockScreen())),
-      onSettings: () => Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
     );
   }
 }
@@ -361,7 +356,6 @@ class _HeroSection extends StatelessWidget {
   final VoidCallback onUrgentTap;
   final VoidCallback onSoonTap;
   final VoidCallback onLowStockTap;
-  final VoidCallback onSettings;
 
   const _HeroSection({
     required this.greeting,
@@ -373,7 +367,6 @@ class _HeroSection extends StatelessWidget {
     required this.onUrgentTap,
     required this.onSoonTap,
     required this.onLowStockTap,
-    required this.onSettings,
   });
 
   @override
@@ -420,13 +413,6 @@ class _HeroSection extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     const HouseholdChip(),
-                    const SizedBox(width: 8),
-                    FkIconButton(
-                      backgroundColor: Colors.white.withValues(alpha: 0.18),
-                      foregroundColor: Colors.white,
-                      onTap: onSettings,
-                      child: const Icon(Icons.notifications_outlined),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 22),
