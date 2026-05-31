@@ -28,7 +28,16 @@ the whole app stay on SPM (no Podfile) while keeping `workmanager`.
 - Moved `ios/Resources/PrivacyInfo.xcprivacy` → alongside the sources at
   `ios/workmanager_apple/Sources/workmanager_apple/PrivacyInfo.xcprivacy`, and pointed
   the `Package.swift` resource and the `.podspec` `resource_bundles` at the new path.
-- No Dart (`lib/`) or Swift source changes.
+- Dash-cased the library **product** name `workmanager_apple` → `workmanager-apple`
+  (the target stays `workmanager_apple`). Flutter's `FlutterGeneratedPluginSwiftPackage`
+  references `.product(name: "workmanager-apple", ...)`, so the upstream underscore
+  product makes Xcode SPM resolution fail with "product 'workmanager-apple' not found"
+  (cf. `connectivity_plus`, whose product is `connectivity-plus`).
+- Added `import UIKit` to `Extensions.swift` and `BackgroundWorker.swift`. Under
+  CocoaPods, `import Flutter` transitively exposed UIKit; a pure SPM module does
+  not, so UIKit types (`UIBackgroundFetchResult`, `UIApplication`) failed to
+  compile under Xcode SPM.
+- No Dart (`lib/`) changes; the only Swift edits are the two UIKit imports above.
 
 ### Upgrading
 

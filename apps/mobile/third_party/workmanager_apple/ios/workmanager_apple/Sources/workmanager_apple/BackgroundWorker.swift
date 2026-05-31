@@ -9,6 +9,7 @@ import Foundation
 
 #if os(iOS)
 import Flutter
+import UIKit
 #elseif os(macOS)
 import FlutterMacOS
 #else
