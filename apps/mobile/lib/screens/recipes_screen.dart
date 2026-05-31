@@ -10,6 +10,7 @@ import '../utils/page_transitions.dart';
 import '../utils/safe_push.dart';
 import '../widgets/recipe_card.dart';
 import '../widgets/shared/fk_icon_button.dart';
+import '../widgets/shared/fk_skeleton_card.dart';
 import '../widgets/shared/fk_top_bar.dart';
 import 'custom_recipe_detail_screen.dart';
 import 'custom_recipe_form_screen.dart';
@@ -437,70 +438,7 @@ class _RecipeSkeletonList extends StatelessWidget {
       padding: _listPadding,
       itemCount: 3,
       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
-      itemBuilder: (_, _) => const _RecipeSkeletonCard(),
-    );
-  }
-}
-
-class _RecipeSkeletonCard extends StatelessWidget {
-  const _RecipeSkeletonCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 130,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.outline),
-      ),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Row(
-        children: [
-          Container(
-            width: 104,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainer,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _SkeletonLine(widthFactor: 0.75),
-                SizedBox(height: AppSpacing.md),
-                _SkeletonLine(widthFactor: 0.55),
-                SizedBox(height: AppSpacing.md),
-                _SkeletonLine(widthFactor: 0.35),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SkeletonLine extends StatelessWidget {
-  const _SkeletonLine({required this.widthFactor});
-
-  final double widthFactor;
-
-  @override
-  Widget build(BuildContext context) {
-    return FractionallySizedBox(
-      widthFactor: widthFactor,
-      alignment: Alignment.centerLeft,
-      child: Container(
-        height: 12,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainer,
-          borderRadius: BorderRadius.circular(AppRadius.xs),
-        ),
-      ),
+      itemBuilder: (_, _) => const FkRecipeSkeletonCard(),
     );
   }
 }
