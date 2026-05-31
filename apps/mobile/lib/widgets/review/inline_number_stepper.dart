@@ -30,7 +30,7 @@ class InlineNumberStepper extends StatelessWidget {
           onTap: canStep && parsed > min ? () => _bump(parsed, -1) : null,
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

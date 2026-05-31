@@ -64,7 +64,7 @@ class RecipeCard extends StatelessWidget {
               ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -82,7 +82,7 @@ class RecipeCard extends StatelessWidget {
                               color: AppColors.onSurface,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.xs),
                           DefaultTextStyle.merge(
                             style: GoogleFonts.manrope(
                               fontSize: AppFontSize.xs,
@@ -130,7 +130,7 @@ class RecipeCard extends StatelessWidget {
                                 ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.xs),
                           Container(
                             height: 4,
                             decoration: BoxDecoration(
@@ -149,7 +149,7 @@ class RecipeCard extends StatelessWidget {
                             ),
                           ),
                           if (recipe.tags.isNotEmpty) ...[
-                            const SizedBox(height: 8),
+                            const SizedBox(height: AppSpacing.sm),
                             SizedBox(
                               height: 22,
                               child: ListView(
@@ -157,7 +157,7 @@ class RecipeCard extends StatelessWidget {
                                 children: [
                                   for (final tag in recipe.tags.take(2)) ...[
                                     FkPill(label: tag, sm: true),
-                                    const SizedBox(width: 4),
+                                    const SizedBox(width: AppSpacing.xs),
                                   ],
                                 ],
                               ),

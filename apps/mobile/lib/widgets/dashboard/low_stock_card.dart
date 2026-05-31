@@ -19,7 +19,7 @@ class LowStockCard extends ConsumerWidget {
     if (items.isEmpty) return const SizedBox.shrink();
 
     return FkCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -30,7 +30,7 @@ class LowStockCard extends ConsumerWidget {
                 color: AppColors.fkWarn,
                 size: 20,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Text(
                 '库存不足 (${items.length} 项)',
                 style: const TextStyle(
@@ -41,11 +41,11 @@ class LowStockCard extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           for (final item in items.take(4)) _LowStockRow(item: item),
           if (items.length > 4)
             Padding(
-              padding: const EdgeInsets.only(top: 6, left: 4),
+              padding: const EdgeInsets.only(top: 6, left: AppSpacing.xs),
               child: Text(
                 '+ 还有 ${items.length - 4} 项',
                 style: const TextStyle(
@@ -54,7 +54,7 @@ class LowStockCard extends ConsumerWidget {
                 ),
               ),
             ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(

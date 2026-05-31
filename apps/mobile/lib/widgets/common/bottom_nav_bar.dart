@@ -51,7 +51,12 @@ class BottomNavBar extends ConsumerWidget {
           child: SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.sm,
+                AppSpacing.sm,
+                AppSpacing.sm,
+                AppSpacing.xs,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -101,7 +106,10 @@ class _TabButton extends StatelessWidget {
         onTap: onTap,
         haptic: HapticKind.selection,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -138,7 +146,7 @@ class _PrimaryFab extends StatelessWidget {
         child: Container(
           width: AppSize.profileAvatar - AppSpacing.xs,
           height: AppSize.profileAvatar - AppSpacing.xs,
-          margin: const EdgeInsets.only(bottom: 4),
+          margin: const EdgeInsets.only(bottom: AppSpacing.xs),
           decoration: const BoxDecoration(
             color: AppColors.primary,
             shape: BoxShape.circle,

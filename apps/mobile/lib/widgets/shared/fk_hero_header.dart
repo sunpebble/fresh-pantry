@@ -20,7 +20,12 @@ class FkHeroHeader extends StatelessWidget {
     required this.child,
     this.gradient = const [AppColors.primary, AppColors.primaryContainer],
     this.bottomRadius = AppRadius.hero,
-    this.padding = const EdgeInsets.fromLTRB(20, 24, 20, 80),
+    this.padding = const EdgeInsets.fromLTRB(
+      AppSpacing.xl,
+      AppSpacing.xxl,
+      AppSpacing.xl,
+      80,
+    ),
     this.showDecorations = true,
     this.begin = Alignment.topLeft,
     this.end = Alignment.bottomRight,

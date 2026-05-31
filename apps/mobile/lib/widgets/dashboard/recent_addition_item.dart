@@ -11,7 +11,7 @@ class RecentAdditionItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
@@ -34,9 +34,7 @@ class RecentAdditionItem extends StatelessWidget {
                   ),
                   Text(
                     _addedAtLabel(item.addedAt),
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppColors.onSurfaceVariant,
                     ),
                   ),

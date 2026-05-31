@@ -120,7 +120,7 @@ class _MyRecipeCard extends ConsumerWidget {
       matchedCount: matchedCount,
       onTap: () => _openRecipe(context),
       trailing: Padding(
-        padding: const EdgeInsets.only(right: 4),
+        padding: const EdgeInsets.only(right: AppSpacing.xs),
         child: PopupMenuButton<String>(
           tooltip: '食谱操作',
           onSelected: (value) => _handleMenuSelection(context, ref, value),

@@ -39,7 +39,7 @@ class SyncStatusBanner extends ConsumerWidget {
                 bottom: false,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
+                    horizontal: AppSpacing.lg,
                     vertical: 6,
                   ),
                   child: Row(
@@ -49,7 +49,7 @@ class SyncStatusBanner extends ConsumerWidget {
                         size: 16,
                         color: AppColors.onPrimary,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.sm),
                       Text(
                         label!,
                         style: const TextStyle(

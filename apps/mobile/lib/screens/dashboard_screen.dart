@@ -54,11 +54,17 @@ class DashboardScreen extends ConsumerWidget {
           _DashboardHero(),
           _ExpiringItemsSection(),
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            padding: EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: AppSpacing.sm,
+            ),
             child: LowStockCard(),
           ),
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            padding: EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: AppSpacing.sm,
+            ),
             child: ExpiringFallbackCard(),
           ),
           _CategorySection(),
@@ -415,7 +421,7 @@ class _HeroSection extends StatelessWidget {
                               color: Colors.white.withValues(alpha: 0.75),
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.xs),
                           Text(
                             '你的冰箱状态',
                             style: GoogleFonts.plusJakartaSans(
@@ -428,7 +434,7 @@ class _HeroSection extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     const HouseholdChip(),
                   ],
                 ),
@@ -442,7 +448,7 @@ class _HeroSection extends StatelessWidget {
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Text(
@@ -456,7 +462,7 @@ class _HeroSection extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Row(
                   children: [
                     Expanded(
@@ -470,7 +476,7 @@ class _HeroSection extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: FkEntrance(
                         index: 1,
@@ -482,7 +488,7 @@ class _HeroSection extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: FkEntrance(
                         index: 2,
@@ -520,7 +526,10 @@ class _MiniStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final body = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: 10,
+      ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(AppRadius.chip),
@@ -537,7 +546,7 @@ class _MiniStat extends StatelessWidget {
               height: 1,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             label,
             style: GoogleFonts.manrope(
@@ -586,7 +595,7 @@ class _ExpiringCard extends StatelessWidget {
         boxShadow: AppShadows.soft,
         border: Border(top: BorderSide(color: topBorder, width: 3)),
       ),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -620,7 +629,7 @@ class _ExpiringCard extends StatelessWidget {
               color: AppColors.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           if (item.expiryLabel != null)
             FkPill(
               label: item.expiryLabel!,
@@ -668,12 +677,15 @@ class _CategoryGrid extends StatelessWidget {
                 color: palette.tint,
                 borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xs,
+                vertical: 10,
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CatIcon(category: entry.key, size: 28, color: palette.ink),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     FkCategoryPalette.names[entry.key] ?? entry.key,
                     style: GoogleFonts.manrope(

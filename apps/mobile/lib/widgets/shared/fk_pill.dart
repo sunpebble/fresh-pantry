@@ -110,7 +110,7 @@ class FkPill extends StatelessWidget {
               data: IconThemeData(color: fg, size: sm ? 11 : 12),
               child: leading!,
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpacing.xs),
           ],
           Text(
             label,

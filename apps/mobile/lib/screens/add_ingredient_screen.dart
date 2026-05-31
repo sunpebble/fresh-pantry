@@ -1286,7 +1286,7 @@ class _AddIngredientScreenState extends ConsumerState<AddIngredientScreen> {
   Widget _buildLabel(String text) {
     // 设计稿 `FormRow` 标签:低调 muted、不大写、w600(取代旧的蓝色全大写)。
     return Padding(
-      padding: const EdgeInsets.only(left: 4),
+      padding: const EdgeInsets.only(left: AppSpacing.xs),
       child: Text(
         text,
         style: GoogleFonts.manrope(

@@ -31,7 +31,10 @@ class ProposalActionChip extends StatelessWidget {
     return GestureDetector(
       onTap: onToggle,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: AppSpacing.xs,
+        ),
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -52,7 +55,7 @@ class ProposalActionChip extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpacing.xs),
             Icon(Icons.keyboard_arrow_down, size: 14, color: fg),
           ],
         ),

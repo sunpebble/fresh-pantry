@@ -145,7 +145,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             onDelete: widget.onDelete,
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 20, 18, 32),
+            padding: const EdgeInsets.fromLTRB(
+              18,
+              AppSpacing.xl,
+              18,
+              AppSpacing.huge,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -158,7 +163,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     color: AppColors.onSurface,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 DefaultTextStyle.merge(
                   style: GoogleFonts.manrope(
                     fontSize: 13,
@@ -171,7 +176,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                         size: 13,
                         color: AppColors.onSurfaceVariant,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: AppSpacing.xs),
                       Text('${widget.recipe.cookingMinutes} 分钟'),
                       const SizedBox(width: 14),
                       const Icon(
@@ -179,7 +184,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                         size: 13,
                         color: AppColors.onSurfaceVariant,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: AppSpacing.xs),
                       Text(widget.recipe.difficultyLabel),
                     ],
                   ),
@@ -196,7 +201,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   ),
                 ],
                 if (widget.recipe.tags.isNotEmpty || widget.useExpiring) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
@@ -232,14 +237,14 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     onTap: () => _addMissingToCart(missing),
                   ),
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xxl),
                 _StepsSection(
                   steps: widget.recipe.steps,
                   completed: _completedSteps,
                   progress: stepProgress,
                   onToggleStep: _toggleStep,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.xl),
                 FilledButton.icon(
                   key: const Key('recipe_cooked_action'),
                   icon: const Icon(Icons.restaurant),
@@ -338,7 +343,7 @@ class _HeroSection extends StatelessWidget {
           SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+              padding: const EdgeInsets.fromLTRB(18, AppSpacing.sm, 18, 0),
               child: Row(
                 children: [
                   FkIconButton(
@@ -359,7 +364,7 @@ class _HeroSection extends StatelessWidget {
                         child: const Icon(Icons.edit_outlined, size: 18),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                   ],
                   if (isCustom && onDelete != null) ...[
                     Tooltip(
@@ -374,7 +379,7 @@ class _HeroSection extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                   ],
                   FkIconButton(
                     onTap: onToggleFavorite,
@@ -481,7 +486,7 @@ class _IngredientRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: ValueKey('ingredient_$index'),
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: isAvailable ? Colors.transparent : AppColors.fkDangerSoft,
         border: isLast
@@ -494,7 +499,7 @@ class _IngredientRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _StatusMark(isAvailable: isAvailable),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -611,7 +616,7 @@ class _AddMissingCta extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
           decoration: BoxDecoration(
             color: AppColors.primarySoft,
             borderRadius: BorderRadius.circular(AppRadius.chip),
@@ -701,7 +706,7 @@ class _StepsSection extends StatelessWidget {
               minHeight: 4,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
         ] else
           const SizedBox(height: 10),
         ListView.separated(
@@ -739,7 +744,7 @@ class _StepRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return FkCard(
       key: ValueKey('step_$index'),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       onTap: onTap,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -763,7 +768,7 @@ class _StepRow extends StatelessWidget {
                     ),
                   ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(top: 3),

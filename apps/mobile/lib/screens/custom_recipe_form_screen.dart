@@ -517,7 +517,9 @@ class _CustomRecipeFormScreenState
                                       Container(
                                         width: 32,
                                         height: 32,
-                                        margin: const EdgeInsets.only(top: 4),
+                                        margin: const EdgeInsets.only(
+                                          top: AppSpacing.xs,
+                                        ),
                                         decoration: const BoxDecoration(
                                           color: AppColors.primary,
                                           shape: BoxShape.circle,

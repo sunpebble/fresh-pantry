@@ -197,7 +197,12 @@ class _IngredientDetailScreenState
                   heroTag: widget.heroTag,
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 32),
+                  padding: const EdgeInsets.fromLTRB(
+                    18,
+                    18,
+                    18,
+                    AppSpacing.huge,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -409,7 +414,7 @@ class _DetailHero extends StatelessWidget {
                           child: const Icon(Icons.edit_outlined, size: 18),
                         ),
                       if (onDelete != null) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         FkIconButton(
                           onTap: onDelete!,
                           foregroundColor: AppColors.fkDanger,
@@ -423,12 +428,17 @@ class _DetailHero extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xxl,
+                    AppSpacing.lg,
+                    AppSpacing.xxl,
+                    AppSpacing.xxl,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildAvatarBox(),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.md),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -451,7 +461,7 @@ class _DetailHero extends StatelessWidget {
                           ],
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(
                         '$categoryName · $zoneLabel',
                         style: GoogleFonts.manrope(
@@ -501,7 +511,7 @@ class _QtyAndFreshnessCard extends StatelessWidget {
           children: [
             Expanded(
               child: Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 decoration: const BoxDecoration(
                   border: Border(
                     right: BorderSide(color: AppColors.hair, width: 0.5),
@@ -517,7 +527,7 @@ class _QtyAndFreshnessCard extends StatelessWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 child: _StatColumn(
                   label: '新鲜度',
                   value: '$percent',
@@ -561,7 +571,7 @@ class _StatColumn extends StatelessWidget {
             color: AppColors.onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpacing.xs),
         Row(
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
@@ -574,7 +584,7 @@ class _StatColumn extends StatelessWidget {
                 style: AppTypography.heroSubStat.copyWith(color: valueColor),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpacing.xs),
             Text(
               unit,
               style: GoogleFonts.manrope(
@@ -585,7 +595,7 @@ class _StatColumn extends StatelessWidget {
           ],
         ),
         if (hint != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             hint!,
             style: GoogleFonts.manrope(
@@ -618,7 +628,12 @@ class _InfoList extends StatelessWidget {
         children: [
           for (var i = 0; i < rows.length; i++)
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.md,
+                AppSpacing.lg,
+                AppSpacing.md,
+              ),
               decoration: BoxDecoration(
                 border: i == rows.length - 1
                     ? null
@@ -674,7 +689,7 @@ class _ActionRow extends StatelessWidget {
             onTap: onAddToShopping,
             behavior: HitTestBehavior.opaque,
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
               decoration: BoxDecoration(
                 color: AppColors.primarySoft,
                 borderRadius: BorderRadius.circular(AppRadius.chip),

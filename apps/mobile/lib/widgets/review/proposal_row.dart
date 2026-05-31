@@ -55,7 +55,7 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
   Widget build(BuildContext context) {
     final p = widget.proposal;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: p.selected
             ? AppColors.surfaceContainerLowest
@@ -79,9 +79,9 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
                   color: p.selected ? AppColors.primary : AppColors.outline,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               ProvenanceBadge(origin: p.origin, userEdited: p.userEdited),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(child: _name(p)),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 160),
@@ -93,7 +93,7 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: 12,
             runSpacing: 8,
@@ -117,7 +117,7 @@ class _IntakeProposalRowState extends State<IntakeProposalRow> {
                       p.copyWith(quantity: v, userEdited: true),
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpacing.xs),
                   _unitChip(p),
                 ],
               ),

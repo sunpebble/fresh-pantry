@@ -19,7 +19,7 @@ class FkCard extends StatelessWidget {
   const FkCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(AppSpacing.lg),
     this.onTap,
     this.backgroundColor,
     this.borderRadius = AppRadius.xl,

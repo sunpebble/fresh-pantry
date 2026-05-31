@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'app_colors.dart';
 import 'app_radius.dart';
+import 'app_spacing.dart';
 import 'app_typography.dart';
 
 export 'app_colors.dart';
@@ -122,13 +123,16 @@ class AppTheme {
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
-          vertical: 12,
+          vertical: AppSpacing.md,
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           shape: const StadiumBorder(),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xxl,
+            vertical: AppSpacing.lg,
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(

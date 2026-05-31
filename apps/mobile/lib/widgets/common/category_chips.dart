@@ -43,7 +43,7 @@ class CategoryChips extends StatelessWidget {
                   categories: scrollableCategories,
                   selectedCategory: selectedCategory,
                   onSelected: onSelected,
-                  padding: const EdgeInsets.only(right: 24),
+                  padding: const EdgeInsets.only(right: AppSpacing.xxl),
                 ),
               ),
             ],

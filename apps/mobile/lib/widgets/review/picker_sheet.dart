@@ -42,7 +42,12 @@ class PickerSheet<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.md,
+          AppSpacing.lg,
+          AppSpacing.sm,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -57,9 +62,9 @@ class PickerSheet<T> extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(title, style: AppTypography.sectionTitle),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Flexible(
               child: ListView.separated(
                 shrinkWrap: true,

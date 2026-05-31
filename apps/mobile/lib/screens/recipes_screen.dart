@@ -191,7 +191,8 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                 : ListView.separated(
                     padding: _listPadding,
                     itemCount: searched.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppSpacing.md),
                     itemBuilder: (context, i) {
                       final recipe = searched[i];
                       final matched = matchedIngredientCountForNames(
@@ -364,7 +365,7 @@ class _TimeFilterRow extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: _timeFilterPadding,
         itemCount: filters.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
         itemBuilder: (_, i) {
           final (value, label) = filters[i];
           final active = value == selected;
@@ -403,7 +404,10 @@ class _ExpiringBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: 10,
+      ),
       decoration: BoxDecoration(
         color: AppColors.fkWarnSoft,
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -415,7 +419,7 @@ class _ExpiringBanner extends StatelessWidget {
             size: 16,
             color: AppColors.fkWarnInk,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               '优先使用 $count 件临期食材',
@@ -465,7 +469,7 @@ class _RecipeSearchField extends StatelessWidget {
           color: AppColors.surfaceContainer,
           borderRadius: BorderRadius.circular(AppRadius.chip),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
         child: Row(
           children: [
             const Icon(
@@ -473,7 +477,7 @@ class _RecipeSearchField extends StatelessWidget {
               size: 18,
               color: AppColors.onSurfaceVariant,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: TextField(
                 controller: controller,

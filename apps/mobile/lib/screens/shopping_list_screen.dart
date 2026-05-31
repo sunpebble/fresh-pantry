@@ -76,7 +76,12 @@ class ShoppingListScreen extends ConsumerWidget {
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+                    padding: const EdgeInsets.fromLTRB(
+                      18,
+                      14,
+                      18,
+                      AppSpacing.sm,
+                    ),
                     child: const QuickAddField(),
                   ),
                 ),
@@ -122,7 +127,12 @@ class ShoppingListScreen extends ConsumerWidget {
             right: 0,
             bottom: 0,
             child: SafeArea(
-              minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              minimum: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                AppSpacing.md,
+              ),
               child: FilledButton(
                 key: const Key('shopping_to_intake_cta'),
                 style: FilledButton.styleFrom(
@@ -378,7 +388,7 @@ class _FilterEmptyMessage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 32),
+      padding: const EdgeInsets.only(top: AppSpacing.huge),
       child: Center(
         child: Text(
           filter == ShoppingFilter.todo ? '没有待购项目' : '没有已购项目',
@@ -406,7 +416,7 @@ class _ProgressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final percent = (progress.clamp(0.0, 1.0) * 100).round();
     return FkCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       gradient: const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -430,7 +440,7 @@ class _ProgressCard extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.85),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.xs),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
@@ -468,7 +478,7 @@ class _ProgressCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Container(
             height: 6,
             decoration: BoxDecoration(
@@ -517,7 +527,7 @@ class _FilterChipRow extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 18),
         itemCount: chips.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
         itemBuilder: (_, i) {
           final (label, value, count) = chips[i];
           final active = value == selected;
@@ -525,7 +535,10 @@ class _FilterChipRow extends StatelessWidget {
             onTap: () => onSelect(value),
             behavior: HitTestBehavior.opaque,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: AppSpacing.sm,
+              ),
               decoration: BoxDecoration(
                 color: active ? AppColors.primary : Colors.white,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -584,7 +597,12 @@ class _CategoryGroup extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               onTap: onToggleCollapse,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xs,
+                  AppSpacing.sm,
+                  AppSpacing.xs,
+                  AppSpacing.sm,
+                ),
                 child: Row(
                   children: [
                     AnimatedRotation(
@@ -599,7 +617,7 @@ class _CategoryGroup extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     CatIcon(category: catId, size: 20, color: palette.ink),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
                         title,
@@ -700,7 +718,7 @@ class _ShopRow extends StatelessWidget {
                       )
                     : null,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -731,7 +749,7 @@ class _ShopRow extends StatelessWidget {
                 onTap: onDelete,
                 behavior: HitTestBehavior.opaque,
                 child: const Padding(
-                  padding: EdgeInsets.all(4),
+                  padding: EdgeInsets.all(AppSpacing.xs),
                   child: Icon(
                     Icons.close_rounded,
                     size: 18,
@@ -762,7 +780,7 @@ class _ClearDoneButton extends StatelessWidget {
         color: AppColors.hair,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
           alignment: Alignment.center,
           child: Text(
             '清空已完成 ($count)',
@@ -803,7 +821,7 @@ class _EmptyState extends StatelessWidget {
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Text(
                 '购物清单为空',
                 style: GoogleFonts.plusJakartaSans(
@@ -812,7 +830,7 @@ class _EmptyState extends StatelessWidget {
                   color: AppColors.onSurface,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 '在上方输入框添加需要购买的食材',
                 style: GoogleFonts.manrope(

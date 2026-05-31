@@ -41,7 +41,7 @@ class FkSectionHead extends StatelessWidget {
             ),
           ),
           if (count != null) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             Text(
               '$count',
               style: GoogleFonts.manrope(

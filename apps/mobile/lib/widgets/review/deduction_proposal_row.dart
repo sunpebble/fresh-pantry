@@ -32,7 +32,7 @@ class DeductionProposalRow extends StatelessWidget {
     );
     final isSkip = p.action == DeductionAction.skip;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: isSkip
             ? AppColors.surfaceContainerLow
@@ -52,7 +52,7 @@ class DeductionProposalRow extends StatelessWidget {
                   color: p.selected ? AppColors.primary : AppColors.outline,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,7 +84,7 @@ class DeductionProposalRow extends StatelessWidget {
             ],
           ),
           if (!isSkip && p.candidates.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             GestureDetector(
               onTap: () async {
                 final picked = await PickerSheet.show<int>(
@@ -104,8 +104,8 @@ class DeductionProposalRow extends StatelessWidget {
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
                 ),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceContainer,
@@ -136,7 +136,7 @@ class DeductionProposalRow extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
                 const Text(
@@ -155,7 +155,7 @@ class DeductionProposalRow extends StatelessWidget {
               ],
             ),
           ] else if (p.candidates.isEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             const Text(
               '库存中没有匹配项,这条将被跳过。',
               style: TextStyle(

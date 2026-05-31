@@ -19,7 +19,7 @@ void fkToast(BuildContext context, String message) {
               size: 16,
               color: AppColors.fkSuccess,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             Text(
               message,
               style: GoogleFonts.manrope(

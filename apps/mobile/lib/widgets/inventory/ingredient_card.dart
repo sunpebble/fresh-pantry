@@ -55,7 +55,7 @@ class IngredientCard extends StatelessWidget {
     final progressColor = isExpired ? style.bg : style.fg;
 
     final card = Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppRadius.lg),

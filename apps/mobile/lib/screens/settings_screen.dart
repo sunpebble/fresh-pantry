@@ -293,7 +293,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     horizontal: AppSpacing.xl,
                   ),
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(AppSpacing.md),
                     decoration: BoxDecoration(
                       color: AppColors.fkWarnSoft,
                       borderRadius: BorderRadius.circular(AppRadius.md),
@@ -526,7 +526,7 @@ class _ProfileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FkCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Row(
         children: [
           _ProfileAvatar(letter: _avatarLetter(userEmail)),
@@ -782,7 +782,7 @@ class _LinkRow extends StatelessWidget {
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -842,12 +842,15 @@ class _ActionRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: 14,
+        ),
         child: Row(
           children: [
             if (icon != null) ...[
               Icon(icon, size: AppSize.iconMd, color: color),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
             ],
             Expanded(
               child: Column(

@@ -29,7 +29,10 @@ class HouseholdChip extends ConsumerWidget {
         context,
       ).push(fkRoute<void>(builder: (_) => const HouseholdScreen())),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: 6,
+        ),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(AppRadius.pill),
