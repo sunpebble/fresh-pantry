@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../models/ingredient.dart';
 import '../providers/inventory_provider.dart';
@@ -14,6 +13,7 @@ import '../utils/storage_labels.dart';
 import '../widgets/shared/cat_icon.dart';
 import '../widgets/shared/category_icon.dart';
 import '../widgets/shared/fk_card.dart';
+import '../widgets/shared/fk_empty_state.dart';
 import '../widgets/shared/fk_pill.dart';
 import '../widgets/shared/fk_top_bar.dart';
 import 'ingredient_detail_screen.dart';
@@ -63,7 +63,11 @@ class ExpiringScreen extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.xl),
             if (expiredCount == 0 && urgentCount == 0 && soonCount == 0)
-              const _EmptyState()
+              const FkEmptyState(
+                icon: Icons.check_circle_outline_rounded,
+                title: '没有临期食材',
+                subtitle: '冰箱状态健康,继续保持!',
+              )
             else ...[
               if (expiredCount > 0)
                 const _Group(
@@ -438,56 +442,3 @@ class _MiniBtn extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.xl,
-        vertical: 60,
-      ),
-      child: Center(
-        child: Column(
-          children: [
-            const SizedBox(
-              width: 64,
-              height: 64,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.check_circle_outline_rounded,
-                    size: 32,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              '没有临期食材',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: AppFontSize.lg,
-                fontWeight: FontWeight.w700,
-                color: AppColors.onSurface,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              '冰箱状态健康,继续保持!',
-              style: GoogleFonts.manrope(
-                fontSize: AppFontSize.sm,
-                color: AppColors.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

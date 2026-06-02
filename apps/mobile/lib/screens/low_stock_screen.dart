@@ -13,6 +13,7 @@ import '../widgets/shared/cat_icon.dart';
 import '../widgets/shared/category_icon.dart';
 import '../widgets/shared/fk_card.dart';
 import '../widgets/shared/fk_check_circle.dart';
+import '../widgets/shared/fk_empty_state.dart';
 import '../widgets/shared/fk_top_bar.dart';
 
 /// 库存不足(常买补货)页 — 设计稿 `screens-2.jsx::LowStockScreen`。
@@ -94,7 +95,11 @@ class _LowStockScreenState extends ConsumerState<LowStockScreen> {
                   onBack: () => Navigator.of(context).maybePop(),
                 ),
                 if (items.isEmpty)
-                  const _EmptyState()
+                  const FkEmptyState(
+                    icon: Icons.inventory_2_outlined,
+                    title: '暂无需补货的常买项',
+                    subtitle: '买过 3 次以上、当前不在库的食材会出现在这里',
+                  )
                 else
                   for (final entry in groups.entries)
                     _CategoryGroup(
@@ -345,57 +350,3 @@ class _StickyCta extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.xl,
-        vertical: 60,
-      ),
-      child: Center(
-        child: Column(
-          children: [
-            const SizedBox(
-              width: 64,
-              height: 64,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.inventory_2_outlined,
-                    size: 32,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              '暂无需补货的常买项',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: AppFontSize.lg,
-                fontWeight: FontWeight.w700,
-                color: AppColors.onSurface,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              '买过 3 次以上、当前不在库的食材会出现在这里',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.manrope(
-                fontSize: AppFontSize.sm,
-                color: AppColors.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

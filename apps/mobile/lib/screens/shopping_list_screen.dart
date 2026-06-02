@@ -16,6 +16,7 @@ import '../utils/page_transitions.dart';
 import '../widgets/shared/cat_icon.dart';
 import '../widgets/shared/category_icon.dart';
 import '../widgets/shared/fk_card.dart';
+import '../widgets/shared/fk_empty_state.dart';
 import '../widgets/shared/fk_entrance.dart';
 import '../widgets/shared/fk_dashed_border.dart';
 import '../widgets/shared/fk_top_bar.dart';
@@ -97,7 +98,13 @@ class ShoppingListScreen extends ConsumerWidget {
                 if (allItems.isEmpty)
                   const SliverFillRemaining(
                     hasScrollBody: false,
-                    child: _EmptyState(),
+                    child: FkEntrance(
+                      child: FkEmptyState(
+                        icon: Icons.shopping_basket_outlined,
+                        title: '购物清单为空',
+                        subtitle: '在上方输入框添加需要购买的食材',
+                      ),
+                    ),
                   )
                 else
                   SliverPadding(
@@ -803,52 +810,3 @@ class _ClearDoneButton extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return FkEntrance(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.shopping_basket_outlined,
-                  size: 32,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                '购物清单为空',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: AppFontSize.lg,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.onSurface,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                '在上方输入框添加需要购买的食材',
-                style: GoogleFonts.manrope(
-                  fontSize: AppFontSize.sm,
-                  color: AppColors.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
