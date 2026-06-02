@@ -9,6 +9,7 @@ import 'package:fresh_pantry/providers/recipe_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/screens/custom_recipe_form_screen.dart';
 import 'package:fresh_pantry/screens/recipes_screen.dart';
+import 'package:fresh_pantry/storage/local_recipe_repository.dart';
 import 'package:fresh_pantry/widgets/shared/fk_skeleton_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'support/test_database.dart';
@@ -26,6 +27,11 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          // RecipesScreen watches recipesFetchProvider; without this override it
+          // would hit the real rootBundle asset and stall pumpAndSettle.
+          localRecipeRepositoryProvider.overrideWithValue(
+            LocalRecipeRepository(loadString: (_) async => '[]'),
+          ),
           ...testStorageOverrides(
             database: db,
             inventory: const <Ingredient>[],
@@ -57,6 +63,11 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          // RecipesScreen watches recipesFetchProvider; without this override it
+          // would hit the real rootBundle asset and stall pumpAndSettle.
+          localRecipeRepositoryProvider.overrideWithValue(
+            LocalRecipeRepository(loadString: (_) async => '[]'),
+          ),
           ...testStorageOverrides(
             database: db,
             inventory: const <Ingredient>[],
@@ -88,6 +99,11 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          // RecipesScreen watches recipesFetchProvider; without this override it
+          // would hit the real rootBundle asset and stall pumpAndSettle.
+          localRecipeRepositoryProvider.overrideWithValue(
+            LocalRecipeRepository(loadString: (_) async => '[]'),
+          ),
           ...testStorageOverrides(
             database: db,
             inventory: const <Ingredient>[],
