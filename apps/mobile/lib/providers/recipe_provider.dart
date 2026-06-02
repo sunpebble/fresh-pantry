@@ -1,31 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/food_knowledge.dart';
 import '../models/ingredient.dart';
 import '../models/recipe.dart';
-import '../services/themealdb_service.dart';
-import '../storage/recipe_search_repo.dart';
+import '../storage/local_recipe_repository.dart';
 import 'custom_recipe_provider.dart';
 import 'inventory_provider.dart';
-import 'storage_service_provider.dart';
 
-export '../storage/recipe_search_repo.dart'
-    show
-        RecipeSearchRepository,
-        recipeDetailsCacheStorageKey,
-        recipeSearchCacheKeyFor;
-
-final mealDbApiProvider = Provider<MealDbApi>(
-  (ref) => const TheMealDbService(),
+final localRecipeRepositoryProvider = Provider<LocalRecipeRepository>(
+  (ref) => LocalRecipeRepository(),
 );
-
-final recipeSearchRepositoryProvider = Provider<RecipeSearchRepository>((ref) {
-  return RecipeSearchRepository(
-    storage: ref.read(storageAdapterProvider),
-    api: ref.watch(mealDbApiProvider),
-  );
-});
 
 Set<String> inventoryNameSet(Iterable<Ingredient> inventory) {
   return inventory
@@ -69,55 +53,24 @@ List<RecipeIngredient> missingRecipeIngredientsForNames(
       .toList();
 }
 
-/// Raw inventory-driven recipe fetch, plus a `fetchFailed` flag set when there
-/// WERE terms to fetch but every request failed (e.g. offline). This lets the
-/// UI tell a real network failure apart from a genuinely empty result, while
-/// [recipesProvider] keeps its non-throwing "degrade to empty" contract.
+/// Explore-tab data source: loads ALL local HowToCook (Chinese) recipes.
 ///
-/// Uses `.select` so unrelated inventory mutations (expiry refresh, freshness
-/// recalculation, addedAt timestamps) do not trigger a recipe refetch. The
-/// only dependency is the first three ingredient names, translated to English.
+/// Returns `({recipes, fetchFailed})` to keep the explore tab's existing
+/// retry UI: on a missing/corrupt asset, recipes is empty and fetchFailed is
+/// true. Inventory-based match ranking is handled by [recommendedRecipesProvider],
+/// which is agnostic to the data source.
 final recipesFetchProvider =
     FutureProvider<({List<Recipe> recipes, bool fetchFailed})>((ref) async {
-      final englishTerms = ref.watch(
-        inventoryProvider.select(
-          (items) => items
-              .take(3)
-              .map((i) => FoodKnowledge.englishName(i.name))
-              .whereType<String>()
-              .toSet() // deduplicate (e.g. multiple egg items)
-              .toList(growable: false),
-        ),
-      );
-      final recipeSearchRepository = ref.watch(recipeSearchRepositoryProvider);
-
-      final allRecipes = <Recipe>[];
-      final seenIds = <String>{};
-      var anyTermSucceeded = false;
-      var anyTermFailed = false;
-
-      for (final term in englishTerms) {
-        try {
-          final results = await recipeSearchRepository.searchByName(term);
-          anyTermSucceeded = true;
-          for (final recipe in results) {
-            if (seenIds.add(recipe.id)) {
-              allRecipes.add(recipe);
-            }
-          }
-        } catch (e) {
-          anyTermFailed = true;
-          if (kDebugMode) {
-            debugPrint('Error fetching recipes for "$term": $e');
-          }
+      final repo = ref.watch(localRecipeRepositoryProvider);
+      try {
+        final recipes = await repo.loadAll();
+        return (recipes: recipes, fetchFailed: false);
+      } catch (e, stack) {
+        if (kDebugMode) {
+          debugPrint('Local recipe load failed: $e\n$stack');
         }
+        return (recipes: <Recipe>[], fetchFailed: true);
       }
-
-      // All terms failed (and there were some) → a real fetch failure, not
-      // "no recipes" — so the explore tab can offer a retry instead.
-      final fetchFailed =
-          englishTerms.isNotEmpty && !anyTermSucceeded && anyTermFailed;
-      return (recipes: allRecipes, fetchFailed: fetchFailed);
     });
 
 /// Recipes discovered from the user's current inventory.

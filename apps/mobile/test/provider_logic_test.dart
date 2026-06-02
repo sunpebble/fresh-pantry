@@ -11,7 +11,7 @@ import 'package:fresh_pantry/providers/inventory_provider.dart';
 import 'package:fresh_pantry/providers/recipe_provider.dart';
 import 'package:fresh_pantry/providers/shopping_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
-import 'package:fresh_pantry/services/themealdb_service.dart';
+import 'package:fresh_pantry/storage/local_recipe_repository.dart';
 import 'package:fresh_pantry/storage/drift/app_database.dart' show AppDatabase;
 import 'package:fresh_pantry/storage/inventory_repo.dart';
 import 'package:fresh_pantry/storage/shopping_item_normalizer.dart';
@@ -176,9 +176,7 @@ void main() {
     );
 
     test('exposes only the fixed inventory filter categories', () async {
-      SharedPreferences.setMockInitialValues({
-        'add_history': json.encode({}),
-      });
+      SharedPreferences.setMockInitialValues({'add_history': json.encode({})});
       final prefs = await SharedPreferences.getInstance();
       final db = newTestDatabase();
       addTearDown(db.close);
@@ -238,9 +236,7 @@ void main() {
     );
 
     test('shows newly added items first in recent additions', () async {
-      SharedPreferences.setMockInitialValues({
-        'add_history': json.encode({}),
-      });
+      SharedPreferences.setMockInitialValues({'add_history': json.encode({})});
       final prefs = await SharedPreferences.getInstance();
       final db = newTestDatabase();
       addTearDown(db.close);
@@ -259,9 +255,7 @@ void main() {
     });
 
     test('stamps newly added items with an added time', () async {
-      SharedPreferences.setMockInitialValues({
-        'add_history': json.encode({}),
-      });
+      SharedPreferences.setMockInitialValues({'add_history': json.encode({})});
       final prefs = await SharedPreferences.getInstance();
       final db = newTestDatabase();
       addTearDown(db.close);
@@ -426,10 +420,7 @@ void main() {
 
         final savedInventory = await _persistedInventory(db);
         expect(savedInventory, hasLength(2));
-        expect(savedInventory.map((item) => item.name).toList(), [
-          '牛奶',
-          '牛奶',
-        ]);
+        expect(savedInventory.map((item) => item.name).toList(), ['牛奶', '牛奶']);
       },
     );
 
@@ -1032,137 +1023,55 @@ void main() {
     );
   });
 
-  group('recipesProvider cache', () {
-    test('returns no recipes without inventory terms', () async {
+  group('recipesProvider (local HowToCook)', () {
+    test('返回本地仓库的全部食谱', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final db = newTestDatabase();
       addTearDown(db.close);
-      final client = _FakeMealDbApi(
-        onSearch: (_) => throw StateError('network should not be called'),
-      );
-      final container = ProviderContainer(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          ...testStorageOverrides(database: db, inventory: const []),
-          mealDbApiProvider.overrideWithValue(client),
-        ],
-      );
-      addTearDown(container.dispose);
-
-      final recipes = await container.read(recipesProvider.future);
-
-      expect(recipes, isEmpty);
-      expect(client.calls, 0);
-    });
-
-    test('uses cached TheMealDB recipes without calling the client', () async {
-      final cachedRecipe = _recipe('mealdb_cached', '缓存番茄菜谱', ['tomato']);
-      SharedPreferences.setMockInitialValues({
-        recipeDetailsCacheStorageKey: json.encode({
-          recipeSearchCacheKeyFor('tomato'): [cachedRecipe.toJson()],
-        }),
-      });
-      final prefs = await SharedPreferences.getInstance();
-      final db = newTestDatabase();
-      addTearDown(db.close);
-      final client = _FakeMealDbApi(
-        onSearch: (_) => throw StateError('network should not be called'),
+      final repo = LocalRecipeRepository(
+        loadString: (_) async => json.encode([
+          _recipe('howtocook:a', '番茄炒蛋', ['番茄']).toJson(),
+          _recipe('howtocook:b', '可乐鸡翅', ['鸡翅']).toJson(),
+        ]),
       );
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           ...testStorageOverrides(
             database: db,
-            inventory: [_ingredient('番茄')],
+            inventory: const [],
+            localRecipeRepository: repo,
           ),
-          mealDbApiProvider.overrideWithValue(client),
         ],
       );
       addTearDown(container.dispose);
 
-      final recipes = await container.read(recipesProvider.future);
+      final result = await container.read(recipesFetchProvider.future);
 
-      expect(recipes.map((recipe) => recipe.id), contains('mealdb_cached'));
-      expect(client.calls, 0);
-    });
-
-    test('saves TheMealDB recipes after a cache miss', () async {
-      final fetchedRecipe = _recipe('mealdb_fetched', '联网番茄菜谱', ['tomato']);
-      SharedPreferences.setMockInitialValues({});
-      final prefs = await SharedPreferences.getInstance();
-      final db = newTestDatabase();
-      addTearDown(db.close);
-      final client = _FakeMealDbApi(onSearch: (_) async => [fetchedRecipe]);
-      final container = ProviderContainer(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          ...testStorageOverrides(
-            database: db,
-            inventory: [_ingredient('番茄')],
-          ),
-          mealDbApiProvider.overrideWithValue(client),
-        ],
-      );
-      addTearDown(container.dispose);
-
-      final recipes = await container.read(recipesProvider.future);
-
-      expect(recipes.map((recipe) => recipe.id), contains('mealdb_fetched'));
-      expect(client.calls, 1);
-
-      final saved = json.decode(prefs.getString(recipeDetailsCacheStorageKey)!);
       expect(
-        saved[recipeSearchCacheKeyFor('tomato')].single['id'],
-        'mealdb_fetched',
+        result.recipes.map((r) => r.id),
+        containsAll(['howtocook:a', 'howtocook:b']),
       );
+      expect(result.fetchFailed, isFalse);
     });
 
-    test(
-      'does not fall back to demo recipes when TheMealDB client throws',
-      () async {
-        SharedPreferences.setMockInitialValues({});
-        final prefs = await SharedPreferences.getInstance();
-        final db = newTestDatabase();
-        addTearDown(db.close);
-        final client = _FakeMealDbApi(
-          onSearch: (_) => throw StateError('service unavailable'),
-        );
-        final container = ProviderContainer(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-            ...testStorageOverrides(
-              database: db,
-              inventory: [_ingredient('番茄')],
-            ),
-            mealDbApiProvider.overrideWithValue(client),
-          ],
-        );
-        addTearDown(container.dispose);
-
-        final recipes = await container.read(recipesProvider.future);
-
-        expect(client.calls, 1);
-        expect(recipes, isEmpty);
-      },
-    );
-
-    test('recipesFetchProvider flags fetchFailed when every term fails', () async {
+    test('加载失败时 recipes 为空且 fetchFailed 为真', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final db = newTestDatabase();
       addTearDown(db.close);
-      final client = _FakeMealDbApi(
-        onSearch: (_) => throw StateError('service unavailable'),
+      final repo = LocalRecipeRepository(
+        loadString: (_) async => throw Exception('asset missing'),
       );
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           ...testStorageOverrides(
             database: db,
-            inventory: [_ingredient('番茄')],
+            inventory: const [],
+            localRecipeRepository: repo,
           ),
-          mealDbApiProvider.overrideWithValue(client),
         ],
       );
       addTearDown(container.dispose);
@@ -1244,10 +1153,7 @@ Future<InventoryRepo> _seededInventoryRepo(
 /// path skips that transform). Mirrors `loadAllFor`'s normalization without
 /// round-tripping through Drift's id-PK insertOrReplace, which would silently
 /// collapse rows that deliberately reuse an id (a tested edge case).
-ShoppingRepo _seededShoppingRepo(
-  AppDatabase db,
-  List<ShoppingItem> shopping,
-) {
+ShoppingRepo _seededShoppingRepo(AppDatabase db, List<ShoppingItem> shopping) {
   final repo = ShoppingRepo(db);
   repo.hydrate(
     deduplicateShoppingItems(shopping.map(normalizeShoppingItemCategory)),
@@ -1284,19 +1190,6 @@ Recipe _recipe(String id, String name, List<String> ingredients) {
         .toList(),
     steps: const [],
   );
-}
-
-class _FakeMealDbApi implements MealDbApi {
-  _FakeMealDbApi({required this.onSearch});
-
-  final Future<List<Recipe>> Function(String term) onSearch;
-  int calls = 0;
-
-  @override
-  Future<List<Recipe>> searchByName(String term) {
-    calls++;
-    return onSearch(term);
-  }
 }
 
 ShoppingItem _shoppingItem(String id, String name) {

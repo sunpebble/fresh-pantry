@@ -221,9 +221,7 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       final db = newTestDatabase();
       addTearDown(db.close);
-      final inventory = [
-        _ingredient('牛奶', state: FreshnessState.expiringSoon),
-      ];
+      final inventory = [_ingredient('牛奶', state: FreshnessState.expiringSoon)];
       late ProviderContainer container;
 
       await tester.pumpWidget(
@@ -297,9 +295,11 @@ void main() {
               ),
             ),
             // This test builds its own override list (custom repo with history)
-            // instead of testStorageOverrides, so add the AppShell sync-banner
-            // overrides explicitly to avoid the Drift stream's pending timer.
+            // instead of testStorageOverrides, so add the AppShell hermetic
+            // overrides explicitly: sync-banner (Drift stream pending timer) and
+            // the local recipe asset (rootBundle stall via ExpiringFallbackCard).
             ...syncBannerTestOverrides(),
+            ...localRecipeTestOverrides(),
           ],
           child: const FreshPantryApp(home: AppShell()),
         ),
