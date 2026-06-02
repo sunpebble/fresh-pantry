@@ -498,6 +498,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         label: '关于 FreshKeeper',
                         icon: Icons.info_outline_rounded,
                         onTap: () {},
+                        isLast: false,
+                      ),
+                      _LinkRow(
+                        label: '开源致谢',
+                        sub: '探索菜谱数据来自 HowToCook（Unlicense）',
+                        icon: Icons.favorite_outline_rounded,
+                        onTap: () => showDialog<void>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('开源致谢'),
+                            content: const Text(
+                              '探索 tab 的中文菜谱数据来自开源项目 '
+                              'HowToCook（程序员做饭指南），以 Unlicense 公共领域协议发布。\n\n'
+                              'https://github.com/Anduin2017/HowToCook',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(),
+                                child: const Text('好的'),
+                              ),
+                            ],
+                          ),
+                        ),
                         isLast: true,
                       ),
                     ],
