@@ -1038,8 +1038,11 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          ...testStorageOverrides(database: db, inventory: const []),
-          localRecipeRepositoryProvider.overrideWithValue(repo),
+          ...testStorageOverrides(
+            database: db,
+            inventory: const [],
+            localRecipeRepository: repo,
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -1064,8 +1067,11 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          ...testStorageOverrides(database: db, inventory: const []),
-          localRecipeRepositoryProvider.overrideWithValue(repo),
+          ...testStorageOverrides(
+            database: db,
+            inventory: const [],
+            localRecipeRepository: repo,
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -1095,9 +1101,6 @@ Future<ProviderContainer> _containerWithInventory(
         database: db,
         inventory: inventory,
         customRecipes: customRecipes,
-      ),
-      localRecipeRepositoryProvider.overrideWithValue(
-        LocalRecipeRepository(loadString: (_) async => '[]'),
       ),
       if (recipes != null) recipesProvider.overrideWith((ref) async => recipes),
     ],

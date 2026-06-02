@@ -6,12 +6,14 @@ import 'package:fresh_pantry/models/ingredient.dart';
 import 'package:fresh_pantry/models/recipe.dart';
 import 'package:fresh_pantry/models/shopping_item.dart';
 import 'package:fresh_pantry/providers/connectivity_provider.dart';
+import 'package:fresh_pantry/providers/recipe_provider.dart';
 import 'package:fresh_pantry/providers/storage_service_provider.dart';
 import 'package:fresh_pantry/providers/sync_status_provider.dart';
 // Scope the drift import to `AppDatabase`: the generated `app_database.g.dart`
 // also declares a `ShoppingItem` data class that would otherwise collide with
 // `models/shopping_item.dart`. The helper only needs `AppDatabase`.
 import 'package:fresh_pantry/storage/drift/app_database.dart' show AppDatabase;
+import 'package:fresh_pantry/storage/local_recipe_repository.dart';
 
 /// A fresh in-memory Drift database for a single test.
 ///
@@ -31,6 +33,7 @@ List<Override> testStorageOverrides({
   List<Ingredient>? inventory,
   List<ShoppingItem>? shopping,
   List<Recipe>? customRecipes,
+  LocalRecipeRepository? localRecipeRepository,
 }) {
   return [
     appDatabaseProvider.overrideWithValue(database),
@@ -38,6 +41,7 @@ List<Override> testStorageOverrides({
     if (shopping != null) shoppingSeedProvider.overrideWithValue(shopping),
     if (customRecipes != null)
       customRecipeSeedProvider.overrideWithValue(customRecipes),
+    ...localRecipeTestOverrides(repository: localRecipeRepository),
     ...syncBannerTestOverrides(),
   ];
 }
@@ -53,3 +57,15 @@ List<Override> syncBannerTestOverrides() => [
   pendingSyncCountProvider.overrideWith((ref) => Stream.value(0)),
   connectivityOnlineProvider.overrideWith((ref) => Stream.value(true)),
 ];
+
+/// Keeps the explore tab hermetic in widget tests. RecipesScreen and the
+/// dashboard's ExpiringFallbackCard watch recipesFetchProvider, which would
+/// otherwise load the real ~1MB asset via rootBundle and stall pumpAndSettle.
+/// Folded into [testStorageOverrides]; spread directly in tests that build
+/// their own override list. Pass [repository] to supply specific recipes.
+List<Override> localRecipeTestOverrides({LocalRecipeRepository? repository}) =>
+    [
+      localRecipeRepositoryProvider.overrideWithValue(
+        repository ?? LocalRecipeRepository(loadString: (_) async => '[]'),
+      ),
+    ];
