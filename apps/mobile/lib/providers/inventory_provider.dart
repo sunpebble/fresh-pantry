@@ -386,8 +386,9 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
       final amount = double.tryParse(p.deductAmount.trim());
       if (amount == null || amount <= 0) continue; // never silently deduct 0
       final index = _resolveDeductionRow(current, chosen);
-      if (index < 0)
+      if (index < 0) {
         continue; // row gone / ambiguous -> skip the wrong-row risk
+      }
       deductByIndex.update(index, (v) => v + amount, ifAbsent: () => amount);
     }
 
@@ -474,8 +475,9 @@ class InventoryNotifier extends Notifier<List<Ingredient>>
     final index = chosen.inventoryRowIndex;
     if (index < 0 || index >= current.length) return -1;
     final expectedName = chosen.inventoryRowName.trim().toLowerCase();
-    if (expectedName.isEmpty)
+    if (expectedName.isEmpty) {
       return index; // no captured identity -> trust index
+    }
     if (current[index].name.trim().toLowerCase() == expectedName) return index;
     // Index drifted; recover only if exactly one row still carries the name.
     final byName = <int>[];
