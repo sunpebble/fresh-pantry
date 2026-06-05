@@ -66,8 +66,15 @@ jobs:
       - name: Compute build number
         id: bn
         run: echo "build_number=$(date -u +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
-      - name: Generate Flutter iOS config (writes Generated.xcconfig)
-        run: flutter build ios --release --config-only --build-number=${{ steps.bn.outputs.build_number }}
+      - name: Generate Flutter iOS config (writes Generated.xcconfig + dart-defines)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          flutter build ios --release --config-only \
+            --build-number=${{ steps.bn.outputs.build_number }} \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
       - name: Archive (API key auto-signing)
         run: |
           xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner \
