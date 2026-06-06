@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.1.1...fresh_pantry-v1.1.2) (2026-06-06)
+
+
+### Bug Fixes
+
+* **ingredient:** 来源行联网查询期间显示「查询中…」不谎报本地来源 ([bd4a69c](https://github.com/kunish/fresh_pantry/commit/bd4a69cfbdcb680d19415ec8d0d4708e62d82043))
+
 ## [1.1.1](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.1.0...fresh_pantry-v1.1.1) (2026-06-06)
 
 
