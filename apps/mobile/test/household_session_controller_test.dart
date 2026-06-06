@@ -12,7 +12,10 @@ class FakeHouseholdGateway implements HouseholdGateway {
   @override
   var isAuthenticated = false;
   var sentEmail = '';
+  var verifiedEmail = '';
+  var verifiedToken = '';
   Object? sendOtpError;
+  Object? verifyOtpError;
   Object? loadHouseholdsError;
   Object? loadHouseholdMembersError;
   Completer<void>? sendOtpCompleter;
@@ -26,6 +29,13 @@ class FakeHouseholdGateway implements HouseholdGateway {
     if (sendOtpError != null) throw sendOtpError!;
     sentEmail = email;
     await sendOtpCompleter?.future;
+  }
+
+  @override
+  Future<void> verifyEmailOtp(String email, String token) async {
+    if (verifyOtpError != null) throw verifyOtpError!;
+    verifiedEmail = email;
+    verifiedToken = token;
   }
 
   @override
@@ -188,6 +198,41 @@ void main() {
 
     expect(controller.state.error, contains('boom'));
     expect(controller.state.isSubmitting, isFalse);
+  });
+
+  test('verifyOtp verifies the trimmed code against the sent email', () async {
+    final gateway = FakeHouseholdGateway();
+    final controller = HouseholdSessionController(gateway);
+
+    await controller.sendOtp('owner@example.com');
+    await controller.verifyOtp('  123456  ');
+
+    expect(gateway.verifiedEmail, 'owner@example.com');
+    expect(gateway.verifiedToken, '123456');
+    expect(controller.state.isSubmitting, isFalse);
+    expect(controller.state.error, isNull);
+  });
+
+  test('verifyOtp surfaces gateway errors in state', () async {
+    final gateway = FakeHouseholdGateway()
+      ..verifyOtpError = StateError('bad code');
+    final controller = HouseholdSessionController(gateway);
+
+    await controller.sendOtp('owner@example.com');
+    await controller.verifyOtp('000000');
+
+    expect(controller.state.error, contains('bad code'));
+    expect(controller.state.isSubmitting, isFalse);
+  });
+
+  test('verifyOtp requires a previously sent code', () async {
+    final gateway = FakeHouseholdGateway();
+    final controller = HouseholdSessionController(gateway);
+
+    await controller.verifyOtp('123456');
+
+    expect(gateway.verifiedToken, isEmpty);
+    expect(controller.state.error, isNotNull);
   });
 
   test('refreshHouseholds stores loaded households', () async {

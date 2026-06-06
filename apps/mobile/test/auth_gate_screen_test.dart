@@ -34,6 +34,9 @@ class FakeHouseholdGateway implements HouseholdGateway {
   @override
   bool isAuthenticated;
   var sentEmail = '';
+  var verifiedEmail = '';
+  var verifiedToken = '';
+  Object? verifyOtpError;
   var createdHouseholdName = '';
   var acceptedInviteId = '';
   Object? acceptInviteError;
@@ -44,6 +47,13 @@ class FakeHouseholdGateway implements HouseholdGateway {
   @override
   Future<void> sendOtp(String email) async {
     sentEmail = email;
+  }
+
+  @override
+  Future<void> verifyEmailOtp(String email, String token) async {
+    if (verifyOtpError != null) throw verifyOtpError!;
+    verifiedEmail = email;
+    verifiedToken = token;
   }
 
   @override
@@ -203,7 +213,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('登录 Fresh Pantry'), findsOneWidget);
-      expect(find.widgetWithText(FilledButton, '发送登录链接'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, '发送验证码'), findsOneWidget);
       expect(find.text('App Shell'), findsNothing);
     },
   );
@@ -217,7 +227,7 @@ void main() {
       find.widgetWithText(TextField, '邮箱'),
       ' owner@example.com ',
     );
-    await tester.tap(find.widgetWithText(FilledButton, '发送登录链接'));
+    await tester.tap(find.widgetWithText(FilledButton, '发送验证码'));
     await tester.pumpAndSettle();
 
     expect(gateway.sentEmail, 'owner@example.com');
@@ -232,10 +242,33 @@ void main() {
       find.widgetWithText(TextField, '邮箱'),
       'owner@example.com',
     );
-    await tester.tap(find.widgetWithText(FilledButton, '发送登录链接'));
+    await tester.tap(find.widgetWithText(FilledButton, '发送验证码'));
     await tester.pumpAndSettle();
 
-    expect(find.text('登录链接已发送至 owner@example.com，请查收邮件'), findsOneWidget);
+    expect(
+      find.text('验证码已发送至 owner@example.com，请输入邮件中的验证码'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('AuthGateScreen verifies the entered OTP code', (tester) async {
+    final gateway = FakeHouseholdGateway();
+    await tester.pumpWidget(_wrap(gateway));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, '邮箱'),
+      'owner@example.com',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, '发送验证码'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, '验证码'), ' 123456 ');
+    await tester.tap(find.widgetWithText(FilledButton, '验证并登录'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.verifiedEmail, 'owner@example.com');
+    expect(gateway.verifiedToken, '123456');
   });
 
   testWidgets(

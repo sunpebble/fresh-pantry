@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../household/household_models.dart';
@@ -38,12 +39,14 @@ class AuthGateScreen extends ConsumerStatefulWidget {
 
 class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
   final _emailController = TextEditingController();
+  final _otpController = TextEditingController();
   final _householdNameController = TextEditingController(text: '我的家庭');
   final _inviteController = TextEditingController();
   String? _pendingInviteToken;
   String? _inviteInputError;
   String? _lastPreviewToken;
   String? _emailError;
+  String? _otpError;
   final _dismissedInviteIds = <String>{};
   StreamSubscription<String>? _inviteLinkSubscription;
 
@@ -68,6 +71,7 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
   void dispose() {
     _inviteLinkSubscription?.cancel();
     _emailController.dispose();
+    _otpController.dispose();
     _householdNameController.dispose();
     _inviteController.dispose();
     super.dispose();
@@ -184,22 +188,58 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
                       const SizedBox(height: AppSpacing.md),
                       _ErrorText(session.error!),
                     ],
-                    if (session.error == null &&
-                        session.sentOtpToEmail.isNotEmpty) ...[
+                    if (session.sentOtpToEmail.isEmpty) ...[
+                      const SizedBox(height: AppSpacing.xl),
+                      FilledButton.icon(
+                        onPressed: session.isSubmitting ? null : _sendOtp,
+                        icon: session.isSubmitting
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.mail_outline),
+                        label: Text(session.isSubmitting ? '发送中...' : '发送验证码'),
+                      ),
+                    ] else ...[
                       const SizedBox(height: AppSpacing.md),
                       _OtpSentText(email: session.sentOtpToEmail),
+                      const SizedBox(height: AppSpacing.md),
+                      TextField(
+                        controller: _otpController,
+                        enabled: !session.isSubmitting,
+                        autofillHints: const [AutofillHints.oneTimeCode],
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        maxLength: 6,
+                        decoration: InputDecoration(
+                          labelText: '验证码',
+                          counterText: '',
+                          errorText: _otpError,
+                        ),
+                        onChanged: (_) {
+                          if (_otpError != null) {
+                            setState(() => _otpError = null);
+                          }
+                        },
+                        onSubmitted: (_) => _verifyOtp(),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      FilledButton.icon(
+                        onPressed: session.isSubmitting ? null : _verifyOtp,
+                        icon: session.isSubmitting
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.login),
+                        label: Text(session.isSubmitting ? '验证中...' : '验证并登录'),
+                      ),
+                      TextButton(
+                        onPressed: session.isSubmitting ? null : _sendOtp,
+                        child: const Text('重新发送验证码'),
+                      ),
                     ],
-                    const SizedBox(height: AppSpacing.xl),
-                    FilledButton.icon(
-                      onPressed: session.isSubmitting ? null : _sendOtp,
-                      icon: session.isSubmitting
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.mail_outline),
-                      label: Text(session.isSubmitting ? '发送中...' : '发送登录链接'),
-                    ),
                     const SizedBox(height: AppSpacing.xxl),
                     _InviteInputSection(
                       controller: _inviteController,
@@ -425,8 +465,22 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
       setState(() => _emailError = '请输入有效的邮箱地址');
       return;
     }
-    setState(() => _emailError = null);
+    _otpController.clear();
+    setState(() {
+      _emailError = null;
+      _otpError = null;
+    });
     ref.read(householdSessionControllerProvider.notifier).sendOtp(email);
+  }
+
+  void _verifyOtp() {
+    final code = _otpController.text.trim();
+    if (code.isEmpty) {
+      setState(() => _otpError = '请输入验证码');
+      return;
+    }
+    setState(() => _otpError = null);
+    ref.read(householdSessionControllerProvider.notifier).verifyOtp(code);
   }
 
   void _createHousehold() {
@@ -716,7 +770,7 @@ class _OtpSentText extends StatelessWidget {
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Text(
-            '登录链接已发送至 $email，请查收邮件',
+            '验证码已发送至 $email，请输入邮件中的验证码',
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(color: AppColors.primaryContainer),

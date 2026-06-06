@@ -30,6 +30,9 @@ class FakeBootstrapGateway implements HouseholdGateway {
   Future<void> sendOtp(String email) async {}
 
   @override
+  Future<void> verifyEmailOtp(String email, String token) async {}
+
+  @override
   Future<List<Household>> loadHouseholds() async => const [];
 
   @override

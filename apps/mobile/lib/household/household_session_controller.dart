@@ -39,6 +39,7 @@ abstract class HouseholdGateway {
   String? get currentUserId;
 
   Future<void> sendOtp(String email);
+  Future<void> verifyEmailOtp(String email, String token);
   Future<List<Household>> loadHouseholds();
   Future<Household> createHousehold(String name);
   Future<void> uploadInitialData(String householdId);
@@ -104,6 +105,32 @@ class SupabaseHouseholdGateway implements HouseholdGateway {
       email: email,
       emailRedirectTo: resolveSupabaseAuthRedirectUrl(),
     );
+  }
+
+  @override
+  Future<void> verifyEmailOtp(String email, String token) async {
+    // Code entry verifies against /verify directly and returns a session — it
+    // never relies on the deep-link round trip or the PKCE code exchange, which
+    // is exactly why we moved off the magic link (the link's code was reaching
+    // the app but never getting exchanged; see the auth-callback diagnosis).
+    //
+    // Existing users get a magic-link email (OtpType.email); a brand-new user's
+    // first code comes from the signup-confirmation email and only verifies under
+    // OtpType.signup. A wrong-type attempt errors WITHOUT consuming a valid token,
+    // so we fall back to signup before surfacing the failure.
+    try {
+      await _client.auth.verifyOTP(
+        email: email,
+        token: token,
+        type: OtpType.email,
+      );
+    } on AuthException {
+      await _client.auth.verifyOTP(
+        email: email,
+        token: token,
+        type: OtpType.signup,
+      );
+    }
   }
 
   @override
@@ -367,6 +394,31 @@ class HouseholdSessionController extends StateNotifier<HouseholdSessionState> {
         error: error.toString(),
         sentOtpToEmail: '',
       );
+    }
+  }
+
+  Future<void> verifyOtp(String token) async {
+    final code = token.trim();
+    final email = state.sentOtpToEmail;
+    if (email.isEmpty) {
+      state = state.copyWith(error: '请先获取验证码');
+      return;
+    }
+    if (code.isEmpty) {
+      state = state.copyWith(error: '请输入验证码');
+      return;
+    }
+    state = state.copyWith(isSubmitting: true, error: null);
+    try {
+      await _gateway.verifyEmailOtp(email, code);
+      // On success the gateway emits AuthChangeEvent.signedIn, which the auth
+      // subscription turns into refreshHouseholds() — that flips isAuthenticated
+      // and drives the gate forward. Here we only drop the submitting flag.
+      if (!mounted) return;
+      state = state.copyWith(isSubmitting: false, error: null);
+    } catch (error) {
+      if (!mounted) return;
+      state = state.copyWith(isSubmitting: false, error: error.toString());
     }
   }
 

@@ -38,6 +38,9 @@ class HouseholdGatewayStub implements HouseholdGateway {
   Future<void> sendOtp(String email) async {}
 
   @override
+  Future<void> verifyEmailOtp(String email, String token) async {}
+
+  @override
   Future<List<Household>> loadHouseholds() async {
     return households;
   }

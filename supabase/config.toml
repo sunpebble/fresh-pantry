@@ -230,9 +230,37 @@ secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
 max_frequency = "15s"
 # Number of characters used in the email OTP.
-otp_length = 8
+otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
+
+# Branded, code-first email templates. Login/signup/recovery/email-change/
+# reauth render the 6-digit {{ .Token }} (entered in-app via verifyOTP) instead
+# of a magic link: the link's PKCE code reached the app but was never exchanged,
+# and QQ-mail prefetch consumed the one-time token. Invite stays link-based.
+[auth.email.template.magic_link]
+subject = "你的 Fresh Pantry 登录验证码"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.confirmation]
+subject = "确认你的 Fresh Pantry 账号"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Fresh Pantry 账号安全验证码"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.email_change]
+subject = "确认更换 Fresh Pantry 邮箱"
+content_path = "./supabase/templates/email_change.html"
+
+[auth.email.template.reauthentication]
+subject = "Fresh Pantry 身份验证码"
+content_path = "./supabase/templates/reauthentication.html"
+
+[auth.email.template.invite]
+subject = "你被邀请加入 Fresh Pantry"
+content_path = "./supabase/templates/invite.html"
 
 # Use a production-ready SMTP server
 # [auth.email.smtp]

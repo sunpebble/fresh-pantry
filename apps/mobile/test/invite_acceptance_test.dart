@@ -44,6 +44,9 @@ class InviteRecordingGateway implements HouseholdGateway {
   Future<void> sendOtp(String email) async {}
 
   @override
+  Future<void> verifyEmailOtp(String email, String token) async {}
+
+  @override
   Future<List<Household>> loadHouseholds() async {
     loadCount += 1;
     return households;
