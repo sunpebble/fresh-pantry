@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.2.0...fresh_pantry-v1.2.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* **dedup:** 消除食谱与库存的重复食材 ([8456546](https://github.com/kunish/fresh_pantry/commit/8456546631eb2a3d29be951abca86a0642264ee9))
+
 ## [1.2.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.1.3...fresh_pantry-v1.2.0) (2026-06-07)
 
 
