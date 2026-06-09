@@ -18,6 +18,7 @@ struct SettingsView: View {
                 dietaryStore: dependencies.dietaryPreferencesStore,
                 dietPreferenceStore: dependencies.dietPreferenceStore,
                 aiStore: dependencies.aiSettingsStore,
+                appearanceStore: dependencies.appearanceStore,
                 auth: dependencies.authService,
                 notifications: dependencies.notificationCoordinator,
                 householdID: dependencies.householdID
@@ -34,6 +35,7 @@ private struct SettingsContent: View {
     let dietaryStore: DietaryPreferencesStore
     let dietPreferenceStore: DietPreferenceStore
     let aiStore: AiSettingsStore
+    let appearanceStore: AppearanceStore
     @Bindable var auth: AuthService
     let notifications: NotificationCoordinator
     let householdID: String
@@ -57,6 +59,7 @@ private struct SettingsContent: View {
             dietarySection
             dietPreferenceSection
             assistantSection
+            appearanceSection
             comingSoonSection
             aboutSection
         }
@@ -275,6 +278,32 @@ private struct SettingsContent: View {
             }
         } header: {
             Text("AI 助手")
+        }
+        .listRowBackground(Color.fkSurfaceContainerLowest)
+    }
+
+    // MARK: 外观
+
+    /// 跟随系统/浅色/深色 segmented picker. Binding is built inside the
+    /// `@MainActor` `body` (the `ReminderToggleRow` pattern) so the store
+    /// mutation never crosses an isolation boundary.
+    private var appearanceSection: some View {
+        let binding = Binding(
+            get: { appearanceStore.mode },
+            set: { appearanceStore.set($0) }
+        )
+        return Section {
+            Picker("外观", selection: binding) {
+                ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                    Text(mode.label).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .listRowInsets(EdgeInsets(top: FkSpacing.sm, leading: FkSpacing.md, bottom: FkSpacing.sm, trailing: FkSpacing.md))
+        } header: {
+            Text("外观")
+        } footer: {
+            Text("「跟随系统」随 iOS 外观自动切换浅色与深色。")
         }
         .listRowBackground(Color.fkSurfaceContainerLowest)
     }

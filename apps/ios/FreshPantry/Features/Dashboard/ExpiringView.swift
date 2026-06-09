@@ -257,7 +257,7 @@ private struct RemindStatusCard: View {
         FkCard(padding: FkSpacing.md, background: .fkPrimarySoft) {
             HStack(spacing: FkSpacing.md) {
                 ZStack {
-                    Circle().fill(.white).frame(width: 36, height: 36)
+                    Circle().fill(Color.fkSurfaceContainerLowest).frame(width: 36, height: 36)
                     Image(systemName: granted ? "bell.badge.fill" : "bell.slash")
                         .font(.system(size: FkSize.iconSm, weight: .semibold))
                         .foregroundStyle(Color.fkPrimaryContainer)

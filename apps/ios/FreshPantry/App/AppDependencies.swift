@@ -42,6 +42,9 @@ final class AppDependencies {
     let dietPreferenceStore: DietPreferenceStore
     /// Keychain-backed AI provider config (apiKey is a secret → SecretStore).
     let aiSettingsStore: AiSettingsStore
+    /// UserDefaults-backed 外观 preference (跟随系统/浅色/深色); drives the root
+    /// `preferredColorScheme` override. Device-local, excluded from backup/sync.
+    let appearanceStore: AppearanceStore
     /// Holds a household-invite deep link captured by `onOpenURL` until the UI
     /// presents its preview/accept flow. Always built (no backend dependency).
     let inviteRouter: InviteRouter
@@ -103,6 +106,7 @@ final class AppDependencies {
         self.dietaryPreferencesStore = DietaryPreferencesStore()
         self.dietPreferenceStore = DietPreferenceStore()
         self.aiSettingsStore = AiSettingsStore(secrets: KeychainStore())
+        self.appearanceStore = AppearanceStore()
         self.inviteRouter = InviteRouter()
         self.recipeImportRouter = RecipeImportRouter()
         self.notificationCoordinator = NotificationCoordinator(

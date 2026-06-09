@@ -61,7 +61,9 @@ struct FreshPantryApp: App {
         WindowGroup {
             RootView()
                 .tint(.fkPrimary)
-                .preferredColorScheme(.light) // 品牌为暖色浅色主题;深色模式留作后续增强
+                // 外观偏好:跟随系统时为 nil(交还系统);浅色/深色为硬覆盖。
+                // App/Scene body 会追踪 @Observable 读取,设置页切换即时生效。
+                .preferredColorScheme(dependencies.appearanceStore.mode.colorScheme)
                 .modelContainer(modelContainer)
                 .environment(dependencies)
                 .environment(syncSession)

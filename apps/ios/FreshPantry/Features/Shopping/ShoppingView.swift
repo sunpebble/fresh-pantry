@@ -359,8 +359,10 @@ private struct ShoppingProgressCard: View {
         .background(
             RoundedRectangle(cornerRadius: FkRadius.xl, style: .continuous)
                 .fill(
+                    // fkPrimaryDeep(双模式同为深蓝)而非 fkPrimaryContainer:
+                    // 后者在深色下是浅 ink,会让白字失去对比。
                     LinearGradient(
-                        colors: [Color.fkPrimary, Color.fkPrimaryContainer],
+                        colors: [Color.fkPrimary, Color.fkPrimaryDeep],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
