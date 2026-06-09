@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.6.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.5.0...fresh_pantry-v1.6.0) (2026-06-09)
+
+
+### Features
+
+* **ios:** 入库审核行食材名称内联编辑 + 临期屏提醒状态卡 ([42f687e](https://github.com/kunish/fresh_pantry/commit/42f687e25e2b2f31c22a504b1d8165798f3ec6c7))
+* **ios:** 减废「最常浪费」榜单 + 设置减废成效入口 ([3ed4d98](https://github.com/kunish/fresh_pantry/commit/3ed4d98e65a4fe70030c102d689f5478a9a28235))
+* **ios:** 数据备份剪贴板复制/粘贴 ([a965ee9](https://github.com/kunish/fresh_pantry/commit/a965ee9a6c654f5307bd94d1d8b1cd9e5872a801))
+* **ios:** 购物清单分类分组折叠/展开 ([f411360](https://github.com/kunish/fresh_pantry/commit/f4113603f5ee5756028d277188f92c3f48e0aa6c))
+* **ios:** 首页 Hero 显示「· N 类」食材分类数 ([d12dd83](https://github.com/kunish/fresh_pantry/commit/d12dd83ee47010b188dcc756ac20e30aaabad8f2))
+
 ## [1.5.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.4.0...fresh_pantry-v1.5.0) (2026-06-09)
 
 
