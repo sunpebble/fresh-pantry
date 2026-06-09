@@ -155,7 +155,7 @@ private struct DashboardContent: View {
     var body: some View {
         ScrollView {
             VStack(spacing: FkSpacing.xl) {
-                HeroSummary(summary: store.summary)
+                HeroSummary(summary: store.summary, categoryCount: store.categoryCounts.count)
                     .padding(.horizontal, FkSpacing.lg)
 
                 recommendationSection
@@ -418,6 +418,8 @@ struct FallbackSuggestion: Equatable {
 /// hero treatment, status-bar gradient omitted as optional).
 private struct HeroSummary: View {
     let summary: DashboardSummary
+    /// Distinct non-empty inventory categories (covers "· N 类" next to 件食材).
+    var categoryCount: Int = 0
 
     /// Time-of-day greeting (早安/午安/下午好/晚上好/夜深了),主厨。— ports the Flutter
     /// dashboard greeting. Computed from the local hour at render time.
@@ -450,6 +452,11 @@ private struct HeroSummary: View {
                     Text("件食材")
                         .font(.fkTitleMedium)
                         .foregroundStyle(Color.fkOnPrimary.opacity(0.85))
+                    if categoryCount > 0 {
+                        Text("· \(categoryCount) 类")
+                            .font(.fkTitleMedium)
+                            .foregroundStyle(Color.fkOnPrimary.opacity(0.85))
+                    }
                 }
             }
 
