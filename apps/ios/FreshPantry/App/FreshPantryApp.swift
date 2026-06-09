@@ -36,6 +36,9 @@ struct FreshPantryApp: App {
         // local dev / OSS checkouts) yields nil → the app runs in local-only
         // mode (auth disabled) rather than crashing.
         let config = try? AppConfig.load()
+        // Start crash/error reporting before anything else can fail. No-op in
+        // DEBUG and when config is absent (local-only) — see SentryBootstrap.
+        SentryBootstrap.start(config?.sentry)
         let session = SyncSession()
         _syncSession = State(initialValue: session)
         _dependencies = State(

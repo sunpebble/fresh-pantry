@@ -12,6 +12,9 @@ packages:
   Supabase:
     url: https://github.com/supabase/supabase-swift
     from: "2.47.0"
+  Sentry:
+    url: https://github.com/getsentry/sentry-cocoa
+    from: "9.16.1"
 
 settings:
   base:
@@ -42,6 +45,8 @@ targets:
     dependencies:
       - package: Supabase
         product: Supabase
+      - package: Sentry
+        product: Sentry
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kunish.freshPantry
