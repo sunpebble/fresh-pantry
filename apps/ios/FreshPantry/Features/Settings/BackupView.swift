@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 /// 数据备份 sub-screen: exports all local user data to a versioned JSON file and
@@ -17,7 +18,9 @@ struct BackupView: View {
     @State private var exporting = false
 
     @State private var importing = false
-    @State private var pendingImportURL: URL?
+    /// The backup JSON awaiting the overwrite confirmation — sourced from EITHER a
+    /// picked file OR the clipboard, so `confirmImport` has one String path.
+    @State private var pendingImportText: String?
     @State private var showImportConfirm = false
 
     @State private var status: BackupStatus?
@@ -53,7 +56,7 @@ struct BackupView: View {
             handleImportPick(result)
         }
         .alert("导入将覆盖现有数据", isPresented: $showImportConfirm) {
-            Button("取消", role: .cancel) { pendingImportURL = nil }
+            Button("取消", role: .cancel) { pendingImportText = nil }
             Button("覆盖导入", role: .destructive) { confirmImport() }
         } message: {
             Text("导入将覆盖本机当前的库存、采购、食谱、膳食计划等数据,确定继续?")
@@ -84,6 +87,15 @@ struct BackupView: View {
                 }
                 .disabled(exporting)
             }
+            Button(action: copyExport) {
+                actionRow(
+                    systemImage: "doc.on.doc",
+                    title: "复制到剪贴板",
+                    subtitle: "复制全部数据为 JSON,可粘贴到备忘录/邮件保存",
+                    busy: exporting
+                )
+            }
+            .disabled(exporting)
         } header: {
             Text("导出")
         } footer: {
@@ -107,6 +119,25 @@ struct BackupView: View {
         }
     }
 
+    /// Copies the export JSON to the clipboard, reporting the UTF-8 byte size
+    /// (matches the Flutter clipboard-export feedback).
+    private func copyExport() {
+        guard let controller else { return }
+        exporting = true
+        status = nil
+        Task {
+            defer { exporting = false }
+            do {
+                let json = try await controller.exportBackup()
+                UIPasteboard.general.string = json
+                let bytes = json.data(using: .utf8)?.count ?? 0
+                status = .success("已复制 \(bytes) 字节,粘贴到备忘录/邮件即可保存")
+            } catch {
+                status = .failure("导出失败,请重试")
+            }
+        }
+    }
+
     // MARK: 导入
 
     private var importSection: some View {
@@ -122,6 +153,14 @@ struct BackupView: View {
                     busy: false
                 )
             }
+            Button(action: pasteImport) {
+                actionRow(
+                    systemImage: "doc.on.clipboard",
+                    title: "从剪贴板导入",
+                    subtitle: "从复制的 JSON 文本恢复数据",
+                    busy: false
+                )
+            }
         } header: {
             Text("导入")
         } footer: {
@@ -134,20 +173,37 @@ struct BackupView: View {
         switch result {
         case let .success(urls):
             guard let url = urls.first else { return }
-            pendingImportURL = url
-            showImportConfirm = true
+            do {
+                pendingImportText = try readFile(at: url)
+                showImportConfirm = true
+            } catch {
+                status = .failure("无法读取所选文件")
+            }
         case .failure:
             status = .failure("无法读取所选文件")
         }
     }
 
+    /// Loads backup JSON from the clipboard (the Flutter paste-import path), then
+    /// routes through the same overwrite confirmation as the file import.
+    private func pasteImport() {
+        status = nil
+        guard let text = UIPasteboard.general.string,
+              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            status = .failure("剪贴板为空,请先复制备份 JSON")
+            return
+        }
+        pendingImportText = text
+        showImportConfirm = true
+    }
+
     private func confirmImport() {
-        guard let controller, let url = pendingImportURL else { return }
-        pendingImportURL = nil
+        guard let controller, let json = pendingImportText else { return }
+        pendingImportText = nil
         status = nil
         Task {
             do {
-                let json = try readFile(at: url)
                 try await controller.importBackup(json)
                 // Refresh every visible list: reuse the remote-merge pulse the
                 // feature views already observe, so import results show without a
