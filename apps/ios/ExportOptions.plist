@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  CI 导出配置。App Store Connect 上传 + 自动签名:配合 xcodebuild 的
+  -allowProvisioningUpdates + ASC API Key,Xcode 按需创建 Apple Distribution
+  证书与 App Store profile,无需手动管理证书或描述文件(provisioning profile)。
+  manageAppVersionAndBuildNumber=false:版本号/build 号由 CI 注入,不让 Xcode 改写。
+-->
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>teamID</key>
+	<string>62HCT6Q83X</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>destination</key>
+	<string>export</string>
+	<key>uploadSymbols</key>
+	<true/>
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+</dict>
+</plist>

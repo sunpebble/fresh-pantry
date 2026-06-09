@@ -1,8 +1,15 @@
 # 设计:release-please → TestFlight 自动发布
 
 - 日期：2026-06-06
-- 状态：已批准设计，待实施
+- 状态：已实施；**2026-06-09 改指向原生 app**(见下「更新」)
 - 仓库：`kunish/fresh_pantry`（private）
+
+> **更新(2026-06-09):本文档描述的是 Flutter(`apps/mobile`)版流水线。** SwiftUI 原生
+> 重写完成后,`release.yml` 的发布链路已**改指向原生 `apps/ios`**(同 bundle id,只能一个发
+> TestFlight;Flutter 停止发版、代码保留)。签名策略(ASC API Key 自动签名)、build number
+> 时间戳、Secrets 清单等核心决策**沿用不变**;差异仅在 job③ 用 `xcodegen + xcodebuild`
+> 构建原生工程、release-please 改用 `simple` release-type 维护 `apps/ios/version.txt`。
+> **原生流水线的运维说明见 [`apps/ios/README.md`](../../../apps/ios/README.md)。**
 
 ## 背景与目标
 

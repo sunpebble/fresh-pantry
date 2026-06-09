@@ -10,6 +10,9 @@ permissions:
   pull-requests: write
 
 jobs:
+  # 平时 push main 只跑这一段(便宜)。release-please 累积 Conventional Commits
+  # 到一个 Release PR;合并 Release PR 那次 push 才 release_created==true,驱动
+  # 下游 testflight。版本真源在 apps/ios/version.txt(release-please 维护)。
   release-please:
     runs-on: ubuntu-latest
     outputs:
@@ -21,84 +24,107 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  gate:
+  # 原生 SwiftUI app 构建 → 签名 → 上传 TestFlight。仅在产生 release 或手动触发时跑。
+  # iOS 26 / Swift 6 需要 Xcode 26,故用 macos-26 runner(若 GitHub 尚未提供该镜像,
+  # 改成带 Xcode 26 的可用 runner 即可)。私有仓 macOS 按 10x 计费,故只在发版时跑。
+  testflight:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created == 'true' || github.event_name == 'workflow_dispatch' }}
-    runs-on: ubuntu-latest
+    runs-on: macos-26
     defaults:
       run:
-        working-directory: apps/mobile
-    steps:
-      - uses: actions/checkout@v6
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: 3.44.1
-          channel: stable
-          cache: true
-      - run: flutter pub get
-      - run: flutter analyze --no-fatal-infos
-      - run: flutter test --concurrency=1
-
-  testflight:
-    needs: gate
-    runs-on: macos-15
-    defaults:
-      run:
-        working-directory: apps/mobile
+        working-directory: apps/ios
     env:
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
     steps:
       - uses: actions/checkout@v6
+
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: 3.44.1
-          channel: stable
-          cache: true
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
       - name: Install ASC API key
         run: |
           mkdir -p "$HOME/.appstoreconnect/private_keys"
           printf '%s' "${{ secrets.ASC_API_KEY_P8 }}" > "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
-      - run: flutter pub get
-      - name: Compute build number
-        id: bn
-        run: echo "build_number=$(date -u +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
-      - name: Generate Flutter iOS config (writes Generated.xcconfig + dart-defines)
+
+      # Secrets.plist 须在 xcodegen 之前生成,才会被收进 app bundle(否则运行时
+      # AppConfig 退化为本地模式、无 Supabase)。SENTRY_DSN 留空 → 用 AppConfig
+      # 内置默认 DSN;环境固定 production。值为已知安全字符(URL / 发布键),printf 直注。
+      - name: Generate Secrets.plist from CI secrets
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          flutter build ios --release --config-only \
-            --split-debug-info=build/debug-info \
-            --build-number=${{ steps.bn.outputs.build_number }} \
-            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
-            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+          printf '%s\n' \
+            '<?xml version="1.0" encoding="UTF-8"?>' \
+            '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+            '<plist version="1.0"><dict>' > FreshPantry/Support/Secrets.plist
+          {
+            printf '<key>SUPABASE_URL</key><string>%s</string>' "$SUPABASE_URL"
+            printf '<key>SUPABASE_PUBLISHABLE_KEY</key><string>%s</string>' "$SUPABASE_PUBLISHABLE_KEY"
+            printf '<key>SENTRY_ENVIRONMENT</key><string>production</string>'
+            printf '</dict></plist>\n'
+          } >> FreshPantry/Support/Secrets.plist
+          plutil -lint FreshPantry/Support/Secrets.plist
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Resolve Swift packages
+        run: xcodebuild -resolvePackageDependencies -project FreshPantry.xcodeproj -scheme FreshPantry
+
+      # 发版前质量门禁:跑单元测试(Debug)。失败即终止,不进 archive/上传。
+      # 想省 macOS 分钟可删除本步骤(本地已跑测试时)。
+      - name: Run tests (gate)
+        run: |
+          xcodebuild test \
+            -project FreshPantry.xcodeproj \
+            -scheme FreshPantry \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+
+      - name: Compute build number (UTC timestamp, monotonic)
+        id: bn
+        run: echo "build_number=$(date -u +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
+
+      - name: Read marketing version (release-please source of truth)
+        id: ver
+        run: echo "marketing_version=$(cat version.txt)" >> "$GITHUB_OUTPUT"
+
       - name: Archive (API key auto-signing)
         run: |
-          xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner \
-            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
-            -archivePath build/ios/archive/Runner.xcarchive \
-            archive \
+          xcodebuild archive \
+            -project FreshPantry.xcodeproj \
+            -scheme FreshPantry \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/FreshPantry.xcarchive \
+            MARKETING_VERSION=${{ steps.ver.outputs.marketing_version }} \
+            CURRENT_PROJECT_VERSION=${{ steps.bn.outputs.build_number }} \
             -allowProvisioningUpdates \
             -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
       - name: Export IPA (clean PATH avoids Homebrew GNU rsync "Copy failed")
         run: |
           env PATH="/usr/bin:/bin:/usr/sbin:/sbin" xcodebuild -exportArchive \
-            -archivePath build/ios/archive/Runner.xcarchive \
-            -exportPath build/ios/ipa \
-            -exportOptionsPlist ios/ExportOptions.plist \
+            -archivePath build/FreshPantry.xcarchive \
+            -exportPath build/ipa \
+            -exportOptionsPlist ExportOptions.plist \
             -allowProvisioningUpdates \
             -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
       - name: Upload to TestFlight (one retry)
         run: |
-          ipas=(build/ios/ipa/*.ipa)
+          ipas=(build/ipa/*.ipa)
           IPA="${ipas[0]}"
           echo "Uploading: $IPA"
           for attempt in 1 2; do
@@ -109,11 +135,16 @@ jobs:
             echo "upload attempt $attempt failed; retrying in 30s"; sleep 30
           done
           echo "upload failed after retries"; exit 1
-      # 发版之后再传符号:发版优先,符号上传失败时本步骤(job)标红可见,
-      # 但不影响已上架的构建。debug 文件按 UUID 关联,无需对齐 release。
-      # org/project 读 pubspec 的 sentry: 块;dSYM 在 archive 内、Dart 符号在
-      # build/debug-info,两者都在 plugin 默认扫描的 build/ 子树下。
-      - name: Upload Sentry debug symbols (dSYM + Dart split-debug-info)
+
+      # 发版优先:符号上传放在上传之后,失败仅本步骤标红(continue-on-error),
+      # 不影响已上架构建。dSYM 按 UUID 关联,无需对齐 release。org/project 与
+      # Flutter 侧一致(kunish / fresh_pantry),复用 SENTRY_AUTH_TOKEN。
+      - name: Upload dSYMs to Sentry (non-blocking)
+        continue-on-error: true
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-        run: dart run sentry_dart_plugin
+        run: |
+          npx --yes @sentry/cli@latest debug-files upload \
+            --org kunish --project fresh_pantry \
+            --include-sources \
+            build/FreshPantry.xcarchive/dSYMs
