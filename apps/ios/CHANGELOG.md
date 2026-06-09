@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.6.0...fresh_pantry-v1.7.0) (2026-06-09)
+
+
+### Features
+
+* **ios:** 明亮/暗黑模式切换 + 全调色板自适应暗色化 ([c0692ce](https://github.com/kunish/fresh_pantry/commit/c0692ce201c1293f97fe774b07f54862bdc6dae5))
+
 ## [1.6.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.5.0...fresh_pantry-v1.6.0) (2026-06-09)
 
 
