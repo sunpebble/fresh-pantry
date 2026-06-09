@@ -13,15 +13,64 @@ import Foundation
 @Observable
 @MainActor
 final class RecipesStore {
+    /// Which slice the list shows (探索/现有/用临期/我的) — ports `_RecipeTab`.
+    enum Tab: String, CaseIterable, Identifiable {
+        case explore   // 探索 — the full corpus
+        case available // 现有 — recipes you can (partly) make now, match-ranked
+        case expiring  // 用临期 — recipes that use the most expiring items
+        case mine      // 我的 — the user's custom recipes
+
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .explore: "探索"
+            case .available: "现有"
+            case .expiring: "用临期"
+            case .mine: "我的"
+            }
+        }
+    }
+
+    /// Cooking-time filter (不限/≤15/≤30 分钟) — ports `_TimeFilter`.
+    enum TimeFilter: String, CaseIterable, Identifiable {
+        case all, fast15, fast30
+
+        var id: String { rawValue }
+        /// Inclusive upper bound in minutes; nil = 不限.
+        var maxMinutes: Int? {
+            switch self {
+            case .all: nil
+            case .fast15: 15
+            case .fast30: 30
+            }
+        }
+        var label: String {
+            switch self {
+            case .all: "不限时间"
+            case .fast15: "15 分钟内"
+            case .fast30: "30 分钟内"
+            }
+        }
+    }
+
+    /// Active browse tab. `explore` is the default (the full corpus).
+    var tab: Tab = .explore
     /// Category filter. `nil` = 全部 (all categories).
     var categoryFilter: String?
     var searchQuery: String = ""
     var favoritesOnly: Bool = false
+    var timeFilter: TimeFilter = .all
 
     private let localRepository: LocalRecipeRepository
     private let customRepository: CustomRecipeRepository
     private let favoritesStore: FavoritesStore
     private let householdID: String
+    /// Optional inventory source for the ingredient-match progress + 临期 banner.
+    /// nil keeps the store browse-only (tests / meal-plan picker pass nil).
+    private let inventoryRepository: InventoryRepository?
+    /// Optional 忌口 source — recipes containing an avoided keyword are hidden from
+    /// every tab. nil disables the filter (tests / meal-plan picker pass nil).
+    private let dietaryStore: DietaryPreferencesStore?
 
     /// Merged, id-deduped recipes (bundled order first, custom appended; custom
     /// overrides a shared id in place). The parity-critical source order is never
@@ -30,21 +79,34 @@ final class RecipesStore {
     private(set) var isLoading = false
     private(set) var hasLoaded = false
 
+    /// Lower-cased inventory names (the match corpus) + the expiring/expired
+    /// subset, refreshed alongside `recipes`. Empty when no inventory source.
+    private(set) var inventoryNames: Set<String> = []
+    private(set) var expiringNames: Set<String> = []
+    /// Ids of the user's custom recipes (drives the 我的 tab + the detail
+    /// edit/delete affordances). Includes custom overrides of bundled ids.
+    private(set) var customIDs: Set<String> = []
+
     init(
         localRepository: LocalRecipeRepository,
         customRepository: CustomRecipeRepository,
         favoritesStore: FavoritesStore,
-        householdID: String
+        householdID: String,
+        inventoryRepository: InventoryRepository? = nil,
+        dietaryStore: DietaryPreferencesStore? = nil
     ) {
         self.localRepository = localRepository
         self.customRepository = customRepository
         self.favoritesStore = favoritesStore
         self.householdID = householdID
+        self.inventoryRepository = inventoryRepository
+        self.dietaryStore = dietaryStore
     }
 
     // MARK: Loading
 
-    /// Loads bundled + custom recipes and merges them (custom wins on id).
+    /// Loads bundled + custom recipes and merges them (custom wins on id), plus
+    /// the inventory match corpus when an inventory source is wired.
     func load() async {
         isLoading = true
         defer {
@@ -54,7 +116,32 @@ final class RecipesStore {
         let bundled = await localRepository.loadAll()
         let custom = (try? await customRepository.loadAllFor(householdID)) ?? []
         recipes = Self.merge(bundled: bundled, custom: custom)
+        customIDs = Set(custom.map(\.id))
+        if let inventoryRepository {
+            let inventory = (try? await inventoryRepository.loadAllFor(householdID)) ?? []
+            inventoryNames = RecipeMatching.inventoryNameSet(inventory)
+            expiringNames = RecipeMatching.inventoryNameSet(inventory.filter { $0.state != .fresh })
+        }
     }
+
+    // MARK: Inventory match (ingredient availability + 临期)
+
+    /// In-stock ingredient count for a recipe (0 when no inventory source).
+    func matchedCount(_ recipe: Recipe) -> Int {
+        RecipeMatching.matchedCount(inventoryNames, recipe)
+    }
+
+    /// Distinct expiring/expired inventory items the recipe would use up.
+    func expiringUseCount(_ recipe: Recipe) -> Int {
+        RecipeMatching.expiringCount(expiringNames, recipe)
+    }
+
+    /// Whether the match progress should render (an inventory source is present).
+    var hasInventoryContext: Bool { !inventoryNames.isEmpty }
+
+    /// Count of distinct expiring/expired inventory names — drives the "优先使用 N
+    /// 件临期食材" banner.
+    var expiringItemCount: Int { expiringNames.count }
 
     /// Bundled first, then custom; a custom recipe with the same id REPLACES the
     /// bundled one in its original slot (custom wins), and a brand-new custom
@@ -87,17 +174,42 @@ final class RecipesStore {
 
     // MARK: Derived view data
 
-    /// The list the view renders: category filter → name/ingredient search →
-    /// favorites-only filter. A stale category filter (not present in the corpus)
-    /// is treated as 全部 so it never silently empties the list (blueprint
-    /// invariant 7).
+    /// The list the view renders: the active tab's (possibly ranked) base list,
+    /// then category → name/ingredient search → cooking-time → favorites-only →
+    /// 忌口 filters. Filters only NARROW, so a ranked tab (现有/用临期) keeps its
+    /// order. A stale category filter (not present in the corpus) is treated as
+    /// 全部 so it never silently empties the list (blueprint invariant 7).
     var displayRecipes: [Recipe] {
         let activeCategory = effectiveCategory
-        return recipes
+        let exclusions = dietaryStore?.keywords ?? []
+        return tabBaseList
             .filter { Self.matchesCategory($0, activeCategory) }
             .filter { Self.matchesSearch($0, query: searchQuery) }
+            .filter(matchesTime)
             .filter(matchesFavorites)
+            .filter { !RecipeMatching.hasExcludedIngredient($0, exclusions) }
     }
+
+    /// The per-tab source list BEFORE the shared filters. `explore`/`mine` keep
+    /// source order; `available`/`expiring` are inventory-ranked (empty without
+    /// an inventory context, which the view renders as a contextual empty state).
+    private var tabBaseList: [Recipe] {
+        switch tab {
+        case .explore:
+            return recipes
+        case .available:
+            return RecipeMatching.rankedByAvailability(
+                recipes, inventoryNames: inventoryNames, expiringNames: expiringNames
+            )
+        case .expiring:
+            return RecipeMatching.rankedByExpiringUse(recipes, expiringNames)
+        case .mine:
+            return recipes.filter { customIDs.contains($0.id) }
+        }
+    }
+
+    /// 忌口 keyword count — drives the toolbar entry's badge/active state.
+    var exclusionCount: Int { dietaryStore?.keywords.count ?? 0 }
 
     /// Distinct non-blank categories ordered by count desc, ties by first
     /// appearance (ports `recipeCategoryOptions`). Drives the filter chips.
@@ -128,6 +240,7 @@ final class RecipesStore {
     /// True when any filter/search is narrowing the list (drives empty-state copy).
     var hasActiveQuery: Bool {
         !searchQuery.trimmed.isEmpty || effectiveCategory != nil || favoritesOnly
+            || timeFilter != .all
     }
 
     var favoriteCount: Int {
@@ -153,5 +266,12 @@ final class RecipesStore {
     private func matchesFavorites(_ recipe: Recipe) -> Bool {
         guard favoritesOnly else { return true }
         return favoritesStore.isFavorite(recipe.id)
+    }
+
+    /// Keeps recipes whose cooking time is within the selected bound (不限 keeps
+    /// all). Ports the Dart `cookingMinutes <= 15/30` predicate.
+    private func matchesTime(_ recipe: Recipe) -> Bool {
+        guard let max = timeFilter.maxMinutes else { return true }
+        return recipe.cookingMinutes <= max
     }
 }

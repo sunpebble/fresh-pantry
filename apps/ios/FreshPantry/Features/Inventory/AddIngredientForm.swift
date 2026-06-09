@@ -84,6 +84,17 @@ final class AddIngredientForm {
         }
     }
 
+    /// Seeds the form from a frequently-added item (常购食材 quick-fill), pinning
+    /// category/storage/shelf-life as user-set so a later name-commit autofill
+    /// can't stomp them. Mirrors the Flutter `_applyFrequentItem`.
+    func applyFrequentItem(_ item: FrequentItem) {
+        name = item.name
+        setCategory(item.category)
+        setStorage(item.storage)
+        setUnit(item.unit)
+        if let days = item.shelfLifeDays { setShelfLife(days) }
+    }
+
     // MARK: Barcode prefill
 
     /// Seeds the form from an Open Food Facts barcode lookup. Pure mapping

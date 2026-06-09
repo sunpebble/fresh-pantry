@@ -56,7 +56,7 @@ struct ImageImportView: View {
                 }
             }
             .navigationDestination(item: $reviewRoute) { route in
-                IntakeReviewView(proposals: route.proposals, title: "确认入库") {
+                IntakeReviewView(proposals: route.proposals, title: "确认入库") { _ in
                     onApplied()
                     dismiss()
                 }

@@ -118,10 +118,41 @@ struct InventoryStoreTests {
             item(id: "f2", name: "鸡蛋", state: .fresh, storage: .fridge),
             item(id: "p1", name: "盐", state: .fresh, storage: .pantry),
         ])
-        #expect(store.count(for: .all) == 3)
+        #expect(store.count(for: InventoryStore.StorageFilter.all) == 3)
         #expect(store.count(for: .area(.fridge)) == 2)
         #expect(store.count(for: .area(.pantry)) == 1)
         #expect(store.count(for: .area(.freezer)) == 0)
+    }
+
+    // MARK: Category filter
+
+    @Test func categoryFilterNarrowsToCategoryAndNotFresh() async throws {
+        let store = try await makeStore([
+            item(id: "milk", name: "牛奶", state: .fresh, category: FoodCategories.dairyAndEggs),
+            item(id: "egg", name: "鸡蛋", state: .urgent, category: FoodCategories.dairyAndEggs),
+            item(id: "apple", name: "苹果", state: .fresh, category: FoodCategories.freshProduce),
+        ])
+        store.categoryFilter = .category(FoodCategories.dairyAndEggs)
+        #expect(store.displayItems.map(\.id).sorted() == ["egg", "milk"])
+        store.categoryFilter = .notFresh
+        #expect(store.displayItems.map(\.id) == ["egg"]) // only the urgent row
+        store.categoryFilter = .all
+        #expect(store.displayItems.count == 3)
+        #expect(store.count(for: .notFresh) == 1)
+        #expect(store.count(for: .category(FoodCategories.freshProduce)) == 1)
+    }
+
+    @Test func clearAllRemovesEveryRowAndPersists() async throws {
+        let store = try await makeStore([
+            item(id: "a", name: "牛奶", state: .fresh),
+            item(id: "b", name: "鸡蛋", state: .fresh),
+        ])
+        #expect(await store.clearAll())
+        #expect(store.items.isEmpty)
+        await store.load()
+        #expect(store.items.isEmpty) // persisted
+        // No-op on an already-empty scope.
+        #expect(!(await store.clearAll()))
     }
 
     // MARK: Search
@@ -263,6 +294,94 @@ struct InventoryStoreTests {
         #expect(remaining.map(\.id) == ["fl_survivor"])
     }
 
+    // MARK: Update (in-place edit)
+
+    @Test func updateChangesEditableFieldsPreservesIdAddedAtAndPersists() async throws {
+        let addedAt = Calendar.current.date(byAdding: .day, value: -3, to: Date())!
+        let original = Ingredient(
+            id: "a", name: "牛奶", quantity: "1", unit: "盒", imageUrl: "img://milk",
+            freshnessPercent: 1.0, state: .fresh, category: FoodCategories.dairyAndEggs,
+            barcode: "690", storage: .fridge, addedAt: addedAt, remoteVersion: 4
+        )
+        let store = try await makeStore([original, item(id: "b", name: "鸡蛋", state: .fresh)])
+
+        let edited = original.copyWith(
+            name: "酸奶", quantity: "2", unit: "瓶", category: FoodCategories.freshProduce, storage: .pantry
+        )
+        let ok = await store.update(original, to: edited)
+        #expect(ok)
+
+        let row = try #require(store.items.first { $0.id == "a" })
+        #expect(row.name == "酸奶")
+        #expect(row.quantity == "2")
+        #expect(row.unit == "瓶")
+        #expect(row.storage == .pantry)
+        #expect(row.id == "a") // identity preserved
+        #expect(row.addedAt == addedAt) // provenance preserved
+        #expect(row.imageUrl == "img://milk") // editor doesn't touch image
+        #expect(row.barcode == "690") // barcode preserved
+
+        // Survives a reload (persisted, not just local mutation).
+        await store.load()
+        let reloaded = try #require(store.items.first { $0.id == "a" })
+        #expect(reloaded.name == "酸奶")
+        #expect(reloaded.storage == .pantry)
+    }
+
+    @Test func updateRecomputesFreshnessFromNewExpiry() async throws {
+        // A far-out, fresh item edited to expire tomorrow flips to urgent via the
+        // store's freshness refresh (days-until <= 2 ⇒ urgent regardless of ratio).
+        let store = try await makeStore([dated(id: "a", name: "三文鱼", daysUntilExpiry: 25, shelfLife: 30)])
+        let original = try #require(store.items.first { $0.id == "a" })
+        #expect(original.state == .fresh)
+
+        let soon = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+        let edited = original.copyWith(expiryDate: soon) // shelf-life 30 retained
+        #expect(await store.update(original, to: edited))
+
+        let row = try #require(store.items.first { $0.id == "a" })
+        #expect(row.state == .urgent)
+        #expect(row.expiryLabel == "明天过期") // label refreshed too
+    }
+
+    @Test func updateRenameStillResolvesById() async throws {
+        // The row is resolved by the ORIGINAL (id), so a rename still finds it.
+        let original = item(id: "a", name: "牛奶", state: .fresh)
+        let store = try await makeStore([original])
+        let edited = original.copyWith(name: "全脂牛奶")
+        #expect(await store.update(original, to: edited))
+        #expect(store.items.map(\.name) == ["全脂牛奶"])
+        #expect(store.items.map(\.id) == ["a"])
+    }
+
+    @Test func updateClearingExpiryKeepsNoExpiry() async throws {
+        let store = try await makeStore([dated(id: "a", name: "酸奶", daysUntilExpiry: 1, shelfLife: 14)])
+        let original = try #require(store.items.first { $0.id == "a" })
+
+        // Rebuild WITHOUT expiry/shelf-life (copyWith can't clear them) — the 不过期 case.
+        let edited = Ingredient(
+            id: original.id, name: original.name, quantity: original.quantity,
+            unit: original.unit, imageUrl: original.imageUrl, freshnessPercent: 0.85,
+            state: .fresh, category: original.category, barcode: original.barcode,
+            storage: original.storage, expiryDate: nil, addedAt: original.addedAt,
+            shelfLifeDays: nil, remoteVersion: original.remoteVersion
+        )
+        #expect(await store.update(original, to: edited))
+
+        let row = try #require(store.items.first { $0.id == "a" })
+        #expect(row.expiryDate == nil)
+        #expect(row.shelfLifeDays == nil)
+        #expect(row.state == .fresh) // no expiry ⇒ freshness left as set
+    }
+
+    @Test func updateUnknownItemReturnsFalse() async throws {
+        let store = try await makeStore([item(id: "a", name: "牛奶", state: .fresh)])
+        let ghost = item(id: "zzz", name: "幽灵", state: .fresh)
+        let ok = await store.update(ghost, to: ghost.copyWith(name: "改名"))
+        #expect(!ok)
+        #expect(store.items.map(\.name) == ["牛奶"]) // untouched
+    }
+
     // MARK: Household re-scoping
 
     /// Regression for the live-sync bug where a feature view built its store ONCE
@@ -288,5 +407,68 @@ struct InventoryStoreTests {
         let storeB = InventoryStore(repository: repo, foodLogRepository: log, householdID: "home-b")
         await storeB.load()
         #expect(storeB.items.map(\.id) == ["b"])
+    }
+
+    // MARK: Multi-select (批量删除 / 合并批次)
+
+    @Test func deleteManyRemovesSelectedRows() async throws {
+        let store = try await makeStore([
+            item(id: "a", name: "A", state: .fresh),
+            item(id: "b", name: "B", state: .fresh),
+            item(id: "c", name: "C", state: .fresh),
+        ])
+        let undo = await store.deleteMany([store.items[0], store.items[2]]) // A, C
+        #expect(undo != nil)
+        #expect(store.items.map(\.id) == ["b"])
+    }
+
+    @Test func undoBatchRemovalRestoresAtOriginalIndices() async throws {
+        let store = try await makeStore([
+            item(id: "a", name: "A", state: .fresh),
+            item(id: "b", name: "B", state: .fresh),
+            item(id: "c", name: "C", state: .fresh),
+        ])
+        guard let undo = await store.deleteMany([store.items[0], store.items[2]]) else {
+            Issue.record("expected an undo handle"); return
+        }
+        #expect(await store.undoBatchRemoval(undo))
+        #expect(store.items.map(\.id) == ["a", "b", "c"]) // re-inserted at original slots
+    }
+
+    @Test func canMergeRequiresTwoPlusSameBatch() {
+        let a = item(id: "a", name: "牛奶", state: .fresh, storage: .fridge)
+        let b = item(id: "b", name: "牛奶", state: .fresh, storage: .fridge)
+        let other = item(id: "c", name: "牛奶", state: .fresh, storage: .pantry)
+        #expect(InventoryStore.canMerge([a, b]))
+        #expect(!InventoryStore.canMerge([a, other])) // storage differs
+        #expect(!InventoryStore.canMerge([a]))        // need ≥2
+    }
+
+    @Test func mergeBatchSumsQuantitiesAndKeepsEarliestExpiry() async throws {
+        let store = try await makeStore([
+            dated(id: "a", name: "牛奶", daysUntilExpiry: 5),
+            dated(id: "b", name: "牛奶", daysUntilExpiry: 2),
+        ])
+        // Both rows are the same batch (same name/unit/storage from `dated`).
+        #expect(InventoryStore.canMerge(store.items))
+        #expect(await store.mergeBatch(store.items))
+        #expect(store.items.count == 1)
+        #expect(store.items[0].quantity == "2") // 1 + 1 summed
+        // Earliest expiry survives: the merged row is urgent (2 days), not the 5-day one.
+        let earliest = Calendar.current.date(byAdding: .day, value: 2, to: Date())!
+        let merged = store.items[0].expiryDate
+        #expect(merged != nil)
+        if let merged {
+            #expect(abs(merged.timeIntervalSince(earliest)) < 60 * 60 * 24) // within a day of the 2-day expiry
+        }
+    }
+
+    @Test func mergeBatchRejectsNonMergeableSelection() async throws {
+        let store = try await makeStore([
+            item(id: "a", name: "牛奶", state: .fresh, storage: .fridge),
+            item(id: "b", name: "鸡蛋", state: .fresh, storage: .fridge), // different name
+        ])
+        #expect(!(await store.mergeBatch(store.items)))
+        #expect(store.items.count == 2) // untouched
     }
 }

@@ -12,12 +12,22 @@ struct IngredientDetailView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showOutcomePrompt = false
     @State private var isDeleting = false
+    /// Drives the edit sheet; `didSaveEdit` defers the detail pop to the sheet's
+    /// dismissal so the list (which reflects the in-place store update) shows on return.
+    @State private var showEdit = false
+    @State private var didSaveEdit = false
     /// Cache-first OFF food-details lookup driving the nutrition card. Built lazily
     /// from `dependencies` on first appearance (mirrors the Flutter auto-fetch).
     @State private var detailsStore: FoodDetailsStore?
     /// Holds the just-removed row so the undo banner can reverse BOTH the
     /// inventory removal and the food-log append before the screen pops.
     @State private var pendingUndo: InventoryStore.RemovalUndo?
+    /// Lazily-built shopping store backing the "加入购物清单" action (loaded once on
+    /// first add so the dedup runs against the live list).
+    @State private var shoppingStore: ShoppingStore?
+    @State private var isAddingToShopping = false
+    /// Transient confirmation copy shown after an add-to-shopping tap.
+    @State private var toast: String?
 
     private var palette: FkCategoryColors { FkCategoryIcon.palette(for: ingredient.category) }
 
@@ -28,6 +38,7 @@ struct IngredientDetailView: View {
                 quantityAndFreshnessCard
                 foodDetailsSection
                 infoList
+                addToShoppingButton
             }
             .padding(.bottom, FkSpacing.huge)
         }
@@ -46,8 +57,17 @@ struct IngredientDetailView: View {
             }
         }
         .overlay(alignment: .bottom) { undoBanner }
+        .overlay(alignment: .top) { toastBanner }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    showEdit = true
+                } label: {
+                    Image(systemName: "pencil")
+                }
+                .accessibilityLabel("编辑")
+                .disabled(isDeleting)
+
                 Button(role: .destructive) {
                     showOutcomePrompt = true
                 } label: {
@@ -55,6 +75,15 @@ struct IngredientDetailView: View {
                 }
                 .tint(.fkDanger)
                 .disabled(isDeleting)
+            }
+        }
+        .sheet(isPresented: $showEdit, onDismiss: {
+            // After a successful edit, pop back to the list (which already reflects
+            // the in-place store update). Mirrors the Flutter post-edit pop.
+            if didSaveEdit { dismiss() }
+        }) {
+            EditIngredientView(original: ingredient, store: store) {
+                didSaveEdit = true
             }
         }
         .confirmationDialog(
@@ -106,6 +135,76 @@ struct IngredientDetailView: View {
                 try? await Task.sleep(for: .seconds(4))
                 if !Task.isCancelled { dismiss() }
             }
+        }
+    }
+
+    // MARK: Add-to-shopping action
+
+    /// "加入购物清单" pill (mirrors the Flutter detail `_ActionRow`). Builds +
+    /// loads a shopping store on first use so the add dedups against the live list.
+    private var addToShoppingButton: some View {
+        Button {
+            Task { await addToShopping() }
+        } label: {
+            HStack(spacing: FkSpacing.sm) {
+                Image(systemName: "cart.badge.plus")
+                    .font(.system(size: FkSize.iconSm, weight: .semibold))
+                Text("加入购物清单")
+                    .font(.fkLabelLarge)
+            }
+            .foregroundStyle(Color.fkPrimaryContainer)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, FkSpacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: FkRadius.chip, style: .continuous)
+                    .fill(Color.fkPrimarySoft)
+            )
+        }
+        .buttonStyle(.fkPressable)
+        .disabled(isAddingToShopping)
+        .padding(.horizontal, FkSpacing.lg)
+    }
+
+    @ViewBuilder
+    private var toastBanner: some View {
+        if let toast {
+            Text(toast)
+                .font(.fkLabelLarge)
+                .foregroundStyle(Color.fkOnSurface)
+                .padding(.horizontal, FkSpacing.lg)
+                .padding(.vertical, FkSpacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                        .fill(Color.fkSurfaceContainerLowest)
+                )
+                .fkCardShadow()
+                .padding(.top, FkSpacing.sm)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .task(id: toast) {
+                    try? await Task.sleep(for: .seconds(2))
+                    if !Task.isCancelled { withAnimation { self.toast = nil } }
+                }
+        }
+    }
+
+    private func addToShopping() async {
+        guard !isAddingToShopping else { return }
+        isAddingToShopping = true
+        defer { isAddingToShopping = false }
+
+        if shoppingStore == nil {
+            let store = ShoppingStore(
+                repository: dependencies.shoppingRepository,
+                householdID: dependencies.householdID,
+                syncWriter: dependencies.syncWriter
+            )
+            await store.load()
+            shoppingStore = store
+        }
+        guard let shoppingStore else { return }
+        let added = await shoppingStore.add(name: ingredient.name, category: ingredient.category)
+        withAnimation {
+            toast = added ? "已将「\(ingredient.name)」加入购物清单" : "「\(ingredient.name)」已在购物清单中"
         }
     }
 

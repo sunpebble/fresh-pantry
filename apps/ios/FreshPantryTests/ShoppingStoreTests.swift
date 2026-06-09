@@ -201,6 +201,60 @@ struct ShoppingStoreTests {
         #expect(store.items.count == 1)
     }
 
+    // MARK: Filter / progress / restore
+
+    @Test func filterNarrowsDisplaySectionsToCheckedState() async throws {
+        let store = try await makeStore([
+            item(id: "todo", name: "鸡蛋", category: FoodCategories.dairyAndEggs, isChecked: false),
+            item(id: "done", name: "牛奶", category: FoodCategories.dairyAndEggs, isChecked: true),
+        ])
+        // all → both rows
+        #expect(store.displaySections.flatMap { $0.items }.map(\.id).sorted() == ["done", "todo"])
+        store.filter = .todo
+        #expect(store.displaySections.flatMap { $0.items }.map(\.id) == ["todo"])
+        store.filter = .done
+        #expect(store.displaySections.flatMap { $0.items }.map(\.id) == ["done"])
+    }
+
+    @Test func progressAndTotalReflectCheckedRatio() async throws {
+        let store = try await makeStore([
+            item(id: "a", name: "牛奶", category: FoodCategories.dairyAndEggs, isChecked: true),
+            item(id: "b", name: "鸡蛋", category: FoodCategories.dairyAndEggs, isChecked: true),
+            item(id: "c", name: "苹果", category: FoodCategories.freshProduce, isChecked: false),
+            item(id: "d", name: "梨", category: FoodCategories.freshProduce, isChecked: false),
+        ])
+        #expect(store.total == 4)
+        #expect(store.progress == 0.5)
+    }
+
+    @Test func progressIsZeroForEmptyList() async throws {
+        let store = try await makeStore([])
+        #expect(store.total == 0)
+        #expect(store.progress == 0)
+    }
+
+    @Test func restoreReAddsDeletedRowAndPersists() async throws {
+        let store = try await makeStore([
+            item(id: "a", name: "牛奶", category: FoodCategories.dairyAndEggs),
+            item(id: "b", name: "鸡蛋", category: FoodCategories.dairyAndEggs),
+        ])
+        let target = store.items.first { $0.id == "a" }!
+        #expect(await store.delete(target))
+        #expect(store.items.map(\.id) == ["b"])
+
+        #expect(await store.restore(target))
+        #expect(store.items.map(\.id).sorted() == ["a", "b"])
+        await store.load()
+        #expect(store.items.map(\.id).sorted() == ["a", "b"]) // persisted
+    }
+
+    @Test func restoreIsNoOpWhenRowStillPresent() async throws {
+        let store = try await makeStore([item(id: "a", name: "牛奶", category: FoodCategories.dairyAndEggs)])
+        let present = store.items.first { $0.id == "a" }!
+        #expect(!(await store.restore(present)))
+        #expect(store.items.count == 1)
+    }
+
     @Test func deleteEnqueuesSoftDeleteSyncOp() async throws {
         // Regression: a shopping delete MUST enqueue a `.delete` so it propagates
         // to other household members (it was previously a silent local-only drop —

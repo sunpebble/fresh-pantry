@@ -36,12 +36,17 @@ private struct SettingsContent: View {
     let notifications: NotificationCoordinator
     let householdID: String
 
+    @Environment(AppDependencies.self) private var dependencies
     /// Live OS notification-permission state, refreshed on appear and after a
     /// grant request. Drives the 提醒 permission affordance row.
     @State private var permissionGranted = false
+    /// At-a-glance counts for the stats row (食材 / 采购 / 收藏菜谱).
+    @State private var inventoryCount = 0
+    @State private var shoppingCount = 0
 
     var body: some View {
         Form {
+            statsSection
             accountSection
             reminderSection
             dietarySection
@@ -52,7 +57,29 @@ private struct SettingsContent: View {
         .scrollContentBackground(.hidden)
         .background(Color.fkSurface)
         .tint(.fkPrimary)
-        .task { permissionGranted = await notifications.refreshPermission() }
+        .task {
+            permissionGranted = await notifications.refreshPermission()
+            await loadStats()
+        }
+    }
+
+    // MARK: 统计概览
+
+    private var statsSection: some View {
+        Section {
+            HStack(spacing: FkSpacing.sm) {
+                StatTile(value: inventoryCount, label: "件食材", systemImage: "refrigerator")
+                StatTile(value: shoppingCount, label: "项采购", systemImage: "cart")
+                StatTile(value: dependencies.favoritesStore.favoriteIDs.count, label: "个收藏", systemImage: "heart")
+            }
+            .listRowInsets(EdgeInsets(top: FkSpacing.sm, leading: FkSpacing.md, bottom: FkSpacing.sm, trailing: FkSpacing.md))
+        }
+        .listRowBackground(Color.fkSurfaceContainerLowest)
+    }
+
+    private func loadStats() async {
+        inventoryCount = ((try? await dependencies.inventoryRepository.loadAllFor(householdID)) ?? []).count
+        shoppingCount = ((try? await dependencies.shoppingRepository.loadAllFor(householdID)) ?? []).count
     }
 
     // MARK: 账号
@@ -242,6 +269,29 @@ private struct SettingsContent: View {
 }
 
 // MARK: - Rows
+
+/// One at-a-glance stat tile (big count + icon + label) for the settings overview.
+private struct StatTile: View {
+    let value: Int
+    let label: String
+    let systemImage: String
+
+    var body: some View {
+        VStack(spacing: FkSpacing.xs) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.fkPrimary)
+            Text("\(value)")
+                .font(.fkTitleLarge)
+                .foregroundStyle(Color.fkOnSurface)
+            Text(label)
+                .font(.fkLabelSmall)
+                .foregroundStyle(Color.fkOnSurfaceVariant)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, FkSpacing.sm)
+    }
+}
 
 /// A reminder toggle row: title + caption + a `Switch` bound through the store's
 /// `ReminderFlag` accessor. Binding is built inside the `@MainActor` `body` so the

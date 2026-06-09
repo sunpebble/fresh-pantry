@@ -62,10 +62,29 @@ private struct MealPlanContent: View {
     let dependencies: AppDependencies
 
     @State private var showingPicker = false
+    /// Recipe corpus (id → recipe) + inventory names, for the 缺料 shortfall card.
+    @State private var recipesById: [String: Recipe] = [:]
+    @State private var inventoryNames: Set<String> = []
+    @State private var shoppingStore: ShoppingStore?
+    @State private var isAddingMissing = false
+    @State private var toast: String?
+
+    private var missingNames: [String] {
+        MealPlanMissing.missingIngredientNames(
+            entries: store.entries,
+            recipesById: recipesById,
+            inventoryNames: inventoryNames
+        )
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: FkSpacing.lg) {
+                if !missingNames.isEmpty {
+                    missingIngredientsCard
+                        .padding(.horizontal, FkSpacing.lg)
+                }
+
                 WeekStrip(store: store)
                     .padding(.horizontal, FkSpacing.lg)
 
@@ -78,14 +97,118 @@ private struct MealPlanContent: View {
             .padding(.bottom, FkSpacing.huge)
         }
         .background(Color.fkSurface)
-        .refreshable { await store.load() }
+        .refreshable {
+            await store.load()
+            await reloadMatchContext()
+        }
+        .overlay(alignment: .top) { toastBanner }
+        .task { await reloadMatchContext() }
         .sheet(isPresented: $showingPicker) {
             RecipePickerSheet(
                 dependencies: dependencies,
                 onPick: { recipe in
-                    Task { await store.addDish(recipe: recipe, date: store.selectedDay) }
+                    Task {
+                        await store.addDish(recipe: recipe, date: store.selectedDay)
+                        await reloadMatchContext()
+                    }
                 }
             )
+        }
+    }
+
+    /// "本周还缺 N 样食材 · 一键加入购物清单" — adds every shortfall ingredient to
+    /// the shopping list (name-unique dedup). Mirrors the Flutter `mp-missing` card.
+    private var missingIngredientsCard: some View {
+        Button {
+            Task { await addMissingToShopping() }
+        } label: {
+            HStack(spacing: FkSpacing.md) {
+                ZStack {
+                    Circle().fill(Color.fkPrimarySoft).frame(width: 44, height: 44)
+                    Image(systemName: "cart.badge.plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.fkPrimaryContainer)
+                }
+                VStack(alignment: .leading, spacing: FkSpacing.xs) {
+                    Text("本周还缺 \(missingNames.count) 样食材")
+                        .font(.fkTitleMedium)
+                        .foregroundStyle(Color.fkOnSurface)
+                    Text(isAddingMissing ? "加入中…" : "一键加入购物清单")
+                        .font(.fkBodySmall)
+                        .foregroundStyle(Color.fkOnSurfaceVariant)
+                }
+                Spacer(minLength: FkSpacing.sm)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.fkOnSurfaceVariant)
+            }
+            .padding(FkSpacing.lg)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                    .fill(Color.fkSurfaceContainerLowest)
+            )
+            .fkCardShadow()
+        }
+        .buttonStyle(.fkPressable)
+        .disabled(isAddingMissing)
+    }
+
+    @ViewBuilder
+    private var toastBanner: some View {
+        if let toast {
+            Text(toast)
+                .font(.fkLabelLarge)
+                .foregroundStyle(Color.fkOnSurface)
+                .padding(.horizontal, FkSpacing.lg)
+                .padding(.vertical, FkSpacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                        .fill(Color.fkSurfaceContainerLowest)
+                )
+                .fkCardShadow()
+                .padding(.top, FkSpacing.sm)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .task(id: toast) {
+                    try? await Task.sleep(for: .seconds(2))
+                    if !Task.isCancelled { withAnimation { self.toast = nil } }
+                }
+        }
+    }
+
+    /// Loads the recipe corpus (bundled + custom), the inventory match names, and
+    /// the shopping store so the 缺料 card can compute + act.
+    private func reloadMatchContext() async {
+        let bundled = await dependencies.localRecipeRepository.loadAll()
+        let custom = (try? await dependencies.customRecipeRepository.loadAllFor(dependencies.householdID)) ?? []
+        var byId: [String: Recipe] = [:]
+        for recipe in bundled { byId[recipe.id] = recipe }
+        for recipe in custom { byId[recipe.id] = recipe } // custom wins
+        recipesById = byId
+        let inventory = (try? await dependencies.inventoryRepository.loadAllFor(dependencies.householdID)) ?? []
+        inventoryNames = RecipeMatching.inventoryNameSet(inventory)
+        if shoppingStore == nil {
+            let shopping = ShoppingStore(
+                repository: dependencies.shoppingRepository,
+                householdID: dependencies.householdID,
+                syncWriter: dependencies.syncWriter
+            )
+            await shopping.load()
+            shoppingStore = shopping
+        }
+    }
+
+    private func addMissingToShopping() async {
+        guard !isAddingMissing, let shoppingStore else { return }
+        isAddingMissing = true
+        defer { isAddingMissing = false }
+        var added = 0
+        for name in missingNames {
+            let category = FoodKnowledge.lookup(name)?.category
+            if await shoppingStore.add(name: name, category: category) { added += 1 }
+        }
+        withAnimation {
+            toast = added > 0 ? "已加入 \(added) 样食材到购物清单" : "缺的食材都已在购物清单中"
         }
     }
 

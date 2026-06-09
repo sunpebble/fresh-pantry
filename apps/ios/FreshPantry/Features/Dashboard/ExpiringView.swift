@@ -4,17 +4,26 @@ import SwiftUI
 /// inventory (state ∈ {expiringSoon, urgent, expired}), urgency-sorted and
 /// sectioned by tier (已过期 → 快过期 → 即将过期).
 ///
-/// Builds its own `ExpiringStore` from the injected `AppDependencies` (the
-/// reusable feature pattern) so it reloads independently of the home tab.
-/// Read-only: rows render as `IngredientRow`s. SwiftData is never touched here.
+/// Each row taps through to the read-only detail and carries two quick actions
+/// (用了 → log a consumed departure + remove; 加购 → add to the shopping list),
+/// mirroring the Flutter expiring screen's per-item affordances. It builds an
+/// `ExpiringStore` (display) plus an `InventoryStore` (the 用了 removal + the
+/// detail push) and a `ShoppingStore` (加购) from the injected `AppDependencies`.
 struct ExpiringView: View {
     @Environment(AppDependencies.self) private var dependencies
     @State private var store: ExpiringStore?
+    @State private var inventoryStore: InventoryStore?
+    @State private var shoppingStore: ShoppingStore?
 
     var body: some View {
         Group {
-            if let store {
-                ExpiringContent(store: store)
+            if let store, let inventoryStore {
+                ExpiringContent(
+                    store: store,
+                    inventoryStore: inventoryStore,
+                    onConsume: consume,
+                    onAddToShopping: addToShopping
+                )
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -23,28 +32,70 @@ struct ExpiringView: View {
         }
         .navigationTitle("临期提醒")
         .navigationBarTitleDisplayMode(.inline)
-        // Rebuild the store whenever the active household changes (login "" → uuid,
-        // switch, or leave) so the expiring list re-scopes to the new household
-        // rather than keeping the prior scope's stale rows.
+        // Rebuild the stores whenever the active household changes (login "" → uuid,
+        // switch, or leave) so the lists re-scope to the new household.
         .task(id: dependencies.householdID) {
-            let store = ExpiringStore(
+            let householdID = dependencies.householdID
+            let expiring = ExpiringStore(
                 repository: dependencies.inventoryRepository,
-                householdID: dependencies.householdID
+                householdID: householdID
             )
-            self.store = store
-            await store.load()
+            let inventory = InventoryStore(
+                repository: dependencies.inventoryRepository,
+                foodLogRepository: dependencies.foodLogRepository,
+                householdID: householdID,
+                syncWriter: dependencies.syncWriter
+            )
+            let shopping = ShoppingStore(
+                repository: dependencies.shoppingRepository,
+                householdID: householdID,
+                syncWriter: dependencies.syncWriter
+            )
+            self.store = expiring
+            self.inventoryStore = inventory
+            self.shoppingStore = shopping
+            await expiring.load()
+            await inventory.load()
+            await shopping.load()
         }
         // Remote merge pulse: a household-sync apply bumps dataRevision; reload
         // so the expiring list reflects inventory pulled from other members.
         .onChange(of: dependencies.syncSession.dataRevision) {
-            Task { await store?.load() }
+            Task {
+                await store?.load()
+                await inventoryStore?.load()
+                await shoppingStore?.load()
+            }
         }
+    }
+
+    /// "用了": logs a consumed departure + removes the row, then reloads the
+    /// expiring list so it drops off.
+    private func consume(_ item: Ingredient) async {
+        guard let inventoryStore, let store else { return }
+        _ = await inventoryStore.remove(item, outcome: .consumed)
+        await store.load()
+    }
+
+    /// "加购": adds the item to the shopping list (name-unique dedup). Returns a
+    /// short confirmation for the toast.
+    private func addToShopping(_ item: Ingredient) async -> String {
+        guard let shoppingStore else { return "" }
+        let added = await shoppingStore.add(name: item.name, category: item.category)
+        return added ? "已将「\(item.name)」加入购物清单" : "「\(item.name)」已在购物清单中"
     }
 }
 
-/// Inner content bound to a live store.
+/// Inner content bound to live stores. Rows tap through to the detail; the
+/// trailing 用了 / 加购 buttons are independent tap targets (not a nested Button).
 private struct ExpiringContent: View {
     let store: ExpiringStore
+    let inventoryStore: InventoryStore
+    let onConsume: (Ingredient) async -> Void
+    let onAddToShopping: (Ingredient) async -> String
+
+    @State private var selectedIngredient: Ingredient?
+    @State private var toast: String?
 
     var body: some View {
         Group {
@@ -64,6 +115,10 @@ private struct ExpiringContent: View {
         }
         .background(Color.fkSurface)
         .refreshable { await store.load() }
+        .overlay(alignment: .top) { toastBanner }
+        .navigationDestination(item: $selectedIngredient) { ingredient in
+            IngredientDetailView(ingredient: ingredient, store: inventoryStore)
+        }
     }
 
     private var tierList: some View {
@@ -77,7 +132,12 @@ private struct ExpiringContent: View {
                         LazyVStack(spacing: FkSpacing.sm) {
                             ForEach(Array(tier.items.enumerated()), id: \.element.fkListIdentityKey) { index, item in
                                 FkCard {
-                                    IngredientRow(ingredient: item)
+                                    VStack(spacing: FkSpacing.sm) {
+                                        IngredientRow(ingredient: item)
+                                            .contentShape(Rectangle())
+                                            .onTapGesture { selectedIngredient = item }
+                                        actionRow(item)
+                                    }
                                 }
                                 .fkEntrance(index: sectionIndex + index)
                             }
@@ -88,6 +148,67 @@ private struct ExpiringContent: View {
             }
             .padding(.top, FkSpacing.md)
             .padding(.bottom, FkSpacing.huge)
+        }
+    }
+
+    /// Per-item quick actions: 用了 (consumed removal) + 加购 (shopping add).
+    private func actionRow(_ item: Ingredient) -> some View {
+        HStack(spacing: FkSpacing.sm) {
+            actionButton("用了", systemImage: "fork.knife", tint: Color.fkPrimary) {
+                Task { await onConsume(item) }
+            }
+            actionButton("加购", systemImage: "cart.badge.plus", tint: Color.fkOnSurfaceVariant) {
+                Task {
+                    let message = await onAddToShopping(item)
+                    if !message.isEmpty { withAnimation { toast = message } }
+                }
+            }
+        }
+    }
+
+    private func actionButton(
+        _ label: String,
+        systemImage: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: FkSpacing.xs) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 13, weight: .semibold))
+                Text(label)
+                    .font(.fkLabelMedium)
+            }
+            .foregroundStyle(tint)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: FkRadius.chip, style: .continuous)
+                    .fill(Color.fkSurfaceContainer)
+            )
+        }
+        .buttonStyle(.fkPressable)
+    }
+
+    @ViewBuilder
+    private var toastBanner: some View {
+        if let toast {
+            Text(toast)
+                .font(.fkLabelLarge)
+                .foregroundStyle(Color.fkOnSurface)
+                .padding(.horizontal, FkSpacing.lg)
+                .padding(.vertical, FkSpacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                        .fill(Color.fkSurfaceContainerLowest)
+                )
+                .fkCardShadow()
+                .padding(.top, FkSpacing.sm)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .task(id: toast) {
+                    try? await Task.sleep(for: .seconds(2))
+                    if !Task.isCancelled { withAnimation { self.toast = nil } }
+                }
         }
     }
 

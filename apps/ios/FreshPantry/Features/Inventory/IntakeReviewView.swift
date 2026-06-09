@@ -8,8 +8,10 @@ import SwiftUI
 struct IntakeReviewView: View {
     let proposals: [IntakeProposal]
     var title: String = "审核入库"
-    /// Called after a successful apply (so the presenter can refresh + dismiss).
-    var onApplied: () -> Void = {}
+    /// Called after a successful apply with the outcome (so the presenter can
+    /// refresh, dismiss, and — for the shopping flow — remove only the source rows
+    /// whose proposal actually applied via `outcome.appliedIds`).
+    var onApplied: (IntakeController.ApplyOutcome) -> Void = { _ in }
 
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.dismiss) private var dismiss
@@ -122,7 +124,7 @@ struct IntakeReviewView: View {
         defer { isConfirming = false }
         let outcome = await store.apply()
         if outcome.persisted {
-            onApplied()
+            onApplied(outcome)
             dismiss()
         }
     }

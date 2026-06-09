@@ -17,6 +17,13 @@ final class InventoryStore {
         case area(IconType)
     }
 
+    /// Category/state filter row (mirrors Flutter's 全部 / 不新鲜 / 5 大类 chips).
+    enum CategoryFilter: Equatable {
+        case all
+        case notFresh
+        case category(String)
+    }
+
     private let repository: InventoryRepository
     /// Append-only food-departure log — the waste-stats source of truth. A manual
     /// removal-with-outcome appends one entry here (the ONLY non-cook log path).
@@ -31,6 +38,7 @@ final class InventoryStore {
     private(set) var hasLoaded = false
 
     var storageFilter: StorageFilter = .all
+    var categoryFilter: CategoryFilter = .all
     var searchQuery: String = ""
 
     init(
@@ -161,6 +169,53 @@ final class InventoryStore {
         return true
     }
 
+    /// Replaces an existing row IN PLACE (never a merge — an edit keeps its batch
+    /// identity) by stable identity, recomputing freshness/state/label from the
+    /// possibly-changed expiry/shelf-life, persisting the full scope, and enqueuing
+    /// a sync `.update` against the original's `remoteVersion`. Mirrors the Flutter
+    /// `InventoryNotifier.update`. `original` resolves the row (its unchanged fields
+    /// survive a rename); `edited` carries the new values. Returns whether a row
+    /// matched.
+    @discardableResult
+    func update(_ original: Ingredient, to edited: Ingredient) async -> Bool {
+        guard let index = indexOf(original) else { return false }
+        let base = items[index]
+        // Identity + provenance the editor must never change come from the live
+        // row; freshness/state/label are recomputed from the (new) expiry below.
+        let next = IngredientNormalizer.normalizeInventoryIngredient(
+            edited.copyWith(
+                id: base.id,
+                barcode: base.barcode,
+                addedAt: edited.addedAt ?? base.addedAt,
+                remoteVersion: base.remoteVersion
+            )
+        )
+        var updated = items
+        updated[index] = next
+        do {
+            try await repository.saveItems(householdID, updated)
+            items = updated
+        } catch {
+            return false
+        }
+        await enqueueUpdate(next, baseVersion: base.remoteVersion)
+        return true
+    }
+
+    /// Enqueues a full-row `.update` outbox op for an edited row, carrying the
+    /// prior `baseVersion` for optimistic-concurrency merge. Skipped — still a
+    /// successful local edit — when the row can't be serialized to a wire patch.
+    private func enqueueUpdate(_ row: Ingredient, baseVersion: Int) async {
+        guard let patch = DomainJSON.valueMap(row) else { return }
+        await syncWriter?.enqueue(
+            entityType: .inventoryItem,
+            entityId: row.id,
+            operation: .update,
+            patch: patch,
+            baseVersion: baseVersion
+        )
+    }
+
     /// Enqueues a soft-delete outbox op for `removed` (the gateway derives
     /// `deleted_at`). Skipped — still a successful local delete — when the row
     /// can't be serialized to a wire patch.
@@ -175,20 +230,157 @@ final class InventoryStore {
         )
     }
 
+    /// Deletes ALL rows for the household (顶栏「清空全部」), persisting the empty
+    /// scope and enqueuing a soft-delete per removed row. Returns whether anything
+    /// was cleared.
+    @discardableResult
+    func clearAll() async -> Bool {
+        let removed = items
+        guard !removed.isEmpty else { return false }
+        do {
+            try await repository.saveItems(householdID, [])
+            items = []
+        } catch {
+            return false
+        }
+        for row in removed { await enqueueDelete(row) }
+        return true
+    }
+
+    // MARK: Multi-select (批量删除 / 合并批次)
+
+    /// One removed row + its original index, captured so a batch delete can be
+    /// fully undone (re-inserted at position). Nested struct (vs a tuple) so the
+    /// undo handle is cleanly `Sendable`.
+    struct RemovedRow: Sendable {
+        let index: Int
+        let ingredient: Ingredient
+    }
+
+    /// Undo handle for a batch delete — the removed rows in ascending index order.
+    struct BatchRemovalUndo: Sendable {
+        let removed: [RemovedRow]
+    }
+
+    /// Removes every `targets` row at once (the multi-select 批量删除). Resolves
+    /// each to its live index by stable identity, removes optimistically, and
+    /// enqueues a soft-delete per row. Plain delete (no food-log — mirrors the
+    /// single `delete`). Returns an undo handle, or nil when nothing matched.
+    @discardableResult
+    func deleteMany(_ targets: [Ingredient]) async -> BatchRemovalUndo? {
+        let ascending = Set(targets.compactMap { indexOf($0) }).sorted()
+        guard !ascending.isEmpty else { return nil }
+        let removedRows = ascending.map { RemovedRow(index: $0, ingredient: items[$0]) }
+        var survivors = items
+        for index in ascending.reversed() { survivors.remove(at: index) }
+        do {
+            try await repository.saveItems(householdID, survivors)
+            items = survivors
+        } catch {
+            return nil
+        }
+        for row in removedRows { await enqueueDelete(row.ingredient) }
+        return BatchRemovalUndo(removed: removedRows)
+    }
+
+    /// Reverses a batch delete: re-inserts each removed row at its original index
+    /// (ascending) and re-asserts it remotely via `.update` (clearing the
+    /// soft-delete). Returns whether the rows were restored.
+    @discardableResult
+    func undoBatchRemoval(_ undo: BatchRemovalUndo) async -> Bool {
+        var restored = items
+        for row in undo.removed.sorted(by: { $0.index < $1.index }) {
+            let index = min(max(row.index, 0), restored.count)
+            restored.insert(row.ingredient, at: index)
+        }
+        do {
+            try await repository.saveItems(householdID, restored)
+            items = restored
+        } catch {
+            return false
+        }
+        for row in undo.removed {
+            await enqueueUpdate(row.ingredient, baseVersion: row.ingredient.remoteVersion)
+        }
+        return true
+    }
+
+    /// Whether `rows` form one mergeable batch: ≥2 rows sharing normalized name +
+    /// unit + storage (mirrors the Flutter `_canMerge` gate on `mergeBatch`).
+    static func canMerge(_ rows: [Ingredient]) -> Bool {
+        guard rows.count >= 2 else { return false }
+        let first = rows[0]
+        let name = first.name.trimmed.lowercased()
+        let unit = first.unit.trimmed
+        return rows.allSatisfy {
+            $0.name.trimmed.lowercased() == name
+                && $0.unit.trimmed == unit
+                && $0.storage == first.storage
+        }
+    }
+
+    /// Merges ≥2 same-batch rows into one (合并批次): sums numeric quantities, takes
+    /// the EARLIEST expiry, recomputes freshness, keeps the earliest-positioned
+    /// row's identity as the merged target, and soft-deletes the rest. Ports
+    /// `InventoryNotifier.mergeBatch`. Returns whether it merged.
+    @discardableResult
+    func mergeBatch(_ targets: [Ingredient]) async -> Bool {
+        guard Self.canMerge(targets) else { return false }
+        let resolved = targets
+            .compactMap { target -> RemovedRow? in
+                guard let index = indexOf(target) else { return nil }
+                return RemovedRow(index: index, ingredient: items[index])
+            }
+            .sorted { $0.index < $1.index }
+        guard resolved.count >= 2 else { return false }
+
+        let target = resolved[0].ingredient
+        let sources = resolved.dropFirst().map(\.ingredient)
+        let summed = resolved.reduce(0.0) { $0 + (Double($1.ingredient.quantity.trimmed) ?? 0) }
+        let earliest = resolved.compactMap { $0.ingredient.expiryDate }.min()
+        let merged = IngredientNormalizer.refreshFreshness(
+            target.copyWith(quantity: QuantityText.formatQuantity(summed), expiryDate: earliest)
+        )
+
+        // Replace the target row in place; drop the source rows (descending so the
+        // earlier removals don't shift later indices).
+        var next = items
+        next[resolved[0].index] = merged
+        for row in resolved.dropFirst().sorted(by: { $0.index > $1.index }) {
+            next.remove(at: row.index)
+        }
+        do {
+            try await repository.saveItems(householdID, next)
+            items = next
+        } catch {
+            return false
+        }
+        await enqueueUpdate(merged, baseVersion: target.remoteVersion)
+        for source in sources { await enqueueDelete(source) }
+        return true
+    }
+
     // MARK: Derived view data
 
-    /// The list the view renders: storage filter → name search → urgency sort.
+    /// The list the view renders: category/state filter → storage filter → name
+    /// search → urgency sort.
     var displayItems: [Ingredient] {
         let filtered = items
+            .filter(matchesCategoryFilter)
             .filter(matchesStorageFilter)
             .filter(matchesSearch)
         return sortByUrgency(filtered)
     }
 
+    /// Count of items matching a category filter, for the chip badges.
+    func count(for filter: CategoryFilter) -> Int {
+        items.filter { matchesCategoryFilter($0, filter) }.count
+    }
+
     /// True when there are stored items but the active filter/search hides them
     /// (drives the "no results" vs "empty pantry" copy).
     var hasActiveQuery: Bool {
-        !searchQuery.trimmed.isEmpty || storageFilter != .all
+        !searchQuery.trimmed.isEmpty || storageFilter != .all || categoryFilter != .all
     }
 
     /// Count of items in each storage area, for the filter-chip badges.
@@ -205,6 +397,18 @@ final class InventoryStore {
         switch storageFilter {
         case .all: return true
         case let .area(area): return item.storage == area
+        }
+    }
+
+    private func matchesCategoryFilter(_ item: Ingredient) -> Bool {
+        matchesCategoryFilter(item, categoryFilter)
+    }
+
+    private func matchesCategoryFilter(_ item: Ingredient, _ filter: CategoryFilter) -> Bool {
+        switch filter {
+        case .all: return true
+        case .notFresh: return item.state != .fresh
+        case let .category(category): return FoodCategories.dropdownValue(item.category) == category
         }
     }
 

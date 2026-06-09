@@ -11,6 +11,13 @@ import Foundation
 @Observable
 @MainActor
 final class ShoppingStore {
+    /// Purchased-state filter for the list (mirrors Flutter's `ShoppingFilter`).
+    enum ShoppingFilter: Equatable {
+        case all
+        case todo
+        case done
+    }
+
     private let repository: ShoppingRepository
     private let householdID: String
     /// Optional outbox seam — nil keeps existing tests/previews local-only.
@@ -21,6 +28,10 @@ final class ShoppingStore {
     private(set) var items: [ShoppingItem] = []
     private(set) var isLoading = false
     private(set) var hasLoaded = false
+
+    /// 待购/已购/全部 filter driving `displaySections`. `all` is the default so
+    /// existing behavior (and tests) are unchanged.
+    var filter: ShoppingFilter = .all
 
     init(
         repository: ShoppingRepository,
@@ -103,6 +114,27 @@ final class ShoppingStore {
         return true
     }
 
+    /// Re-inserts a previously-deleted row (preserving its id), persisting and
+    /// enqueuing a full-row `.update` to clear the soft-delete remotely — the undo
+    /// path for a swipe-delete. Mirrors the inventory undo (a `.update` un-deletes
+    /// the row the prior `.delete` soft-removed). Returns whether the row was added.
+    @discardableResult
+    func restore(_ item: ShoppingItem) async -> Bool {
+        // Already present (same id) — nothing to restore.
+        guard !items.contains(where: { $0.id == item.id }) else { return false }
+        guard await persist(items + [item]) else { return false }
+        if let patch = DomainJSON.valueMap(item) {
+            await syncWriter?.enqueue(
+                entityType: .shoppingItem,
+                entityId: item.id,
+                operation: .update,
+                patch: patch,
+                baseVersion: item.remoteVersion
+            )
+        }
+        return true
+    }
+
     /// Deletes a row by stable id identity, persists the survivors, and updates
     /// local state. Returns whether a row was removed.
     @discardableResult
@@ -147,11 +179,12 @@ final class ShoppingStore {
         sortForDisplay(items)
     }
 
-    /// `displayItems` grouped into category sections in canonical order. Each
+    /// `displayItems` grouped into category sections in canonical order, narrowed
+    /// to the active `filter` (todo→unchecked, done→checked, all→both). Each
     /// section's rows keep the unchecked-before-checked ordering. Drives the
     /// per-category section headers.
     var displaySections: [(category: String, items: [ShoppingItem])] {
-        let sorted = sortForDisplay(items)
+        let sorted = sortForDisplay(items).filter(matchesFilter)
         var order: [String] = []
         var buckets: [String: [ShoppingItem]] = [:]
         for item in sorted {
@@ -164,6 +197,21 @@ final class ShoppingStore {
 
     var checkedCount: Int { items.filter(\.isChecked).count }
     var uncheckedCount: Int { items.count - checkedCount }
+    var total: Int { items.count }
+
+    /// Purchase progress (checked / total), 0 when the list is empty. Drives the
+    /// progress card's percent + bar.
+    var progress: Double {
+        total == 0 ? 0 : Double(checkedCount) / Double(total)
+    }
+
+    private func matchesFilter(_ item: ShoppingItem) -> Bool {
+        switch filter {
+        case .all: return true
+        case .todo: return !item.isChecked
+        case .done: return item.isChecked
+        }
+    }
 
     // MARK: Sorting internals
 

@@ -15,6 +15,8 @@ struct RecipesView: View {
     @State private var customStore: CustomRecipeStore?
     /// Presents the create form sheet (the toolbar "+").
     @State private var showCreateForm = false
+    /// Presents the 忌口 (avoided-ingredient) editor sheet from the toolbar.
+    @State private var showDietarySheet = false
     /// Programmatic stack path. Normally empty; the `-initialRoute cook` launch
     /// hook pre-seeds it (in `.task`) so a recipe detail — and its auto-presented
     /// deduction review — can be snapshotted directly without a tap.
@@ -37,15 +39,11 @@ struct RecipesView: View {
             }
             .navigationTitle("食谱")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showCreateForm = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .disabled(customStore == nil)
-                    .accessibilityLabel("新建食谱")
-                }
+                ToolbarItem(placement: .topBarTrailing) { dietaryToolbarButton }
+                ToolbarItem(placement: .topBarTrailing) { createToolbarButton }
+            }
+            .sheet(isPresented: $showDietarySheet) {
+                DietaryExclusionsSheet(store: dependencies.dietaryPreferencesStore)
             }
             .navigationDestination(for: Recipe.self) { recipe in
                 if let store, let customStore {
@@ -77,7 +75,9 @@ struct RecipesView: View {
                 localRepository: dependencies.localRecipeRepository,
                 customRepository: dependencies.customRecipeRepository,
                 favoritesStore: dependencies.favoritesStore,
-                householdID: householdID
+                householdID: householdID,
+                inventoryRepository: dependencies.inventoryRepository,
+                dietaryStore: dependencies.dietaryPreferencesStore
             )
             let customStore = CustomRecipeStore(
                 repository: dependencies.customRecipeRepository,
@@ -102,6 +102,30 @@ struct RecipesView: View {
         .onChange(of: dependencies.syncSession.dataRevision) {
             Task { await reload() }
         }
+    }
+
+    /// 忌口 toolbar entry — fills + tints red when any keyword is active.
+    private var dietaryToolbarButton: some View {
+        let active = (store?.exclusionCount ?? 0) > 0
+        return Button {
+            showDietarySheet = true
+        } label: {
+            Image(systemName: active ? "nosign.app.fill" : "nosign")
+        }
+        .disabled(store == nil)
+        .tint(active ? .fkDanger : .fkOnSurfaceVariant)
+        .accessibilityLabel("忌口设置")
+    }
+
+    /// "+" new-custom-recipe toolbar entry.
+    private var createToolbarButton: some View {
+        Button {
+            showCreateForm = true
+        } label: {
+            Image(systemName: "plus")
+        }
+        .disabled(customStore == nil)
+        .accessibilityLabel("新建食谱")
     }
 
     /// Reloads both the merged browse list and the custom-recipe set (after an
@@ -161,7 +185,17 @@ private struct RecipesContent: View {
                 FkSearchField(text: $store.searchQuery, placeholder: "搜索菜谱或食材")
                     .padding(.horizontal, FkSpacing.lg)
 
+                tabPicker
+
                 filterChips
+
+                timeFilterChips
+
+                // The banner is the 用临期 tab's whole premise — only surface it as a
+                // prompt on the OTHER tabs.
+                if store.expiringItemCount > 0, store.tab != .expiring {
+                    expiringBanner
+                }
 
                 listBody
             }
@@ -181,6 +215,39 @@ private struct RecipesContent: View {
                 customStore: customStore,
                 isCustom: customStore.recipes.contains { $0.id == route.recipe.id }
             )
+        }
+    }
+
+    // MARK: Tab picker (探索 / 现有 / 用临期 / 我的)
+
+    /// Primary list selector — the four parity tabs. A segmented control (vs the
+    /// chip rows below, which are secondary narrowing filters).
+    private var tabPicker: some View {
+        Picker("浏览方式", selection: $store.tab) {
+            ForEach(RecipesStore.Tab.allCases) { tab in
+                Text(tab.label).tag(tab)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal, FkSpacing.lg)
+    }
+
+    // MARK: Time filter chips (不限 / ≤15 / ≤30 分钟)
+
+    private var timeFilterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: FkSpacing.sm) {
+                ForEach(RecipesStore.TimeFilter.allCases) { option in
+                    FkChip(
+                        label: option.label,
+                        isSelected: store.timeFilter == option
+                    ) {
+                        // Re-tap a non-default chip clears back to 不限.
+                        store.timeFilter = (store.timeFilter == option && option != .all) ? .all : option
+                    }
+                }
+            }
+            .padding(.horizontal, FkSpacing.lg)
         }
     }
 
@@ -213,6 +280,29 @@ private struct RecipesContent: View {
         }
     }
 
+    // MARK: 临期 banner
+
+    /// "优先使用 N 件临期食材" prompt — surfaces the reduce-waste intent when the
+    /// pantry has expiring items (mirrors the Flutter `_ExpiringBanner`).
+    private var expiringBanner: some View {
+        HStack(spacing: FkSpacing.sm) {
+            Image(systemName: "flame.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color.fkDanger)
+            Text("优先使用 \(store.expiringItemCount) 件临期食材")
+                .font(.fkLabelLarge)
+                .foregroundStyle(Color.fkOnSurface)
+            Spacer(minLength: 0)
+        }
+        .padding(FkSpacing.md)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                .fill(Color.fkWarnSoft)
+        )
+        .padding(.horizontal, FkSpacing.lg)
+    }
+
     // MARK: List / empty / loading
 
     @ViewBuilder
@@ -233,7 +323,10 @@ private struct RecipesContent: View {
                         RecipeCard(
                             recipe: recipe,
                             isFavorite: store.isFavorite(recipe),
-                            onToggleFavorite: { store.toggleFavorite(recipe) }
+                            onToggleFavorite: { store.toggleFavorite(recipe) },
+                            matchedCount: store.hasInventoryContext ? store.matchedCount(recipe) : nil,
+                            totalIngredients: store.hasInventoryContext ? recipe.ingredients.count : nil,
+                            expiringUse: store.expiringUseCount(recipe)
                         )
                     }
                     .buttonStyle(.fkPressable)
@@ -248,24 +341,76 @@ private struct RecipesContent: View {
         let searching = !store.searchQuery.trimmed.isEmpty
         let title: String
         let message: String?
+        var icon = "book"
         if searching {
             title = "没有匹配「\(store.searchQuery.trimmed)」的菜谱"
             message = "试试换个关键词"
+            icon = "magnifyingglass"
         } else if store.favoritesOnly {
             title = "还没有收藏的菜谱"
             message = "点 ♥ 收藏几道喜欢的吧"
+            icon = "heart"
+        } else if store.timeFilter != .all {
+            title = "没有「\(store.timeFilter.label)」的菜谱"
+            message = "放宽时间或换个分类试试"
+            icon = "clock"
         } else if store.effectiveCategory != nil {
             title = "该分类下暂无菜谱"
             message = "换个分类试试"
         } else {
-            title = "暂无可探索的菜谱"
-            message = nil
+            // Tab-specific empties (no query active) — match the Flutter copy.
+            switch store.tab {
+            case .available:
+                title = store.hasInventoryContext ? "现有食材还做不了整道菜" : "先去添加些库存食材"
+                message = store.hasInventoryContext ? "去采购缺少的食材,或看看「探索」" : "有了库存才能推荐能做的菜"
+                icon = "refrigerator"
+            case .expiring:
+                title = "暂无可用临期食材的菜谱"
+                message = "没有临期食材,或它们暂时配不出整道菜"
+                icon = "flame"
+            case .mine:
+                title = "还没有自建食谱"
+                message = "点右上角「+」创建,或用 AI 从链接导入"
+                icon = "square.and.pencil"
+            case .explore:
+                title = "暂无可探索的菜谱"
+                message = nil
+            }
         }
-        return FkEmptyState(
-            systemImage: searching ? "magnifyingglass" : (store.favoritesOnly ? "heart" : "book"),
-            title: title,
-            message: message
-        )
+        return FkEmptyState(systemImage: icon, title: title, message: message)
+    }
+}
+
+/// The 忌口 editor presented as a sheet from the Recipes toolbar — reuses the
+/// shared `DietaryExclusionEditor` (same one in 设置 › 忌口) so the avoided-keyword
+/// set, normalization, and persistence stay one source of truth. Editing here
+/// immediately re-filters every recipe tab.
+private struct DietaryExclusionsSheet: View {
+    let store: DietaryPreferencesStore
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    DietaryExclusionEditor(store: store)
+                } footer: {
+                    Text("含这些关键字的食材会在所有菜谱列表中被隐藏。")
+                }
+                .listRowBackground(Color.fkSurfaceContainerLowest)
+            }
+            .scrollContentBackground(.hidden)
+            .background(Color.fkSurface)
+            .navigationTitle("忌口")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { dismiss() }
+                }
+            }
+            .tint(.fkPrimary)
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 

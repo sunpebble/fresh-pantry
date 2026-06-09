@@ -34,6 +34,8 @@ struct AddIngredientView: View {
     @State private var isLookingUpBarcode = false
     @State private var barcodeNotice: String?
     @State private var customShelfLife = ""
+    /// 常购食材 quick-fill chips, loaded from the add-history frequency memory.
+    @State private var frequentItems: [FrequentItem] = []
     @FocusState private var nameFocused: Bool
 
     private var controller: IntakeController {
@@ -59,6 +61,7 @@ struct AddIngredientView: View {
                     categoryField
                     storageField
                     shelfLifeField
+                    frequentItemsSection
                 }
                 .padding(FkSpacing.lg)
             }
@@ -77,7 +80,7 @@ struct AddIngredientView: View {
                 }
             }
             .navigationDestination(item: $reviewRoute) { route in
-                IntakeReviewView(proposals: route.proposals, title: "确认入库") {
+                IntakeReviewView(proposals: route.proposals, title: "确认入库") { _ in
                     onApplied()
                     dismiss()
                 }
@@ -132,6 +135,53 @@ struct AddIngredientView: View {
             }
         }
         .onAppear { nameFocused = true }
+        .task {
+            if frequentItems.isEmpty {
+                let all = (try? await dependencies.inventoryRepository.loadFrequentItems()) ?? []
+                frequentItems = Array(all.prefix(8))
+            }
+        }
+    }
+
+    /// 常购食材 quick-fill: tapping a chip seeds the whole form from a remembered
+    /// frequent item (mirrors the Flutter add form's `_FrequentItemsSection`).
+    @ViewBuilder
+    private var frequentItemsSection: some View {
+        if !frequentItems.isEmpty {
+            FkFormField(label: "常购食材") {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: FkSpacing.sm) {
+                        ForEach(frequentItems, id: \.name) { item in
+                            Button {
+                                form.applyFrequentItem(item)
+                                customShelfLife = ""
+                                nameFocused = false
+                            } label: {
+                                HStack(spacing: FkSpacing.xs) {
+                                    Image(systemName: storageIconName(item.storage))
+                                        .font(.system(size: 12, weight: .semibold))
+                                    Text(item.name)
+                                        .font(.fkLabelMedium)
+                                }
+                                .foregroundStyle(Color.fkPrimary)
+                                .padding(.horizontal, FkSpacing.md)
+                                .padding(.vertical, 7)
+                                .background(Capsule().fill(Color.fkPrimarySoft))
+                            }
+                            .buttonStyle(.fkPressable)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func storageIconName(_ storage: IconType) -> String {
+        switch storage {
+        case .fridge: return "refrigerator"
+        case .freezer: return "snowflake"
+        case .pantry: return "cabinet"
+        }
     }
 
     // MARK: Fields

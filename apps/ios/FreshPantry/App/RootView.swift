@@ -15,6 +15,11 @@ struct RootView: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.scenePhase) private var scenePhase
     @State private var selection: Section = RootView.initialSelection()
+    /// Reactive reachability for the offline / 待同步 banner.
+    @State private var connectivity = ConnectivityMonitor()
+    /// Best-effort outbox depth — refreshed at natural sync moments (foreground,
+    /// remote merge, coming back online). The offline flag is fully reactive.
+    @State private var pendingCount = 0
 
     var body: some View {
         // Snapshot/test hook: `-initialRoute login` renders LoginView standalone
@@ -25,8 +30,17 @@ struct RootView: View {
             }
             .tint(.fkPrimary)
         } else {
-            tabs
+            VStack(spacing: 0) {
+                SyncStatusBanner(isOnline: connectivity.isOnline, pendingCount: pendingCount)
+                tabs
+            }
         }
+    }
+
+    /// Best-effort refresh of the outbox depth shown in the banner.
+    @MainActor
+    private func refreshPendingCount() async {
+        pendingCount = (try? await dependencies.syncOutboxRepository.loadPending().count) ?? 0
     }
 
     private var tabs: some View {
@@ -61,10 +75,27 @@ struct RootView: View {
         // inventory / settings without waiting for a Settings change.
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
-            Task { await dependencies.syncCoordinator?.pushPending() }
+            Task {
+                await dependencies.syncCoordinator?.pushPending()
+                await refreshPendingCount()
+            }
             Task {
                 await dependencies.notificationCoordinator
                     .reschedule(householdID: dependencies.householdID)
+            }
+        }
+        // Refresh the banner's outbox depth when a remote merge lands or the count
+        // may have changed (initial appear), and flush + recount when the device
+        // comes back online so an offline backlog drains visibly.
+        .task { await refreshPendingCount() }
+        .onChange(of: dependencies.syncSession.dataRevision) {
+            Task { await refreshPendingCount() }
+        }
+        .onChange(of: connectivity.isOnline) { _, online in
+            guard online else { return }
+            Task {
+                await dependencies.syncCoordinator?.pushPending()
+                await refreshPendingCount()
             }
         }
         // Initial reschedule on launch (the first .active may precede this view).

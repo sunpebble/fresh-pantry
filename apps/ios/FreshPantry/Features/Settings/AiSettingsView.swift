@@ -5,8 +5,9 @@ import SwiftUI
 ///
 /// Edits a local draft seeded from the store; 保存 persists the whole blob to the
 /// Keychain via the store and pops. An `isConfigured` indicator reflects the
-/// CURRENTLY SAVED settings. The live connection-test probe is OUT OF SCOPE for
-/// this slice (AI feature phase); only storage + UI are built here.
+/// CURRENTLY SAVED settings. A 测试连接 probe sends a minimal chat request against
+/// the DRAFT settings (so it validates edits before saving) and reports success
+/// or the mapped error.
 struct AiSettingsView: View {
     let store: AiSettingsStore
 
@@ -16,6 +17,15 @@ struct AiSettingsView: View {
     @State private var apiKey: String
     @State private var model: String
     @State private var timeoutText: String
+    @State private var testResult: TestResult = .idle
+
+    /// Connection-test lifecycle for the 测试连接 button.
+    private enum TestResult: Equatable {
+        case idle
+        case testing
+        case ok
+        case failure(String)
+    }
 
     init(store: AiSettingsStore) {
         self.store = store
@@ -24,6 +34,16 @@ struct AiSettingsView: View {
         _apiKey = State(initialValue: s.apiKey)
         _model = State(initialValue: s.model)
         _timeoutText = State(initialValue: String(Int(s.timeout)))
+    }
+
+    /// The draft settings the form currently holds (what a test/save acts on).
+    private var draftSettings: AiSettings {
+        AiSettings(
+            baseUrl: baseUrl.trimmed,
+            apiKey: apiKey.trimmed,
+            model: model.trimmed,
+            timeout: TimeInterval(Int(timeoutText.trimmed) ?? 60)
+        )
     }
 
     var body: some View {
@@ -47,6 +67,26 @@ struct AiSettingsView: View {
                 Text("API Key 加密存储于设备钥匙串(Keychain),不上传同步。")
             }
             .listRowBackground(Color.fkSurfaceContainerLowest)
+
+            Section {
+                Button(action: { Task { await testConnection() } }) {
+                    HStack(spacing: FkSpacing.sm) {
+                        if testResult == .testing {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "bolt.horizontal.circle")
+                        }
+                        Text(testResult == .testing ? "测试中…" : "测试连接")
+                            .font(.fkBodyMedium)
+                    }
+                    .foregroundStyle(draftSettings.isConfigured ? Color.fkPrimary : Color.fkOutline)
+                }
+                .disabled(!draftSettings.isConfigured || testResult == .testing)
+                testResultRow
+            } footer: {
+                Text("发送一条极简请求验证当前填写的配置（测试前无需保存）。")
+            }
+            .listRowBackground(Color.fkSurfaceContainerLowest)
         }
         .scrollContentBackground(.hidden)
         .background(Color.fkSurface)
@@ -68,6 +108,46 @@ struct AiSettingsView: View {
                 .font(.fkBodyMedium)
                 .foregroundStyle(Color.fkOnSurface)
             Spacer()
+        }
+    }
+
+    @ViewBuilder
+    private var testResultRow: some View {
+        switch testResult {
+        case .ok:
+            resultLabel(icon: "checkmark.seal.fill", color: .fkSuccess, text: "连接成功")
+        case let .failure(message):
+            resultLabel(icon: "exclamationmark.triangle.fill", color: .fkDanger, text: message)
+        case .idle, .testing:
+            EmptyView()
+        }
+    }
+
+    private func resultLabel(icon: String, color: Color, text: String) -> some View {
+        HStack(spacing: FkSpacing.sm) {
+            Image(systemName: icon).foregroundStyle(color)
+            Text(text)
+                .font(.fkBodySmall)
+                .foregroundStyle(Color.fkOnSurface)
+            Spacer(minLength: 0)
+        }
+    }
+
+    /// Sends a minimal chat request against the draft settings and maps the
+    /// outcome (any returned content = success; an `AiError` surfaces its message).
+    private func testConnection() async {
+        guard draftSettings.isConfigured, testResult != .testing else { return }
+        testResult = .testing
+        do {
+            _ = try await AiClient.chat(
+                settings: draftSettings,
+                messages: [.text("user", "ping")]
+            )
+            testResult = .ok
+        } catch let error as AiError {
+            testResult = .failure(error.message)
+        } catch {
+            testResult = .failure("连接失败：\(error.localizedDescription)")
         }
     }
 

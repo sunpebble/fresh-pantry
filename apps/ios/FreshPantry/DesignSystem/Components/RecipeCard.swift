@@ -10,6 +10,14 @@ struct RecipeCard: View {
     let isFavorite: Bool
     /// Tapping the heart toggles favorite without triggering the card's own tap.
     let onToggleFavorite: () -> Void
+    /// Optional ingredient-match progress (in-stock count / total). When both are
+    /// supplied a progress bar + "缺 N 件" line renders; nil keeps the browse-only
+    /// card (the meal-plan picker passes nil).
+    var matchedCount: Int? = nil
+    var totalIngredients: Int? = nil
+    /// Distinct expiring/expired items this recipe would use up; a "临期 · N" badge
+    /// renders when > 0.
+    var expiringUse: Int = 0
 
     private var palette: FkCategoryColors { FkCategoryIcon.palette(for: recipe.category) }
 
@@ -86,9 +94,43 @@ struct RecipeCard: View {
             HStack(spacing: FkSpacing.md) {
                 metaItem(systemImage: "flame", text: recipe.difficultyLabel)
                 metaItem(systemImage: "clock", text: "\(recipe.cookingMinutes) 分钟")
+                if expiringUse > 0 {
+                    Text("临期 · \(expiringUse)")
+                        .font(.fkLabelSmall)
+                        .foregroundStyle(Color.fkDanger)
+                        .padding(.horizontal, FkSpacing.sm)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color.fkWarnSoft))
+                }
             }
+
+            matchProgress
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Ingredient-match progress bar + "已有 m/total · 缺 k 件" line. Renders only
+    /// when both match counts are supplied and the recipe has ingredients.
+    @ViewBuilder
+    private var matchProgress: some View {
+        if let matched = matchedCount, let total = totalIngredients, total > 0 {
+            let fraction = Double(matched) / Double(total)
+            let missing = max(total - matched, 0)
+            VStack(alignment: .leading, spacing: 3) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.fkSurfaceContainer)
+                        Capsule().fill(missing == 0 ? Color.fkSuccess : Color.fkPrimary)
+                            .frame(width: geo.size.width * fraction)
+                    }
+                }
+                .frame(height: 4)
+                Text(missing == 0 ? "食材齐全" : "已有 \(matched)/\(total) · 缺 \(missing) 件")
+                    .font(.fkLabelSmall)
+                    .foregroundStyle(missing == 0 ? Color.fkSuccess : Color.fkOnSurfaceVariant)
+            }
+            .padding(.top, 2)
+        }
     }
 
     private func metaItem(systemImage: String, text: String) -> some View {

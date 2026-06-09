@@ -198,6 +198,114 @@ struct RecipesStoreTests {
         _ = store.displayRecipes
         #expect(store.recipes.map(\.id) == before)
     }
+
+    // MARK: Tabs / time filter / 忌口 (the parity backfill)
+
+    private func ri(_ name: String) -> RecipeIngredient {
+        RecipeIngredient(name: name, quantity: "1", unit: "份")
+    }
+
+    private func inv(_ name: String, state: FreshnessState = .fresh) -> Ingredient {
+        Ingredient(id: name, name: name, quantity: "1", unit: "份", imageUrl: "", freshnessPercent: 1, state: state)
+    }
+
+    /// The browse store the VIEW builds: inventory + 忌口 wired, so the tab base
+    /// lists and the 忌口 filter are exercised (the bare `makeStore` passes neither).
+    private func makeContextStore(
+        bundled: [Recipe],
+        custom: [Recipe] = [],
+        inventory: [Ingredient] = [],
+        exclusions: [String] = [],
+        household: String = "home"
+    ) async throws -> RecipesStore {
+        let container = try ModelContainerFactory.makeInMemory()
+        let customRepo = CustomRecipeRepository(modelContainer: container)
+        try await customRepo.saveRecipes(household, custom)
+        let inventoryRepo = InventoryRepository(modelContainer: container)
+        try await inventoryRepo.saveItems(household, inventory)
+        let dietary = DietaryPreferencesStore(defaults: isolatedDefaults())
+        for keyword in exclusions { dietary.add(keyword) }
+        let store = RecipesStore(
+            localRepository: StubBundle.repository(bundled),
+            customRepository: customRepo,
+            favoritesStore: FavoritesStore(defaults: isolatedDefaults()),
+            householdID: household,
+            inventoryRepository: inventoryRepo,
+            dietaryStore: dietary
+        )
+        await store.load()
+        return store
+    }
+
+    @Test func mineTabShowsOnlyCustomRecipes() async throws {
+        let store = try await makeContextStore(
+            bundled: [recipe(id: "b1", name: "捆绑菜", category: "川菜")],
+            custom: [recipe(id: "c1", name: "我的菜", category: "家常")]
+        )
+        store.tab = .mine
+        #expect(store.displayRecipes.map(\.id) == ["c1"])
+    }
+
+    @Test func availableTabRanksByMatchAndDropsUnmakeable() async throws {
+        let store = try await makeContextStore(
+            bundled: [
+                recipe(id: "full", name: "全有", category: "川菜", ingredients: [ri("番茄"), ri("鸡蛋")]),
+                recipe(id: "partial", name: "半有", category: "川菜", ingredients: [ri("番茄"), ri("盐"), ri("油")]),
+                recipe(id: "none", name: "没有", category: "川菜", ingredients: [ri("米"), ri("面")]),
+            ],
+            inventory: [inv("番茄"), inv("鸡蛋")]
+        )
+        store.tab = .available
+        #expect(store.displayRecipes.map(\.id) == ["full", "partial"]) // none (0 match) dropped
+    }
+
+    @Test func availableTabEmptyWithoutInventory() async throws {
+        let store = try await makeContextStore(
+            bundled: [recipe(id: "a", name: "n", category: "川菜", ingredients: [ri("番茄")])],
+            inventory: []
+        )
+        store.tab = .available
+        #expect(store.displayRecipes.isEmpty)
+    }
+
+    @Test func expiringTabRanksByExpiringUse() async throws {
+        let store = try await makeContextStore(
+            bundled: [
+                recipe(id: "two", name: "清两临期", category: "川菜", ingredients: [ri("番茄"), ri("鸡蛋")]),
+                recipe(id: "one", name: "清一临期", category: "川菜", ingredients: [ri("鸡蛋"), ri("盐")]),
+                recipe(id: "zero", name: "无临期", category: "川菜", ingredients: [ri("米")]),
+            ],
+            inventory: [inv("番茄", state: .urgent), inv("鸡蛋", state: .expired)]
+        )
+        store.tab = .expiring
+        #expect(store.displayRecipes.map(\.id) == ["two", "one"]) // zero dropped
+    }
+
+    @Test func timeFilterRestrictsByCookingMinutes() async throws {
+        let store = try await makeContextStore(bundled: [
+            recipe(id: "fast", name: "快", category: "川菜", minutes: 10),
+            recipe(id: "mid", name: "中", category: "川菜", minutes: 25),
+            recipe(id: "slow", name: "慢", category: "川菜", minutes: 50),
+        ])
+        store.timeFilter = .fast15
+        #expect(store.displayRecipes.map(\.id) == ["fast"])
+        store.timeFilter = .fast30
+        #expect(Set(store.displayRecipes.map(\.id)) == ["fast", "mid"])
+        store.timeFilter = .all
+        #expect(store.displayRecipes.count == 3)
+    }
+
+    @Test func dietaryExclusionHidesMatchingRecipes() async throws {
+        let store = try await makeContextStore(
+            bundled: [
+                recipe(id: "peanut", name: "花生鸡", category: "川菜", ingredients: [ri("花生油"), ri("鸡肉")]),
+                recipe(id: "clean", name: "清炒青菜", category: "川菜", ingredients: [ri("青菜")]),
+            ],
+            exclusions: ["花生"] // substring also hides 花生油
+        )
+        #expect(store.displayRecipes.map(\.id) == ["clean"])
+        #expect(store.exclusionCount == 1)
+    }
 }
 
 /// Helper that wraps a fixed recipe set in a `LocalRecipeRepository`-shaped seam

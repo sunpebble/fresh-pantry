@@ -110,24 +110,62 @@ private struct DashboardContent: View {
     let store: DashboardStore
     var onSelectShopping: () -> Void
 
+    @Environment(AppDependencies.self) private var dependencies
+    /// View-local secondary stats for the entry-card subtitles (kept out of the
+    /// DashboardStore to avoid widening its init): waste use-up + meal-plan summary.
+    @State private var wasteStats: FoodLogStats?
+    @State private var mealPlan: MealPlanGlance?
+    /// Lazily-built shopping store for the 临期 preview "加购" action.
+    @State private var shoppingStore: ShoppingStore?
+    /// Recipe browse store (favorites + the pushed detail) for the home recipe
+    /// cards. Built once with the inventory/忌口 context, like the Recipes tab.
+    @State private var recipesStore: RecipesStore?
+    /// 今日推荐 (top match-ranked recipe) + its matched-ingredient count.
+    @State private var recommendation: Recipe?
+    @State private var recommendationMatched = 0
+    /// 用临期 fallback: the dish covering the most expiring items + covered names.
+    @State private var fallback: FallbackSuggestion?
+    /// Low-stock restock candidates (count≥3 & not in stock) for the inline card.
+    @State private var lowStockItems: [FrequentItem] = []
+    @State private var isAddingLowStock = false
+    @State private var showLowStockConfirm = false
+    /// Set once the secondary load runs, so the recipe cards can show a skeleton
+    /// only on the FIRST load (not on every pull-to-refresh).
+    @State private var didLoadRecipes = false
+    /// Recipe selected from a home card → pushes the detail in this stack.
+    @State private var selectedRecipe: Recipe?
+    @State private var toast: String?
+
     var body: some View {
         ScrollView {
             VStack(spacing: FkSpacing.xl) {
                 HeroSummary(summary: store.summary)
                     .padding(.horizontal, FkSpacing.lg)
 
-                ExpiringPreviewSection(summary: store.summary)
+                recommendationSection
                     .padding(.horizontal, FkSpacing.lg)
 
-                MealPlanEntryRow()
+                ExpiringPreviewSection(summary: store.summary, onAddToShopping: addToShopping)
                     .padding(.horizontal, FkSpacing.lg)
 
-                WasteInsightsEntryRow()
-                    .padding(.horizontal, FkSpacing.lg)
-
-                if store.summary.lowStockCount > 0 {
-                    LowStockEntryRow(count: store.summary.lowStockCount)
+                if let fallback {
+                    ExpiringFallbackCard(suggestion: fallback) { selectedRecipe = fallback.recipe }
                         .padding(.horizontal, FkSpacing.lg)
+                }
+
+                MealPlanEntryRow(glance: mealPlan)
+                    .padding(.horizontal, FkSpacing.lg)
+
+                WasteInsightsEntryRow(stats: wasteStats)
+                    .padding(.horizontal, FkSpacing.lg)
+
+                if !lowStockItems.isEmpty {
+                    LowStockInlineCard(
+                        items: lowStockItems,
+                        isAdding: isAddingLowStock,
+                        onAddAll: { showLowStockConfirm = true }
+                    )
+                    .padding(.horizontal, FkSpacing.lg)
                 }
 
                 ShoppingSummaryRow(
@@ -140,8 +178,213 @@ private struct DashboardContent: View {
             .padding(.bottom, FkSpacing.huge)
         }
         .background(Color.fkSurface)
-        .refreshable { await store.load() }
+        .overlay(alignment: .top) { toastBanner }
+        .navigationDestination(item: $selectedRecipe) { recipe in
+            if let recipesStore {
+                RecipeDetailView(recipe: recipe, store: recipesStore)
+            }
+        }
+        .confirmationDialog(
+            "全部加入购物清单",
+            isPresented: $showLowStockConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("加入 \(lowStockItems.count) 项") { Task { await addAllLowStock() } }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("把 \(lowStockItems.count) 项常买缺货食材加入购物清单？")
+        }
+        .refreshable {
+            await store.load()
+            await loadSecondaryStats()
+        }
+        .task { await loadSecondaryStats() }
     }
+
+    // MARK: 今日推荐
+
+    /// The top match-ranked recipe as a tappable `RecipeCard`, with a skeleton on
+    /// first load. Hidden once loaded if there's no inventory match (the Recipes
+    /// tab's 现有 list covers the empty case).
+    @ViewBuilder
+    private var recommendationSection: some View {
+        if let recommendation, let recipesStore {
+            VStack(alignment: .leading, spacing: FkSpacing.md) {
+                FkSectionHeader(title: "今日推荐")
+                Button {
+                    selectedRecipe = recommendation
+                } label: {
+                    RecipeCard(
+                        recipe: recommendation,
+                        isFavorite: recipesStore.isFavorite(recommendation),
+                        onToggleFavorite: { recipesStore.toggleFavorite(recommendation) },
+                        matchedCount: recommendationMatched,
+                        totalIngredients: recommendation.ingredients.count,
+                        expiringUse: recipesStore.expiringUseCount(recommendation)
+                    )
+                }
+                .buttonStyle(.fkPressable)
+            }
+        } else if !didLoadRecipes {
+            VStack(alignment: .leading, spacing: FkSpacing.md) {
+                FkSectionHeader(title: "今日推荐")
+                RecipeSkeletonCard()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var toastBanner: some View {
+        if let toast {
+            Text(toast)
+                .font(.fkLabelLarge)
+                .foregroundStyle(Color.fkOnSurface)
+                .padding(.horizontal, FkSpacing.lg)
+                .padding(.vertical, FkSpacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                        .fill(Color.fkSurfaceContainerLowest)
+                )
+                .fkCardShadow()
+                .padding(.top, FkSpacing.sm)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .task(id: toast) {
+                    try? await Task.sleep(for: .seconds(2))
+                    if !Task.isCancelled { withAnimation { self.toast = nil } }
+                }
+        }
+    }
+
+    /// Loads the waste use-up stats, the meal-plan glance (upcoming/today/缺料),
+    /// the home recipe suggestions (今日推荐 + 用临期 fallback), the low-stock
+    /// restock candidates, and the shopping store for 临期 加购.
+    private func loadSecondaryStats() async {
+        let wasteStore = WasteInsightsStore(repository: dependencies.foodLogRepository, householdID: dependencies.householdID)
+        await wasteStore.load()
+        wasteStats = wasteStore.stats()
+
+        // Build the recipe browse store once — it owns the merged corpus + the
+        // inventory/expiring match context the home cards and detail view need.
+        let recipes: RecipesStore
+        if let recipesStore {
+            await recipesStore.load()
+            recipes = recipesStore
+        } else {
+            recipes = RecipesStore(
+                localRepository: dependencies.localRecipeRepository,
+                customRepository: dependencies.customRecipeRepository,
+                favoritesStore: dependencies.favoritesStore,
+                householdID: dependencies.householdID,
+                inventoryRepository: dependencies.inventoryRepository,
+                dietaryStore: dependencies.dietaryPreferencesStore
+            )
+            await recipes.load()
+            recipesStore = recipes
+        }
+
+        // 今日推荐 = the top match-ranked recipe; 用临期 = the best expiring-cover dish.
+        let available = RecipeMatching.rankedByAvailability(
+            recipes.recipes, inventoryNames: recipes.inventoryNames, expiringNames: recipes.expiringNames
+        )
+        recommendation = available.first
+        recommendationMatched = recommendation.map { recipes.matchedCount($0) } ?? 0
+        fallback = RecipeMatching.expiringFallback(recipes.recipes, recipes.expiringNames)
+            .map { FallbackSuggestion(recipe: $0.recipe, covered: coveredDisplayNames($0.recipe, $0.covered)) }
+        didLoadRecipes = true
+
+        // Meal-plan glance reuses the merged corpus (no second recipe decode).
+        let byId = Dictionary(recipes.recipes.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
+        let entries = (try? await dependencies.mealPlanRepository.loadAllFor(dependencies.householdID)) ?? []
+        let missing = MealPlanMissing.missingIngredientNames(
+            entries: entries, recipesById: byId, inventoryNames: recipes.inventoryNames
+        )
+        mealPlan = MealPlanGlance.from(entries: entries, missingCount: missing.count)
+
+        // Low-stock restock candidates for the inline 库存不足 card.
+        let lowStock = LowStockStore(repository: dependencies.inventoryRepository, householdID: dependencies.householdID)
+        await lowStock.load()
+        lowStockItems = lowStock.items
+
+        if shoppingStore == nil {
+            let shopping = ShoppingStore(
+                repository: dependencies.shoppingRepository,
+                householdID: dependencies.householdID,
+                syncWriter: dependencies.syncWriter
+            )
+            await shopping.load()
+            shoppingStore = shopping
+        }
+    }
+
+    /// The recipe's own ingredient display names (original case, deduped) that
+    /// match the covered expiring set — nicer chips than the lowercased name set.
+    private func coveredDisplayNames(_ recipe: Recipe, _ covered: Set<String>) -> [String] {
+        var seen = Set<String>()
+        var names: [String] = []
+        for ingredient in recipe.ingredients where covered.contains(ingredient.name.trimmed.lowercased()) {
+            if seen.insert(ingredient.name.trimmed.lowercased()).inserted {
+                names.append(ingredient.name.trimmed)
+            }
+        }
+        return names
+    }
+
+    /// Adds ALL low-stock candidates to the shopping list (the inline "全部加入"
+    /// action; per-item selection lives on the pushed `LowStockView`). Dedupe is
+    /// the shopping store's job, so the toast reports the真正 added count.
+    private func addAllLowStock() async {
+        guard let shoppingStore, !isAddingLowStock else { return }
+        isAddingLowStock = true
+        defer { isAddingLowStock = false }
+        var added = 0
+        for item in lowStockItems {
+            let category = FoodKnowledge.lookup(item.name)?.category
+            if await shoppingStore.add(name: item.name, category: category) { added += 1 }
+        }
+        withAnimation {
+            toast = added > 0 ? "已添加 \(added) 项到购物清单" : "常买缺货项已在购物清单中"
+        }
+    }
+
+    private func addToShopping(_ item: Ingredient) async {
+        guard let shoppingStore else { return }
+        let added = await shoppingStore.add(name: item.name, category: item.category)
+        withAnimation {
+            toast = added ? "已将「\(item.name)」加入购物清单" : "「\(item.name)」已在购物清单中"
+        }
+    }
+}
+
+/// Lightweight meal-plan summary for the Dashboard entry card: dishes planned in
+/// the next 7 days, how many are today, and the shortfall count. Ports
+/// `mealPlanWeekSummaryProvider`.
+struct MealPlanGlance: Equatable {
+    let upcoming: Int
+    let today: Int
+    let missing: Int
+
+    static func from(entries: [MealPlanEntry], missingCount: Int, now: Date = Date()) -> MealPlanGlance {
+        let today = MealPlanEntry.dateOnly(now)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let windowEnd = calendar.date(byAdding: .day, value: 7, to: today) ?? today
+        var upcoming = 0
+        var todayCount = 0
+        for entry in entries {
+            let day = MealPlanEntry.dateOnly(entry.date)
+            if day < today || day >= windowEnd { continue }
+            upcoming += 1
+            if day == today { todayCount += 1 }
+        }
+        return MealPlanGlance(upcoming: upcoming, today: todayCount, missing: missingCount)
+    }
+}
+
+/// The 用临期 fallback suggestion for the Dashboard: the dish that clears the most
+/// expiring items, plus the (original-cased) covered ingredient names for chips.
+struct FallbackSuggestion: Equatable {
+    let recipe: Recipe
+    let covered: [String]
 }
 
 // MARK: - Hero
@@ -152,10 +395,27 @@ private struct DashboardContent: View {
 private struct HeroSummary: View {
     let summary: DashboardSummary
 
+    /// Time-of-day greeting (早安/午安/下午好/晚上好/夜深了),主厨。— ports the Flutter
+    /// dashboard greeting. Computed from the local hour at render time.
+    static func greeting(now: Date = Date()) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let hour = calendar.component(.hour, from: now)
+        let part: String
+        switch hour {
+        case 5..<11: part = "早安"
+        case 11..<13: part = "午安"
+        case 13..<18: part = "下午好"
+        case 18..<23: part = "晚上好"
+        default: part = "夜深了"
+        }
+        return "\(part)，主厨。"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: FkSpacing.lg) {
             VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                Text("你的冰箱状态")
+                Text(Self.greeting())
                     .font(.fkTitleMedium)
                     .foregroundStyle(Color.fkOnPrimary.opacity(0.8))
 
@@ -232,6 +492,8 @@ private struct MiniStat: View {
 
 private struct ExpiringPreviewSection: View {
     let summary: DashboardSummary
+    /// "该用了" quick add-to-shopping for a previewed expiring item.
+    var onAddToShopping: (Ingredient) async -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: FkSpacing.md) {
@@ -258,7 +520,20 @@ private struct ExpiringPreviewSection: View {
                 LazyVStack(spacing: FkSpacing.sm) {
                     ForEach(Array(summary.expiringPreview.enumerated()), id: \.element.fkListIdentityKey) { index, item in
                         FkCard {
-                            IngredientRow(ingredient: item)
+                            HStack(spacing: FkSpacing.sm) {
+                                IngredientRow(ingredient: item)
+                                Button {
+                                    Task { await onAddToShopping(item) }
+                                } label: {
+                                    Image(systemName: "cart.badge.plus")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundStyle(Color.fkPrimaryContainer)
+                                        .padding(8)
+                                        .background(Circle().fill(Color.fkPrimarySoft))
+                                }
+                                .buttonStyle(.fkPressable)
+                                .accessibilityLabel("加入购物清单")
+                            }
                         }
                         .fkEntrance(index: index)
                     }
@@ -293,6 +568,10 @@ private struct ExpiringPreviewSection: View {
 /// Tappable card that pushes `MealPlanView` (the weekly meal-plan calendar) via
 /// the Dashboard's `DashboardRoute`. The only meal-plan touchpoint on 首页.
 private struct MealPlanEntryRow: View {
+    /// nil → static copy until the glance loads; non-nil drives the dynamic
+    /// "本周已排 N 顿 · 今天 M 顿" subtitle + a "还缺 K 样" badge.
+    var glance: MealPlanGlance?
+
     var body: some View {
         NavigationLink(value: DashboardRoute.mealPlan) {
             FkCard {
@@ -310,12 +589,21 @@ private struct MealPlanEntryRow: View {
                         Text("膳食计划")
                             .font(.fkTitleMedium)
                             .foregroundStyle(Color.fkOnSurface)
-                        Text("规划这一周吃什么")
+                        Text(subtitle)
                             .font(.fkBodySmall)
                             .foregroundStyle(Color.fkOnSurfaceVariant)
                     }
 
                     Spacer(minLength: FkSpacing.sm)
+
+                    if let glance, glance.missing > 0 {
+                        Text("还缺 \(glance.missing) 样")
+                            .font(.fkLabelSmall)
+                            .foregroundStyle(Color.fkDanger)
+                            .padding(.horizontal, FkSpacing.sm)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.fkWarnSoft))
+                    }
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .semibold))
@@ -325,6 +613,14 @@ private struct MealPlanEntryRow: View {
         }
         .buttonStyle(.fkPressable)
     }
+
+    private var subtitle: String {
+        guard let glance, glance.upcoming > 0 else { return "规划这一周吃什么" }
+        if glance.today > 0 {
+            return "本周已排 \(glance.upcoming) 顿 · 今天 \(glance.today) 顿"
+        }
+        return "本周已排 \(glance.upcoming) 顿"
+    }
 }
 
 // MARK: - 减废统计 entry
@@ -332,6 +628,10 @@ private struct MealPlanEntryRow: View {
 /// Tappable card that pushes `WasteInsightsView` (the waste-reduction stats
 /// screen) via the Dashboard's `DashboardRoute`. Mirrors `MealPlanEntryRow`.
 private struct WasteInsightsEntryRow: View {
+    /// nil → static copy until stats load; non-nil drives the "用掉率 X%" subtitle
+    /// + a "抢救 N" badge.
+    var stats: FoodLogStats?
+
     var body: some View {
         NavigationLink(value: DashboardRoute.wasteInsights) {
             FkCard {
@@ -349,12 +649,21 @@ private struct WasteInsightsEntryRow: View {
                         Text("减废统计")
                             .font(.fkTitleMedium)
                             .foregroundStyle(Color.fkOnSurface)
-                        Text("看看你的食材用掉率")
+                        Text(subtitle)
                             .font(.fkBodySmall)
                             .foregroundStyle(Color.fkOnSurfaceVariant)
                     }
 
                     Spacer(minLength: FkSpacing.sm)
+
+                    if let stats, stats.rescued > 0 {
+                        Text("抢救 \(stats.rescued)")
+                            .font(.fkLabelSmall)
+                            .foregroundStyle(Color.fkSuccess)
+                            .padding(.horizontal, FkSpacing.sm)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.fkSuccess.opacity(0.15)))
+                    }
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .semibold))
@@ -364,47 +673,172 @@ private struct WasteInsightsEntryRow: View {
         }
         .buttonStyle(.fkPressable)
     }
+
+    private var subtitle: String {
+        guard let stats, !stats.isEmpty else { return "看看你的食材用掉率" }
+        return "本月用掉率 \(stats.useUpPercent)%"
+    }
 }
 
-// MARK: - 库存不足 entry
+// MARK: - 库存不足 (inline preview + 全部加购)
 
-/// Tappable card that pushes `LowStockView` (常买补货) via the Dashboard's
-/// `DashboardRoute`. Mirrors `MealPlanEntryRow`; only rendered when there are
-/// low-stock candidates (the caller gates on `lowStockCount > 0`).
-private struct LowStockEntryRow: View {
-    let count: Int
+/// The 库存不足 card with an INLINE preview of the top restock candidates and a
+/// "全部加入购物清单 (N)" bulk action — ports the Flutter `low_stock_card` so the
+/// user can restock from 首页 without first drilling into `LowStockView`. The
+/// header still navigates to `LowStockView` for per-item selection.
+private struct LowStockInlineCard: View {
+    let items: [FrequentItem]
+    let isAdding: Bool
+    /// Opens the confirm dialog for the bulk add (the parent owns the dialog).
+    let onAddAll: () -> Void
+
+    /// At most 4 inline rows; the rest collapse into a "+还有 N 项" line.
+    private var previewItems: [FrequentItem] { Array(items.prefix(4)) }
+    private var overflow: Int { max(0, items.count - previewItems.count) }
 
     var body: some View {
-        NavigationLink(value: DashboardRoute.lowStock) {
-            FkCard {
-                HStack(spacing: FkSpacing.md) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.fkPrimarySoft)
-                            .frame(width: 44, height: 44)
-                        Image(systemName: "cart.badge.plus")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(Color.fkPrimaryContainer)
-                    }
-
-                    VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                        Text("库存不足")
-                            .font(.fkTitleMedium)
-                            .foregroundStyle(Color.fkOnSurface)
-                        Text("\(count) 项常买缺货")
-                            .font(.fkBodySmall)
+        FkCard {
+            VStack(alignment: .leading, spacing: FkSpacing.md) {
+                NavigationLink(value: DashboardRoute.lowStock) {
+                    HStack(spacing: FkSpacing.md) {
+                        ZStack {
+                            Circle().fill(Color.fkPrimarySoft).frame(width: 44, height: 44)
+                            Image(systemName: "cart.badge.plus")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(Color.fkPrimaryContainer)
+                        }
+                        VStack(alignment: .leading, spacing: FkSpacing.xs) {
+                            Text("库存不足")
+                                .font(.fkTitleMedium)
+                                .foregroundStyle(Color.fkOnSurface)
+                            Text("\(items.count) 项常买缺货")
+                                .font(.fkBodySmall)
+                                .foregroundStyle(Color.fkOnSurfaceVariant)
+                        }
+                        Spacer(minLength: FkSpacing.sm)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(Color.fkOnSurfaceVariant)
                     }
+                }
+                .buttonStyle(.fkPressable)
 
-                    Spacer(minLength: FkSpacing.sm)
+                VStack(spacing: FkSpacing.xs) {
+                    ForEach(previewItems, id: \.name) { item in
+                        HStack(spacing: FkSpacing.sm) {
+                            FkCategoryAvatar(imageUrl: "", category: item.category, size: 28)
+                            Text(item.name)
+                                .font(.fkBodyMedium)
+                                .foregroundStyle(Color.fkOnSurface)
+                            Spacer(minLength: 0)
+                            Text("买过 \(item.count) 次")
+                                .font(.fkLabelSmall)
+                                .foregroundStyle(Color.fkOnSurfaceVariant)
+                        }
+                    }
+                    if overflow > 0 {
+                        HStack {
+                            Text("+还有 \(overflow) 项")
+                                .font(.fkLabelSmall)
+                                .foregroundStyle(Color.fkOnSurfaceVariant)
+                            Spacer(minLength: 0)
+                        }
+                    }
+                }
 
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
+                Button(action: onAddAll) {
+                    HStack(spacing: FkSpacing.sm) {
+                        if isAdding {
+                            ProgressView().controlSize(.small).tint(Color.fkOnPrimary)
+                        } else {
+                            Image(systemName: "cart.badge.plus")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        Text(isAdding ? "加入中…" : "全部加入购物清单 (\(items.count))")
+                            .font(.fkLabelLarge)
+                    }
+                    .foregroundStyle(Color.fkOnPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, FkSpacing.md)
+                    .background(Capsule().fill(Color.fkPrimary))
+                }
+                .buttonStyle(.fkPressable)
+                .disabled(isAdding)
+            }
+        }
+    }
+}
+
+// MARK: - 用临期 fallback recipe card
+
+/// "用这些临期食材今天就能做" — a tappable card surfacing the single dish that
+/// clears the most expiring items, with covered-ingredient chips. Ports the
+/// Flutter `ExpiringFallbackCard`; taps push the recipe detail.
+private struct ExpiringFallbackCard: View {
+    let suggestion: FallbackSuggestion
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            FkCard {
+                VStack(alignment: .leading, spacing: FkSpacing.sm) {
+                    HStack(spacing: FkSpacing.xs) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.fkDanger)
+                        Text("用临期食材 · 今天就能做")
+                            .font(.fkLabelLarge)
+                            .foregroundStyle(Color.fkDanger)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.fkOnSurfaceVariant)
+                    }
+                    Text(suggestion.recipe.name)
+                        .font(.fkTitleMedium)
+                        .foregroundStyle(Color.fkOnSurface)
+                    Text("可用 \(suggestion.covered.count) 件临期食材")
+                        .font(.fkBodySmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
+                    if !suggestion.covered.isEmpty {
+                        HStack(spacing: FkSpacing.xs) {
+                            ForEach(suggestion.covered.prefix(3), id: \.self) { name in
+                                Text(name)
+                                    .font(.fkLabelSmall)
+                                    .foregroundStyle(Color.fkOnSurface)
+                                    .padding(.horizontal, FkSpacing.sm)
+                                    .padding(.vertical, 2)
+                                    .background(Capsule().fill(Color.fkWarnSoft))
+                            }
+                            Spacer(minLength: 0)
+                        }
+                    }
                 }
             }
         }
         .buttonStyle(.fkPressable)
+    }
+}
+
+// MARK: - Recipe skeleton (今日推荐 first-load placeholder)
+
+/// A shimmer-free skeleton placeholder for the 今日推荐 card while recipes load.
+private struct RecipeSkeletonCard: View {
+    var body: some View {
+        FkCard {
+            VStack(alignment: .leading, spacing: FkSpacing.sm) {
+                RoundedRectangle(cornerRadius: FkRadius.md, style: .continuous)
+                    .fill(Color.fkSurfaceContainer)
+                    .frame(height: 96)
+                RoundedRectangle(cornerRadius: FkRadius.sm, style: .continuous)
+                    .fill(Color.fkSurfaceContainer)
+                    .frame(width: 140, height: 16)
+                RoundedRectangle(cornerRadius: FkRadius.sm, style: .continuous)
+                    .fill(Color.fkSurfaceContainer)
+                    .frame(width: 90, height: 12)
+            }
+        }
+        .accessibilityLabel("加载推荐中")
     }
 }
 

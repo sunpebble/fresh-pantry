@@ -1,8 +1,11 @@
 import SwiftUI
 
-/// The 购物 tab: lists the household's shopping items grouped by canonical food
-/// category, with check-off (struck + dimmed, sorted to the bottom),
-/// swipe-to-delete, and a toolbar "+" add sheet.
+/// The 购物 tab: a purchase-progress card, 全部/待购买/已购 filter chips, then the
+/// household's shopping items grouped by canonical food category — with check-off
+/// (struck + dimmed, sorted to the bottom), a leading "加入库存" swipe (single-item
+/// intake review), a trailing swipe-delete with undo, a "清空已完成" CTA, and a
+/// bottom "一键入库" CTA that routes the checked rows through the shared intake
+/// review (then removes only the rows that actually entered inventory).
 ///
 /// The view builds its `ShoppingStore` from the injected `AppDependencies` —
 /// the reusable pattern every feature view follows. SwiftData is never touched
@@ -55,11 +58,20 @@ struct ShoppingView: View {
     }
 }
 
-/// Inner content bound to a live store (split out so the add sheet and row
-/// mutations drive a concrete, non-optional store).
+/// Inner content bound to a live store (split out so the bindable store can drive
+/// the filter chips, and the add sheet / mutations get a concrete store).
 private struct ShoppingContent: View {
-    let store: ShoppingStore
+    @Bindable var store: ShoppingStore
+    @Environment(AppDependencies.self) private var dependencies
+
     @State private var isAddingItem = false
+    /// Drives the intake-review push; `reviewSource` is the rows sent so the
+    /// applied ones can be removed from the list on return.
+    @State private var reviewRoute: ReviewRoute?
+    @State private var reviewSource: [ShoppingItem] = []
+    /// The just-deleted row, surfaced in a transient undo banner.
+    @State private var pendingUndo: ShoppingItem?
+    @State private var showClearConfirm = false
 
     var body: some View {
         Group {
@@ -86,31 +98,88 @@ private struct ShoppingContent: View {
         .sheet(isPresented: $isAddingItem) {
             ShoppingAddSheet(store: store)
         }
+        .navigationDestination(item: $reviewRoute) { route in
+            IntakeReviewView(proposals: route.proposals, title: "已购买项入库") { outcome in
+                let applied = ShoppingIntake.appliedSourceItems(reviewSource, appliedIds: outcome.appliedIds)
+                Task { for item in applied { await store.delete(item) } }
+            }
+        }
+        .safeAreaInset(edge: .bottom) { intakeCTA }
+        .overlay(alignment: .bottom) { undoBanner }
+        .confirmationDialog(
+            "清理已购项目",
+            isPresented: $showClearConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("清理", role: .destructive) { Task { await clearChecked() } }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("确定要移除所有已勾选的购物项吗？")
+        }
     }
 
     // MARK: List
 
     private var itemList: some View {
         List {
-            ForEach(store.displaySections, id: \.category) { section in
+            Section {
+                ShoppingProgressCard(done: store.checkedCount, total: store.total, progress: store.progress)
+                    .listRowInsets(EdgeInsets(top: FkSpacing.sm, leading: FkSpacing.lg, bottom: FkSpacing.xs, trailing: FkSpacing.lg))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                ShoppingFilterChips(store: store)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: FkSpacing.sm, trailing: 0))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
+
+            if store.displaySections.isEmpty {
                 Section {
-                    ForEach(section.items, id: \.id) { item in
-                        ShoppingRow(item: item) {
-                            Task { await store.toggleChecked(item) }
-                        }
-                        .listRowBackground(Color.fkSurfaceContainerLowest)
-                        .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) {
-                                Task { await store.delete(item) }
-                            } label: {
-                                Label("删除", systemImage: "trash")
+                    Text(store.filter == .todo ? "没有待购项目" : "没有已购项目")
+                        .font(.fkBodyMedium)
+                        .foregroundStyle(Color.fkOnSurfaceVariant)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, FkSpacing.xl)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
+            } else {
+                ForEach(store.displaySections, id: \.category) { section in
+                    Section {
+                        ForEach(section.items, id: \.id) { item in
+                            ShoppingRow(item: item) {
+                                Task { await store.toggleChecked(item) }
+                            }
+                            .listRowBackground(Color.fkSurfaceContainerLowest)
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                Button {
+                                    openIntake(for: [item])
+                                } label: {
+                                    Label("加入库存", systemImage: "tray.and.arrow.down")
+                                }
+                                .tint(Color.fkPrimary)
+                            }
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    Task { await deleteWithUndo(item) }
+                                } label: {
+                                    Label("删除", systemImage: "trash")
+                                }
                             }
                         }
+                    } header: {
+                        Text(section.category)
+                            .font(.fkLabelMedium)
+                            .foregroundStyle(Color.fkOnSurfaceVariant)
                     }
-                } header: {
-                    Text(section.category)
-                        .font(.fkLabelMedium)
-                        .foregroundStyle(Color.fkOnSurfaceVariant)
+                }
+            }
+
+            if store.checkedCount > 0 {
+                Section {
+                    clearDoneButton
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                 }
             }
         }
@@ -118,6 +187,111 @@ private struct ShoppingContent: View {
         .scrollContentBackground(.hidden)
         .background(Color.fkSurface)
         .refreshable { await store.load() }
+    }
+
+    // MARK: Bottom intake CTA
+
+    @ViewBuilder
+    private var intakeCTA: some View {
+        if store.checkedCount > 0 {
+            Button {
+                openIntake(for: store.items.filter(\.isChecked))
+            } label: {
+                Text("已购买的 \(store.checkedCount) 项一键入库")
+                    .font(.fkLabelLarge)
+                    .foregroundStyle(Color.fkOnPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Capsule().fill(Color.fkPrimary))
+            }
+            .buttonStyle(.fkPressable)
+            .padding(.horizontal, FkSpacing.lg)
+            .padding(.bottom, FkSpacing.sm)
+        }
+    }
+
+    // MARK: Undo banner
+
+    @ViewBuilder
+    private var undoBanner: some View {
+        if let undo = pendingUndo {
+            HStack(spacing: FkSpacing.md) {
+                Image(systemName: "trash")
+                    .foregroundStyle(Color.fkDanger)
+                Text("「\(undo.name)」已删除")
+                    .font(.fkBodyMedium)
+                    .foregroundStyle(Color.fkOnSurface)
+                Spacer(minLength: FkSpacing.sm)
+                Button("撤销") {
+                    Task {
+                        await store.restore(undo)
+                        withAnimation { pendingUndo = nil }
+                    }
+                }
+                .font(.fkLabelLarge)
+                .foregroundStyle(Color.fkPrimary)
+            }
+            .padding(.horizontal, FkSpacing.lg)
+            .padding(.vertical, FkSpacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                    .fill(Color.fkSurfaceContainerLowest)
+            )
+            .fkCardShadow()
+            .padding(.horizontal, FkSpacing.lg)
+            // Sit above the bottom intake CTA when it's showing.
+            .padding(.bottom, store.checkedCount > 0 ? 72 : FkSpacing.lg)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .task(id: undo.id) {
+                try? await Task.sleep(for: .seconds(4))
+                if !Task.isCancelled { withAnimation { pendingUndo = nil } }
+            }
+        }
+    }
+
+    // MARK: Clear-completed
+
+    private var clearDoneButton: some View {
+        Button {
+            showClearConfirm = true
+        } label: {
+            Text("清空已完成 (\(store.checkedCount))")
+                .font(.fkLabelMedium)
+                .foregroundStyle(Color.fkOnSurfaceVariant)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, FkSpacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: FkRadius.md, style: .continuous)
+                        .strokeBorder(Color.fkHair, style: StrokeStyle(lineWidth: 1, dash: [4]))
+                )
+        }
+        .buttonStyle(.fkPressable)
+    }
+
+    // MARK: Actions
+
+    /// Loads the live inventory, builds intake proposals for `items`, and pushes
+    /// the shared review. On apply only the rows whose proposal landed are removed.
+    private func openIntake(for items: [ShoppingItem]) {
+        guard !items.isEmpty else { return }
+        Task {
+            let inventory = (try? await dependencies.inventoryRepository.loadAllFor(dependencies.householdID)) ?? []
+            let proposals = ShoppingIntake.buildProposals(items, inventory: inventory)
+            guard !proposals.isEmpty else { return }
+            reviewSource = items
+            reviewRoute = ReviewRoute(proposals: proposals)
+        }
+    }
+
+    private func deleteWithUndo(_ item: ShoppingItem) async {
+        guard await store.delete(item) else { return }
+        withAnimation { pendingUndo = item }
+    }
+
+    private func clearChecked() async {
+        for item in store.items.filter(\.isChecked) {
+            _ = await store.delete(item)
+        }
     }
 
     // MARK: Empty state
@@ -129,6 +303,81 @@ private struct ShoppingContent: View {
             message: "点右上角 + 添加需要购买的食材"
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// Gradient purchase-progress card: 本次采购进度 + done/total + percent + bar.
+private struct ShoppingProgressCard: View {
+    let done: Int
+    let total: Int
+    let progress: Double
+
+    var body: some View {
+        let clamped = min(max(progress, 0), 1)
+        let percent = Int((clamped * 100).rounded())
+        return VStack(alignment: .leading, spacing: FkSpacing.md) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: FkSpacing.xs) {
+                    Text("本次采购进度")
+                        .font(.fkLabelSmall)
+                        .foregroundStyle(Color.white.opacity(0.85))
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("\(done)")
+                            .font(.system(size: 34, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text("/ \(total) 项")
+                            .font(.fkBodyMedium)
+                            .foregroundStyle(Color.white.opacity(0.85))
+                    }
+                }
+                Spacer(minLength: FkSpacing.sm)
+                Text("\(percent)%")
+                    .font(.fkHeadlineSmall)
+                    .foregroundStyle(.white)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.2))
+                    Capsule().fill(Color.white)
+                        .frame(width: geo.size.width * clamped)
+                }
+            }
+            .frame(height: 6)
+        }
+        .padding(FkSpacing.lg)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: FkRadius.xl, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [Color.fkPrimary, Color.fkPrimaryContainer],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+    }
+}
+
+/// 全部 / 待购买 / 已购 filter chips with live counts.
+private struct ShoppingFilterChips: View {
+    @Bindable var store: ShoppingStore
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: FkSpacing.sm) {
+                chip("全部", .all, store.total)
+                chip("待购买", .todo, store.uncheckedCount)
+                chip("已购", .done, store.checkedCount)
+            }
+            .padding(.horizontal, FkSpacing.lg)
+        }
+    }
+
+    private func chip(_ label: String, _ value: ShoppingStore.ShoppingFilter, _ count: Int) -> some View {
+        FkChip(label: label, count: count, isSelected: store.filter == value) {
+            store.filter = value
+        }
     }
 }
 
@@ -187,6 +436,9 @@ private struct ShoppingAddSheet: View {
     @State private var category = FoodCategories.other
     @State private var categoryEdited = false
     @State private var isSaving = false
+    /// Inline duplicate notice — set when a save was rejected as a dup, so the add
+    /// doesn't silently close having added nothing (the Flutter "已在清单中" feedback).
+    @State private var addError: String?
 
     private var trimmedName: String { name.trimmed }
     private var canSave: Bool { !trimmedName.isEmpty && !isSaving }
@@ -199,8 +451,16 @@ private struct ShoppingAddSheet: View {
                         .onChange(of: name) { _, newValue in
                             guard !categoryEdited else { return }
                             category = FoodKnowledge.categoryFor(newValue)
+                            addError = nil
                         }
                     TextField("数量 / 备注（选填，如 2 盒）", text: $detail)
+                }
+                if let addError {
+                    Section {
+                        Label(addError, systemImage: "exclamationmark.circle")
+                            .font(.fkBodySmall)
+                            .foregroundStyle(Color.fkDanger)
+                    }
                 }
                 Section("分类") {
                     Picker("分类", selection: $category) {
@@ -230,9 +490,15 @@ private struct ShoppingAddSheet: View {
     private func save() {
         isSaving = true
         Task {
-            await store.add(name: trimmedName, detail: detail, category: category)
+            let added = await store.add(name: trimmedName, detail: detail, category: category)
             isSaving = false
-            dismiss()
+            if added {
+                dismiss()
+            } else {
+                // Rejected as a duplicate — keep the sheet open and say so rather
+                // than closing as if it worked.
+                addError = "「\(trimmedName)」已在购物清单中"
+            }
         }
     }
 }
