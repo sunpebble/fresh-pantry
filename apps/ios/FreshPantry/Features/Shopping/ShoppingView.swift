@@ -146,31 +146,37 @@ private struct ShoppingContent: View {
             } else {
                 ForEach(store.displaySections, id: \.category) { section in
                     Section {
-                        ForEach(section.items, id: \.id) { item in
-                            ShoppingRow(item: item) {
-                                Task { await store.toggleChecked(item) }
-                            }
-                            .listRowBackground(Color.fkSurfaceContainerLowest)
-                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                Button {
-                                    openIntake(for: [item])
-                                } label: {
-                                    Label("加入库存", systemImage: "tray.and.arrow.down")
+                        if !store.isCollapsed(section.category) {
+                            ForEach(section.items, id: \.id) { item in
+                                ShoppingRow(item: item) {
+                                    Task { await store.toggleChecked(item) }
                                 }
-                                .tint(Color.fkPrimary)
-                            }
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    Task { await deleteWithUndo(item) }
-                                } label: {
-                                    Label("删除", systemImage: "trash")
+                                .listRowBackground(Color.fkSurfaceContainerLowest)
+                                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                    Button {
+                                        openIntake(for: [item])
+                                    } label: {
+                                        Label("加入库存", systemImage: "tray.and.arrow.down")
+                                    }
+                                    .tint(Color.fkPrimary)
+                                }
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        Task { await deleteWithUndo(item) }
+                                    } label: {
+                                        Label("删除", systemImage: "trash")
+                                    }
                                 }
                             }
                         }
                     } header: {
-                        Text(section.category)
-                            .font(.fkLabelMedium)
-                            .foregroundStyle(Color.fkOnSurfaceVariant)
+                        CategoryHeader(
+                            category: section.category,
+                            count: section.items.count,
+                            collapsed: store.isCollapsed(section.category)
+                        ) {
+                            withAnimation(.easeOut(duration: 0.18)) { store.toggleCollapsed(section.category) }
+                        }
                     }
                 }
             }
@@ -360,6 +366,40 @@ private struct ShoppingProgressCard: View {
 }
 
 /// 全部 / 待购买 / 已购 filter chips with live counts.
+/// A tappable category section header: chevron (rotates on collapse) + name +
+/// item count. Toggles the section's collapsed state (ports the Flutter
+/// collapsible group headers).
+private struct CategoryHeader: View {
+    let category: String
+    let count: Int
+    let collapsed: Bool
+    let onToggle: () -> Void
+
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(spacing: FkSpacing.sm) {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color.fkOnSurfaceVariant)
+                    .rotationEffect(.degrees(collapsed ? -90 : 0))
+                Text(category)
+                    .font(.fkLabelMedium)
+                    .foregroundStyle(Color.fkOnSurfaceVariant)
+                Spacer(minLength: 0)
+                Text("\(count)")
+                    .font(.fkLabelMedium)
+                    .foregroundStyle(Color.fkOnSurfaceVariant)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(category)，\(count) 件")
+        .accessibilityHint(collapsed ? "点按展开分类" : "点按折叠分类")
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
 private struct ShoppingFilterChips: View {
     @Bindable var store: ShoppingStore
 

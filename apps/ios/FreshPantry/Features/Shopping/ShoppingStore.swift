@@ -33,6 +33,18 @@ final class ShoppingStore {
     /// existing behavior (and tests) are unchanged.
     var filter: ShoppingFilter = .all
 
+    /// Collapsed category section keys (the 分类分组折叠态). View state kept here
+    /// like `filter`; in-memory only (load/reload never touch it), matching the
+    /// Flutter non-persistent behavior. String keys tolerate a category vanishing
+    /// + reappearing across filters (a stale key is harmless).
+    private(set) var collapsedCategories: Set<String> = []
+
+    func isCollapsed(_ category: String) -> Bool { collapsedCategories.contains(category) }
+
+    func toggleCollapsed(_ category: String) {
+        if collapsedCategories.remove(category) == nil { collapsedCategories.insert(category) }
+    }
+
     init(
         repository: ShoppingRepository,
         householdID: String,
