@@ -284,6 +284,15 @@ private struct SettingsContent: View {
     private var comingSoonSection: some View {
         Section {
             NavigationLink {
+                WasteInsightsView()
+            } label: {
+                SettingsLinkLabel(
+                    systemImage: "leaf.fill",
+                    title: "减废成效",
+                    subtitle: "本月用掉与浪费 · 越用越省"
+                )
+            }
+            NavigationLink {
                 BackupView()
             } label: {
                 SettingsLinkLabel(

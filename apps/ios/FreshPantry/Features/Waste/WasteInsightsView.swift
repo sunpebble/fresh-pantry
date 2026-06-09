@@ -62,7 +62,7 @@ private struct WasteInsightsContent: View {
                 WindowSelector(selected: $store.window)
                     .padding(.horizontal, FkSpacing.lg)
 
-                body(stats: store.stats(), breakdown: store.categoryBreakdown())
+                body(stats: store.stats(), breakdown: store.categoryBreakdown(), mostWasted: store.mostWasted())
             }
             .padding(.top, FkSpacing.sm)
             .padding(.bottom, FkSpacing.huge)
@@ -72,7 +72,7 @@ private struct WasteInsightsContent: View {
     }
 
     @ViewBuilder
-    private func body(stats: FoodLogStats, breakdown: [WasteCategoryBreakdown]) -> some View {
+    private func body(stats: FoodLogStats, breakdown: [WasteCategoryBreakdown], mostWasted: [WasteCategoryCount]) -> some View {
         if store.isLoading && !store.hasLoaded {
             ProgressView().padding(.top, 80)
         } else if stats.isEmpty {
@@ -92,6 +92,11 @@ private struct WasteInsightsContent: View {
 
                 if !breakdown.isEmpty {
                     CategoryBreakdownSection(breakdown: breakdown)
+                        .padding(.horizontal, FkSpacing.lg)
+                }
+
+                if !mostWasted.isEmpty {
+                    MostWastedSection(rows: mostWasted)
                         .padding(.horizontal, FkSpacing.lg)
                 }
             }
@@ -196,6 +201,38 @@ private struct MetricTile: View {
 /// Per-category consumed-vs-wasted bars (Swift Charts grouped bar). Each category
 /// shows a 用掉 bar (primary) and a 浪费 bar (danger), so the user sees where waste
 /// concentrates. Counts only — quantities are free-text and never summed.
+/// "最常浪费" — categories ranked by wasted count desc, with explicit 件数 (the
+/// ranking insight the category bar chart doesn't convey at a glance).
+private struct MostWastedSection: View {
+    let rows: [WasteCategoryCount]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FkSpacing.md) {
+            FkSectionHeader(title: "最常浪费")
+            FkCard(padding: 0) {
+                VStack(spacing: 0) {
+                    ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                        HStack(spacing: FkSpacing.sm) {
+                            Text(row.category)
+                                .font(.fkBodyMedium)
+                                .foregroundStyle(Color.fkOnSurface)
+                            Spacer(minLength: 0)
+                            Text("\(row.count) 样")
+                                .font(.fkBodyMedium.weight(.semibold))
+                                .foregroundStyle(Color.fkDanger)
+                        }
+                        .padding(.horizontal, FkSpacing.lg)
+                        .padding(.vertical, FkSpacing.md)
+                        if index < rows.count - 1 {
+                            Rectangle().fill(Color.fkHair).frame(height: 0.5)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 private struct CategoryBreakdownSection: View {
     let breakdown: [WasteCategoryBreakdown]
 

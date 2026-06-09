@@ -139,6 +139,12 @@ final class WasteInsightsStore {
         Self.computeCategoryBreakdown(windowedEntries(now: now))
     }
 
+    /// Categories ranked by WASTED count (desc) for the window — the "最常浪费"
+    /// list. Only categories with ≥1 wasted departure appear.
+    func mostWasted(now: Date = Date()) -> [WasteCategoryCount] {
+        Self.computeMostWasted(windowedEntries(now: now))
+    }
+
     // MARK: Pure aggregation (testable without SwiftData)
 
     /// Tallies consumed / wasted / rescued over `entries`. `rescued` counts a
@@ -181,4 +187,24 @@ final class WasteInsightsStore {
                 return lhs.category < rhs.category
             }
     }
+
+    /// Wasted-only counts per (normalized) category, ranked by count desc, ties
+    /// by category name. Zero-waste categories never appear (only wasted entries
+    /// are tallied). Ports the Flutter "最常浪费" ranking.
+    static func computeMostWasted(_ entries: [FoodLogEntry]) -> [WasteCategoryCount] {
+        var wastedBy: [String: Int] = [:]
+        for entry in entries where !entry.isConsumed {
+            wastedBy[FoodCategories.dropdownValue(entry.category), default: 0] += 1
+        }
+        return wastedBy
+            .map { WasteCategoryCount(category: $0.key, count: $0.value) }
+            .sorted { $0.count != $1.count ? $0.count > $1.count : $0.category < $1.category }
+    }
+}
+
+/// One row of the 最常浪费 ranking (a category + its wasted count).
+struct WasteCategoryCount: Equatable, Sendable, Identifiable {
+    let category: String
+    let count: Int
+    var id: String { category }
 }

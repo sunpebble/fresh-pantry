@@ -135,6 +135,32 @@ struct WasteInsightsStoreTests {
         #expect(breakdown[0].wasted == 1)
     }
 
+    // MARK: 最常浪费 ranking
+
+    @Test func mostWastedCountsWastedOnlyRankedDescDroppingZero() {
+        let rows = WasteInsightsStore.computeMostWasted([
+            entry(id: "1", category: FoodCategories.freshProduce, outcome: .wasted, loggedAt: refNow),
+            entry(id: "2", category: FoodCategories.freshProduce, outcome: .wasted, loggedAt: refNow),
+            entry(id: "3", category: FoodCategories.freshProduce, outcome: .wasted, loggedAt: refNow),
+            entry(id: "4", category: FoodCategories.other, outcome: .wasted, loggedAt: refNow),
+            entry(id: "5", category: FoodCategories.meatAndSeafood, outcome: .consumed, loggedAt: refNow),
+        ])
+        // wasted only, count desc; the pure-consumed category never appears.
+        #expect(rows.map(\.category) == [FoodCategories.freshProduce, FoodCategories.other])
+        #expect(rows.map(\.count) == [3, 1])
+        #expect(!rows.contains { $0.category == FoodCategories.meatAndSeafood })
+    }
+
+    @Test func mostWastedNormalizesAliases() {
+        let rows = WasteInsightsStore.computeMostWasted([
+            entry(id: "1", category: "蔬菜", outcome: .wasted, loggedAt: refNow),
+            entry(id: "2", category: FoodCategories.freshProduce, outcome: .wasted, loggedAt: refNow),
+        ])
+        #expect(rows.count == 1)
+        #expect(rows[0].category == FoodCategories.freshProduce)
+        #expect(rows[0].count == 2)
+    }
+
     // MARK: Window filtering (end-to-end through the repo)
 
     @Test func thisMonthWindowExcludesEntriesBeforeMonthStart() async throws {
