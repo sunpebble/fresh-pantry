@@ -28,9 +28,9 @@ struct FkStatusStyle: Sendable {
         case .fresh:
             return FkStatusStyle(background: .fkPrimarySoft, foreground: .fkPrimaryContainer, label: "新鲜")
         case .soon:
-            return FkStatusStyle(background: .fkWarnSoft, foreground: .fkOnWarnContainer, label: "临期")
+            return FkStatusStyle(background: .fkWarnSoft, foreground: .fkOnWarnContainer, label: "即将过期")
         case .urgent:
-            return FkStatusStyle(background: .fkDangerSoft, foreground: .fkOnDangerContainer, label: "紧急")
+            return FkStatusStyle(background: .fkDangerSoft, foreground: .fkOnDangerContainer, label: "快过期")
         case .expired:
             return FkStatusStyle(background: .fkDanger, foreground: .fkOnDanger, label: "已过期")
         case .low:

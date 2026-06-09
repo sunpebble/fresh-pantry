@@ -6,8 +6,11 @@ import SwiftData
 @ModelActor
 actor CustomRecipeRepository {
     func loadAllFor(_ householdID: String) throws -> [Recipe] {
+        // Sorted by id so fetch order is deterministic across reloads — SwiftData
+        // fetch order is otherwise unspecified.
         let descriptor = FetchDescriptor<CustomRecipeRecord>(
-            predicate: #Predicate { $0.householdID == householdID }
+            predicate: #Predicate { $0.householdID == householdID },
+            sortBy: [SortDescriptor(\.id, order: .forward)]
         )
         let rows = try modelContext.fetch(descriptor)
         return rows.compactMap { row -> Recipe? in

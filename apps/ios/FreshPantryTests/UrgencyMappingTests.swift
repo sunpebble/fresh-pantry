@@ -13,8 +13,8 @@ struct UrgencyMappingTests {
 
     @Test func statusStyleLabelsMatchSpec() {
         #expect(FreshnessState.fresh.statusStyle.label == "新鲜")
-        #expect(FreshnessState.expiringSoon.statusStyle.label == "临期")
-        #expect(FreshnessState.urgent.statusStyle.label == "紧急")
+        #expect(FreshnessState.expiringSoon.statusStyle.label == "即将过期")
+        #expect(FreshnessState.urgent.statusStyle.label == "快过期")
         #expect(FreshnessState.expired.statusStyle.label == "已过期")
     }
 

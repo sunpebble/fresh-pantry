@@ -9,8 +9,12 @@ actor InventoryRepository {
     /// SELECT WHERE household_id == householdID; per-row decode + normalize;
     /// malformed rows are skipped, survivors preserved.
     func loadAllFor(_ householdID: String) throws -> [Ingredient] {
+        // Sorted by id so the fetch order the stores rely on as a stable display
+        // tiebreaker (`.enumerated().offset`) is deterministic across reloads —
+        // SwiftData fetch order is otherwise unspecified.
         let descriptor = FetchDescriptor<InventoryItemRecord>(
-            predicate: #Predicate { $0.householdID == householdID }
+            predicate: #Predicate { $0.householdID == householdID },
+            sortBy: [SortDescriptor(\.id, order: .forward)]
         )
         let rows = try modelContext.fetch(descriptor)
         return rows.compactMap { row in

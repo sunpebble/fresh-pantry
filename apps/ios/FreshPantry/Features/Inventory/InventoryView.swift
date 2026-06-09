@@ -105,12 +105,12 @@ private struct InventoryContent: View {
         .background(Color.fkSurface)
         .scrollDismissesKeyboard(.immediately)
         .refreshable { await store.load() }
-        .navigationDestination(item: $selectedRow) { row in
-            IngredientDetailView(ingredient: row.ingredient, store: store)
+        .navigationDestination(item: $selectedIngredient) { ingredient in
+            IngredientDetailView(ingredient: ingredient, store: store)
         }
     }
 
-    @State private var selectedRow: InventoryRoute?
+    @State private var selectedIngredient: Ingredient?
 
     // MARK: Storage filter chips
 
@@ -150,7 +150,7 @@ private struct InventoryContent: View {
             LazyVStack(spacing: FkSpacing.sm) {
                 ForEach(Array(items.enumerated()), id: \.element.identityKey) { index, item in
                     Button {
-                        selectedRow = InventoryRoute(ingredient: item)
+                        selectedIngredient = item
                     } label: {
                         FkCard {
                             IngredientRow(ingredient: item)
@@ -180,20 +180,5 @@ extension Ingredient {
     /// local-only rows (keeps `ForEach` keys distinct without reorder churn).
     fileprivate var identityKey: String {
         id.isEmpty ? "\(name)\u{0}\(storage.rawValue)\u{0}\(quantity)\u{0}\(unit)" : id
-    }
-}
-
-/// `Hashable` navigation route wrapping an `Ingredient` (the domain struct is
-/// deliberately not `Hashable`, so we wrap it here rather than retroactively
-/// conform a sync-critical type).
-private struct InventoryRoute: Hashable {
-    let ingredient: Ingredient
-
-    static func == (lhs: InventoryRoute, rhs: InventoryRoute) -> Bool {
-        lhs.ingredient == rhs.ingredient
-    }
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(ingredient.identityKey)
     }
 }

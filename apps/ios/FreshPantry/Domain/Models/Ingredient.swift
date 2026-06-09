@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Full value equality over all fields incl. the sync triplet. `id == ""`
 /// means local-only / never-synced — preserve that semantic for the gateway.
-struct Ingredient: Equatable, Sendable, Codable {
+struct Ingredient: Equatable, Hashable, Sendable, Codable {
     var id: String
     var name: String
     var quantity: String
