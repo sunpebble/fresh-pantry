@@ -142,6 +142,11 @@ private struct IntakeProposalRow: View {
     @State private var showUnitPicker = false
     @State private var showCategoryPicker = false
     @State private var showStoragePicker = false
+    /// Tap-to-edit state for the 食材名称 (the last read-only field). Seeded at
+    /// edit-entry (not init) so an external store mutation never stomps a live edit.
+    @State private var editingName = false
+    @State private var nameDraft = ""
+    @FocusState private var nameFocused: Bool
 
     private let unitOptions = ["个", "只", "把", "盒", "袋", "瓶", "罐", "kg", "g", "L", "ml", "份"]
 
@@ -183,6 +188,54 @@ private struct IntakeProposalRow: View {
         }
     }
 
+    /// The 食材名称: tap to edit inline (the AI/barcode parse can mis-name an item).
+    /// Commits on submit OR focus-loss (mirrors the Flutter tap-outside commit);
+    /// routes through `onChanged` → store.updateProposal, which re-runs the
+    /// perishable rule, so a name that turns the row perishable auto-flips
+    /// merge→newRow.
+    @ViewBuilder
+    private var nameField: some View {
+        if editingName {
+            TextField("食材名称", text: $nameDraft)
+                .font(.fkTitleMedium)
+                .foregroundStyle(Color.fkOnSurface)
+                .textFieldStyle(.plain)
+                .focused($nameFocused)
+                .submitLabel(.done)
+                .onSubmit { commitName() }
+                .onChange(of: nameFocused) { _, focused in if !focused { commitName() } }
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            Button {
+                nameDraft = proposal.name
+                editingName = true
+                nameFocused = true
+            } label: {
+                Text(proposal.name.isEmpty ? "(无名)" : proposal.name)
+                    .font(.fkTitleMedium)
+                    .foregroundStyle(Color.fkOnSurface)
+                    .lineLimit(1)
+            }
+            .buttonStyle(.fkPressable)
+        }
+    }
+
+    /// Commits the edited name (trimmed) only when it changed, marking userEdited.
+    /// A blank edit is discarded (a name is required) — restore the current name so
+    /// a re-tap shows it, never an empty string into the store/apply pipeline.
+    private func commitName() {
+        let trimmed = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            nameDraft = proposal.name
+            editingName = false
+            return
+        }
+        if trimmed != proposal.name {
+            onChanged(proposal.copyWith(name: trimmed, userEdited: true))
+        }
+        editingName = false
+    }
+
     private var headerRow: some View {
         HStack(spacing: FkSpacing.sm) {
             Button(action: onToggleSelected) {
@@ -194,10 +247,7 @@ private struct IntakeProposalRow: View {
 
             ProvenanceBadge(origin: proposal.origin, userEdited: proposal.userEdited)
 
-            Text(proposal.name.isEmpty ? "(无名)" : proposal.name)
-                .font(.fkTitleMedium)
-                .foregroundStyle(Color.fkOnSurface)
-                .lineLimit(1)
+            nameField
 
             Spacer(minLength: FkSpacing.sm)
 
@@ -249,14 +299,12 @@ private struct IntakeProposalRow: View {
         return Button {
             // Tap toggles a sensible default on when unset; otherwise opens nothing
             // destructive — re-tapping cycles 7→14→30→nil for quick adjustment.
-            let next: Int?
             switch days {
-            case 0: next = 7
-            case ..<14: next = 14
-            case ..<30: next = 30
-            default: next = nil
+            case 0: onChanged(proposal.copyWith(shelfLifeDays: 7, userEdited: true))
+            case ..<14: onChanged(proposal.copyWith(shelfLifeDays: 14, userEdited: true))
+            case ..<30: onChanged(proposal.copyWith(shelfLifeDays: 30, userEdited: true))
+            default: onChanged(proposal.copyWith(userEdited: true, clearShelfLifeDays: true))
             }
-            onChanged(proposal.copyWith(shelfLifeDays: next, userEdited: true))
         } label: {
             Text(label)
                 .font(.fkLabelMedium)

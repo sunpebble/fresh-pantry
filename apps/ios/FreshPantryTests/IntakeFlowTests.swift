@@ -229,6 +229,28 @@ struct IntakeFlowTests {
         #expect(store.proposals[0].action == .newRow) // stayed locked
     }
 
+    @Test func reviewStoreUpdateProposalAppliesNameEdit() {
+        // The inline name-edit routes through updateProposal (same path as the
+        // unit/category edits). A non-perishable rename persists the name + marks
+        // userEdited, and keeps the merge action (coerceActionForRules no-ops).
+        var p = proposal(id: "a", name: "大米")
+        p = p.copyWith(action: .mergeInto, mergeTargetId: "0", mergeTargetLabel: "大米 1袋")
+        let store = makeReviewStore([p])
+
+        store.updateProposal(p.copyWith(name: "糙米", userEdited: true))
+        #expect(store.proposals[0].name == "糙米")
+        #expect(store.proposals[0].userEdited)
+        #expect(store.proposals[0].action == .mergeInto)
+    }
+
+    @Test func copyWithClearsShelfLifeDays() {
+        let p = proposal(id: "a", name: "牛奶") // shelfLifeDays 30 from the builder
+        #expect(p.shelfLifeDays == 30)
+        // `shelfLifeDays: nil` can't clear (?? self); `clearShelfLifeDays` does.
+        #expect(p.copyWith(shelfLifeDays: nil).shelfLifeDays == 30)
+        #expect(p.copyWith(clearShelfLifeDays: true).shelfLifeDays == nil)
+    }
+
     // MARK: IntakeReviewStore — atomic apply of only selected
 
     @Test func reviewStoreAppliesOnlySelectedAtomically() async throws {

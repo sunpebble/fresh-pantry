@@ -78,7 +78,8 @@ struct IntakeProposal: Proposal {
         mergeTargetId: String? = nil,
         mergeTargetLabel: String? = nil,
         selected: Bool? = nil,
-        userEdited: Bool? = nil
+        userEdited: Bool? = nil,
+        clearShelfLifeDays: Bool = false
     ) -> IntakeProposal {
         IntakeProposal(
             id: id,
@@ -87,7 +88,9 @@ struct IntakeProposal: Proposal {
             unit: unit ?? self.unit,
             category: category ?? self.category,
             storage: storage ?? self.storage,
-            shelfLifeDays: shelfLifeDays ?? self.shelfLifeDays,
+            // `?? self` can't clear a set value; `clearShelfLifeDays` forces nil so
+            // the 保质期 chip's 「未设置」arm actually resets (was a silent no-op).
+            shelfLifeDays: clearShelfLifeDays ? nil : (shelfLifeDays ?? self.shelfLifeDays),
             action: action ?? self.action,
             mergeTargetId: mergeTargetId ?? self.mergeTargetId,
             mergeTargetLabel: mergeTargetLabel ?? self.mergeTargetLabel,

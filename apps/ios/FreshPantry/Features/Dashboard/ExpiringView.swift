@@ -14,6 +14,8 @@ struct ExpiringView: View {
     @State private var store: ExpiringStore?
     @State private var inventoryStore: InventoryStore?
     @State private var shoppingStore: ShoppingStore?
+    /// Live OS notification-permission state, for the reminder-status card.
+    @State private var remindersGranted = false
 
     var body: some View {
         Group {
@@ -21,6 +23,8 @@ struct ExpiringView: View {
                 ExpiringContent(
                     store: store,
                     inventoryStore: inventoryStore,
+                    reminderSettings: dependencies.reminderSettingsStore.settings,
+                    remindersGranted: remindersGranted,
                     onConsume: consume,
                     onAddToShopping: addToShopping
                 )
@@ -57,6 +61,7 @@ struct ExpiringView: View {
             await expiring.load()
             await inventory.load()
             await shopping.load()
+            remindersGranted = await dependencies.notificationCoordinator.refreshPermission()
         }
         // Remote merge pulse: a household-sync apply bumps dataRevision; reload
         // so the expiring list reflects inventory pulled from other members.
@@ -91,6 +96,8 @@ struct ExpiringView: View {
 private struct ExpiringContent: View {
     let store: ExpiringStore
     let inventoryStore: InventoryStore
+    let reminderSettings: ReminderSettings
+    let remindersGranted: Bool
     let onConsume: (Ingredient) async -> Void
     let onAddToShopping: (Ingredient) async -> String
 
@@ -98,19 +105,24 @@ private struct ExpiringContent: View {
     @State private var toast: String?
 
     var body: some View {
-        Group {
-            if store.isLoading && !store.hasLoaded {
-                ProgressView()
+        VStack(spacing: FkSpacing.md) {
+            RemindStatusCard(granted: remindersGranted, settings: reminderSettings)
+                .padding(.horizontal, FkSpacing.lg)
+                .padding(.top, FkSpacing.sm)
+            Group {
+                if store.isLoading && !store.hasLoaded {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if store.tiers.isEmpty {
+                    FkEmptyState(
+                        systemImage: "checkmark.circle",
+                        title: "暂无临期食材",
+                        message: "冰箱状态健康，继续保持！"
+                    )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if store.tiers.isEmpty {
-                FkEmptyState(
-                    systemImage: "checkmark.circle",
-                    title: "暂无临期食材",
-                    message: "冰箱状态健康，继续保持！"
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                tierList
+                } else {
+                    tierList
+                }
             }
         }
         .background(Color.fkSurface)
@@ -224,6 +236,51 @@ private struct ExpiringContent: View {
                 .font(.fkBodySmall)
                 .foregroundStyle(Color.fkOnSurfaceVariant)
         }
+    }
+}
+
+/// At-a-glance reminder-status card atop the 临期 screen (ports the Flutter
+/// `_RemindShortcut`). Unlike Flutter's decorative hardcoded copy, this reads the
+/// REAL OS permission + the live `ReminderSettings`. No deep-link to Settings:
+/// 设置 is a separate tab in iOS, so jumping there would yank the user out of the
+/// 临期 stack — the value here is the status, not the navigation.
+private struct RemindStatusCard: View {
+    let granted: Bool
+    let settings: ReminderSettings
+
+    var body: some View {
+        FkCard(padding: FkSpacing.md, background: .fkPrimarySoft) {
+            HStack(spacing: FkSpacing.md) {
+                ZStack {
+                    Circle().fill(.white).frame(width: 36, height: 36)
+                    Image(systemName: granted ? "bell.badge.fill" : "bell.slash")
+                        .font(.system(size: FkSize.iconSm, weight: .semibold))
+                        .foregroundStyle(Color.fkPrimaryContainer)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(granted ? "提醒已开启" : "通知未开启")
+                        .font(.fkLabelLarge)
+                        .foregroundStyle(Color.fkPrimaryContainer)
+                    Text(subtitle)
+                        .font(.fkLabelSmall)
+                        .foregroundStyle(Color.fkPrimaryContainer.opacity(0.75))
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    /// Honest reminder summary from the live settings (parity improvement over
+    /// Flutter's static literal).
+    private var subtitle: String {
+        guard granted else { return "去「设置 › 临期提醒」开启系统通知后送达" }
+        var parts: [String] = []
+        let offsets = settings.enabledOffsetDays
+        if !offsets.isEmpty {
+            parts.append("提前 " + offsets.map(String.init).joined(separator: "·") + " 天")
+        }
+        if settings.remindDaily { parts.append("每日 9:00 汇总") }
+        return parts.isEmpty ? "未设置提醒时机" : parts.joined(separator: " · ")
     }
 }
 
