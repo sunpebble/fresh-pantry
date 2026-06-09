@@ -169,4 +169,23 @@ struct DashboardStoreTests {
         #expect(DashboardStore.isNonFresh(.urgent))
         #expect(DashboardStore.isNonFresh(.expired))
     }
+
+    // MARK: 食材分类 grid counts
+
+    @Test func categoryCountsGroupByCanonicalInValuesOrder() async throws {
+        func it(_ id: String, _ category: String) -> Ingredient {
+            Ingredient(id: id, name: id, quantity: "1", unit: "份", imageUrl: "",
+                       freshnessPercent: 1, state: .fresh, category: category, storage: .fridge)
+        }
+        // Use canonical category values so dropdownValue maps to itself.
+        let catA = FoodCategories.values[0]
+        let catB = FoodCategories.values[1]
+        let store = try await makeStore(inventory: [it("a", catA), it("b", catA), it("c", catB)])
+        let counts = store.categoryCounts
+        let dict = Dictionary(uniqueKeysWithValues: counts.map { ($0.category, $0.count) })
+        #expect(dict[catA] == 2)
+        #expect(dict[catB] == 1)
+        // Ordered by FoodCategories.values (catA at index 0 precedes catB), empty buckets dropped.
+        #expect(counts.map(\.category) == [catA, catB])
+    }
 }

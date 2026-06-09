@@ -12,6 +12,11 @@ struct DashboardView: View {
     /// Switches the root tab selection — used by the 购物清单 summary row to jump
     /// to the 购物 tab. Injected by `RootView`.
     var onSelectShopping: () -> Void = {}
+    /// Drills into the 库存 tab pre-filtered to a tapped 食材分类 (canonical name).
+    /// Injected by `RootView` (mirrors `onSelectShopping`).
+    var onSelectCategory: (String) -> Void = { _ in }
+    /// Opens the global search overlay (owned/presented by `RootView`).
+    var onSearch: () -> Void = {}
 
     @Environment(AppDependencies.self) private var dependencies
     @State private var store: DashboardStore?
@@ -24,7 +29,7 @@ struct DashboardView: View {
         NavigationStack(path: $path) {
             Group {
                 if let store {
-                    DashboardContent(store: store, onSelectShopping: onSelectShopping)
+                    DashboardContent(store: store, onSelectShopping: onSelectShopping, onSelectCategory: onSelectCategory)
                 } else {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -32,6 +37,16 @@ struct DashboardView: View {
                 }
             }
             .navigationTitle("首页")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        onSearch()
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                    }
+                    .accessibilityLabel("搜索")
+                }
+            }
             .navigationDestination(for: DashboardRoute.self) { route in
                 switch route {
                 case .expiring: ExpiringView()
@@ -109,6 +124,7 @@ extension DashboardView {
 private struct DashboardContent: View {
     let store: DashboardStore
     var onSelectShopping: () -> Void
+    var onSelectCategory: (String) -> Void = { _ in }
 
     @Environment(AppDependencies.self) private var dependencies
     /// View-local secondary stats for the entry-card subtitles (kept out of the
@@ -144,6 +160,12 @@ private struct DashboardContent: View {
 
                 recommendationSection
                     .padding(.horizontal, FkSpacing.lg)
+
+                let categoryCounts = store.categoryCounts
+                if !categoryCounts.isEmpty {
+                    CategorySection(counts: categoryCounts, onSelect: onSelectCategory)
+                        .padding(.horizontal, FkSpacing.lg)
+                }
 
                 ExpiringPreviewSection(summary: store.summary, onAddToShopping: addToShopping)
                     .padding(.horizontal, FkSpacing.lg)
@@ -486,6 +508,60 @@ private struct MiniStat: View {
         .background(
             RoundedRectangle(cornerRadius: FkRadius.chip, style: .continuous)
                 .fill(Color.fkOnPrimary.opacity(0.15))
+        )
+    }
+}
+
+// MARK: - 食材分类 grid
+
+/// 4-column grid of inventory categories (icon + canonical name + 件数). Tapping a
+/// tile drills into the 库存 tab pre-filtered to that category. Ports the Flutter
+/// `_CategorySection`/`_CategoryGrid`.
+private struct CategorySection: View {
+    let counts: [(category: String, count: Int)]
+    let onSelect: (String) -> Void
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: FkSpacing.sm), count: 4)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FkSpacing.md) {
+            FkSectionHeader(title: "食材分类")
+            LazyVGrid(columns: columns, spacing: FkSpacing.sm) {
+                ForEach(Array(counts.enumerated()), id: \.element.category) { index, entry in
+                    Button {
+                        onSelect(entry.category)
+                    } label: {
+                        tile(category: entry.category, count: entry.count)
+                    }
+                    .buttonStyle(.fkPressable)
+                    .fkEntrance(index: index)
+                }
+            }
+        }
+    }
+
+    private func tile(category: String, count: Int) -> some View {
+        let palette = FkCategoryIcon.palette(for: category)
+        return VStack(spacing: FkSpacing.xs) {
+            ZStack {
+                Circle().fill(palette.tint).frame(width: 40, height: 40)
+                Image(systemName: FkCategoryIcon.symbol(for: category))
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(palette.ink)
+            }
+            Text(category)
+                .font(.fkLabelSmall)
+                .foregroundStyle(Color.fkOnSurface)
+                .lineLimit(1)
+            Text("\(count)")
+                .font(.fkLabelSmall)
+                .foregroundStyle(Color.fkOnSurfaceVariant)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, FkSpacing.sm)
+        .background(
+            RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                .fill(Color.fkSurfaceContainerLowest)
         )
     }
 }

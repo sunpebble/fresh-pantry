@@ -258,7 +258,10 @@ final class InventoryStore {
     }
 
     /// Undo handle for a batch delete — the removed rows in ascending index order.
-    struct BatchRemovalUndo: Sendable {
+    /// Carries a fresh `id` so the banner's auto-dismiss timer restarts on every
+    /// new deletion, even two consecutive ones that removed the same row count.
+    struct BatchRemovalUndo: Sendable, Identifiable {
+        let id = UUID()
         let removed: [RemovedRow]
     }
 

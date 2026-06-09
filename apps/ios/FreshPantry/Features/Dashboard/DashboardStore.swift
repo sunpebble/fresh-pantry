@@ -23,8 +23,6 @@ final class DashboardStore {
     /// Repo/insertion-ordered scopes (the source of truth — never reordered).
     private(set) var inventory: [Ingredient] = []
     private(set) var shopping: [ShoppingItem] = []
-    /// Add-history frequency memory — feeds the 库存不足 (常买补货) entry count.
-    private(set) var frequent: [FrequentItem] = []
     private(set) var isLoading = false
     private(set) var hasLoaded = false
 
@@ -49,10 +47,8 @@ final class DashboardStore {
         }
         async let inventoryLoad = (try? await inventoryRepository.loadAllFor(householdID)) ?? []
         async let shoppingLoad = (try? await shoppingRepository.loadAllFor(householdID)) ?? []
-        async let frequentLoad = (try? await inventoryRepository.loadFrequentItems()) ?? []
         inventory = await inventoryLoad
         shopping = await shoppingLoad
-        frequent = await frequentLoad
     }
 
     // MARK: Derived view data
@@ -66,19 +62,23 @@ final class DashboardStore {
             urgentCount: count(of: .urgent),
             soonCount: count(of: .expiringSoon),
             uncheckedShoppingCount: shopping.lazy.filter { !$0.isChecked }.count,
-            lowStockCount: lowStockCount,
             expiringPreview: Array(sortedNonFresh.prefix(Self.previewLimit))
         )
     }
 
-    /// 库存不足 (常买补货) candidates: names bought ≥3 times that are not currently
-    /// in stock (name trim+lowercase). Mirrors `lowStockItemsProvider` /
-    /// `LowStockStore` so the Dashboard entry count matches the pushed screen.
-    var lowStockCount: Int {
-        let present = Set(inventory.map { $0.name.trimmed.lowercased() })
-        return frequent.lazy.filter {
-            $0.count >= 3 && !present.contains($0.name.trimmed.lowercased())
-        }.count
+    /// Inventory grouped by canonical food category (件数 per 全部/5 大类), in the
+    /// stable `FoodCategories.values` order, dropping empty buckets. Drives the
+    /// 首页 食材分类 grid; tapping a tile drills into the 库存 tab pre-filtered.
+    /// Counts by `FoodCategories.dropdownValue` so it matches the Inventory chips.
+    var categoryCounts: [(category: String, count: Int)] {
+        var counts: [String: Int] = [:]
+        for item in inventory {
+            counts[FoodCategories.dropdownValue(item.category), default: 0] += 1
+        }
+        return FoodCategories.values.compactMap { category in
+            guard let count = counts[category], count > 0 else { return nil }
+            return (category, count)
+        }
     }
 
     /// The household's non-fresh items, urgency-sorted (expired → urgent → soon,
@@ -137,9 +137,6 @@ struct DashboardSummary: Equatable, Sendable {
     let urgentCount: Int
     let soonCount: Int
     let uncheckedShoppingCount: Int
-    /// 库存不足 (常买补货) candidate count — drives the Dashboard entry card, which
-    /// hides itself when this is 0.
-    let lowStockCount: Int
     let expiringPreview: [Ingredient]
 
     /// 临期 headline: everything not fresh (soon + urgent + expired).
