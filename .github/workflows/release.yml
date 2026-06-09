@@ -52,6 +52,61 @@ jobs:
           mkdir -p "$HOME/.appstoreconnect/private_keys"
           printf '%s' "${{ secrets.ASC_API_KEY_P8 }}" > "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
 
+      # 持久化签名身份:导入预先导出的 Apple Distribution 证书(含私钥)到一次性
+      # keychain。ephemeral runner 每次都是干净 keychain,若靠 -allowProvisioningUpdates
+      # 自动签名,Xcode 因本地无私钥会每次新建证书,几次后撞上账户证书配额上限
+      #("Your account has reached the maximum number of certificates" → 连带
+      # "No profiles ... were found")。导入固定证书后,自动签名复用它而不再新建,
+      # profile 仍由 ASC API key 按需获取。证书一次性导出见步骤说明(README/此步注释)。
+      - name: Import Apple Distribution certificate (persistent signing identity)
+        env:
+          DIST_CERT_P12_BASE64: ${{ secrets.APPLE_DIST_CERT_P12_BASE64 }}
+          DIST_CERT_PASSWORD: ${{ secrets.APPLE_DIST_CERT_PASSWORD }}
+        run: |
+          CERT_PATH="$RUNNER_TEMP/dist_cert.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          LOGIN_KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
+
+          echo -n "$DIST_CERT_P12_BASE64" | base64 --decode -o "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          # 不设 lock timeout:keychain 跨后续 step(archive / export)保持解锁
+          security set-keychain-settings "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # 导入证书+私钥;-A 允许任意工具读取,set-key-partition-list 避免 codesign 弹授权框
+          security import "$CERT_PATH" -P "$DIST_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # 关键:设为「默认 keychain」。ephemeral runner 上 xcodebuild 自动签名靠 default keychain
+          # 定位签名身份,仅把临时 keychain 加进 search list 不够——没设 default 时自动签名找不到
+          # Distribution 证书,会退化为 Development → 撞证书配额(1.4.0/1.5.0 实测)。search list 再
+          # 保留 login.keychain,供 codesign 取 Apple WWDR 中间证书构建证书链。
+          security default-keychain -s "$KEYCHAIN_PATH"
+          if [ -f "$LOGIN_KEYCHAIN" ]; then
+            security list-keychains -d user -s "$KEYCHAIN_PATH" "$LOGIN_KEYCHAIN"
+          else
+            security list-keychains -d user -s "$KEYCHAIN_PATH"
+          fi
+
+          # 诊断:确认 Distribution 证书已可见(若再失败据此定位)
+          security find-identity -v -p codesigning
+
+      # 安装预生成的 App Store provisioning profiles(经 ASC API 创建,关联上面导入的
+      # Distribution 证书)。Xcode 按 profile 内 UUID 索引,文件名随意;Release 配置 manual
+      # 签名据 PROVISIONING_PROFILE_SPECIFIER(profile 名)定位。
+      - name: Install provisioning profiles
+        env:
+          PROFILE_APP_BASE64: ${{ secrets.APPLE_PROFILE_APP_BASE64 }}
+          PROFILE_EXT_BASE64: ${{ secrets.APPLE_PROFILE_EXT_BASE64 }}
+        run: |
+          PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILES_DIR"
+          echo -n "$PROFILE_APP_BASE64" | base64 --decode > "$PROFILES_DIR/fp_app_store.mobileprovision"
+          echo -n "$PROFILE_EXT_BASE64" | base64 --decode > "$PROFILES_DIR/fp_ext_app_store.mobileprovision"
+          ls -la "$PROFILES_DIR"
+
       # Secrets.plist 须在 xcodegen 之前生成,才会被收进 app bundle(否则运行时
       # AppConfig 退化为本地模式、无 Supabase)。SENTRY_DSN 留空 → 用 AppConfig
       # 内置默认 DSN;环境固定 production。值为已知安全字符(URL / 发布键),printf 直注。
@@ -100,7 +155,11 @@ jobs:
         id: ver
         run: echo "marketing_version=$(cat version.txt)" >> "$GITHUB_OUTPUT"
 
-      - name: Archive (API key auto-signing)
+      # manual 显式 distribution 签名:Release 配置(project.yml)指定 CODE_SIGN_STYLE=Manual
+      # + Apple Distribution 身份 + App Store profile 名;证书已导入 keychain、profile 已安装。
+      # 不用 -allowProvisioningUpdates/-authenticationKey(那条自动签名路径在 archive 会退化
+      # 为 Development 并撞证书配额,见提交历史)。
+      - name: Archive (manual distribution signing)
         run: |
           xcodebuild archive \
             -project FreshPantry.xcodeproj \
@@ -110,22 +169,16 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath build/FreshPantry.xcarchive \
             MARKETING_VERSION=${{ steps.ver.outputs.marketing_version }} \
-            CURRENT_PROJECT_VERSION=${{ steps.bn.outputs.build_number }} \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+            CURRENT_PROJECT_VERSION=${{ steps.bn.outputs.build_number }}
 
+      # manual 导出:ExportOptions.plist 的 provisioningProfiles 把每个 bundle id 映射到
+      # 已安装的 App Store profile;同样不需要 -allowProvisioningUpdates/-authenticationKey。
       - name: Export IPA (clean PATH avoids Homebrew GNU rsync "Copy failed")
         run: |
           env PATH="/usr/bin:/bin:/usr/sbin:/sbin" xcodebuild -exportArchive \
             -archivePath build/FreshPantry.xcarchive \
             -exportPath build/ipa \
-            -exportOptionsPlist ExportOptions.plist \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+            -exportOptionsPlist ExportOptions.plist
 
       - name: Upload to TestFlight (one retry)
         run: |

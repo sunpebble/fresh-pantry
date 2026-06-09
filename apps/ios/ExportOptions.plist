@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  CI 导出配置。App Store Connect 上传 + 自动签名:配合 xcodebuild 的
-  -allowProvisioningUpdates + ASC API Key,Xcode 按需创建 Apple Distribution
-  证书与 App Store profile,无需手动管理证书或描述文件(provisioning profile)。
-  manageAppVersionAndBuildNumber=false:版本号/build 号由 CI 注入,不让 Xcode 改写。
+  CI 导出配置(manual 显式 distribution 签名)。ephemeral runner 上 xcodebuild 自动签名
+  对 archive 一律退化为 Development → 撞账户证书配额;故 archive/export 都改 manual:
+  用导入的 Apple Distribution 证书 + 预生成的 App Store provisioning profile(经 ASC API
+  创建,见 release.yml「Install provisioning profiles」step)。provisioningProfiles 把每个
+  bundle id 映射到 profile 名。manageAppVersionAndBuildNumber=false:版本/build 由 CI 注入。
 -->
 <plist version="1.0">
 <dict>
@@ -13,7 +14,14 @@
 	<key>teamID</key>
 	<string>62HCT6Q83X</string>
 	<key>signingStyle</key>
-	<string>automatic</string>
+	<string>manual</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.kunish.freshPantry</key>
+		<string>FreshPantry App Store</string>
+		<key>com.kunish.freshPantry.ShareExtension</key>
+		<string>FreshPantry ShareExtension App Store</string>
+	</dict>
 	<key>destination</key>
 	<string>export</string>
 	<key>uploadSymbols</key>

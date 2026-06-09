@@ -29,8 +29,15 @@ struct FreshPantryApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
-        let container = (try? ModelContainerFactory.makeShared())
-            ?? (try! ModelContainerFactory.makeInMemory())
+        // Unit tests host inside this app target (xcodegen sets TEST_HOST), so the
+        // app boots during `xcodebuild test`. Use an in-memory store under XCTest:
+        // keeps the app host from writing an on-disk `default.store` into the
+        // simulator (the harmless but noisy CoreData "Failed to stat …default.store"
+        // log) and keeps runs isolated — tests build their own containers anyway.
+        let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        let container = isRunningTests
+            ? (try! ModelContainerFactory.makeInMemory())
+            : ((try? ModelContainerFactory.makeShared()) ?? (try! ModelContainerFactory.makeInMemory()))
         self.modelContainer = container
         // Load backend config; an empty/absent Secrets.plist (the default for
         // local dev / OSS checkouts) yields nil → the app runs in local-only
