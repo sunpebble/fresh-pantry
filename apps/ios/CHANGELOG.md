@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.7.0...fresh_pantry-v1.8.0) (2026-06-10)
+
+
+### Features
+
+* **ios:** 竞品调研驱动的 15 项功能补齐 ([eb12444](https://github.com/kunish/fresh_pantry/commit/eb1244441f43b6e9a2e0968779b4803e178563d9))
+
 ## [1.7.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.6.0...fresh_pantry-v1.7.0) (2026-06-09)
 
 
