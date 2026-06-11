@@ -40,7 +40,7 @@ struct ProfileEditView: View {
                         }
                     }
                     if let errorMessage = store.errorMessage {
-                        errorBanner(errorMessage)
+                        errorBanner(errorMessage, detail: store.lastFailureDetail)
                     }
                     saveButton
                 }
@@ -142,10 +142,21 @@ struct ProfileEditView: View {
         .disabled(!canSave)
     }
 
-    private func errorBanner(_ message: String) -> some View {
-        HStack(spacing: FkSpacing.sm) {
+    private func errorBanner(_ message: String, detail: String?) -> some View {
+        HStack(alignment: .top, spacing: FkSpacing.sm) {
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Color.fkDanger)
-            Text(message).font(.fkBodySmall).foregroundStyle(Color.fkDanger)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(message).font(.fkBodySmall).foregroundStyle(Color.fkDanger)
+                // Raw cause, shown small/secondary so a failed save is diagnosable
+                // (e.g. a storage permission rejection) instead of opaque. Selectable
+                // so a tester can copy it into a report.
+                if let detail {
+                    Text(detail)
+                        .font(.fkLabelSmall)
+                        .foregroundStyle(Color.fkOnSurfaceVariant)
+                        .textSelection(.enabled)
+                }
+            }
             Spacer(minLength: 0)
         }
         .padding(FkSpacing.md)
