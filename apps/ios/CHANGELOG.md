@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.12.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.11.0...fresh_pantry-v1.12.0) (2026-06-11)
+
+
+### Features
+
+* **ios:** 会话与同步状态机闭环——登出停转 + 死信解阻 + 深链有反馈 ([8c09454](https://github.com/kunish/fresh_pantry/commit/8c09454465857fc14bf2ada3673a4c7f96a87cb9))
+* **ios:** 分享扩展失败反馈——不支持的分享先提示再关闭,不再静默吞掉 ([9ec0425](https://github.com/kunish/fresh_pantry/commit/9ec0425678a3106af7e621ad966bb8863eb2070a))
+* **ios:** 库存记账与录入闭环——批量删除去向追问 + 失败上浮 + 重试可用 ([eb90114](https://github.com/kunish/fresh_pantry/commit/eb90114ac0c4beb670212826df705042e7210d34))
+* **ios:** 数据备份闭环——补全五类数据 + 导入走同步管线不再被回滚 ([9f23062](https://github.com/kunish/fresh_pantry/commit/9f23062229c1719c72ffcb5b96e6beb4170755c2))
+* **ios:** 膳食计划闭环——完成餐衔接扣减 + 缺料口径对齐 + 可达的删除 ([0638510](https://github.com/kunish/fresh_pantry/commit/063851004e0ac0759217d624ef1ef88fa25ed5bf))
+* **ios:** 菜谱闭环——编辑后刷新 + 扣减失败可见 + 烹饪模式收尾衔接 ([6a9a5e8](https://github.com/kunish/fresh_pantry/commit/6a9a5e86d9bc19a8d08e786c5fde324c35f8c918))
+* **ios:** 设置反馈闭环——Profile 显式重试 + AI 设置 Keychain 失败不再假成功 ([334a2be](https://github.com/kunish/fresh_pantry/commit/334a2be7813f1f7b0a667404f28f241839e430bf))
+* **ios:** 购物闭环——写前重读防丢行 + 三态反馈 + 入库审核失败可见 ([e243bbc](https://github.com/kunish/fresh_pantry/commit/e243bbc976e5ea6fd72250121ba2a6baea497fcb))
+* **ios:** 通知提醒闭环——权限短路根因 + 库存变更后真重排 + 前台横幅 ([82767ca](https://github.com/kunish/fresh_pantry/commit/82767caee46a1277483077bd566db29caaf61842))
+* **ios:** 首页与统计刷新闭环——主数据随变更刷新 + 临期撤销 + 死反馈复活 ([993ba3e](https://github.com/kunish/fresh_pantry/commit/993ba3e1ff25f11982637c804823e0becea37435))
+
+
+### Bug Fixes
+
+* **ios:** 重建设置「我」卡片丢失的定义,修复主干编译断裂 ([a209558](https://github.com/kunish/fresh_pantry/commit/a2095588247a377380cdf4c70d1c821511acc03d))
+
 ## [1.11.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.10.0...fresh_pantry-v1.11.0) (2026-06-11)
 
 
