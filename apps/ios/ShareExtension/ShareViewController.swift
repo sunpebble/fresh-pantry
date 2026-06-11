@@ -1,11 +1,14 @@
 import UIKit
 import UniformTypeIdentifiers
 
-/// Silent share-extension principal class: when the user shares a 懒饭 / 下厨房
-/// recipe link (or page) into 食材管家, it extracts the URL, host-gates it, and
-/// hands it to the main app via the custom scheme `com.kunish.freshpantry://import-recipe?url=…`.
+/// Share-extension principal class: when the user shares a 懒饭 / 下厨房 recipe
+/// link (or page) into 食材管家, it extracts the URL, host-gates it, and hands it
+/// to the main app via the custom scheme `com.kunish.freshpantry://import-recipe?url=…`.
 /// The app then opens 新建食谱 pre-filled for AI import (parity with the Flutter
-/// share intent). No UI — it forwards and dismisses immediately.
+/// share intent). The success path stays UI-less — forward and dismiss
+/// immediately; an unsupported share (no URL / unknown host) raises one alert
+/// before closing, because the activation rule surfaces the entry on ANY web
+/// page or text and a silent close reads as "imported" when nothing happened.
 ///
 /// Uses a custom-scheme handoff (NOT an App Group), so the MAIN app's signing /
 /// entitlements are unchanged — only this plain extension bundle is added.
@@ -13,14 +16,40 @@ final class ShareViewController: UIViewController {
     /// Recipe hosts the importer understands (mirrors Flutter `kSupportedRecipeHosts`).
     private static let supportedHosts = ["lanfanapp.com", "xiachufang.com"]
 
+    /// `viewDidAppear` re-fires when a presented alert tears down — without this
+    /// guard the share would be re-processed (and could re-alert forever).
+    private var didHandleShare = false
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        guard !didHandleShare else { return }
+        didHandleShare = true
         Task {
-            if let url = await extractURL(), let supported = Self.supportedRecipeURL(url) {
+            let url = await extractURL()
+            if let url, let supported = Self.supportedRecipeURL(url) {
                 open(recipe: supported)
+                complete()
+            } else {
+                showUnsupportedNotice(foundURL: url != nil)
             }
-            complete()
         }
+    }
+
+    /// One-tap alert explaining why nothing will be imported, completing the
+    /// request only after dismissal (the extension's sole failure surface — it
+    /// cannot toast, and closing silently is indistinguishable from success).
+    private func showUnsupportedNotice(foundURL: Bool) {
+        let alert = UIAlertController(
+            title: "无法导入",
+            message: foundURL
+                ? "目前仅支持「懒饭」和「下厨房」的菜谱链接。"
+                : "分享内容里没有找到链接，目前仅支持「懒饭」和「下厨房」的菜谱链接。",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "知道了", style: .default) { [weak self] _ in
+            self?.complete()
+        })
+        present(alert, animated: true)
     }
 
     /// Pulls the first URL (or a URL embedded in shared text) from the input items.
