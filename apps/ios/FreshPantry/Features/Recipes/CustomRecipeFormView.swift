@@ -70,9 +70,15 @@ struct CustomRecipeFormView: View {
     @State private var clipboardDetector: ClipboardRecipeURLDetector
     @State private var coverPickerItem: PhotosPickerItem?
     @State private var coverError: String?
-    /// Per-session cover file id for a create-mode recipe (which has no id until
-    /// save). Stable for the form's lifetime so re-picks overwrite the same file.
+    /// Per-session cover file id — used for EVERY pick (create AND edit) so a
+    /// re-pick never overwrites the recipe's already-saved cover file in place
+    /// (丢弃 must leave that file intact; it's reconciled on save instead).
+    /// Stable for the form's lifetime so re-picks overwrite the same session file.
     @State private var draftCoverId = UUID().uuidString.lowercased()
+    /// A successful AI parse waiting for the user to confirm overwriting a form
+    /// that already has content (`isDirty`). nil otherwise — a parse onto a
+    /// pristine form applies immediately.
+    @State private var pendingParsedDraft: CustomRecipeDraft?
 
     init(
         recipe: Recipe? = nil,
@@ -165,7 +171,7 @@ struct CustomRecipeFormView: View {
             }
             .alert("丢弃更改", isPresented: $showDiscardConfirm) {
                 Button("继续编辑", role: .cancel) {}
-                Button("丢弃", role: .destructive) { dismiss() }
+                Button("丢弃", role: .destructive) { discardDraft() }
             } message: {
                 Text(isEditing ? "确定要丢弃对「\(recipe?.name ?? "")」的修改吗？" : "确定要丢弃当前填写的食谱吗？")
             }
@@ -174,6 +180,15 @@ struct CustomRecipeFormView: View {
                 Button("取消", role: .cancel) {}
             } message: {
                 Text(store.errorMessage ?? "保存失败，请重试")
+            }
+            .alert("覆盖已填内容", isPresented: parseOverwriteBinding) {
+                Button("取消", role: .cancel) { pendingParsedDraft = nil }
+                Button("覆盖", role: .destructive) {
+                    if let parsed = pendingParsedDraft { applyParsed(parsed) }
+                    pendingParsedDraft = nil
+                }
+            } message: {
+                Text("解析成功。表单中已填写的内容将被解析结果替换。")
             }
             .onChange(of: coverPickerItem) { _, item in
                 guard let item else { return }
@@ -758,6 +773,11 @@ struct CustomRecipeFormView: View {
         let built = draft.buildRecipe(existing: recipe)
         let ok = isEditing ? await store.update(built) : await store.add(built)
         if ok {
+            // The save replaced/removed the recipe's previously-saved cover —
+            // its file is unreferenced now (delete ignores remote URLs).
+            if let previous = recipe?.imageUrl, previous != built.imageUrl {
+                RecipeCoverStore.delete(previous)
+            }
             onSaved()
             dismiss()
         } else {
@@ -771,6 +791,16 @@ struct CustomRecipeFormView: View {
         } else {
             dismiss()
         }
+    }
+
+    /// Discards the form. A cover picked THIS session already hit the disk but
+    /// nothing will ever reference it once the draft is gone — delete it. The
+    /// recipe's previously-saved cover is untouched (the edit was discarded).
+    private func discardDraft() {
+        if let cover = draft.imageUrl, isSessionCover(cover) {
+            RecipeCoverStore.delete(cover)
+        }
+        dismiss()
     }
 
     // MARK: Clipboard auto-detect
@@ -833,15 +863,39 @@ struct CustomRecipeFormView: View {
         defer { isParsing = false }
 
         do {
-            let parsed = try await parser(raw)
-            let seeded = CustomRecipeDraft(parsed: parsed)
-            draft = seeded
-            errors = [:]
+            let parsed = CustomRecipeDraft(parsed: try await parser(raw))
+            if isDirty {
+                // Something is already filled in (typed fields / a picked cover) —
+                // ask before replacing it. A pristine form applies straight away.
+                pendingParsedDraft = parsed
+            } else {
+                applyParsed(parsed)
+            }
         } catch let error as AiError {
             importError = error.message
         } catch {
             importError = "解析失败：\(error.localizedDescription)"
         }
+    }
+
+    /// Replaces the form with the parse result via `CustomRecipeDraft.mergingParsed`
+    /// (a parse with no cover keeps the picked one), deleting the local cover file
+    /// the merge displaced so it can't be orphaned on disk.
+    private func applyParsed(_ parsed: CustomRecipeDraft) {
+        let merge = CustomRecipeDraft.mergingParsed(parsed, over: draft)
+        if let replaced = merge.replacedCover {
+            RecipeCoverStore.delete(replaced)
+        }
+        draft = merge.merged
+        errors = [:]
+    }
+
+    /// Drives the parse-overwrite confirm off the pending draft's presence.
+    private var parseOverwriteBinding: Binding<Bool> {
+        Binding(
+            get: { pendingParsedDraft != nil },
+            set: { if !$0 { pendingParsedDraft = nil } }
+        )
     }
 
     /// Builds the parser used by `parseURL` — the test override when present, else
@@ -865,9 +919,9 @@ struct CustomRecipeFormView: View {
 
     /// Loads the picked photo, downscales + persists it to disk via
     /// `RecipeCoverStore`, and sets the draft's `imageUrl` to the returned
-    /// `file://` path. Cleans up any PRIOR local cover so a 更换 doesn't orphan it.
-    /// A NEW recipe has no id yet, so the cover filename derives from a temp UUID
-    /// (`RecipeCoverStore.save` overwrites by id; the path travels in the payload).
+    /// `file://` path. Every pick writes the SESSION file (`draftCoverId` stem) —
+    /// re-picks overwrite it in place, and the recipe's previously-saved cover
+    /// file is left alone until 保存 lands (so 丢弃 can't corrupt or orphan it).
     private func handlePickedCover(_ item: PhotosPickerItem) async {
         coverError = nil
         defer { coverPickerItem = nil }
@@ -884,33 +938,29 @@ struct CustomRecipeFormView: View {
             return
         }
 
-        let previous = draft.imageUrl
         do {
-            let urlString = try await RecipeCoverStore.save(data, recipeId: coverRecipeId)
-            draft.imageUrl = urlString
-            // Best-effort cleanup of the prior LOCAL cover (a no-op for a remote URL).
-            if let previous, previous != urlString {
-                RecipeCoverStore.delete(previous)
-            }
+            draft.imageUrl = try await RecipeCoverStore.save(data, recipeId: draftCoverId)
         } catch {
             coverError = "无法处理该照片，请换一张重试。"
         }
     }
 
-    /// Clears the cover and best-effort deletes the local file when it was a
-    /// device-local pick (a no-op for a remote AI-imported URL).
+    /// Clears the cover. Only a file THIS session wrote is deleted right away;
+    /// the recipe's saved cover survives until 保存 confirms the removal (丢弃
+    /// must leave the saved recipe rendering its old cover). Remote AI URLs have
+    /// no local file either way.
     private func removeCover() {
         coverError = nil
-        if let urlString = draft.imageUrl {
+        if let urlString = draft.imageUrl, isSessionCover(urlString) {
             RecipeCoverStore.delete(urlString)
         }
         draft.imageUrl = nil
     }
 
-    /// Stable file-name stem for the cover: the recipe id when editing, else a
-    /// per-session UUID so a create-mode pick has a deterministic file.
-    private var coverRecipeId: String {
-        recipe?.id ?? draftCoverId
+    /// True when `urlString` is the cover file THIS form session wrote (the
+    /// `draftCoverId` stem) — the only file safe to delete before a save lands.
+    private func isSessionCover(_ urlString: String) -> Bool {
+        urlString.hasSuffix("/\(draftCoverId).jpg")
     }
 
     /// Scrolls to the first field with an error (anchors the basics card top,

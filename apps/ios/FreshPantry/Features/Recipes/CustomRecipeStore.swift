@@ -92,7 +92,7 @@ final class CustomRecipeStore {
     @discardableResult
     func remove(_ id: String) async -> Bool {
         var removed: Recipe?
-        return await mutate(
+        let ok = await mutate(
             persist: { current in
                 guard let match = current.first(where: { $0.id == id }) else { return nil }
                 removed = match
@@ -109,6 +109,12 @@ final class CustomRecipeStore {
                 )
             }
         )
+        // Nothing references the deleted row's cover anymore — clean up a local
+        // `file://` orphan (delete itself ignores remote AI-cover URLs).
+        if ok, let cover = removed?.imageUrl {
+            RecipeCoverStore.delete(cover)
+        }
+        return ok
     }
 
     // MARK: Mutation seam

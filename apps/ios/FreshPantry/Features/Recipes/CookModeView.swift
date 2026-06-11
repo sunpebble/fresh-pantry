@@ -46,6 +46,10 @@ struct CookModeView: View {
     /// Already scaled by the caller's 备料倍数 (`RecipeDetailView.scaledIngredients`)
     /// — Cook Mode renders amounts verbatim so scaling keeps a single source.
     let ingredients: [RecipeIngredient]
+    /// Called when the user taps 完成 on the last page (NOT the X close — that's
+    /// an abandon, this is "the dish got cooked"). Fired before `dismiss()` so
+    /// the presenter can flag follow-ups for its own onDismiss.
+    var onFinish: () -> Void = {}
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -198,6 +202,7 @@ struct CookModeView: View {
 
             if progress.isLast(stepIndex) {
                 Button {
+                    onFinish()
                     dismiss()
                 } label: {
                     HStack(spacing: FkSpacing.xs) {

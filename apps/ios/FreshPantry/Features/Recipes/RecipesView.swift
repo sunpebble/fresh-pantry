@@ -36,6 +36,10 @@ struct RecipesView: View {
     /// two parallel push mechanisms on one stack (item + bound path) interleave
     /// unpredictably when both are live.
     @State private var selectedRoute: RecipeRoute?
+    /// Transient banner copy (the standard top-toast pattern) — currently only
+    /// the Spotlight miss feedback, so a stale deep link never lands silently.
+    @State private var toast: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -93,6 +97,7 @@ struct RecipesView: View {
             // Share-Extension import: open the create form pre-filled with the
             // shared recipe URL (warm path) — and once stores exist on cold start.
             .onChange(of: importRouter.pendingURL) { _, _ in consumeImportIntent() }
+            .overlay(alignment: .top) { toastBanner }
         }
         // Rebuild both stores whenever the active household changes (login "" → uuid,
         // switch, or leave) so custom recipes re-scope to the new household rather
@@ -145,11 +150,44 @@ struct RecipesView: View {
     /// initial load (`hasLoaded`) so a cold-start intent resolves against the
     /// real corpus; consumed even when the id no longer resolves (custom recipe
     /// deleted elsewhere) so a stale intent can't re-fire on a later reload.
+    /// A miss toasts instead of landing silently — the index can lag a local
+    /// delete until the next rebuild, and "nothing happened" reads as a broken
+    /// route rather than gone data.
     private func consumePendingRecipe() {
         guard let id = pendingRecipeID, let store, store.hasLoaded else { return }
         pendingRecipeID = nil
-        guard let match = store.recipes.first(where: { $0.id == id }) else { return }
+        guard let match = store.recipes.first(where: { $0.id == id }) else {
+            withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
+                toast = "该食谱已删除"
+            }
+            return
+        }
         selectedRoute = RecipeRoute(recipe: match)
+    }
+
+    /// The standard top toast (mirrors `InventoryContent.toastBanner`).
+    @ViewBuilder
+    private var toastBanner: some View {
+        if let toast {
+            Text(toast)
+                .font(.fkLabelLarge)
+                .foregroundStyle(Color.fkOnSurface)
+                .padding(.horizontal, FkSpacing.lg)
+                .padding(.vertical, FkSpacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                        .fill(Color.fkSurfaceContainerLowest)
+                )
+                .fkCardShadow()
+                .padding(.top, FkSpacing.sm)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .task(id: toast) {
+                    try? await Task.sleep(for: .seconds(2))
+                    if !Task.isCancelled {
+                        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { self.toast = nil }
+                    }
+                }
+        }
     }
 
     /// Consumes a pending Share-Extension recipe URL: pre-fills + opens the create

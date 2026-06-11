@@ -270,6 +270,28 @@ struct CustomRecipeDraft: Equatable {
         return parts.isEmpty ? nil : parts.joined(separator: "、")
     }
 
+    // MARK: AI 解析覆盖
+
+    /// Merge applied when an AI URL parse lands on the form: the parsed draft
+    /// wins wholesale, EXCEPT a parse that found NO cover keeps the form's
+    /// already-picked one (Dart `_applyRecipeDraft` parity — the parse knows
+    /// nothing about that cover, so it must not silently drop it). Also reports
+    /// the cover the merge displaced so the caller can delete a local `file://`
+    /// orphan (`RecipeCoverStore.delete` ignores remote URLs itself).
+    static func mergingParsed(
+        _ parsed: CustomRecipeDraft,
+        over current: CustomRecipeDraft
+    ) -> (merged: CustomRecipeDraft, replacedCover: String?) {
+        var merged = parsed
+        if merged.imageUrl == nil {
+            merged.imageUrl = current.imageUrl
+        }
+        let replaced = current.imageUrl != nil && current.imageUrl != merged.imageUrl
+            ? current.imageUrl
+            : nil
+        return (merged, replaced)
+    }
+
     // MARK: Build
 
     /// Builds the persisted `Recipe`. A NEW recipe (`existing == nil`) gets a

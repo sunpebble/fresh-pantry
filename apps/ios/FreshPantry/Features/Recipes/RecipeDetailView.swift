@@ -6,14 +6,36 @@ import SwiftUI
 /// opens the cook-time deduction review (the only inventory-mutating affordance
 /// here — built additively on top of the browse-only screen).
 struct RecipeDetailView: View {
-    let recipe: Recipe
+    /// The recipe as pushed — a frozen navigation value. Rendering goes through
+    /// the live `recipe` below so an edit save refreshes this screen in place.
+    private let initialRecipe: Recipe
     let store: RecipesStore
     /// CRUD owner for custom recipes — drives the edit form + delete. nil-safe:
     /// the edit/delete affordances only render when `isCustom` is true.
-    var customStore: CustomRecipeStore?
+    let customStore: CustomRecipeStore?
     /// Whether this recipe is a user-authored custom one (vs a bundled corpus
     /// recipe). When true, the toolbar surfaces 编辑 + 删除.
-    var isCustom: Bool = false
+    let isCustom: Bool
+
+    init(
+        recipe: Recipe,
+        store: RecipesStore,
+        customStore: CustomRecipeStore? = nil,
+        isCustom: Bool = false
+    ) {
+        self.initialRecipe = recipe
+        self.store = store
+        self.customStore = customStore
+        self.isCustom = isCustom
+    }
+
+    /// Live render source: the custom store's CURRENT row when one matches (the
+    /// store re-publishes after an edit save, so the detail — and a re-opened
+    /// edit form — always shows the saved values, never the pushed-in snapshot),
+    /// else the pushed value (bundled recipes / no custom store).
+    private var recipe: Recipe {
+        customStore?.recipes.first { $0.id == initialRecipe.id } ?? initialRecipe
+    }
 
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.dismiss) private var dismiss
@@ -38,6 +60,10 @@ struct RecipeDetailView: View {
     @State private var scaleFactor: Double = 1
     /// Lazily-built meal-plan store for "加入膳食计划".
     @State private var mealPlanStore: MealPlanStore?
+    /// The household the lazily-built stores were scoped to — they are dropped
+    /// and rebuilt when it changes (login/switch/leave must not write old scope;
+    /// mirrors `MealPlanView`'s scope sentinel).
+    @State private var storeScope: String?
     @State private var showPlanPicker = false
     @State private var toast: String?
     /// Cook Mode (full-screen step pager) presentation.
@@ -48,6 +74,13 @@ struct RecipeDetailView: View {
     @State private var leftoverPromptPending = false
     @State private var showLeftoverPrompt = false
     @State private var showLeftoverSheet = false
+    /// Cook Mode 完成 follow-up: set when the pager's 完成 (vs its X close) was
+    /// tapped, consumed on the cover's onDismiss to offer the cook deduction —
+    /// the same deferred-prompt timing as `leftoverPromptPending`. The offer only
+    /// OPENS the review (the user still confirms there), so it can never deduct
+    /// on its own — no double deduction with the 做菜 CTA.
+    @State private var cookDeductPromptPending = false
+    @State private var showCookDeductPrompt = false
 
     /// The 备料倍数 presets (mirrors the Dart `_scalePresets`).
     private static let scalePresets: [Double] = [0.5, 1, 2, 3]
@@ -114,7 +147,14 @@ struct RecipeDetailView: View {
         }
         .sheet(isPresented: $showEditForm) {
             if let customStore {
-                CustomRecipeFormView(recipe: recipe, store: customStore)
+                // `recipe` is the LIVE row, so a second edit seeds from the saved
+                // values; onSaved refreshes the browse list (the custom store
+                // already reloaded itself inside `update`).
+                CustomRecipeFormView(
+                    recipe: recipe,
+                    store: customStore,
+                    onSaved: { Task { await store.load() } }
+                )
             }
         }
         .confirmationDialog(
@@ -144,10 +184,11 @@ struct RecipeDetailView: View {
         }) { session in
             NavigationStack {
                 DeductionReviewView(proposals: session.proposals) {
-                    // Apply succeeded; the inventory/dashboard reload on their own
-                    // `.task`/refresh. Flag the leftover follow-up — the prompt
-                    // itself waits for this sheet's onDismiss.
+                    // Apply succeeded. Flag the leftover follow-up (the prompt
+                    // itself waits for this sheet's onDismiss) and re-sync the
+                    // inventory-derived UI with the stock that just changed.
                     leftoverPromptPending = true
+                    Task { await refreshInventoryContext() }
                 }
             }
         }
@@ -166,6 +207,9 @@ struct RecipeDetailView: View {
                 withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
                     toast = "已把「\(savedName)」存入库存"
                 }
+                // The leftover row just landed in inventory — re-sync the
+                // match pills + list ranking the same way a deduction does.
+                Task { await refreshInventoryContext() }
             }
         }
         .sheet(isPresented: $showPlanPicker) {
@@ -173,33 +217,71 @@ struct RecipeDetailView: View {
                 await addToPlan(on: day)
             }
         }
-        .fullScreenCover(isPresented: $showCookMode) {
+        .fullScreenCover(isPresented: $showCookMode, onDismiss: {
+            // Offer the cook deduction only AFTER the cover fully dismissed
+            // (mirrors the leftover prompt's deferred timing above).
+            if cookDeductPromptPending {
+                cookDeductPromptPending = false
+                showCookDeductPrompt = true
+            }
+        }) {
             // Pass the SCALED ingredients so the 食材速查 sheet matches the
             // active 备料倍数 (single scaling source: `scaledIngredients`).
-            CookModeView(title: recipe.name, steps: recipe.steps, ingredients: scaledIngredients)
+            CookModeView(title: recipe.name, steps: recipe.steps, ingredients: scaledIngredients) {
+                // 完成 (vs the X close): the dish got cooked — reflect it in the
+                // step checklist and queue the deduction offer.
+                checkedSteps = Set(recipe.steps.indices)
+                cookDeductPromptPending = true
+            }
+        }
+        .confirmationDialog(
+            "做完了，要扣减库存吗？",
+            isPresented: $showCookDeductPrompt,
+            titleVisibility: .visible
+        ) {
+            Button("去扣减") { Task { await presentCook() } }
+            Button("暂不", role: .cancel) {}
+        } message: {
+            Text("打开扣减审核,确认前可调整或跳过任意食材。")
         }
         .overlay(alignment: .top) { toastBanner }
-        .task {
+        .task(id: dependencies.householdID) {
+            // Snapshot the scope this task instance serves: after any await the
+            // household may have switched and a successor task (re-keyed by
+            // `.task(id:)`) owns the NEW scope — assigning our stale results
+            // would clobber its stores/names with the prior household's data.
+            let householdID = dependencies.householdID
+            // Household switch while this detail stays pushed: drop the lazily-
+            // built stores so 加购/加入计划 rebuild against the new scope instead
+            // of writing into the prior household's lists.
+            if storeScope != householdID {
+                shoppingStore = nil
+                mealPlanStore = nil
+                storeScope = householdID
+            }
             // Load inventory names (ingredient availability highlight + 加购缺料)
-            // and build the shopping store once.
-            let inventory = (try? await dependencies.inventoryRepository.loadAllFor(dependencies.householdID)) ?? []
+            // and build the shopping store once per scope.
+            let inventory = (try? await dependencies.inventoryRepository.loadAllFor(householdID)) ?? []
+            guard dependencies.householdID == householdID else { return }
             inventoryNames = RecipeMatching.inventoryNameSet(inventory)
             if shoppingStore == nil {
                 let shopping = ShoppingStore(
                     repository: dependencies.shoppingRepository,
-                    householdID: dependencies.householdID,
+                    householdID: householdID,
                     syncWriter: dependencies.syncWriter
                 )
                 await shopping.load()
+                guard dependencies.householdID == householdID else { return }
                 shoppingStore = shopping
             }
             if mealPlanStore == nil {
                 let plan = MealPlanStore(
                     repository: dependencies.mealPlanRepository,
-                    householdID: dependencies.householdID,
+                    householdID: householdID,
                     syncWriter: dependencies.syncWriter
                 )
                 await plan.load()
+                guard dependencies.householdID == householdID else { return }
                 mealPlanStore = plan
             }
             // Snapshot affordance: `-initialRoute cook` opens the deduction review
@@ -280,6 +362,16 @@ struct RecipeDetailView: View {
         // Deduct the scaled amounts so 备料倍数 carries through to the cook flow.
         let scaled = scaleFactor == 1 ? recipe : recipe.copyWith(ingredients: scaledIngredients)
         cookSession = CookSession(proposals: DeductionProposalFactory.forRecipe(scaled, inventory))
+    }
+
+    /// Re-reads the live inventory after a cook deduction / leftover save so the
+    /// 已有/缺少 pills, the 一键加购 set, and the browse list's match ranking all
+    /// reflect the stock that was just mutated (this screen's `.task` ran once on
+    /// push and the list's `.task` doesn't re-run on a sheet dismiss or pop).
+    private func refreshInventoryContext() async {
+        let inventory = (try? await dependencies.inventoryRepository.loadAllFor(dependencies.householdID)) ?? []
+        inventoryNames = RecipeMatching.inventoryNameSet(inventory)
+        await store.load()
     }
 
     /// Honors a `-initialRoute cook` launch argument (UI snapshots / tests).
@@ -487,12 +579,22 @@ struct RecipeDetailView: View {
         isAddingMissing = true
         defer { isAddingMissing = false }
         var added = 0
+        var failed = 0
         for ingredient in missingIngredients {
             let category = FoodKnowledge.lookup(ingredient.name)?.category
-            if await shoppingStore.add(name: ingredient.name, category: category) { added += 1 }
+            switch await shoppingStore.addItem(name: ingredient.name, category: category) {
+            case .added: added += 1
+            case .duplicate: break // already on the list — the goal is met
+            case .failed: failed += 1
+            }
         }
         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-            toast = added > 0 ? "已添加 \(added) 项到购物清单" : "缺少的食材已在购物清单中"
+            // A write failure must never read as「已在购物清单中」— nothing landed.
+            if failed > 0 {
+                toast = added > 0 ? "已添加 \(added) 项，部分添加失败，请重试" : "添加失败，请重试"
+            } else {
+                toast = added > 0 ? "已添加 \(added) 项到购物清单" : "缺少的食材已在购物清单中"
+            }
         }
     }
 
@@ -515,7 +617,9 @@ struct RecipeDetailView: View {
     private var stepsSection: some View {
         if !recipe.steps.isEmpty {
             let total = recipe.steps.count
-            let done = checkedSteps.count
+            // Clamped: an edit save can shrink the live step list below the
+            // already-checked count (the checklist is per-push local state).
+            let done = min(checkedSteps.count, total)
             VStack(alignment: .leading, spacing: FkSpacing.sm) {
                 HStack {
                     FkSectionHeader(title: "烹饪步骤", count: total)

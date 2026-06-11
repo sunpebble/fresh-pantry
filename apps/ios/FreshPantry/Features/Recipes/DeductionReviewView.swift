@@ -17,6 +17,9 @@ struct DeductionReviewView: View {
 
     @State private var store: DeductionReviewStore?
     @State private var isConfirming = false
+    /// Inline apply-failure notice (mirrors `LeftoverIntakeSheet.saveError`) —
+    /// the sheet stays open for retry, never closing as if it deducted.
+    @State private var applyError: String?
 
     var body: some View {
         Group {
@@ -74,10 +77,24 @@ struct DeductionReviewView: View {
                     }
                     .padding(FkSpacing.lg)
                 }
+                if let applyError {
+                    applyErrorNotice(applyError)
+                }
                 bottomBar(store)
             }
         }
         .background(Color.fkSurface)
+    }
+
+    /// Inline persist-failure row pinned above the confirm bar.
+    private func applyErrorNotice(_ message: String) -> some View {
+        Label(message, systemImage: "exclamationmark.circle")
+            .font(.fkBodySmall)
+            .foregroundStyle(Color.fkDanger)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, FkSpacing.lg)
+            .padding(.vertical, FkSpacing.sm)
+            .background(Color.fkDangerSoft)
     }
 
     /// Shown above the rows when every recipe ingredient is 缺货 — the screen still
@@ -142,10 +159,15 @@ struct DeductionReviewView: View {
         guard !isConfirming, store.canConfirm else { return }
         isConfirming = true
         defer { isConfirming = false }
+        applyError = nil
         let outcome = await store.apply()
         if outcome.persisted {
             onApplied()
             dismiss()
+        } else {
+            // `DeductionController` contract: a failed apply mutated nothing —
+            // surface it and keep the sheet open so 确认 can be retried.
+            applyError = "扣减失败，请重试。"
         }
     }
 }
