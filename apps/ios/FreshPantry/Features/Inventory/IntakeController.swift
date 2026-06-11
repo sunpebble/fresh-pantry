@@ -32,8 +32,10 @@ final class IntakeController {
         /// Proposals that actually applied (their ids), so the shopping flow can
         /// remove only the source rows that entered inventory.
         var appliedIds: Set<String>
-        /// Inventory rows newly created by this apply (merges excluded) — drives
-        /// the "已入库 N 项" feedback and was recorded in the frequency memory.
+        /// Inventory rows newly created by this apply (merges excluded). The
+        /// controller already recorded each one in the add-history frequency
+        /// memory; kept on the outcome for tests/inspection — note the
+        /// "已入库 N 项" feedback counts `appliedIds`, not this.
         var addedItems: [Ingredient]
         /// Whether the apply persisted successfully. `false` leaves inventory
         /// untouched (the save threw); the caller should surface a retry.

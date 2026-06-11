@@ -145,8 +145,11 @@ struct ReceiptImportView: View {
     /// photo → downscale → on-device OCR → feed recognized text into the SAME
     /// `PasteImportStore` text parse the "AI 解析文本" flow uses → push review.
     /// Failures (photo load / OCR) surface inline via `ocrError`; AI-parse failures
-    /// surface via the shared `store.errorMessage`.
+    /// surface via the shared `store.errorMessage`. Resets the picker selection at
+    /// the end (success OR failure) so the SAME receipt can be re-picked after a
+    /// retry — an identical pick never re-fires `onChange`.
     private func handlePicked(_ item: PhotosPickerItem) async {
+        defer { pickedItem = nil }
         guard let store, !isBusy else { return }
         ocrError = nil
 

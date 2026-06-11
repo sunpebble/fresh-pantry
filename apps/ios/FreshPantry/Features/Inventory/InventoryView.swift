@@ -19,11 +19,15 @@ struct InventoryView: View {
     @Binding var pendingIngredientID: String?
 
     @Environment(AppDependencies.self) private var dependencies
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var store: InventoryStore?
     @State private var shoppingStore: ShoppingStore?
     /// Detail push target — owned here (vs `InventoryContent`) so the Spotlight
     /// deep link drives the same `navigationDestination` as a row tap.
     @State private var selectedIngredient: Ingredient?
+    /// Transient banner copy — owned here (vs `InventoryContent`) so the
+    /// Spotlight miss feedback shares the content's toast surface.
+    @State private var toast: String?
 
     var body: some View {
         NavigationStack {
@@ -32,7 +36,8 @@ struct InventoryView: View {
                     InventoryContent(
                         store: store,
                         shoppingStore: shoppingStore,
-                        selectedIngredient: $selectedIngredient
+                        selectedIngredient: $selectedIngredient,
+                        toast: $toast
                     )
                 } else {
                     ProgressView()
@@ -104,10 +109,18 @@ struct InventoryView: View {
     /// Waits for the initial load (`hasLoaded`) so a cold-start intent resolves
     /// against real rows; the intent is consumed even when the row no longer
     /// exists (deleted on another device) so a stale id can't re-fire later.
+    /// A miss toasts instead of landing silently — the index can lag a local
+    /// delete until the next rebuild, and "nothing happened" reads as a broken
+    /// route rather than gone data.
     private func consumePendingIngredient() {
         guard let id = pendingIngredientID, let store, store.hasLoaded else { return }
         pendingIngredientID = nil
-        guard let match = store.items.first(where: { $0.id == id }) else { return }
+        guard let match = store.items.first(where: { $0.id == id }) else {
+            withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
+                toast = "该食材已不在库存"
+            }
+            return
+        }
         selectedIngredient = match
     }
 
@@ -129,6 +142,9 @@ private struct InventoryContent: View {
     /// Owned by `InventoryView` so the Spotlight deep link can push the same
     /// detail destination a row tap does.
     @Binding var selectedIngredient: Ingredient?
+    /// Owned by `InventoryView` so the Spotlight miss feedback shares this
+    /// content's toast surface (the only banner host on the tab).
+    @Binding var toast: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(AppDependencies.self) private var dependencies
     /// Shared per-row sync-status set (injected at the tab root). Optional so a
@@ -137,7 +153,6 @@ private struct InventoryContent: View {
     @Environment(PendingSyncStatusStore.self) private var pendingSync: PendingSyncStatusStore?
 
     @State private var showClearConfirm = false
-    @State private var toast: String?
     /// Multi-select mode (long-press to enter): the selected rows' identity keys.
     @State private var isSelecting = false
     @State private var selectedKeys: Set<String> = []
@@ -198,19 +213,21 @@ private struct InventoryContent: View {
             }
             Button("取消", role: .cancel) {}
         } message: {
-            Text("将删除全部 \(store.items.count) 件食材，此操作无法撤销。")
+            Text("将删除全部 \(store.items.count) 件食材，不计入减废统计，此操作无法撤销。")
         }
+        // 去向追问 (aligned with the single-delete sheet): one choice applied to
+        // every selected row, so the batch path feeds the waste stats too.
         .confirmationDialog(
-            "删除所选食材",
+            "移除所选 \(selectedKeys.count) 件食材",
             isPresented: $showBatchDeleteConfirm,
             titleVisibility: .visible
         ) {
-            Button("删除 \(selectedKeys.count) 件", role: .destructive) {
-                Task { await batchDelete() }
-            }
+            Button("全部吃完 / 用掉了") { Task { await batchDelete(outcome: .consumed) } }
+            Button("全部没吃完,扔了") { Task { await batchDelete(outcome: .wasted) } }
+            Button("仅移除") { Task { await batchDelete(outcome: nil) } }
             Button("取消", role: .cancel) {}
         } message: {
-            Text("将删除所选 \(selectedKeys.count) 件食材，可在删除后撤销。")
+            Text("它们怎么了?用于统计你的减废成效。删除后可撤销。")
         }
     }
 
@@ -309,18 +326,28 @@ private struct InventoryContent: View {
     }
 
     /// Bottom "已删除 N 项 · 撤销" banner after a batch delete (5s auto-dismiss).
+    /// "已记录" when a去向 was chosen (departures were logged), so the feedback
+    /// confirms the waste-stats write — mirrors the single-delete banner copy.
     @ViewBuilder
     private var undoBanner: some View {
         if let undo = batchUndo {
+            let logged = undo.removed.contains { !$0.loggedEntryId.isEmpty }
             HStack(spacing: FkSpacing.md) {
-                Text("已删除 \(undo.removed.count) 项")
+                Text(logged ? "已记录并删除 \(undo.removed.count) 项" : "已删除 \(undo.removed.count) 项")
                     .font(.fkLabelLarge)
                     .foregroundStyle(Color.fkOnSurface)
                 Spacer(minLength: 0)
                 Button("撤销") {
                     Task {
-                        await store.undoBatchRemoval(undo)
-                        batchUndo = nil
+                        if await store.undoBatchRemoval(undo) {
+                            batchUndo = nil
+                        } else {
+                            // The restore didn't persist (rows NOT back, the
+                            // departures NOT reversed): keep the handle so 撤销
+                            // stays retryable, and say so instead of silently
+                            // dropping the banner.
+                            withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { toast = "撤销失败，请重试" }
+                        }
                     }
                 }
                 .font(.fkLabelLarge)
@@ -374,14 +401,26 @@ private struct InventoryContent: View {
         }
     }
 
-    private func batchDelete() async {
+    /// Batch delete with the chosen去向: an outcome logs one departure per row
+    /// (the waste-stats input); nil is the plain 仅移除 (no log). The undo banner
+    /// reverses both sides either way. A nil handle for a non-empty selection
+    /// means the persist threw (rows untouched, nothing logged) — keep the
+    /// multi-select state for a one-tap retry and surface the failure, because
+    /// a silent exit reads as a successful delete.
+    private func batchDelete(outcome: FoodLogOutcome?) async {
         guard !isBatchWorking else { return }
         isBatchWorking = true
         defer { isBatchWorking = false }
-        let undo = await store.deleteMany(selectedItems)
-        exitSelection()
+        let targets = selectedItems
+        let undo = await store.deleteMany(targets, outcome: outcome)
         if let undo {
+            exitSelection()
             withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { batchUndo = undo }
+        } else if targets.isEmpty {
+            // Stale selection resolved to no live rows — nothing to delete.
+            exitSelection()
+        } else {
+            withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { toast = "删除失败，请重试" }
         }
     }
 

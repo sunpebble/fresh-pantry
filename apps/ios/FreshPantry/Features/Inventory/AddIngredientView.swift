@@ -46,6 +46,11 @@ struct AddIngredientView: View {
     /// Inline notice under the shelf-life field after an expiry scan — a success
     /// hint or a "未识别到日期，请手动填写" failure. Never silent, never auto-filled.
     @State private var expiryScanNotice: ExpiryScanNotice?
+    /// Inline failure notice for the submit path — the inventory load or the
+    /// apply/persist threw. The sheet stays open with the form intact so a retry
+    /// is one tap away (the `IntakeController` contract: the caller surfaces the
+    /// retry). Cleared when the next submit starts.
+    @State private var submitError: String?
     @FocusState private var nameFocused: Bool
 
     /// Barcode-memory is a convenience cache, never a data path: failures here
@@ -64,6 +69,11 @@ struct AddIngredientView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: FkSpacing.lg) {
+                    if let submitError {
+                        // 失败留在本屏可重试：库存一行没进、表单原样保留，不提示的
+                        // 话只会看到按钮闪回「添加」（mirrors IntakeReviewView）。
+                        FkSubmitErrorNotice(message: submitError)
+                    }
                     pasteImportButton
                     imageImportButton
                     receiptImportButton
@@ -627,9 +637,19 @@ struct AddIngredientView: View {
         nameFocused = false
         form.applySmartDefaults()
         isSubmitting = true
+        submitError = nil
         defer { isSubmitting = false }
 
-        let inventory = (try? await dependencies.inventoryRepository.loadAllFor(dependencies.householdID)) ?? []
+        // The live inventory decides merge-vs-new-batch. A load failure must NOT
+        // degrade to an empty inventory — that would force `.newRow` and silently
+        // bypass the merge review — so the submit stops here with a retry notice.
+        let inventory: [Ingredient]
+        do {
+            inventory = try await dependencies.inventoryRepository.loadAllFor(dependencies.householdID)
+        } catch {
+            submitError = AddSubmitFeedback.loadFailureMessage
+            return
+        }
         let proposal = form.buildProposal(inventory: inventory)
 
         // A new batch applies directly (fast manual path); a merge routes through
@@ -644,7 +664,50 @@ struct AddIngredientView: View {
             await learnScannedBarcode()
             onApplied()
             dismiss()
+        } else {
+            // The save threw → nothing was written (controller contract). Keep
+            // the sheet open with an inline retry notice, never a silent no-op.
+            submitError = AddSubmitFeedback.applyFailureMessage(for: outcome)
         }
+    }
+}
+
+/// Pure failure-copy mapping for the manual add's submit path, kept out of the
+/// view so the branch is unit-testable (a real in-memory repository can't be
+/// made to throw on demand). Mirrors `IntakeReviewStore.applyErrorMessage`.
+@MainActor
+enum AddSubmitFeedback {
+    /// The live-inventory load threw BEFORE the proposal was built. Degrading to
+    /// an empty inventory would force `.newRow` and silently bypass the merge
+    /// review, so the submit fails loudly instead of guessing.
+    static let loadFailureMessage = "读取库存失败，请重试。"
+
+    /// The apply didn't persist (the save threw; nothing was written). Same copy
+    /// as the review screen so the retry hint reads identically on both paths.
+    static func applyFailureMessage(for outcome: IntakeController.ApplyOutcome) -> String? {
+        outcome.persisted ? nil : "入库失败，请重试"
+    }
+}
+
+/// Danger-tinted inline notice for a failed submit (inventory load / persist
+/// threw). Mirrors the styling of `FkBarcodeNotice` / `FkExpiryScanNotice`.
+private struct FkSubmitErrorNotice: View {
+    let message: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: FkSpacing.sm) {
+            Image(systemName: "exclamationmark.triangle")
+                .foregroundStyle(Color.fkDanger)
+            Text(message)
+                .font(.fkBodyMedium)
+                .foregroundStyle(Color.fkOnSurface)
+            Spacer(minLength: 0)
+        }
+        .padding(FkSpacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: FkRadius.md, style: .continuous)
+                .fill(Color.fkDangerSoft)
+        )
     }
 }
 

@@ -137,7 +137,12 @@ struct ImageImportView: View {
 
     // MARK: Actions
 
+    /// Loads the picked photo, downscales it off-main, and runs the AI vision
+    /// parse → review push. Resets the picker selection at the end (success OR
+    /// failure) so the SAME photo can be re-picked after a retry — an identical
+    /// pick never re-fires `onChange` (mirrors the add form's expiry-photo picker).
     private func handlePicked(_ item: PhotosPickerItem) async {
+        defer { pickedItem = nil }
         guard let store else { return }
         loadError = nil
 

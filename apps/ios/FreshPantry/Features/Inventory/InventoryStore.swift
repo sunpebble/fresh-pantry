@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Feature store for the Inventory slice — the reusable `@Observable @MainActor`
 /// template later features copy.
@@ -24,9 +25,12 @@ final class InventoryStore {
         case category(String)
     }
 
+    private static let logger = Logger(subsystem: "com.kunish.freshPantry", category: "food-log")
+
     private let repository: InventoryRepository
     /// Append-only food-departure log — the waste-stats source of truth. A manual
-    /// removal-with-outcome appends one entry here (the ONLY non-cook log path).
+    /// removal-with-outcome (single `remove` or batch `deleteMany`) appends one
+    /// entry per row here (the ONLY non-cook log paths).
     private let foodLogRepository: FoodLogRepository
     private let householdID: String
     /// Optional outbox seam — nil keeps existing tests/previews local-only.
@@ -108,15 +112,27 @@ final class InventoryStore {
         let loggedEntryId: String
     }
 
+    /// Outcome of a removal-with-outcome attempt, distinguishing the two
+    /// non-success cases so callers can react differently: a `.notFound` row
+    /// self-heals on the next reload (silent), while `.failed` means the persist
+    /// threw — the row is still there and nothing was logged, so the caller
+    /// should surface a retry rather than read it as "already gone".
+    enum RemoveResult: Sendable {
+        case removed(RemovalUndo)
+        case notFound
+        case failed
+    }
+
     /// Removes a row AND appends a matching `FoodLogEntry` for the chosen outcome
     /// (吃完了 → `.consumed`, 扔掉了/过期 → `.wasted`). This is the manual-removal
     /// waste-stats input — the cook flow logs its own consumed departures, so a
     /// row is never double-logged. `wasExpiring` snapshots whether the batch was
-    /// already past fresh. Returns a `RemovalUndo` (nil if no row matched) so the
-    /// caller can reverse both sides.
+    /// already past fresh. Returns `.removed` with the undo handle (so the caller
+    /// can reverse both sides), `.notFound` when no row matched, or `.failed`
+    /// when the persist threw (row intact, nothing logged or enqueued).
     @discardableResult
-    func remove(_ target: Ingredient, outcome: FoodLogOutcome, now: Date = Date()) async -> RemovalUndo? {
-        guard let index = indexOf(target) else { return nil }
+    func removeWithResult(_ target: Ingredient, outcome: FoodLogOutcome, now: Date = Date()) async -> RemoveResult {
+        guard let index = indexOf(target) else { return .notFound }
         let removed = items[index]
         var survivors = items
         survivors.remove(at: index)
@@ -124,10 +140,32 @@ final class InventoryStore {
             try await repository.saveItems(householdID, survivors)
             items = survivors
         } catch {
-            return nil
+            return .failed
         }
 
         // Log AFTER the inventory save lands (mirrors the cook flow's ordering).
+        let loggedEntryId = await logDeparture(for: removed, outcome: outcome, now: now)
+        await enqueueDelete(removed)
+        return .removed(RemovalUndo(ingredient: removed, originalIndex: index, loggedEntryId: loggedEntryId))
+    }
+
+    /// Compatibility shim over `removeWithResult` for callers that don't
+    /// distinguish the failure modes (both non-success cases collapse to nil).
+    @discardableResult
+    func remove(_ target: Ingredient, outcome: FoodLogOutcome, now: Date = Date()) async -> RemovalUndo? {
+        guard case let .removed(undo) = await removeWithResult(target, outcome: outcome, now: now) else {
+            return nil
+        }
+        return undo
+    }
+
+    /// Appends the departure log for a removed row and enqueues it as a sync
+    /// `.create`. A local append failure is logged — never silently swallowed —
+    /// but the remote enqueue and returned id are kept: the remote create is the
+    /// rescue channel (the entry pulls back into the local log on the next sync
+    /// cycle), and an undo's point-delete of a missing local row is a harmless
+    /// no-op.
+    private func logDeparture(for removed: Ingredient, outcome: FoodLogOutcome, now: Date) async -> String {
         let entry = FoodLogEntry(
             id: FoodLogEntry.newId(),
             name: removed.name,
@@ -136,7 +174,11 @@ final class InventoryStore {
             loggedAt: now,
             wasExpiring: removed.state != .fresh
         )
-        try? await foodLogRepository.append(householdID, entry)
+        do {
+            try await foodLogRepository.append(householdID, entry)
+        } catch {
+            Self.logger.error("FoodLog append failed for removal: \(error.localizedDescription, privacy: .public)")
+        }
         // FoodLog now syncs to the household: enqueue the departure as a create.
         if let patch = DomainJSON.valueMap(entry) {
             await syncWriter?.enqueue(
@@ -147,8 +189,7 @@ final class InventoryStore {
                 baseVersion: entry.remoteVersion
             )
         }
-        await enqueueDelete(removed)
-        return RemovalUndo(ingredient: removed, originalIndex: index, loggedEntryId: entry.id)
+        return entry.id
     }
 
     /// Reverses a removal-with-outcome: re-inserts the row at its original index
@@ -277,6 +318,9 @@ final class InventoryStore {
     struct RemovedRow: Sendable {
         let index: Int
         let ingredient: Ingredient
+        /// The logged departure's id, to point-delete on undo. Empty when the
+        /// batch was a plain delete (no outcome chosen → nothing logged).
+        var loggedEntryId: String = ""
     }
 
     /// Undo handle for a batch delete — the removed rows in ascending index order.
@@ -289,13 +333,19 @@ final class InventoryStore {
 
     /// Removes every `targets` row at once (the multi-select 批量删除). Resolves
     /// each to its live index by stable identity, removes optimistically, and
-    /// enqueues a soft-delete per row. Plain delete (no food-log — mirrors the
-    /// single `delete`). Returns an undo handle, or nil when nothing matched.
+    /// enqueues a soft-delete per row. With an `outcome` (the batch去向追问 —
+    /// one choice applied to every row) it appends a `FoodLogEntry` per row,
+    /// mirroring the single `remove`; nil keeps the plain delete (仅移除, mirrors
+    /// the single `delete`). Returns an undo handle, or nil when nothing matched.
     @discardableResult
-    func deleteMany(_ targets: [Ingredient]) async -> BatchRemovalUndo? {
+    func deleteMany(
+        _ targets: [Ingredient],
+        outcome: FoodLogOutcome? = nil,
+        now: Date = Date()
+    ) async -> BatchRemovalUndo? {
         let ascending = Set(targets.compactMap { indexOf($0) }).sorted()
         guard !ascending.isEmpty else { return nil }
-        let removedRows = ascending.map { RemovedRow(index: $0, ingredient: items[$0]) }
+        var removedRows = ascending.map { RemovedRow(index: $0, ingredient: items[$0]) }
         var survivors = items
         for index in ascending.reversed() { survivors.remove(at: index) }
         do {
@@ -304,13 +354,24 @@ final class InventoryStore {
         } catch {
             return nil
         }
+        // Log AFTER the inventory save lands (mirrors `remove`'s ordering): one
+        // departure per row, each id captured so the batch undo reverses the log.
+        if let outcome {
+            for rowIndex in removedRows.indices {
+                removedRows[rowIndex].loggedEntryId = await logDeparture(
+                    for: removedRows[rowIndex].ingredient, outcome: outcome, now: now
+                )
+            }
+        }
         for row in removedRows { await enqueueDelete(row.ingredient) }
         return BatchRemovalUndo(removed: removedRows)
     }
 
     /// Reverses a batch delete: re-inserts each removed row at its original index
-    /// (ascending) and re-asserts it remotely via `.update` (clearing the
-    /// soft-delete). Returns whether the rows were restored.
+    /// (ascending), point-deletes any logged departure (local + remote soft
+    /// delete, mirrors `undoRemove`), and re-asserts the row remotely via
+    /// `.update` (clearing the soft-delete). Returns whether the rows were
+    /// restored.
     @discardableResult
     func undoBatchRemoval(_ undo: BatchRemovalUndo) async -> Bool {
         var restored = items
@@ -325,6 +386,16 @@ final class InventoryStore {
             return false
         }
         for row in undo.removed {
+            if !row.loggedEntryId.isEmpty {
+                try? await foodLogRepository.deleteEntry(householdID, row.loggedEntryId)
+                await syncWriter?.enqueue(
+                    entityType: .foodLogEntry,
+                    entityId: row.loggedEntryId,
+                    operation: .delete,
+                    patch: [:],
+                    baseVersion: nil
+                )
+            }
             await enqueueUpdate(row.ingredient, baseVersion: row.ingredient.remoteVersion)
         }
         return true

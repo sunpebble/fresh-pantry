@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Persistence layer over the pure `ProposalApply` deduction decision logic — the
 /// `@MainActor` seam between the DeductionReview UI ("做菜" cook flow) and the
@@ -13,6 +14,8 @@ import Foundation
 /// means they stay testable without SwiftData.
 @MainActor
 final class DeductionController {
+    private static let logger = Logger(subsystem: "com.kunish.freshPantry", category: "food-log")
+
     private let inventoryRepository: InventoryRepository
     private let foodLogRepository: FoodLogRepository
     private let householdID: String
@@ -59,7 +62,8 @@ final class DeductionController {
     /// no silent partial write. The food-log append happens only AFTER the
     /// inventory save lands (mirrors Flutter's `_logDeparture` ordering); a
     /// food-log write failure does not roll back the already-committed inventory
-    /// reduction (best-effort, parity with the local-only food-log staging).
+    /// reduction — it's logged for diagnosis, and the entry still syncs remotely
+    /// (a household pull brings it back into the local log).
     func apply(_ proposals: [DeductionProposal], now: Date = Date()) async -> ApplyOutcome {
         let inventory: [Ingredient]
         do {
@@ -96,7 +100,15 @@ final class DeductionController {
                 loggedAt: now,
                 wasExpiring: departure.state != .fresh
             )
-            try? await foodLogRepository.append(householdID, entry)
+            do {
+                try await foodLogRepository.append(householdID, entry)
+            } catch {
+                // Rare SwiftData write failure: leave a diagnostic trail (never
+                // silently swallow) but keep the entry in `loggedEntries` — the
+                // remote create below is the rescue channel (the entry pulls back
+                // into the local log on the next sync cycle).
+                Self.logger.error("FoodLog append failed for cook departure: \(error.localizedDescription, privacy: .public)")
+            }
             loggedEntries.append(entry)
         }
 
