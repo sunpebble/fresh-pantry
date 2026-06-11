@@ -9,7 +9,11 @@ alter table public.profiles
 -- Extend list_household_members to carry profile display fields. It is
 -- security definer and already left-joins profiles, so members see each other's
 -- display_name/nickname/avatar_path WITHOUT widening the profiles select RLS.
-create or replace function public.list_household_members(target_household_id uuid)
+-- DROP first: CREATE OR REPLACE cannot change a function's RETURNS TABLE shape
+-- (adding columns is an OUT-parameter signature change → "cannot change return
+-- type of existing function"), so the prior 4-column definition is dropped first.
+drop function if exists public.list_household_members(uuid);
+create function public.list_household_members(target_household_id uuid)
 returns table (
   household_id uuid,
   user_id uuid,
@@ -69,6 +73,9 @@ values ('avatars', 'avatars', true)
 on conflict (id) do nothing;
 
 -- A user may only write objects under their own {auth.uid()}/ prefix.
+-- Drop-then-create keeps the migration idempotent (repo convention, cf.
+-- 20260529090000_harden_household_security.sql).
+drop policy if exists "avatars_insert_own" on storage.objects;
 create policy "avatars_insert_own" on storage.objects
   for insert to authenticated
   with check (
@@ -76,6 +83,7 @@ create policy "avatars_insert_own" on storage.objects
     and (storage.foldername(name))[1] = (select auth.uid())::text
   );
 
+drop policy if exists "avatars_update_own" on storage.objects;
 create policy "avatars_update_own" on storage.objects
   for update to authenticated
   using (
@@ -87,6 +95,7 @@ create policy "avatars_update_own" on storage.objects
     and (storage.foldername(name))[1] = (select auth.uid())::text
   );
 
+drop policy if exists "avatars_delete_own" on storage.objects;
 create policy "avatars_delete_own" on storage.objects
   for delete to authenticated
   using (

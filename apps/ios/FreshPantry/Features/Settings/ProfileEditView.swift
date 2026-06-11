@@ -121,8 +121,11 @@ struct ProfileEditView: View {
             Task {
                 await store.save(displayName: displayName, nickname: nickname, newAvatar: pickedAvatar)
                 if store.errorMessage == nil, mode == .settings { dismiss() }
-                // onboarding: needsProfileSetup flips false on success → the
-                // root cover auto-dismisses; on failure the banner stays.
+                // onboarding: a non-empty name flips needsProfileSetup false →
+                // the root cover auto-dismisses. An offline/failed push ALSO
+                // dismisses (the optimistic local name satisfies the gate); the
+                // pending edit re-syncs later, so the "must have a name" intent
+                // holds without trapping the user offline.
             }
         } label: {
             HStack(spacing: FkSpacing.sm) {

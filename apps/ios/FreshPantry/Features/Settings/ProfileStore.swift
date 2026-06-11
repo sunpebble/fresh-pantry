@@ -94,6 +94,10 @@ final class ProfileStore {
             hasPendingUpload = false
         } catch {
             // Retain the edit + pending flag so the foreground/online retry resends.
+            // NOTE: retry re-upserts only the row (name/nickname + avatarPath
+            // pointer). If uploadAvatar itself failed, avatarPath keeps the old
+            // value and the picked bytes (held in the view) are NOT re-uploaded —
+            // the user re-picks to retry the avatar. Acceptable for A-mode.
             let profile = UserProfile(id: "", email: email, displayName: trimmedName, nickname: trimmedNick, avatarPath: avatarPath)
             try? await local.save(profile, pendingUpload: true)
             hasPendingUpload = true
