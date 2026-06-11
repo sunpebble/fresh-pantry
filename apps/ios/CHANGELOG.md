@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.10.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.9.0...fresh_pantry-v1.10.0) (2026-06-11)
+
+
+### Features
+
+* **ios:** AppDependencies 注入 profileRepository + profileStore ([9b67684](https://github.com/kunish/fresh_pantry/commit/9b6768451afbf791d2d31bd116c44f63fbc18d0c))
+* **ios:** HouseholdMember 加 display_name/nickname/avatar_path + resolvedName ([5d29a5d](https://github.com/kunish/fresh_pantry/commit/5d29a5d365b32771efe05234f20bb1930ca4a2d0))
+* **ios:** ProfileEditView（头像 PhotosPicker + 名称/昵称,编辑/onboarding 共用） ([5f78308](https://github.com/kunish/fresh_pantry/commit/5f78308a2b29038740f1bff57cd48b0bc8cf55fa))
+* **ios:** ProfileRecord + ProfileRepository（单行本地缓存 + pending） ([a5611a1](https://github.com/kunish/fresh_pantry/commit/a5611a1436ef6ffcd7e736e8722f5424171cd621))
+* **ios:** ProfileStore（乐观保存 + 失败保留 pending + needsProfileSetup） ([ae1c88a](https://github.com/kunish/fresh_pantry/commit/ae1c88aa1421f4412abe196a99682b898d173d59))
+* **ios:** RemotePantryRepository 加 profile load/upsert + avatar 上传/URL（ProfileRemote） ([611c7e8](https://github.com/kunish/fresh_pantry/commit/611c7e83d77e2d5c396053e411f96ee9dc222eb6))
+* **ios:** Settings 个人资料入口 + 家庭成员行显示头像/名称 ([7afd48e](https://github.com/kunish/fresh_pantry/commit/7afd48e1fe8091a06a0336e5ee27262f40331d10))
+* **ios:** UserProfile DTO（snake_case lenient 解码） ([5d46b84](https://github.com/kunish/fresh_pantry/commit/5d46b84ceec9373d43704c9e93f4f35b857267c2))
+* **ios:** 登录后 onboarding 强制填写个人信息(显示名) ([ef6f94f](https://github.com/kunish/fresh_pantry/commit/ef6f94f36cb32542cd433d3a0517302bcb3bd2ab))
+
+
+### Bug Fixes
+
+* **ios:** refreshOwnerPendingInvites 加 owner 门控，非 owner 成员加载不再撞 Not authorized ([16a4764](https://github.com/kunish/fresh_pantry/commit/16a4764c2b909f2bfe31009b1813b1c8b1afe334))
+* **profile:** code review 跟进 —— migration DROP FUNCTION + storage policy 幂等 + 注释订正 ([8be57ff](https://github.com/kunish/fresh_pantry/commit/8be57ff3610039d62a41551e93a9770d30104d12))
+
 ## [1.9.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.8.0...fresh_pantry-v1.9.0) (2026-06-11)
 
 
