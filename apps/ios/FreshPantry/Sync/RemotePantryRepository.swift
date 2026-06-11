@@ -57,6 +57,7 @@ actor RemotePantryRepository {
         static let shopping = "shopping_items"
         static let customRecipes = "custom_recipes"
         static let mealPlanEntries = "meal_plan_entries"
+        static let foodLogEntries = "food_log_entries"
     }
 
     // MARK: - Content loads (soft-delete filtered)
@@ -79,6 +80,10 @@ actor RemotePantryRepository {
 
     func loadMealPlanEntries(_ hid: String) async throws -> [[String: JSONValue]] {
         try await loadRows(from: Table.mealPlanEntries, hid: hid, decode: RemoteRowCodec.mealPlanEntryRowFromJson)
+    }
+
+    func loadFoodLogEntries(_ hid: String) async throws -> [[String: JSONValue]] {
+        try await loadRows(from: Table.foodLogEntries, hid: hid, decode: RemoteRowCodec.foodLogEntryRowFromJson)
     }
 
     /// Shared load path: fetch the household's non-deleted rows as `[String: AnyJSON]`,
@@ -142,6 +147,16 @@ actor RemotePantryRepository {
             rows: rows,
             method: "upsertMealPlanEntries",
             encode: RemoteRowCodec.mealPlanEntryRowForUpsert
+        )
+    }
+
+    func upsertFoodLogEntries(_ hid: String, _ rows: [[String: JSONValue]]) async throws {
+        try await upsertRows(
+            into: Table.foodLogEntries,
+            hid: hid,
+            rows: rows,
+            method: "upsertFoodLogEntries",
+            encode: RemoteRowCodec.foodLogEntryRowForUpsert
         )
     }
 
@@ -211,6 +226,12 @@ actor RemotePantryRepository {
     func watchMealPlanEntries(_ hid: String) -> AsyncStream<[[String: JSONValue]]> {
         watch(table: Table.mealPlanEntries, hid: hid) { [weak self] in
             try? await self?.loadMealPlanEntries(hid)
+        }
+    }
+
+    func watchFoodLogEntries(_ hid: String) -> AsyncStream<[[String: JSONValue]]> {
+        watch(table: Table.foodLogEntries, hid: hid) { [weak self] in
+            try? await self?.loadFoodLogEntries(hid)
         }
     }
 
