@@ -179,6 +179,7 @@ final class AppDependencies {
                 shopping: self.shoppingRepository,
                 customRecipe: self.customRecipeRepository,
                 mealPlan: self.mealPlanRepository,
+                foodLog: self.foodLogRepository,
                 session: session
             )
         } else {

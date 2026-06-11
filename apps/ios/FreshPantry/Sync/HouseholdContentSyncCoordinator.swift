@@ -22,6 +22,7 @@ actor HouseholdContentSyncCoordinator {
     private let shopping: ShoppingRepository
     private let customRecipe: CustomRecipeRepository
     private let mealPlan: MealPlanRepository
+    private let foodLog: FoodLogRepository
     private let session: SyncSession
 
     private static let logger = Logger(subsystem: "com.kunish.freshPantry", category: "sync")
@@ -45,6 +46,7 @@ actor HouseholdContentSyncCoordinator {
         shopping: ShoppingRepository,
         customRecipe: CustomRecipeRepository,
         mealPlan: MealPlanRepository,
+        foodLog: FoodLogRepository,
         session: SyncSession
     ) {
         self.remote = remote
@@ -54,6 +56,7 @@ actor HouseholdContentSyncCoordinator {
         self.shopping = shopping
         self.customRecipe = customRecipe
         self.mealPlan = mealPlan
+        self.foodLog = foodLog
         self.session = session
     }
 
@@ -86,6 +89,11 @@ actor HouseholdContentSyncCoordinator {
     private func startSync(_ householdId: String, _ gen: Int) async {
         guard isCurrent(gen, householdId) else { return }
         do {
+            // One-shot legacy-id migration so historical fl_<ms> rows can backfill
+            // into the uuid PK column. Idempotent — a no-op once everything is UUID.
+            try? await foodLog.migrateLegacyIds()
+            guard isCurrent(gen, householdId) else { return }
+
             let scope = LocalUploadScope(
                 householdID: householdId,
                 pendingOps: (try? await outbox.loadPending()) ?? []
@@ -107,12 +115,14 @@ actor HouseholdContentSyncCoordinator {
             let shoppingRows = try await remote.loadShopping(householdId)
             let recipeRows = try await remote.loadCustomRecipes(householdId)
             let mealPlanRows = try await remote.loadMealPlanEntries(householdId)
+            let foodLogRows = try await remote.loadFoodLogEntries(householdId)
             guard isCurrent(gen, householdId) else { return }
 
             await applyInventoryRows(inventoryRows, householdId, gen)
             await applyShoppingRows(shoppingRows, householdId, gen)
             await applyCustomRecipeRows(recipeRows, householdId, gen)
             await applyMealPlanRows(mealPlanRows, householdId, gen)
+            await applyFoodLogRows(foodLogRows, householdId, gen)
         } catch is CancellationError {
             // A household switch / stop cancelled this run — not an error.
         } catch {
@@ -193,6 +203,21 @@ actor HouseholdContentSyncCoordinator {
                 uploaded.contains($0.id) ? $0.copyWith(remoteVersion: 1) : $0
             })
         }
+
+        // Food log (append-only history → full backfill)
+        guard isCurrent(gen, householdId) else { return }
+        let localFoodLog = (try? await foodLog.loadAllFor(householdId)) ?? []
+        let uploadFoodLog = localFoodLog.filter {
+            HouseholdMergePolicy.isLocalOnlyFoodLog($0) && scope.allows(.foodLogEntry, $0.id)
+        }
+        if !uploadFoodLog.isEmpty {
+            try await remote.upsertFoodLogEntries(householdId, uploadFoodLog.compactMap { DomainJSON.valueMap($0) })
+            guard isCurrent(gen, householdId) else { return }
+            let uploaded = Set(uploadFoodLog.map(\.id))
+            try? await foodLog.saveEntries(householdId, localFoodLog.map {
+                uploaded.contains($0.id) ? $0.copyWith(remoteVersion: 1) : $0
+            })
+        }
     }
 
     /// Starts the four realtime subscriptions. Each iterates the entity's
@@ -219,6 +244,11 @@ actor HouseholdContentSyncCoordinator {
             Task { [remote] in
                 for await rows in await remote.watchMealPlanEntries(householdId) {
                     await self.applyMealPlanRows(rows, householdId, gen)
+                }
+            },
+            Task { [remote] in
+                for await rows in await remote.watchFoodLogEntries(householdId) {
+                    await self.applyFoodLogRows(rows, householdId, gen)
                 }
             },
         ]
@@ -297,6 +327,26 @@ actor HouseholdContentSyncCoordinator {
 
         guard isCurrent(gen, householdId) else { return }
         try? await mealPlan.saveEntries(householdId, merged)
+        await signalMerge()
+    }
+
+    private func applyFoodLogRows(_ rows: [[String: JSONValue]], _ householdId: String, _ gen: Int) async {
+        guard isCurrent(gen, householdId) else { return }
+        // Tolerant per-row decode: FoodLogEntry decoding throws on a bad loggedAt,
+        // and one malformed remote row must not abort the whole apply.
+        let decoded = rows
+            .compactMap { DomainJSON.fromValueMap(FoodLogEntry.self, from: $0) }
+            .filter { !$0.id.isEmpty }
+
+        let scope = LocalUploadScope(
+            householdID: householdId,
+            pendingOps: (try? await outbox.loadPending()) ?? []
+        )
+        let local = (try? await foodLog.loadAllFor(householdId)) ?? []
+        let merged = HouseholdMergePolicy.mergeFoodLog(remote: decoded, local: local, scope: scope)
+
+        guard isCurrent(gen, householdId) else { return }
+        try? await foodLog.saveEntries(householdId, merged)
         await signalMerge()
     }
 
