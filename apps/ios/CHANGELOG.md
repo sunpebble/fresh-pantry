@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.1](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.12.0...fresh_pantry-v1.12.1) (2026-06-11)
+
+
+### Bug Fixes
+
+* **ios:** 头像保存重试重传头像 + 暴露底层错误 ([fdb3228](https://github.com/kunish/fresh_pantry/commit/fdb3228050b80556488c931aa9ea382c2a46e915))
+
 ## [1.12.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.11.0...fresh_pantry-v1.12.0) (2026-06-11)
 
 
