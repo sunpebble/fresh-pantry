@@ -10,7 +10,7 @@ import { buildEnrichPrompt, type RecipeEnricher } from './enrich';
 export function createFlueEnricher(harness: FlueHarness): RecipeEnricher {
   return {
     async enrich(raw) {
-      const session = await harness.session();
+      const session = await harness.session(raw.id); // 每条菜独立 session:避免并发冲突 + 防止跨菜上下文污染
       const res = await session.prompt(buildEnrichPrompt(raw), { result: EnrichmentSchema });
       return res.data;
     },
