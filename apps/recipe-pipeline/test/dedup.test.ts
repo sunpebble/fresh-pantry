@@ -27,10 +27,16 @@ describe('jaccard', () => {
 describe('dedupe', () => {
   it('同名 + 食材高度重合 -> 留高优先级(howtocook),丢低优先', () => {
     const hc = rec('howtocook:meat_dish/番茄炒蛋', '番茄炒蛋', ['番茄', '鸡蛋', '盐']);
-    const url = rec('url:abc', '番茄炒蛋', ['番茄', '鸡蛋', '糖']);
+    const url = rec('url:abc', '番茄炒蛋', ['番茄', '鸡蛋', '盐', '糖']); // 交集3/并集4 = 0.75 ≥ 0.6
     const { kept, dropped } = dedupe([url, hc]);
     expect(kept.map((r) => r.id)).toEqual(['howtocook:meat_dish/番茄炒蛋']);
     expect(dropped).toEqual([{ id: 'url:abc', dupOf: 'howtocook:meat_dish/番茄炒蛋' }]);
+  });
+  it('同名但食材重合仅 0.5 (< 0.6) -> 都保留', () => {
+    const a = rec('howtocook:x/番茄炒蛋', '番茄炒蛋', ['番茄', '鸡蛋', '盐']);
+    const b = rec('url:z', '番茄炒蛋', ['番茄', '鸡蛋', '糖']); // 2/4 = 0.5 < 0.6
+    const { kept } = dedupe([a, b]);
+    expect(kept).toHaveLength(2);
   });
   it('同名但食材差异大 -> 都保留', () => {
     const a = rec('repo:x:糖醋里脊', '糖醋里脊', ['里脊', '糖', '醋']);

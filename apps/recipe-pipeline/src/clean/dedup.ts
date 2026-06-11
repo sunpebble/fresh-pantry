@@ -31,7 +31,7 @@ export function jaccard(a: Set<string>, b: Set<string>): number {
   return union === 0 ? 0 : inter / union;
 }
 
-export const DUP_THRESHOLD = 0.5;
+export const DUP_THRESHOLD = 0.6;
 
 export interface DedupeResult {
   kept: CleanRecipe[];
