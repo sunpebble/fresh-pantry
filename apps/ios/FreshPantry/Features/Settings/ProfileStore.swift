@@ -12,6 +12,8 @@ final class ProfileStore {
     private(set) var avatarPath = ""
     private(set) var email = ""
     private(set) var isSaving = false
+    /// In-flight flag for an explicit 重试 — drives the retry button's spinner.
+    private(set) var isRetrying = false
     private(set) var errorMessage: String?
     private(set) var hasPendingUpload = false
     private(set) var hasLoaded = false
@@ -93,31 +95,38 @@ final class ProfileStore {
             try? await local.save(profile, pendingUpload: false)
             hasPendingUpload = false
         } catch {
-            // Retain the edit + pending flag so the foreground/online retry resends.
-            // NOTE: retry re-upserts only the row (name/nickname + avatarPath
-            // pointer). If uploadAvatar itself failed, avatarPath keeps the old
-            // value and the picked bytes (held in the view) are NOT re-uploaded —
-            // the user re-picks to retry the avatar. Acceptable for A-mode.
+            // Retain the edit + pending flag so a retry (explicit 重试 / next load)
+            // resends. NOTE: retry re-upserts only the row (name/nickname +
+            // avatarPath pointer). If uploadAvatar itself failed, avatarPath keeps
+            // the old value and the picked bytes (held in the view) are NOT
+            // re-uploaded — the user re-picks to retry the avatar. Acceptable for
+            // A-mode.
             let profile = UserProfile(id: "", email: email, displayName: trimmedName, nickname: trimmedNick, avatarPath: avatarPath)
             try? await local.save(profile, pendingUpload: true)
             hasPendingUpload = true
-            errorMessage = "保存失败，已在本地保留，稍后会自动重试。"
+            errorMessage = "保存失败，修改已保留在本机，可手动重试。"
         }
         isSaving = false
     }
 
-    /// Re-pushes a pending local edit. Called on load and can be called on
-    /// foreground / reconnect. No-op when nothing is pending or no backend.
+    /// Re-pushes a pending local edit. Called on load and by the explicit 重试
+    /// affordance in the profile views. No-op when nothing is pending, no
+    /// backend, or a retry is already in flight. A failure keeps the pending
+    /// flag AND surfaces errorMessage, so a tapped 重试 never fails silently.
     func retryPendingUpload() async {
-        guard hasPendingUpload, let remote else { return }
+        guard hasPendingUpload, !isRetrying, let remote else { return }
+        isRetrying = true
+        errorMessage = nil
+        defer { isRetrying = false }
         do {
             try await remote.upsertMyProfile(displayName: displayName, nickname: nickname, avatarPath: avatarPath)
             let profile = UserProfile(id: "", email: email, displayName: displayName, nickname: nickname, avatarPath: avatarPath)
             try? await local.save(profile, pendingUpload: false)
             hasPendingUpload = false
-            errorMessage = nil
         } catch {
-            // Still pending; leave the flag set for the next trigger.
+            // Still pending; leave the flag set for the next trigger. Wording is
+            // trigger-neutral: the same message shows for the load-time flush.
+            errorMessage = "同步未完成，修改仍保留在本机，请检查网络后重试。"
         }
     }
 

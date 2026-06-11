@@ -32,10 +32,15 @@ final class AiSettingsStore {
 
     /// Persists the whole settings blob to the secret store and updates the live
     /// value (set-after-write so a failed Keychain write doesn't desync state).
-    func save(_ next: AiSettings) {
-        guard let data = try? DomainJSON.encoder.encode(next) else { return }
-        secrets.set(data, forKey: Self.storageKey)
+    /// Returns `false` — leaving `settings` untouched — when encoding or the
+    /// Keychain write fails, so callers surface the failure instead of showing a
+    /// config that silently reverts on next launch.
+    @discardableResult
+    func save(_ next: AiSettings) -> Bool {
+        guard let data = try? DomainJSON.encoder.encode(next) else { return false }
+        guard secrets.set(data, forKey: Self.storageKey) else { return false }
         settings = next
+        return true
     }
 
     /// Clears the stored AI config (resets to `.empty`).

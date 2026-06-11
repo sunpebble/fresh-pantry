@@ -4,7 +4,9 @@ import SwiftUI
 /// / model / timeout) bound to the Keychain-backed `AiSettingsStore`.
 ///
 /// Edits a local draft seeded from the store; 保存 persists the whole blob to the
-/// Keychain via the store and pops. An `isConfigured` indicator reflects the
+/// Keychain via the store and pops — a rejected Keychain write keeps the page
+/// open with an inline error instead of pretending the save landed. An
+/// `isConfigured` indicator reflects the
 /// CURRENTLY SAVED settings. A 测试连接 probe sends a minimal chat request against
 /// the DRAFT settings (so it validates edits before saving) and reports success
 /// or the mapped error.
@@ -18,6 +20,8 @@ struct AiSettingsView: View {
     @State private var model: String
     @State private var timeoutText: String
     @State private var testResult: TestResult = .idle
+    /// 保存失败（Keychain 拒写 / 编码失败）时的就地报错；nil 表示无错。
+    @State private var saveErrorMessage: String?
 
     /// Connection-test lifecycle for the 测试连接 button.
     private enum TestResult: Equatable {
@@ -50,6 +54,9 @@ struct AiSettingsView: View {
         Form {
             Section {
                 statusRow
+                if let saveErrorMessage {
+                    resultLabel(icon: "exclamationmark.triangle.fill", color: .fkDanger, text: saveErrorMessage)
+                }
             }
             .listRowBackground(Color.fkSurfaceContainerLowest)
 
@@ -151,15 +158,14 @@ struct AiSettingsView: View {
         }
     }
 
+    /// Persists the draft and pops only when the Keychain write actually landed;
+    /// a rejected write surfaces in the status section and keeps the form open.
     private func save() {
-        let timeout = TimeInterval(Int(timeoutText.trimmed) ?? 60)
-        let next = AiSettings(
-            baseUrl: baseUrl.trimmed,
-            apiKey: apiKey.trimmed,
-            model: model.trimmed,
-            timeout: timeout
-        )
-        store.save(next)
+        saveErrorMessage = nil
+        guard store.save(draftSettings) else {
+            saveErrorMessage = "保存失败：无法写入钥匙串(Keychain)，配置未保存，请重试。"
+            return
+        }
         dismiss()
     }
 }
