@@ -44,7 +44,6 @@ private struct SettingsContent: View {
     /// Live OS notification-permission state, refreshed on appear and after a
     /// grant request. Drives the 提醒 permission affordance row.
     @State private var permissionGranted = false
-    @State private var showProfileEditor = false
     /// At-a-glance counts for the stats row (食材 / 采购 / 收藏菜谱).
     @State private var inventoryCount = 0
     @State private var shoppingCount = 0
@@ -54,6 +53,7 @@ private struct SettingsContent: View {
 
     var body: some View {
         Form {
+            profileCardSection
             statsSection
             accountSection
             reminderSection
@@ -122,16 +122,6 @@ private struct SettingsContent: View {
 
     private var accountSection: some View {
         Section {
-            Button {
-                showProfileEditor = true
-            } label: {
-                SettingsLinkLabel(
-                    systemImage: "person.text.rectangle",
-                    title: "个人资料",
-                    subtitle: profileSubtitle
-                )
-            }
-            .buttonStyle(.plain)
             NavigationLink {
                 LoginView(auth: auth)
             } label: {
@@ -157,15 +147,6 @@ private struct SettingsContent: View {
             Text("登录后可创建或加入家庭,在成员间同步库存、采购与食谱。")
         }
         .listRowBackground(Color.fkSurfaceContainerLowest)
-        .sheet(isPresented: $showProfileEditor) {
-            ProfileEditView(store: dependencies.profileStore, mode: .settings)
-        }
-    }
-
-    /// 个人资料 row subtitle: the live display name, or a prompt when unset.
-    private var profileSubtitle: String {
-        let name = dependencies.profileStore.displayName.trimmed
-        return name.isEmpty ? "设置头像与名称" : name
     }
 
     /// The 家庭共享 row subtitle, reflecting whether sharing is usable yet. When
