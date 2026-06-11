@@ -25,6 +25,17 @@ describe('parseHowtocook', () => {
     expect(r.rawIngredients).toEqual(['鸡蛋', '西红柿', '盐']);
     expect(r.steps[1]).toBe('翻炒至熟');
   });
+
+  it('缺少标题时 name 为空字符串', () => {
+    const r = parseHowtocook('## 操作\n\n1. 打蛋\n');
+    expect(r.name).toBe('');
+    expect(r.steps).toHaveLength(1);
+  });
+
+  it('无计算段时 portionText 为 undefined', () => {
+    const r = parseHowtocook('# 炒蛋的做法\n\n## 操作\n\n1. 打蛋\n');
+    expect(r.portionText).toBeUndefined();
+  });
 });
 
 describe('isTool', () => {

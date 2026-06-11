@@ -7,7 +7,7 @@ export interface ParsedHowtocook {
   steps: string[];
 }
 
-export const TOOL_KEYWORDS = [
+const TOOL_KEYWORDS = [
   '锅', '铲', '勺', '刀', '案板', '砧板', '菜板', '碗', '盆', '筷', '烤箱',
   '微波炉', '电饭煲', '空气炸锅', '高压锅', '料理机', '搅拌机', '榨汁',
   '量杯', '量勺', '厨房秤', '电子秤', '保鲜膜', '锡纸', '油纸', '牙签',
@@ -15,6 +15,13 @@ export const TOOL_KEYWORDS = [
   '烤盘', '模具', '裱花', '擀面杖', '筛',
 ];
 
+/**
+ * Returns true if `line` appears to describe a kitchen tool rather than an ingredient.
+ *
+ * **Heuristic risk**: single-character keywords (锅/碗/刀/勺/盆) may rarely match
+ * food names (e.g. 砂锅配料, 花刀鱼). These false-positive drops are acceptable
+ * because downstream LLM enrichment acts as a fallback to recover missing ingredients.
+ */
 export function isTool(line: string): boolean {
   return TOOL_KEYWORDS.some((kw) => line.includes(kw));
 }
