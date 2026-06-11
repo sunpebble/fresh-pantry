@@ -5,7 +5,8 @@ import SwiftUI
 /// sectioned by tier (已过期 → 快过期 → 即将过期).
 ///
 /// Each row taps through to the read-only detail and carries two quick actions
-/// (用了 → log a consumed departure + remove; 加购 → add to the shopping list),
+/// (用了 → log a consumed departure + remove, reversible via a transient 撤销
+/// banner; 加购 → add to the shopping list),
 /// mirroring the Flutter expiring screen's per-item affordances. It builds an
 /// `ExpiringStore` (display) plus an `InventoryStore` (the 用了 removal + the
 /// detail push) and a `ShoppingStore` (加购) from the injected `AppDependencies`.
@@ -87,11 +88,15 @@ struct ExpiringView: View {
     }
 
     /// "用了": logs a consumed departure + removes the row, then reloads the
-    /// expiring list so it drops off.
-    private func consume(_ item: Ingredient) async {
-        guard let inventoryStore, let store else { return }
-        _ = await inventoryStore.remove(item, outcome: .consumed)
+    /// expiring list so it drops off. Returns the removal result so the content
+    /// view can offer the 撤销 banner on success (the only path that can reverse
+    /// the food-log append) and surface a persist failure — `.notFound` stays
+    /// silent because the reload self-heals an already-gone row.
+    private func consume(_ item: Ingredient) async -> InventoryStore.RemoveResult {
+        guard let inventoryStore, let store else { return .notFound }
+        let result = await inventoryStore.removeWithResult(item, outcome: .consumed)
         await store.load()
+        return result
     }
 
     /// "加购": adds the item to the shopping list (name-unique dedup). Returns a
@@ -114,11 +119,15 @@ private struct ExpiringContent: View {
     let aiSettingsStore: AiSettingsStore
     let reminderSettings: ReminderSettings
     let remindersGranted: Bool
-    let onConsume: (Ingredient) async -> Void
+    let onConsume: (Ingredient) async -> InventoryStore.RemoveResult
     let onAddToShopping: (Ingredient) async -> String
 
     @State private var selectedIngredient: Ingredient?
     @State private var toast: String?
+    /// Holds the just-用了 row's undo handle so the 撤销 banner can reverse BOTH
+    /// the inventory removal and the food-log append (same both-sides contract
+    /// as IngredientDetailView's banner).
+    @State private var pendingUndo: InventoryStore.RemovalUndo?
     /// True while the 清冰箱 AI generation is running (blocks re-tap + shows spinner).
     @State private var isGenerating = false
     /// Inline 清冰箱 failure message (network / parse / not-configured), surfaced
@@ -155,6 +164,15 @@ private struct ExpiringContent: View {
         .background(Color.fkSurface)
         .refreshable { await store.load() }
         .overlay(alignment: .top) { toastBanner }
+        .overlay(alignment: .bottom) { undoBanner }
+        // Detail-pop staleness: the pushed detail mutates ONLY InventoryStore.items
+        // (delete / remove-with-outcome / edit) while the tiers render ExpiringStore's
+        // independent snapshot, and local-mode writes emit no dataRevision pulse —
+        // so re-read the snapshot whenever the inventory items change (same handler
+        // shape as InventoryView's onChange(of: store.items)).
+        .onChange(of: inventoryStore.items) {
+            Task { await store.load() }
+        }
         .navigationDestination(item: $selectedIngredient) { ingredient in
             IngredientDetailView(ingredient: ingredient, store: inventoryStore)
         }
@@ -308,7 +326,21 @@ private struct ExpiringContent: View {
     private func actionRow(_ item: Ingredient) -> some View {
         HStack(spacing: FkSpacing.sm) {
             actionButton("用了", systemImage: "fork.knife", tint: Color.fkPrimary) {
-                Task { await onConsume(item) }
+                Task {
+                    switch await onConsume(item) {
+                    case let .removed(undo):
+                        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { pendingUndo = undo }
+                    case .notFound:
+                        // The row was already gone — the consume reload
+                        // self-heals the list; nothing to offer an undo for.
+                        break
+                    case .failed:
+                        // The persist threw: the row is still here and no
+                        // departure was logged — silence would read as a dead
+                        // tap, so say so (mirrors MealPlan's toggle failure).
+                        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { toast = "操作失败，请重试" }
+                    }
+                }
             }
             actionButton("加购", systemImage: "cart.badge.plus", tint: Color.fkOnSurfaceVariant) {
                 Task {
@@ -367,6 +399,53 @@ private struct ExpiringContent: View {
                     }
                 }
         }
+    }
+
+    /// Transient post-用了 banner (ports IngredientDetailView's undoBanner): tapping
+    /// 撤销 re-adds the row AND point-deletes the logged departure; otherwise it
+    /// auto-clears after a short grace period (no screen to pop here, unlike the detail).
+    @ViewBuilder
+    private var undoBanner: some View {
+        if let undo = pendingUndo {
+            HStack(spacing: FkSpacing.md) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(Color.fkSuccess)
+                Text("已用掉「\(undo.ingredient.name)」")
+                    .font(.fkBodyMedium)
+                    .foregroundStyle(Color.fkOnSurface)
+                Spacer(minLength: FkSpacing.sm)
+                Button("撤销") { Task { await performUndo(undo) } }
+                    .font(.fkLabelLarge)
+                    .foregroundStyle(Color.fkPrimary)
+            }
+            .padding(.horizontal, FkSpacing.lg)
+            .padding(.vertical, FkSpacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                    .fill(Color.fkSurfaceContainerLowest)
+            )
+            .fkCardShadow()
+            .padding(.horizontal, FkSpacing.lg)
+            .padding(.bottom, FkSpacing.lg)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .task(id: undo.loggedEntryId) {
+                // Grace period for undo; a fresh 用了 retargets the id and restarts
+                // it, and an undo clears pendingUndo (tearing this down) first.
+                try? await Task.sleep(for: .seconds(4))
+                if !Task.isCancelled {
+                    withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { pendingUndo = nil }
+                }
+            }
+        }
+    }
+
+    /// Reverses a 用了 removal — re-insert the row + point-delete the logged
+    /// departure (both sides, via InventoryStore.undoRemove) — then reloads the
+    /// expiring snapshot so the row reappears in its tier.
+    private func performUndo(_ undo: InventoryStore.RemovalUndo) async {
+        _ = await inventoryStore.undoRemove(undo)
+        await store.load()
+        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { pendingUndo = nil }
     }
 
     private func tierHeader(_ tier: ExpiringStore.Tier) -> some View {

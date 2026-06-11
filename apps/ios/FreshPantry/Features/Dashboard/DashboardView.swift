@@ -79,6 +79,10 @@ struct DashboardView: View {
                 )
             }
             #endif
+            // The seeder awaits above are suspension points: a household switch
+            // landing there (login "" → uuid auto-select) starts a NEW run, and
+            // this stale run must not assign an old-scope store over its work.
+            guard householdID == dependencies.householdID, !Task.isCancelled else { return }
             let store = DashboardStore(
                 inventoryRepository: dependencies.inventoryRepository,
                 shoppingRepository: dependencies.shoppingRepository,
@@ -148,6 +152,9 @@ private struct DashboardContent: View {
     /// Recipe browse store (favorites + the pushed detail) for the home recipe
     /// cards. Built once with the inventory/忌口 context, like the Recipes tab.
     @State private var recipesStore: RecipesStore?
+    /// The household the lazily-built stores were scoped to — they are dropped
+    /// and rebuilt when it changes (login/switch/leave must not write old scope).
+    @State private var secondaryScope: String?
     /// 今日推荐 (top match-ranked recipe) + its matched-ingredient count.
     @State private var recommendation: Recipe?
     @State private var recommendationMatched = 0
@@ -232,7 +239,27 @@ private struct DashboardContent: View {
             await store.load()
             await loadSecondaryStats()
         }
-        .task { await loadSecondaryStats() }
+        // Re-runs on every appear — so popping back from a pushed screen (临期
+        // 「用了」, 购物 etc.) refreshes the hero/preview/计数 alongside the
+        // secondary cards — and on a household switch, where the lazily-built
+        // stores must be dropped first: they capture their scope at init, so a
+        // kept instance would write into the prior household (the MealPlanView
+        // match-context fix, applied here).
+        .task(id: dependencies.householdID) {
+            if secondaryScope != dependencies.householdID {
+                shoppingStore = nil
+                recipesStore = nil
+                secondaryScope = dependencies.householdID
+            }
+            await store.load()
+            await loadSecondaryStats()
+        }
+        // Remote merge pulse: the host view reloads the main store; the
+        // secondary cards (减废/膳食/推荐/库存不足) consume it here so both
+        // halves of the screen track merged data together.
+        .onChange(of: dependencies.syncSession.dataRevision) {
+            Task { await loadSecondaryStats() }
+        }
     }
 
     // MARK: 今日推荐
@@ -294,9 +321,37 @@ private struct DashboardContent: View {
     /// Loads the waste use-up stats, the meal-plan glance (upcoming/today/缺料),
     /// the home recipe suggestions (今日推荐 + 用临期 fallback), the low-stock
     /// restock candidates, and the shopping store for 临期 加购.
+    ///
+    /// SCOPE GUARD: every await below is a suspension point where a household
+    /// switch can land (login "" → uuid auto-select, switch, leave). A stale
+    /// run resuming afterwards must NOT assign stores built for the old scope —
+    /// the new run's `== nil` lazy-build has already run, so a stale store
+    /// would stick (the `secondaryScope` sentinel matches and never fires
+    /// again) and 加购 would write into the prior household's list. The stores
+    /// swallow `CancellationError` into empty results, so cancellation alone
+    /// does not stop a stale run — re-check after EVERY await, before EVERY
+    /// assignment.
     private func loadSecondaryStats() async {
-        let wasteStore = WasteInsightsStore(repository: dependencies.foodLogRepository, householdID: dependencies.householdID)
+        let scope = dependencies.householdID
+
+        // Build the shopping store FIRST — the 临期 preview's 加购 button is
+        // visible as soon as the main store loads, and everything below
+        // (notably the recipe-corpus decode) would leave it a no-op for the
+        // whole cold-start window otherwise.
+        if shoppingStore == nil {
+            let shopping = ShoppingStore(
+                repository: dependencies.shoppingRepository,
+                householdID: scope,
+                syncWriter: dependencies.syncWriter
+            )
+            await shopping.load()
+            guard scope == dependencies.householdID, !Task.isCancelled else { return }
+            shoppingStore = shopping
+        }
+
+        let wasteStore = WasteInsightsStore(repository: dependencies.foodLogRepository, householdID: scope)
         await wasteStore.load()
+        guard scope == dependencies.householdID, !Task.isCancelled else { return }
         wasteStats = wasteStore.stats()
 
         // Build the recipe browse store once — it owns the merged corpus + the
@@ -304,19 +359,22 @@ private struct DashboardContent: View {
         let recipes: RecipesStore
         if let recipesStore {
             await recipesStore.load()
+            guard scope == dependencies.householdID, !Task.isCancelled else { return }
             recipes = recipesStore
         } else {
-            recipes = RecipesStore(
+            let built = RecipesStore(
                 localRepository: dependencies.localRecipeRepository,
                 customRepository: dependencies.customRecipeRepository,
                 favoritesStore: dependencies.favoritesStore,
-                householdID: dependencies.householdID,
+                householdID: scope,
                 inventoryRepository: dependencies.inventoryRepository,
                 dietaryStore: dependencies.dietaryPreferencesStore,
                 dietPreferenceStore: dependencies.dietPreferenceStore
             )
-            await recipes.load()
-            recipesStore = recipes
+            await built.load()
+            guard scope == dependencies.householdID, !Task.isCancelled else { return }
+            recipesStore = built
+            recipes = built
         }
 
         // 今日推荐 = the top match-ranked recipe; 用临期 = the best expiring-cover dish.
@@ -331,27 +389,25 @@ private struct DashboardContent: View {
         didLoadRecipes = true
 
         // Meal-plan glance reuses the merged corpus (no second recipe decode).
+        // The 还缺 badge derives from the SAME [today, today+7) span the glance
+        // counts — a stale past week's pending dishes must not inflate it.
+        // NOTE: this is a ROLLING window, deliberately different from
+        // MealPlanView's Monday-anchored visible week (its 缺料 card scopes to
+        // the on-screen strip); the entry card's copy says 未来 7 天 to match.
         let byId = Dictionary(recipes.recipes.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
-        let entries = (try? await dependencies.mealPlanRepository.loadAllFor(dependencies.householdID)) ?? []
+        let entries = (try? await dependencies.mealPlanRepository.loadAllFor(scope)) ?? []
+        guard scope == dependencies.householdID, !Task.isCancelled else { return }
+        let windowed = MealPlanGlance.windowedEntries(entries)
         let missing = MealPlanMissing.missingIngredientNames(
-            entries: entries, recipesById: byId, inventoryNames: recipes.inventoryNames
+            entries: windowed, recipesById: byId, inventoryNames: recipes.inventoryNames
         )
-        mealPlan = MealPlanGlance.from(entries: entries, missingCount: missing.count)
+        mealPlan = MealPlanGlance.from(entries: windowed, missingCount: missing.count)
 
         // Low-stock restock candidates for the inline 库存不足 card.
-        let lowStock = LowStockStore(repository: dependencies.inventoryRepository, householdID: dependencies.householdID)
+        let lowStock = LowStockStore(repository: dependencies.inventoryRepository, householdID: scope)
         await lowStock.load()
+        guard scope == dependencies.householdID, !Task.isCancelled else { return }
         lowStockItems = lowStock.items
-
-        if shoppingStore == nil {
-            let shopping = ShoppingStore(
-                repository: dependencies.shoppingRepository,
-                householdID: dependencies.householdID,
-                syncWriter: dependencies.syncWriter
-            )
-            await shopping.load()
-            shoppingStore = shopping
-        }
     }
 
     /// The recipe's own ingredient display names (original case, deduped) that
@@ -369,26 +425,55 @@ private struct DashboardContent: View {
 
     /// Adds ALL low-stock candidates to the shopping list (the inline "全部加入"
     /// action; per-item selection lives on the pushed `LowStockView`). Dedupe is
-    /// the shopping store's job, so the toast reports the真正 added count.
+    /// the shopping store's job, so the toast reports the真正 added count — and
+    /// failures are split from duplicates (a persist error must never read as
+    /// the affirmative「已在购物清单中」).
     private func addAllLowStock() async {
         guard let shoppingStore, !isAddingLowStock else { return }
         isAddingLowStock = true
         defer { isAddingLowStock = false }
         var added = 0
+        var failed = 0
         for item in lowStockItems {
             let category = FoodKnowledge.lookup(item.name)?.category
-            if await shoppingStore.add(name: item.name, category: category) { added += 1 }
+            switch await shoppingStore.addItem(name: item.name, category: category) {
+            case .added: added += 1
+            case .duplicate: break // goal already satisfied — not a failure
+            case .failed: failed += 1
+            }
         }
+        // Reload the main store so the 购物清单 summary row's count matches the
+        // add the toast just reported (it reads store.summary, not shoppingStore).
+        if added > 0 { await store.load() }
         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-            toast = added > 0 ? "已添加 \(added) 项到购物清单" : "常买缺货项已在购物清单中"
+            if failed > 0 {
+                toast = added > 0 ? "已添加 \(added) 项，\(failed) 项添加失败" : "添加失败，请重试"
+            } else {
+                toast = added > 0 ? "已添加 \(added) 项到购物清单" : "常买缺货项已在购物清单中"
+            }
         }
     }
 
     private func addToShopping(_ item: Ingredient) async {
-        guard let shoppingStore else { return }
-        let added = await shoppingStore.add(name: item.name, category: item.category)
+        // The store builds at the top of loadSecondaryStats, so this window is
+        // near-zero — but a tap inside it must not silently no-op.
+        guard let shoppingStore else {
+            withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
+                toast = "购物清单加载中，请稍后再试"
+            }
+            return
+        }
+        let outcome = await shoppingStore.addItem(name: item.name, category: item.category)
+        // Same summary-count refresh as addAllLowStock.
+        if outcome == .added { await store.load() }
         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-            toast = added ? "已将「\(item.name)」加入购物清单" : "「\(item.name)」已在购物清单中"
+            switch outcome {
+            case .added: toast = "已将「\(item.name)」加入购物清单"
+            case .duplicate: toast = "「\(item.name)」已在购物清单中"
+            // A read/persist failure is NOT a duplicate — claiming「已在清单中」
+            // would assert a row the store never verified.
+            case .failed: toast = "添加失败，请重试"
+            }
         }
     }
 }
@@ -401,20 +486,37 @@ struct MealPlanGlance: Equatable {
     let today: Int
     let missing: Int
 
-    static func from(entries: [MealPlanEntry], missingCount: Int, now: Date = Date()) -> MealPlanGlance {
+    /// Entries inside the glance span [today, today+7) — the single window both
+    /// `from` and the 还缺 badge derivation consume, so the subtitle's 已排 count
+    /// and the badge's shortfall always describe the same dishes.
+    static func windowedEntries(_ entries: [MealPlanEntry], now: Date = Date()) -> [MealPlanEntry] {
         let today = MealPlanEntry.dateOnly(now)
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = .current
         let windowEnd = calendar.date(byAdding: .day, value: 7, to: today) ?? today
-        var upcoming = 0
-        var todayCount = 0
-        for entry in entries {
+        return entries.filter { entry in
             let day = MealPlanEntry.dateOnly(entry.date)
-            if day < today || day >= windowEnd { continue }
-            upcoming += 1
-            if day == today { todayCount += 1 }
+            return day >= today && day < windowEnd
         }
-        return MealPlanGlance(upcoming: upcoming, today: todayCount, missing: missingCount)
+    }
+
+    static func from(entries: [MealPlanEntry], missingCount: Int, now: Date = Date()) -> MealPlanGlance {
+        let today = MealPlanEntry.dateOnly(now)
+        let windowed = windowedEntries(entries, now: now)
+        let todayCount = windowed.lazy.filter { MealPlanEntry.dateOnly($0.date) == today }.count
+        return MealPlanGlance(upcoming: windowed.count, today: todayCount, missing: missingCount)
+    }
+
+    /// Entry-card subtitle. Says 未来 7 天 — NOT 本周 — because the glance span
+    /// is the rolling [today, today+7) window above, which crosses into next
+    /// week on any day but Monday (MealPlanView's 缺料 card scopes to its
+    /// Monday-anchored visible week instead; the copy keeps the two honest).
+    var subtitle: String {
+        guard upcoming > 0 else { return "规划这一周吃什么" }
+        if today > 0 {
+            return "未来 7 天已排 \(upcoming) 顿 · 今天 \(today) 顿"
+        }
+        return "未来 7 天已排 \(upcoming) 顿"
     }
 }
 
@@ -668,7 +770,7 @@ private struct ExpiringPreviewSection: View {
 /// the Dashboard's `DashboardRoute`. The only meal-plan touchpoint on 首页.
 private struct MealPlanEntryRow: View {
     /// nil → static copy until the glance loads; non-nil drives the dynamic
-    /// "本周已排 N 顿 · 今天 M 顿" subtitle + a "还缺 K 样" badge.
+    /// "未来 7 天已排 N 顿 · 今天 M 顿" subtitle + a "还缺 K 样" badge.
     var glance: MealPlanGlance?
 
     var body: some View {
@@ -714,11 +816,7 @@ private struct MealPlanEntryRow: View {
     }
 
     private var subtitle: String {
-        guard let glance, glance.upcoming > 0 else { return "规划这一周吃什么" }
-        if glance.today > 0 {
-            return "本周已排 \(glance.upcoming) 顿 · 今天 \(glance.today) 顿"
-        }
-        return "本周已排 \(glance.upcoming) 顿"
+        glance?.subtitle ?? "规划这一周吃什么"
     }
 }
 

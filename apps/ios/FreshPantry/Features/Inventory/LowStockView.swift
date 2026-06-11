@@ -15,9 +15,13 @@ struct LowStockView: View {
 
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var store: LowStockStore?
     @State private var shoppingStore: ShoppingStore?
     @State private var isAdding = false
+    /// Toast copy for the stay-put cases (everything chosen was already on the
+    /// list, or some adds failed to write) — the screen doesn't jump, so the CTA
+    /// must say why, and a failure must never read as「已在清单中」.
     @State private var feedback: String?
 
     var body: some View {
@@ -36,6 +40,7 @@ struct LowStockView: View {
         }
         .navigationTitle("库存不足")
         .navigationBarTitleDisplayMode(.inline)
+        .overlay(alignment: .top) { feedbackBanner }
         // Rebuild the primary candidate store whenever the active household changes
         // (login "" → uuid, switch, or leave) so the list re-scopes to the new
         // household. The ShoppingStore is transient (only for the cross-action add),
@@ -66,8 +71,11 @@ struct LowStockView: View {
     }
 
     /// Adds every chosen candidate to the shopping list (respecting its name-unique
-    /// dedup), counts how many actually landed, surfaces brief feedback, then jumps
-    /// to the 购物 tab and pops this screen.
+    /// dedup), counts how many actually landed, then jumps to the 购物 tab and pops
+    /// this screen. When everything deduped away the screen stays and a toast says
+    /// so (the tab jump IS the success feedback; a toast there would never be seen).
+    /// A write FAILURE also keeps the screen (selection intact, so the CTA is the
+    /// retry) and must never claim「已在清单中」— nothing was written.
     private func addSelected() async {
         guard let store, let shoppingStore, !isAdding else { return }
         let chosen = store.chosenItems
@@ -75,21 +83,56 @@ struct LowStockView: View {
 
         isAdding = true
         var added = 0
+        var failed = 0
         for item in chosen {
             let category = FoodKnowledge.lookup(item.name)?.category
-            if await shoppingStore.add(name: item.name, category: category) {
-                added += 1
+            switch await shoppingStore.addItem(name: item.name, category: category) {
+            case .added: added += 1
+            case .duplicate: break // already on the list — the goal is met
+            case .failed: failed += 1
             }
         }
         isAdding = false
 
-        if added == 0 {
-            feedback = "所选项目已在购物清单中"
+        if failed > 0 {
+            withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
+                feedback = added > 0 ? "部分项目添加失败，请重试" : "添加失败，请重试"
+            }
             return
         }
-        feedback = "已添加 \(added) 项到购物清单"
+        if added == 0 {
+            withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
+                feedback = "所选项目已在购物清单中"
+            }
+            return
+        }
         onSelectShopping()
         dismiss()
+    }
+
+    /// Top toast consuming `feedback` — the Dashboard banner pattern (2s auto-hide).
+    @ViewBuilder
+    private var feedbackBanner: some View {
+        if let feedback {
+            Text(feedback)
+                .font(.fkLabelLarge)
+                .foregroundStyle(Color.fkOnSurface)
+                .padding(.horizontal, FkSpacing.lg)
+                .padding(.vertical, FkSpacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                        .fill(Color.fkSurfaceContainerLowest)
+                )
+                .fkCardShadow()
+                .padding(.top, FkSpacing.sm)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .task(id: feedback) {
+                    try? await Task.sleep(for: .seconds(2))
+                    if !Task.isCancelled {
+                        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { self.feedback = nil }
+                    }
+                }
+        }
     }
 }
 

@@ -48,6 +48,11 @@ struct WasteInsightsView: View {
             self.store = store
             await store.load()
         }
+        // Remote merge pulse: a household-sync apply bumps dataRevision; reload
+        // so the stats reflect food-log records pulled from other members.
+        .onChange(of: dependencies.syncSession.dataRevision) {
+            Task { await store?.load() }
+        }
     }
 }
 
