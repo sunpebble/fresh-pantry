@@ -91,7 +91,14 @@ actor HouseholdContentSyncCoordinator {
         do {
             // One-shot legacy-id migration so historical fl_<ms> rows can backfill
             // into the uuid PK column. Idempotent — a no-op once everything is UUID.
-            try? await foodLog.migrateLegacyIds()
+            // Local-only SwiftData op: surface a failure rather than swallow it (a
+            // swallowed failure would leave fl_ ids that re-upload as duplicate rows
+            // because the codec skips a non-UUID id). Non-fatal: sync still proceeds.
+            do {
+                try await foodLog.migrateLegacyIds()
+            } catch {
+                Self.logger.error("FoodLog id migration failed: \(error.localizedDescription, privacy: .public)")
+            }
             guard isCurrent(gen, householdId) else { return }
 
             let scope = LocalUploadScope(
@@ -336,7 +343,7 @@ actor HouseholdContentSyncCoordinator {
         // and one malformed remote row must not abort the whole apply.
         let decoded = rows
             .compactMap { DomainJSON.fromValueMap(FoodLogEntry.self, from: $0) }
-            .filter { !$0.id.isEmpty }
+            .filter { !$0.id.isEmpty && !$0.name.trimmed.isEmpty }
 
         let scope = LocalUploadScope(
             householdID: householdId,
