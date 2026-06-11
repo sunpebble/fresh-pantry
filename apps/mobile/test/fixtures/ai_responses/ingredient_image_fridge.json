@@ -1,5 +1,0 @@
-[
-  {"name":"番茄","quantity":"4","unit":"个","category":"蔬菜","storage":"fridge","shelfLifeDays":7},
-  {"name":"鸡蛋","quantity":"8","unit":"颗","category":"蛋奶","storage":"fridge","shelfLifeDays":30},
-  {"name":"牛奶","quantity":"1","unit":"L","category":"蛋奶","storage":"fridge","shelfLifeDays":7}
-]

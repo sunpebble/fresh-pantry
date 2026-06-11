@@ -1,7 +1,0 @@
-Sure! Here is the recipe:
-
-```json
-{ "name": "番茄牛腩面", "cookingMinutes": 60, "difficulty": 3, "category": "家常", "description": "", "ingredients": [{"name":"番茄","amount":"2 个"}], "steps": ["切块"] }
-```
-
-Hope you enjoy!

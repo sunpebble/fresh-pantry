@@ -2,15 +2,12 @@
   "name": "fresh-pantry-monorepo",
   "private": true,
   "scripts": {
-    "mobile:analyze": "cd apps/mobile && flutter analyze",
-    "mobile:test": "cd apps/mobile && flutter test",
-    "mobile:pub-get": "cd apps/mobile && flutter pub get",
-    "api:test": "sh -c 'if [ -d apps/api ]; then cd apps/api && npm test; else echo \"apps/api will be added in Task 2\"; fi'",
-    "api:deploy": "sh -c 'if [ -d apps/api ]; then cd apps/api && npx wrangler deploy; else echo \"apps/api will be added in Task 2\"; fi'",
+    "api:test": "cd apps/api && npm test",
+    "api:deploy": "cd apps/api && npx wrangler deploy",
     "supabase:start": "npx -y supabase@2.101.0 start",
     "supabase:stop": "npx -y supabase@2.101.0 stop",
     "supabase:status": "npx -y supabase@2.101.0 status",
     "supabase:reset": "npx -y supabase@2.101.0 db reset",
-    "check": "npm run mobile:analyze && npm run mobile:test"
+    "check": "npm run api:test"
   }
 }

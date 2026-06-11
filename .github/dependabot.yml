@@ -1,0 +1,35 @@
+# Dependabot 每周检查并更新依赖。
+# 单人自用项目:用 groups 把每个生态的更新合并成单个 PR,尽量减少维护噪音。
+# commit 前缀用 chore,避免被只管 apps/ios 的 release-please 当作 feat/fix 计入版本。
+#
+# 未纳入的生态:
+#   - pub(Flutter):apps/mobile 已移除。
+#   - swift(iOS SPM):apps/ios 用 XcodeGen,SPM 依赖声明在 project.yml,
+#     且 .xcodeproj / Package.resolved 均 git-ignored,dependabot 无从解析。
+#     iOS 依赖(Supabase / Sentry)的版本下限手动维护在 apps/ios/project.yml。
+version: 2
+updates:
+  # GitHub Actions —— .github/workflows 里的 action 版本
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # Cloudflare Worker API —— apps/api 的 npm 依赖
+  - package-ecosystem: "npm"
+    directory: "/apps/api"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      api-dependencies:
+        patterns:
+          - "*"
