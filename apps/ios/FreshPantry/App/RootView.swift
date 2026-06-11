@@ -39,6 +39,8 @@ struct RootView: View {
     @State private var pendingRecipeID: String?
     /// Presents the global search overlay (launched from the 首页 toolbar).
     @State private var showSearch = false
+    /// Drives the post-login onboarding profile cover (forces a display name).
+    @State private var profileGateReady = false
 
     var body: some View {
         // Snapshot/test hook: `-initialRoute login` renders LoginView standalone
@@ -66,6 +68,16 @@ struct RootView: View {
                 InvitePreviewSheet(input: route.input)
             }
         }
+    }
+
+    /// Presents the onboarding profile cover when load resolved + a display name
+    /// is still missing. Read-only setter (the cover dismisses by the store's
+    /// state flipping, never by user cancel).
+    private var profileSetupBinding: Binding<Bool> {
+        Binding(
+            get: { profileGateReady && dependencies.profileStore.needsProfileSetup },
+            set: { _ in }
+        )
     }
 
     /// Drives the deep-link invite sheet: presents only when a token is pending AND
@@ -151,6 +163,12 @@ struct RootView: View {
         // actor never mutates @State during a body pass. Optional → descendants
         // read nil for the first frame (no badge), then the seeded store.
         .environment(pendingSync)
+        // POST-LOGIN ONBOARDING: force a display name once signed in. The cover
+        // shows only after profile load resolved (profileGateReady) AND the store
+        // reports needsProfileSetup; saving a name flips it false → auto-dismiss.
+        .fullScreenCover(isPresented: profileSetupBinding) {
+            ProfileEditView(store: dependencies.profileStore, mode: .onboarding)
+        }
         // SEED the per-row sync-status store once from the outbox actor, then do
         // the first read so badges reflect any startup backlog. Idempotent.
         .task {
@@ -261,7 +279,10 @@ struct RootView: View {
         // right after login instead of only once the 家庭共享 screen is opened.
         // Re-runs whenever the signed-in identity changes (incl. nil → email).
         .task(id: dependencies.authService.signedInEmail) {
-            guard dependencies.authService.signedInEmail != nil else { return }
+            guard dependencies.authService.signedInEmail != nil else {
+                profileGateReady = false
+                return
+            }
             // Ensure the SDK session is resolved so the households query carries the
             // user JWT (else it silently runs as anon → RLS-empty → no household).
             await dependencies.clientProvider.ensureSessionReady()
@@ -275,6 +296,8 @@ struct RootView: View {
                 mealPlan: dependencies.mealPlanRepository
             )
             await store.refreshHouseholds()
+            await dependencies.profileStore.load(signedIn: true)
+            profileGateReady = true
         }
         #if DEBUG
         // Automation hooks for the live-sync verification (no UI typing on the
