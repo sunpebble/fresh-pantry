@@ -1,0 +1,22 @@
+{
+  "name": "@fresh-pantry/recipe-pipeline",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build:recipes": "flue run build-recipes --target node --payload '{}'",
+    "build:recipes:dry": "flue run build-recipes --target node --payload '{\"dryRun\":true}'"
+  },
+  "dependencies": {
+    "@flue/runtime": "^0.11.0",
+    "valibot": "^1.4.1"
+  },
+  "devDependencies": {
+    "@flue/cli": "^0.11.0",
+    "@types/node": "^25.9.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  }
+}
