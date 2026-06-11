@@ -126,6 +126,7 @@ enum SyncEntityType: String, Codable, Sendable, CaseIterable {
     case shoppingItem
     case customRecipe
     case mealPlanEntry
+    case foodLogEntry
     case householdConfig
 }
 

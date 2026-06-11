@@ -95,6 +95,19 @@ enum RemoteRowCodec {
     ) -> [String: JSONValue] {
         payloadRowForUpsert(householdID: householdID, domain: entry)
     }
+
+    /// food_log_entries ⇄ FoodLogEntry map. Same opaque-`payload` shape as
+    /// meal plans — only `id` and the sync columns are real columns.
+    static func foodLogEntryRowFromJson(_ row: [String: JSONValue]) -> [String: JSONValue] {
+        payloadRowFromJson(row)
+    }
+
+    static func foodLogEntryRowForUpsert(
+        householdID: String,
+        entry: [String: JSONValue]
+    ) -> [String: JSONValue] {
+        payloadRowForUpsert(householdID: householdID, domain: entry)
+    }
 }
 
 // MARK: - Column table

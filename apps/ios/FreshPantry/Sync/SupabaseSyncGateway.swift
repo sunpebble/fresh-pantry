@@ -92,6 +92,15 @@ actor SupabaseSyncGateway: RemoteSyncGateway {
             case .intake, .deduction, .toggleChecked:
                 return
             }
+        case .foodLogEntry:
+            switch op.operation {
+            case .create, .update:
+                try await pushVersionedRow(table: "food_log_entries", op: op, codec: .foodLog)
+            case .delete:
+                try await softDeleteRemoteRow(table: "food_log_entries", op: op)
+            case .intake, .deduction, .toggleChecked:
+                return
+            }
         case .householdConfig:
             return // pushed via household table ops, not the outbox
         }
@@ -335,6 +344,10 @@ extension SupabaseSyncGateway {
         static let mealPlan = EntityCodec(
             rowForUpsert: { RemoteRowCodec.mealPlanEntryRowForUpsert(householdID: $0, entry: $1) },
             rowFromJson: { RemoteRowCodec.mealPlanEntryRowFromJson($0) }
+        )
+        static let foodLog = EntityCodec(
+            rowForUpsert: { RemoteRowCodec.foodLogEntryRowForUpsert(householdID: $0, entry: $1) },
+            rowFromJson: { RemoteRowCodec.foodLogEntryRowFromJson($0) }
         )
     }
 }
