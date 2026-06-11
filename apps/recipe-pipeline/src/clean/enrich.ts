@@ -42,7 +42,10 @@ function uniq(xs: string[]): string[] {
 }
 
 export function assembleRecipe(raw: RawRecipe, enr: Enrichment): CleanRecipe {
-  const category = (raw.sourceCategory as CleanRecipe['category']) ?? enr.category;
+  const category =
+    raw.sourceCategory && (CATEGORIES as readonly string[]).includes(raw.sourceCategory)
+      ? (raw.sourceCategory as CleanRecipe['category'])
+      : enr.category;
   const difficulty = raw.sourceDifficulty ?? enr.difficulty;
   const description = raw.description?.trim() || enr.description;
   const steps = raw.steps.length ? raw.steps : enr.steps;

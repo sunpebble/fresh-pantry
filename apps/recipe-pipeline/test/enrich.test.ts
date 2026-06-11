@@ -41,6 +41,9 @@ describe('buildEnrichPrompt', () => {
     const p = buildEnrichPrompt({ ...tier1, rawText: '网页正文…', portionText: undefined });
     expect(p).toContain('网页正文');
   });
+  it('Tier1 无计算段时提示留空', () => {
+    expect(buildEnrichPrompt({ ...tier1, portionText: undefined })).toContain('全部留空字符串');
+  });
 });
 
 describe('assembleRecipe', () => {
@@ -57,6 +60,14 @@ describe('assembleRecipe', () => {
     expect(r.remoteVersion).toBe(0);
     expect(r.clientUpdatedAt).toBeNull();
     expect(r.deletedAt).toBeNull();
+  });
+  it('非法 sourceCategory 回落到 enrichment 分类', () => {
+    const r = assembleRecipe({ ...tier1, sourceCategory: '素食' }, enr);
+    expect(r.category).toBe('荤菜'); // enr.category
+  });
+  it('imageUrl 透传:raw 有图则保留,undefined 归 null', () => {
+    expect(assembleRecipe({ ...tier1, imageUrl: 'http://img' }, enr).imageUrl).toBe('http://img');
+    expect(assembleRecipe({ ...tier1, imageUrl: undefined }, enr).imageUrl).toBeNull();
   });
   it('URL 源缺确定性字段时回落 enrichment', () => {
     const url: RawRecipe = {
