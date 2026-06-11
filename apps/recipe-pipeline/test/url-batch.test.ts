@@ -30,4 +30,17 @@ describe('urlBatchSource', () => {
     }
     expect(out).toEqual(['url:x.com/r/1']);
   });
+
+  it('fetch 失败的 url 被跳过,不中断其余', async () => {
+    const seq = [
+      async () => { throw new Error('network'); },
+      async () => ({ text: async () => '<title>好菜</title><p>正文</p>' }) as unknown as Response,
+    ];
+    let i = 0;
+    const fakeFetch = (async () => seq[i++]()) as unknown as typeof fetch;
+    const src = urlBatchSource({ urls: ['https://a.com/1', 'https://b.com/2'], fetchImpl: fakeFetch }, enr);
+    const out: string[] = [];
+    for await (const r of src.collect({ workDir: '.', log: () => {} })) out.push(r.id);
+    expect(out).toEqual(['url:b.com/2']); // 第一个失败被跳过,第二个产出
+  });
 });
