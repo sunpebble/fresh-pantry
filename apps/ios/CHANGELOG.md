@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.9.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.8.0...fresh_pantry-v1.9.0) (2026-06-11)
+
+
+### Features
+
+* **ios:** FoodLog 去向/撤销写入家庭同步 outbox(create/软删) ([07eda4e](https://github.com/kunish/fresh_pantry/commit/07eda4eb138c56fa71a21e9066cd69d906c70ec2))
+* **ios:** FoodLog 同步 codec + gateway 分支 + SyncEntityType.foodLogEntry ([7cd17b8](https://github.com/kunish/fresh_pantry/commit/7cd17b827384e137cb301f7fc18f35649d0ee57b))
+* **ios:** FoodLogEntry id 切换为 UUID(家庭同步前置) ([6744e96](https://github.com/kunish/fresh_pantry/commit/6744e969bd82aa9f08c521e3eeeb357fded8cc5b))
+* **ios:** FoodLogRepository 加一次性幂等 id 迁移(fl_→UUID) ([2df67d9](https://github.com/kunish/fresh_pantry/commit/2df67d98fecea718802238a56a484f68c09a45c7))
+* **ios:** HouseholdContentSyncCoordinator 接入 FoodLog 同步 + 启动 id 迁移 ([5be8a3b](https://github.com/kunish/fresh_pantry/commit/5be8a3bb8353da97b9f1407df5c81825d9f0f1c0))
+* **ios:** HouseholdMergePolicy.mergeFoodLog(append-only 并集) ([c5515d7](https://github.com/kunish/fresh_pantry/commit/c5515d737ef28cd78003d9ab2dc7a97c56d28c39))
+* **ios:** RemotePantryRepository 加 food_log_entries load/upsert/watch ([b1e5a1e](https://github.com/kunish/fresh_pantry/commit/b1e5a1e90988455268fda9b653c438ee4d0fd3c4))
+
+
+### Bug Fixes
+
+* **ios:** code review 跟进 —— 迁移失败可见 + 远端 FoodLog 行 name 守卫 ([958604a](https://github.com/kunish/fresh_pantry/commit/958604a1c00bbf0d1f7b0b1b64c0b4abdabe7250))
+
 ## [1.8.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.7.0...fresh_pantry-v1.8.0) (2026-06-10)
 
 
