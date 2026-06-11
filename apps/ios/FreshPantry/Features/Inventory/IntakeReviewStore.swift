@@ -16,6 +16,11 @@ import Foundation
 final class IntakeReviewStore {
     private(set) var proposals: [IntakeProposal]
 
+    /// Inline failure notice for the last apply (the controller's load/save
+    /// threw — inventory untouched, shopping rows kept, so retry is safe).
+    /// Cleared when the next apply starts.
+    private(set) var applyError: String?
+
     private let controller: IntakeController
 
     init(proposals: [IntakeProposal], controller: IntakeController) {
@@ -70,9 +75,20 @@ final class IntakeReviewStore {
 
     /// Applies only the SELECTED proposals atomically via `IntakeController`
     /// (which runs the full P4 `ProposalApply` pipeline + persist). Returns the
-    /// outcome so the view can refresh + show feedback.
+    /// outcome so the view can refresh + show feedback; a non-persisted outcome
+    /// also sets `applyError` (the controller's documented "caller should
+    /// surface a retry" contract).
     func apply() async -> IntakeController.ApplyOutcome {
-        await controller.apply(proposals)
+        applyError = nil
+        let outcome = await controller.apply(proposals)
+        applyError = Self.applyErrorMessage(for: outcome)
+        return outcome
+    }
+
+    /// Failure-notice mapping kept pure so it's testable without forcing a real
+    /// repository to throw: only a non-persisted outcome carries a message.
+    static func applyErrorMessage(for outcome: IntakeController.ApplyOutcome) -> String? {
+        outcome.persisted ? nil : "入库失败，请重试"
     }
 
     // MARK: Rules

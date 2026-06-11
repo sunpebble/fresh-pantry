@@ -70,6 +70,16 @@ struct IntakeReviewView: View {
                     }
                     .padding(FkSpacing.lg)
                 }
+                if let applyError = store.applyError {
+                    // 失败留在本屏可重试：库存一行没进、购物行也没被移除，
+                    // 不提示的话只会看到按钮闪回原状（mirrors LeftoverIntakeSheet）。
+                    Label(applyError, systemImage: "exclamationmark.circle")
+                        .font(.fkBodySmall)
+                        .foregroundStyle(Color.fkDanger)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, FkSpacing.lg)
+                        .padding(.vertical, FkSpacing.sm)
+                }
                 bottomBar(store)
             }
         }

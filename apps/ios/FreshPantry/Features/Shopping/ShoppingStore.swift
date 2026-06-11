@@ -18,6 +18,23 @@ final class ShoppingStore {
         case done
     }
 
+    /// Three-state outcome for `addItem`/`restoreItem`. The legacy `Bool` return
+    /// conflated "duplicate" with "read/write failed", which feedback UIs then
+    /// rendered as the affirmative「已在购物清单中」— asserting a fact the store
+    /// never verified. Callers branch copy on this instead:
+    /// `.duplicate` →「已在购物清单中」, `.failed` →「添加失败，请重试」.
+    enum AddOutcome: Equatable, Sendable {
+        /// A row was appended, quantity-merged (同名自动聚合), or re-inserted.
+        case added
+        /// The same name (or, for `restoreItem`, the same id) is already on the
+        /// list and couldn't merge — nothing was written, but the user's goal
+        /// is already satisfied.
+        case duplicate
+        /// 写前重读 or persist threw (or the name was blank): nothing was
+        /// written. Surface a retryable failure, never a duplicate message.
+        case failed
+    }
+
     private let repository: ShoppingRepository
     private let householdID: String
     /// Optional outbox seam — nil keeps existing tests/previews local-only.
@@ -74,10 +91,36 @@ final class ShoppingStore {
 
     // MARK: Mutations
 
+    /// FIFO mutation chain: every mutation awaits its predecessor before its
+    /// read-modify-write runs. Each mutation suspends twice (写前重读 + persist)
+    /// and `persist` replaces the WHOLE household scope — without the chain, two
+    /// quick check-off taps could both load the same snapshot and the second
+    /// persist would silently drop the first one's write.
+    @ObservationIgnored
+    private var lastMutation: Task<Void, Never>?
+
+    /// Runs `body` after every previously-enqueued mutation finished, and makes
+    /// the next mutation wait for `body` in turn. MainActor-only, so reading +
+    /// relinking `lastMutation` between two mutations is race-free.
+    private func serializedMutation<T: Sendable>(_ body: @escaping @MainActor () async -> T) async -> T {
+        let previous = lastMutation
+        let task: Task<T, Never> = Task {
+            await previous?.value
+            return await body()
+        }
+        lastMutation = Task { _ = await task.value }
+        return await task.value
+    }
+
     /// Flips a row's checked state by stable id identity, persists, and updates
     /// local state. Returns whether a row was toggled.
     @discardableResult
     func toggleChecked(_ target: ShoppingItem) async -> Bool {
+        await serializedMutation { await self.performToggleChecked(target) }
+    }
+
+    private func performToggleChecked(_ target: ShoppingItem) async -> Bool {
+        guard await refreshBeforeMutate() else { return false }
         guard let index = items.firstIndex(where: { $0.id == target.id }) else { return false }
         let toggled = items[index]
         let newChecked = !toggled.isChecked
@@ -94,16 +137,30 @@ final class ShoppingStore {
         return true
     }
 
+    /// Compatibility shim over `addItem` — true ONLY when a row was actually
+    /// added/merged. Kept so legacy call sites/tests that only branch on
+    /// "did something land" keep compiling; prefer `addItem` wherever the
+    /// duplicate/failure split reaches user-facing copy.
+    @discardableResult
+    func add(name: String, detail: String = "", category: String? = nil) async -> Bool {
+        await addItem(name: name, detail: detail, category: category) == .added
+    }
+
     /// Adds a new item (name required; detail optional; category defaulted via
     /// `FoodKnowledge` when not supplied). Name-unique per the repo's
     /// case-insensitive dedup — but a duplicate name no longer always rejects:
     /// when both details parse to the same unit the quantities merge into the
-    /// existing row (see `mergeQuantity`). Returns whether a row was added or
-    /// merged (false when the name is blank or the duplicate couldn't merge).
-    @discardableResult
-    func add(name: String, detail: String = "", category: String? = nil) async -> Bool {
+    /// existing row (see `mergeQuantity`). Returns `.added` for an appended or
+    /// merged row, `.duplicate` for a same-name row that couldn't merge, and
+    /// `.failed` when nothing was written (blank name, read or persist error).
+    func addItem(name: String, detail: String = "", category: String? = nil) async -> AddOutcome {
+        await serializedMutation { await self.performAdd(name: name, detail: detail, category: category) }
+    }
+
+    private func performAdd(name: String, detail: String, category: String?) async -> AddOutcome {
         let trimmedName = name.trimmed
-        guard !trimmedName.isEmpty else { return false }
+        guard !trimmedName.isEmpty else { return .failed }
+        guard await refreshBeforeMutate() else { return .failed }
         let key = ShoppingItemNormalizer.nameKey(trimmedName)
         if let duplicateIndex = items.firstIndex(where: { ShoppingItemNormalizer.nameKey($0.name) == key }) {
             return await mergeQuantity(into: duplicateIndex, addedDetail: detail.trimmed)
@@ -115,7 +172,7 @@ final class ShoppingStore {
             detail: detail.trimmed,
             category: resolvedCategory
         )
-        guard await persist(items + [item]) else { return false }
+        guard await persist(items + [item]) else { return .failed }
         if let patch = DomainJSON.valueMap(item) {
             await syncWriter?.enqueue(
                 entityType: .shoppingItem,
@@ -125,7 +182,7 @@ final class ShoppingStore {
                 baseVersion: nil
             )
         }
-        return true
+        return .added
     }
 
     /// 同名自动聚合: a duplicate-name add merges into the existing row instead
@@ -133,9 +190,10 @@ final class ShoppingStore {
     /// same name must never reach `saveItems`. Merges ONLY when both details
     /// parse via `QuantityText` AND the unit remainders match (trimmed,
     /// case-insensitive); anything else (blank/free-text detail, unit mismatch)
-    /// keeps the historical duplicate rejection so quantities are never guessed.
-    private func mergeQuantity(into index: Int, addedDetail: String) async -> Bool {
-        guard !addedDetail.isEmpty else { return false }
+    /// keeps the historical duplicate rejection (`.duplicate`) so quantities
+    /// are never guessed. A persist error is `.failed` — NOT a duplicate.
+    private func mergeQuantity(into index: Int, addedDetail: String) async -> AddOutcome {
+        guard !addedDetail.isEmpty else { return .duplicate }
         let existing = items[index]
         guard
             let current = QuantityText.parseLeadingQuantity(existing.detail.trimmed),
@@ -143,7 +201,7 @@ final class ShoppingStore {
             current.remainder.lowercased() == added.remainder.lowercased(),
             let currentValue = Double(current.magnitude),
             let addedValue = Double(added.magnitude)
-        else { return false }
+        else { return .duplicate }
 
         let summed = QuantityText.formatQuantity(currentValue + addedValue)
         // The existing row's unit spelling wins — we're updating that row.
@@ -157,7 +215,7 @@ final class ShoppingStore {
         )
         var next = items
         next[index] = merged
-        guard await persist(next) else { return false }
+        guard await persist(next) else { return .failed }
         if let patch = DomainJSON.valueMap(merged) {
             await syncWriter?.enqueue(
                 entityType: .shoppingItem,
@@ -167,7 +225,7 @@ final class ShoppingStore {
                 baseVersion: existing.remoteVersion
             )
         }
-        return true
+        return .added
     }
 
     /// Rewrites a row's free-text detail (数量/备注) by stable id identity —
@@ -176,6 +234,11 @@ final class ShoppingStore {
     /// optimistic-concurrency merge. Returns whether a row was updated.
     @discardableResult
     func updateDetail(_ target: ShoppingItem, detail: String) async -> Bool {
+        await serializedMutation { await self.performUpdateDetail(target, detail: detail) }
+    }
+
+    private func performUpdateDetail(_ target: ShoppingItem, detail: String) async -> Bool {
+        guard await refreshBeforeMutate() else { return false }
         guard let index = items.firstIndex(where: { $0.id == target.id }) else { return false }
         let current = items[index]
         let updated = current.copyWith(detail: detail.trimmed)
@@ -194,15 +257,29 @@ final class ShoppingStore {
         return true
     }
 
+    /// Compatibility shim over `restoreItem` — true ONLY when the row was
+    /// actually re-inserted. Prefer `restoreItem` where the already-present /
+    /// failure split reaches user-facing copy (the undo banner).
+    @discardableResult
+    func restore(_ item: ShoppingItem) async -> Bool {
+        await restoreItem(item) == .added
+    }
+
     /// Re-inserts a previously-deleted row (preserving its id), persisting and
     /// enqueuing a full-row `.update` to clear the soft-delete remotely — the undo
     /// path for a swipe-delete. Mirrors the inventory undo (a `.update` un-deletes
-    /// the row the prior `.delete` soft-removed). Returns whether the row was added.
-    @discardableResult
-    func restore(_ item: ShoppingItem) async -> Bool {
+    /// the row the prior `.delete` soft-removed). Returns `.added` when the row
+    /// was re-inserted, `.duplicate` when the same id is already present (the
+    /// undo's goal is met — benign), `.failed` on a read/persist error.
+    func restoreItem(_ item: ShoppingItem) async -> AddOutcome {
+        await serializedMutation { await self.performRestore(item) }
+    }
+
+    private func performRestore(_ item: ShoppingItem) async -> AddOutcome {
+        guard await refreshBeforeMutate() else { return .failed }
         // Already present (same id) — nothing to restore.
-        guard !items.contains(where: { $0.id == item.id }) else { return false }
-        guard await persist(items + [item]) else { return false }
+        guard !items.contains(where: { $0.id == item.id }) else { return .duplicate }
+        guard await persist(items + [item]) else { return .failed }
         if let patch = DomainJSON.valueMap(item) {
             await syncWriter?.enqueue(
                 entityType: .shoppingItem,
@@ -212,13 +289,18 @@ final class ShoppingStore {
                 baseVersion: item.remoteVersion
             )
         }
-        return true
+        return .added
     }
 
     /// Deletes a row by stable id identity, persists the survivors, and updates
     /// local state. Returns whether a row was removed.
     @discardableResult
     func delete(_ target: ShoppingItem) async -> Bool {
+        await serializedMutation { await self.performDelete(target) }
+    }
+
+    private func performDelete(_ target: ShoppingItem) async -> Bool {
+        guard await refreshBeforeMutate() else { return false }
         guard let index = items.firstIndex(where: { $0.id == target.id }) else { return false }
         let removed = items[index]
         var survivors = items
@@ -237,6 +319,53 @@ final class ShoppingStore {
             )
         }
         return true
+    }
+
+    /// Deletes every row in `targets` (by stable id) in ONE read-modify-write —
+    /// the 清空已完成 path. Returns the rows actually removed (fresh copies from
+    /// the repo, so a later `restore` undo re-inserts exactly what was lost);
+    /// EMPTY when none of the ids are present anymore (benign — another entry
+    /// point already took them); NIL when the 写前重读 or persist threw (nothing
+    /// was deleted; the caller should surface a retryable failure, not silence).
+    func deleteAll(_ targets: [ShoppingItem]) async -> [ShoppingItem]? {
+        await serializedMutation { await self.performDeleteAll(targets) }
+    }
+
+    private func performDeleteAll(_ targets: [ShoppingItem]) async -> [ShoppingItem]? {
+        guard !targets.isEmpty else { return [] }
+        guard await refreshBeforeMutate() else { return nil }
+        let ids = Set(targets.map(\.id))
+        let removed = items.filter { ids.contains($0.id) }
+        guard !removed.isEmpty else { return [] }
+        guard await persist(items.filter { !ids.contains($0.id) }) else { return nil }
+        // Same soft-delete propagation as the single `delete` (see note there).
+        for item in removed {
+            if let patch = DomainJSON.valueMap(item) {
+                await syncWriter?.enqueue(
+                    entityType: .shoppingItem,
+                    entityId: item.id,
+                    operation: .delete,
+                    patch: patch,
+                    baseVersion: item.remoteVersion
+                )
+            }
+        }
+        return removed
+    }
+
+    /// 写前重读: re-syncs `items` from the repo before a mutation applies its
+    /// delta, because `persist` replaces the WHOLE household scope — a stale
+    /// snapshot would silently drop rows another store instance wrote since our
+    /// last load (Dashboard 加购 / Siri drain / 缺料卡 each build their own
+    /// session-scoped store over the same repo). A refresh failure aborts the
+    /// mutation (`false`) rather than proceeding on a possibly-stale snapshot.
+    private func refreshBeforeMutate() async -> Bool {
+        do {
+            items = try await repository.loadAllFor(householdID)
+            return true
+        } catch {
+            return false
+        }
     }
 
     /// Persists `next` through the repo actor (which re-normalizes + de-dupes),

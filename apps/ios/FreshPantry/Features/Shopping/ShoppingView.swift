@@ -55,6 +55,12 @@ struct ShoppingView: View {
         .onChange(of: dependencies.syncSession.dataRevision) {
             Task { await store?.load() }
         }
+        // Siri drain pulse: `IntentAddDrainer` writes through its OWN store
+        // instance, so this list would otherwise keep its pre-drain snapshot
+        // (Siri 报成功、打开却看不到) until a manual pull-to-refresh.
+        .onReceive(NotificationCenter.default.publisher(for: .intentDidDrainShoppingAdd)) { _ in
+            Task { await store?.load() }
+        }
     }
 }
 
@@ -73,9 +79,12 @@ private struct ShoppingContent: View {
     /// applied ones can be removed from the list on return.
     @State private var reviewRoute: ReviewRoute?
     @State private var reviewSource: [ShoppingItem] = []
-    /// The just-deleted row, surfaced in a transient undo banner.
-    @State private var pendingUndo: ShoppingItem?
+    /// The just-deleted rows (single swipe-delete OR the 清空已完成 batch),
+    /// surfaced in a transient undo banner.
+    @State private var pendingUndo: PendingUndo?
     @State private var showClearConfirm = false
+    /// Transient top toast (入库结果 / 库存读取失败), the Dashboard pattern.
+    @State private var toast: String?
     /// Row whose 数量 detail is being edited (sheet route — `ShoppingItem`
     /// itself isn't Identifiable, mirroring the `ReviewRoute` pattern).
     @State private var editRoute: ShoppingDetailEditRoute?
@@ -118,11 +127,18 @@ private struct ShoppingContent: View {
         .navigationDestination(item: $reviewRoute) { route in
             IntakeReviewView(proposals: route.proposals, title: "已购买项入库") { outcome in
                 let applied = ShoppingIntake.appliedSourceItems(reviewSource, appliedIds: outcome.appliedIds)
-                Task { for item in applied { await store.delete(item) } }
+                Task {
+                    _ = await store.deleteAll(applied)
+                    // 已入库的行不给撤销——恢复它们会和刚进库存的批次重复。
+                    if !outcome.appliedIds.isEmpty {
+                        toast = "已入库 \(outcome.appliedIds.count) 项"
+                    }
+                }
             }
         }
         .safeAreaInset(edge: .bottom) { intakeCTA }
         .overlay(alignment: .bottom) { undoBanner }
+        .overlay(alignment: .top) { toastBanner }
         .confirmationDialog(
             "清理已购项目",
             isPresented: $showClearConfirm,
@@ -255,13 +271,27 @@ private struct ShoppingContent: View {
             HStack(spacing: FkSpacing.md) {
                 Image(systemName: "trash")
                     .foregroundStyle(Color.fkDanger)
-                Text("「\(undo.name)」已删除")
+                Text(undo.items.count == 1
+                    ? "「\(undo.items[0].name)」已删除"
+                    : "已清理 \(undo.items.count) 项")
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurface)
                 Spacer(minLength: FkSpacing.sm)
                 Button("撤销") {
                     Task {
-                        await store.restore(undo)
+                        // Count REAL failures only — `.duplicate` (the row is
+                        // already back, e.g. a remote merge re-added it) means
+                        // the undo's goal is met, not that it broke.
+                        var failures = 0
+                        for item in undo.items {
+                            if await store.restoreItem(item) == .failed { failures += 1 }
+                        }
+                        guard failures == 0 else {
+                            // Keep the banner so 撤销 can be retried (rows that
+                            // did restore re-report `.duplicate`, staying benign).
+                            toast = "恢复失败，请重试"
+                            return
+                        }
                         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { pendingUndo = nil }
                     }
                 }
@@ -285,6 +315,32 @@ private struct ShoppingContent: View {
                     withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { pendingUndo = nil }
                 }
             }
+        }
+    }
+
+    // MARK: Toast
+
+    @ViewBuilder
+    private var toastBanner: some View {
+        if let toast {
+            Text(toast)
+                .font(.fkLabelLarge)
+                .foregroundStyle(Color.fkOnSurface)
+                .padding(.horizontal, FkSpacing.lg)
+                .padding(.vertical, FkSpacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                        .fill(Color.fkSurfaceContainerLowest)
+                )
+                .fkCardShadow()
+                .padding(.top, FkSpacing.sm)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .task(id: toast) {
+                    try? await Task.sleep(for: .seconds(2))
+                    if !Task.isCancelled {
+                        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { self.toast = nil }
+                    }
+                }
         }
     }
 
@@ -314,7 +370,15 @@ private struct ShoppingContent: View {
     private func openIntake(for items: [ShoppingItem]) {
         guard !items.isEmpty else { return }
         Task {
-            let inventory = (try? await dependencies.inventoryRepository.loadAllFor(dependencies.householdID)) ?? []
+            let inventory: [Ingredient]
+            do {
+                inventory = try await dependencies.inventoryRepository.loadAllFor(dependencies.householdID)
+            } catch {
+                // 合并判定全靠库存现状——读不到时进审核会把该合并的全误判成
+                // 新建批次（落库后要手动清理重复行），宁可不进并提示重试。
+                toast = "读取库存失败，请重试"
+                return
+            }
             let proposals = ShoppingIntake.buildProposals(items, inventory: inventory)
             guard !proposals.isEmpty else { return }
             reviewSource = items
@@ -324,12 +388,25 @@ private struct ShoppingContent: View {
 
     private func deleteWithUndo(_ item: ShoppingItem) async {
         guard await store.delete(item) else { return }
-        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { pendingUndo = item }
+        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
+            pendingUndo = PendingUndo(items: [item])
+        }
     }
 
+    /// 清空已完成: one atomic batch delete, then the same 4-second undo the
+    /// swipe-delete offers (the banner restores exactly the rows `deleteAll`
+    /// reported removed — never rows some other entry point already took).
+    /// nil = read/persist failure: the user confirmed a destructive action, so
+    /// silence would read as a dead button — toast a retry instead. An EMPTY
+    /// result stays silent (the rows were already gone — a benign no-op).
     private func clearChecked() async {
-        for item in store.items.filter(\.isChecked) {
-            _ = await store.delete(item)
+        guard let removed = await store.deleteAll(store.items.filter(\.isChecked)) else {
+            toast = "清理失败，请重试"
+            return
+        }
+        guard !removed.isEmpty else { return }
+        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
+            pendingUndo = PendingUndo(items: removed)
         }
     }
 
@@ -351,6 +428,14 @@ private struct ShoppingContent: View {
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+}
+
+/// One undo banner's payload: the just-deleted rows (a single swipe-delete or
+/// the 清空已完成 batch). The fresh `id` per deletion re-arms the 4s dismiss
+/// timer even when banners replace each other back-to-back.
+private struct PendingUndo: Identifiable {
+    let id = UUID()
+    let items: [ShoppingItem]
 }
 
 /// Gradient purchase-progress card: 本次采购进度 + done/total + percent + bar.
@@ -526,8 +611,9 @@ private struct ShoppingAddSheet: View {
     @State private var category = FoodCategories.other
     @State private var categoryEdited = false
     @State private var isSaving = false
-    /// Inline duplicate notice — set when a save was rejected as a dup, so the add
-    /// doesn't silently close having added nothing (the Flutter "已在清单中" feedback).
+    /// Inline notice — set when a save was rejected as a dup (the Flutter
+    /// "已在清单中" feedback) OR failed to write (retryable), so the add never
+    /// silently closes having added nothing.
     @State private var addError: String?
 
     private var trimmedName: String { name.trimmed }
@@ -580,15 +666,20 @@ private struct ShoppingAddSheet: View {
     private func save() {
         isSaving = true
         Task {
-            let added = await store.add(name: trimmedName, detail: detail, category: category)
+            let outcome = await store.addItem(name: trimmedName, detail: detail, category: category)
             isSaving = false
-            if added {
+            switch outcome {
+            case .added:
                 dismiss()
-            } else {
+            case .duplicate:
                 // Rejected as a duplicate — keep the sheet open and say so rather
                 // than closing as if it worked. (A same-unit duplicate would have
-                // merged its quantity into the existing row and returned true.)
+                // merged its quantity into the existing row and reported `.added`.)
                 addError = "「\(trimmedName)」已在购物清单中"
+            case .failed:
+                // Read/persist error — nothing was written; never claim the item
+                // is already on the list. Keep the sheet open for a retry.
+                addError = "添加失败，请重试"
             }
         }
     }

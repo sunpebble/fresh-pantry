@@ -10,6 +10,14 @@ import Foundation
 /// from `FreshPantryApp` keyed on `householdID`, so it runs only AFTER the active
 /// household is resolved (a cold-start drain before sign-in would otherwise land
 /// in the local-only "" scope).
+extension Notification.Name {
+    /// Posted by `IntentAddDrainer` after a drain actually WROTE rows
+    /// (added/merged) — the foreground shopping list is a DIFFERENT
+    /// `ShoppingStore` instance that knows nothing of this write, so without
+    /// the pulse it keeps showing its pre-drain snapshot until a manual pull.
+    static let intentDidDrainShoppingAdd = Notification.Name("fresh_pantry.intent.didDrainShoppingAdd")
+}
+
 @MainActor
 enum IntentAddDrainer {
     /// Adds every queued name through a freshly-built store scoped to `householdID`
@@ -18,7 +26,8 @@ enum IntentAddDrainer {
     /// on every household change.
     static func drain(
         dependencies: AppDependencies,
-        queue: IntentPendingAddQueue = IntentPendingAddQueue()
+        queue: IntentPendingAddQueue = IntentPendingAddQueue(),
+        center: NotificationCenter = .default
     ) async {
         let names = queue.peek()
         guard !names.isEmpty else { return }
@@ -31,21 +40,30 @@ enum IntentAddDrainer {
         await store.load()
 
         // Ack on success: only remove a name from the persisted queue once it has
-        // actually landed (added/merged, or already present). `add` returns false
-        // for BOTH an un-mergeable duplicate (already on the list → the user's
-        // "add milk" intent is satisfied → consume) AND a genuine persist failure
-        // (no row written → KEEP queued so the next foreground retries it rather
-        // than silently dropping the Siri add the user already saw confirmed).
+        // actually landed (added/merged, or already present). `addItem`'s three-
+        // state outcome makes the split explicit: a `.duplicate` (already on the
+        // list → the user's "add milk" intent is satisfied) is consumed, while a
+        // `.failed` (read/persist error, no row written) stays QUEUED so the next
+        // foreground drain retries it rather than silently dropping the Siri add
+        // the user already saw confirmed — and never counts as a write.
         var consumed: [String] = []
+        var didWrite = false
         for name in names {
-            if await store.add(name: name) {
+            switch await store.addItem(name: name) {
+            case .added:
                 consumed.append(name)
-                continue
+                didWrite = true
+            case .duplicate:
+                consumed.append(name)
+            case .failed:
+                break // keep queued for the next drain
             }
-            let key = ShoppingItemNormalizer.nameKey(name)
-            let alreadyOnList = store.items.contains { ShoppingItemNormalizer.nameKey($0.name) == key }
-            if alreadyOnList { consumed.append(name) } // duplicate, not a write failure
         }
         queue.remove(consumed)
+        // Pulse only on a real write — a duplicate-only drain changed nothing,
+        // so the visible list has nothing new to show.
+        if didWrite {
+            center.post(name: .intentDidDrainShoppingAdd, object: nil)
+        }
     }
 }
