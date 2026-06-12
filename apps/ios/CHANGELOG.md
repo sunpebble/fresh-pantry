@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.3](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.12.2...fresh_pantry-v1.12.3) (2026-06-12)
+
+
+### Bug Fixes
+
+* **ios:** move 食材分类 tile entrance animation into button label ([bab559f](https://github.com/kunish/fresh_pantry/commit/bab559fdf35b0e5b95fa24b046aa2beacddedd5b))
+
 ## [1.12.2](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.12.1...fresh_pantry-v1.12.2) (2026-06-12)
 
 
