@@ -381,6 +381,8 @@ private struct CategoryBreakdownSection: View {
 /// outcome correction when a row was logged as the wrong choice.
 private struct FoodLogHistoryView: View {
     @Bindable var store: WasteInsightsStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var toast: String?
 
     var body: some View {
         let rows = store.historyEntries()
@@ -397,7 +399,14 @@ private struct FoodLogHistoryView: View {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(rows.enumerated()), id: \.element.id) { index, entry in
                             FoodLogHistoryRow(entry: entry) { outcome in
-                                Task { await store.correctOutcome(entryId: entry.id, to: outcome) }
+                                Task {
+                                    let ok = await store.correctOutcome(entryId: entry.id, to: outcome)
+                                    if !ok {
+                                        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
+                                            toast = "修改失败，请重试"
+                                        }
+                                    }
+                                }
                             }
                             if index < rows.count - 1 {
                                 Rectangle().fill(Color.fkHair).frame(height: 0.5)
@@ -414,8 +423,33 @@ private struct FoodLogHistoryView: View {
             }
         }
         .background(Color.fkSurface)
+        .overlay(alignment: .top) { toastBanner }
         .navigationTitle("详细记录")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder
+    private var toastBanner: some View {
+        if let toast {
+            Text(toast)
+                .font(.fkLabelLarge)
+                .foregroundStyle(Color.fkOnSurface)
+                .padding(.horizontal, FkSpacing.lg)
+                .padding(.vertical, FkSpacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                        .fill(Color.fkSurfaceContainerLowest)
+                )
+                .fkCardShadow()
+                .padding(.top, FkSpacing.sm)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .task(id: toast) {
+                    try? await Task.sleep(for: .seconds(2))
+                    if !Task.isCancelled {
+                        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { self.toast = nil }
+                    }
+                }
+        }
     }
 }
 

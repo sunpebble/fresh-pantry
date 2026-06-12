@@ -216,5 +216,15 @@ struct WasteInsightsStoreTests {
         #expect(changed)
         #expect(store.stats(now: refNow).consumed == 1)
         #expect(store.stats(now: refNow).wasted == 0)
+        #expect(!store.correctOutcomeError) // no error on success
+    }
+
+    @Test func correctOutcomeSetErrorFlagWhenEntryNotFound() async throws {
+        // An empty store — the entry-not-found guard path sets correctOutcomeError.
+        let store = try await makeStore([])
+        #expect(!store.correctOutcomeError)
+        let ok = await store.correctOutcome(entryId: "ghost", to: .consumed)
+        #expect(!ok)
+        #expect(store.correctOutcomeError)
     }
 }

@@ -91,6 +91,10 @@ final class WasteInsightsStore {
     private(set) var entries: [FoodLogEntry] = []
     private(set) var isLoading = false
     private(set) var hasLoaded = false
+    /// Set to true when `correctOutcome` fails (repo throw or entry-not-found).
+    /// The view observes this to surface a toast; reset to false after the toast
+    /// is consumed so subsequent failures can re-trigger.
+    var correctOutcomeError = false
 
     /// The active time window. Defaults to 本月 (matches the blueprint default).
     var window: WasteStatsWindow = .thisMonth
@@ -171,11 +175,13 @@ final class WasteInsightsStore {
     }
 
     /// Correct a mis-logged outcome (吃完 ↔ 扔了). Returns false when the entry
-    /// is missing or already carries the requested outcome.
+    /// is missing or already carries the requested outcome; on failure it also
+    /// sets `correctOutcomeError = true` so the view can surface a toast.
     @discardableResult
     func correctOutcome(entryId: String, to outcome: FoodLogOutcome) async -> Bool {
         do {
             guard let updated = try await repository.updateOutcome(householdID, entryId, outcome) else {
+                correctOutcomeError = true
                 return false
             }
             if let index = entries.firstIndex(where: { $0.id == entryId }) {
@@ -192,6 +198,7 @@ final class WasteInsightsStore {
             }
             return true
         } catch {
+            correctOutcomeError = true
             return false
         }
     }

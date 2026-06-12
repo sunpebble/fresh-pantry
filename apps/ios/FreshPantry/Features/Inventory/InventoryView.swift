@@ -209,7 +209,14 @@ private struct InventoryContent: View {
             titleVisibility: .visible
         ) {
             Button("清空 \(store.items.count) 件", role: .destructive) {
-                Task { await store.clearAll() }
+                Task {
+                    let ok = await store.clearAll()
+                    if !ok {
+                        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
+                            toast = "清空失败，请重试"
+                        }
+                    }
+                }
             }
             Button("取消", role: .cancel) {}
         } message: {

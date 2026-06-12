@@ -205,6 +205,16 @@ struct AddIngredientView: View {
                                 .background(Capsule().fill(Color.fkPrimarySoft))
                             }
                             .buttonStyle(.fkPressable)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    Task {
+                                        try? await dependencies.inventoryRepository.forgetAddition(item.name)
+                                        frequentItems.removeAll { $0.name == item.name }
+                                    }
+                                } label: {
+                                    Label("忘记此项", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                 }
@@ -663,6 +673,7 @@ struct AddIngredientView: View {
         if outcome.persisted {
             await learnScannedBarcode()
             onApplied()
+            await dependencies.notificationCoordinator.reschedule(householdID: dependencies.householdID)
             dismiss()
         } else {
             // The save threw → nothing was written (controller contract). Keep
@@ -691,7 +702,7 @@ enum AddSubmitFeedback {
 
 /// Danger-tinted inline notice for a failed submit (inventory load / persist
 /// threw). Mirrors the styling of `FkBarcodeNotice` / `FkExpiryScanNotice`.
-private struct FkSubmitErrorNotice: View {
+struct FkSubmitErrorNotice: View {
     let message: String
 
     var body: some View {

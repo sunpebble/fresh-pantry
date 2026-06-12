@@ -425,7 +425,11 @@ struct IngredientDetailView: View {
         isDeleting = true
         let removed = await store.delete(ingredient)
         isDeleting = false
-        if removed { dismiss() }
+        if removed {
+            dismiss()
+        } else {
+            toast = "移除「\(ingredient.name)」失败，请重试"
+        }
     }
 
     /// Reverses a removal-with-outcome (re-add row + point-delete the logged

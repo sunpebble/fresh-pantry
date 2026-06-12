@@ -140,10 +140,36 @@ final class MealPlanStore {
 
     // MARK: Mutations
 
+    /// FIFO mutation chain: every mutation awaits its predecessor before its
+    /// read-modify-write runs. `persist` suspends twice (`saveEntries` +
+    /// `loadAllFor`), and during those suspension points actor reentrancy allows
+    /// a second mutation to enter and read the same stale snapshot — the second
+    /// `saveEntries` would then silently overwrite the first. The chain prevents
+    /// this: mutations execute in the order they were enqueued.
+    @ObservationIgnored
+    private var lastMutation: Task<Void, Never>?
+
+    /// Runs `body` after every previously-enqueued mutation finished, and makes
+    /// the next mutation wait for `body` in turn. MainActor-only, so reading +
+    /// relinking `lastMutation` between two mutations is race-free.
+    private func serializedMutation<T: Sendable>(_ body: @escaping @MainActor () async -> T) async -> T {
+        let previous = lastMutation
+        let task: Task<T, Never> = Task {
+            await previous?.value
+            return await body()
+        }
+        lastMutation = Task { _ = await task.value }
+        return await task.value
+    }
+
     /// Plans `recipe` on `day` (servings clamped to ≥ 1). Mints a fresh UUID id
     /// (sync-clean; no factory on the domain type). Returns whether a row was added.
     @discardableResult
     func addDish(recipe: Recipe, date: Date, servings: Int = 1) async -> Bool {
+        await serializedMutation { await self.performAddDish(recipe: recipe, date: date, servings: servings) }
+    }
+
+    private func performAddDish(recipe: Recipe, date: Date, servings: Int) async -> Bool {
         guard !recipe.id.isEmpty else { return false }
         let entry = MealPlanEntry(
             id: Self.newId(),
@@ -169,6 +195,10 @@ final class MealPlanStore {
     /// Flips a row's `done` flag by stable id identity, persists, reloads.
     @discardableResult
     func toggleDone(_ target: MealPlanEntry) async -> Bool {
+        await serializedMutation { await self.performToggleDone(target) }
+    }
+
+    private func performToggleDone(_ target: MealPlanEntry) async -> Bool {
         guard let index = entries.firstIndex(where: { $0.id == target.id }) else { return false }
         let entry = entries[index]
         let updatedEntry = entry.copyWith(done: !entry.done)
@@ -190,6 +220,10 @@ final class MealPlanStore {
     /// Deletes a row by stable id identity, persists the survivors, reloads.
     @discardableResult
     func remove(_ target: MealPlanEntry) async -> Bool {
+        await serializedMutation { await self.performRemove(target) }
+    }
+
+    private func performRemove(_ target: MealPlanEntry) async -> Bool {
         guard let index = entries.firstIndex(where: { $0.id == target.id }) else { return false }
         let removed = entries[index]
         var survivors = entries

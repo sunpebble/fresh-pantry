@@ -183,11 +183,16 @@ struct RecipeDetailView: View {
             }
         }) { session in
             NavigationStack {
-                DeductionReviewView(proposals: session.proposals) {
+                DeductionReviewView(proposals: session.proposals) { outcome in
                     // Apply succeeded. Flag the leftover follow-up (the prompt
                     // itself waits for this sheet's onDismiss) and re-sync the
                     // inventory-derived UI with the stock that just changed.
                     leftoverPromptPending = true
+                    if outcome.affectedCount > 0 {
+                        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
+                            toast = "已扣减 \(outcome.affectedCount) 项库存"
+                        }
+                    }
                     Task { await refreshInventoryContext() }
                 }
             }

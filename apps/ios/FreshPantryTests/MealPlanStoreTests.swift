@@ -263,4 +263,50 @@ struct MealPlanStoreTests {
         #expect(await store.remove(ghost) == false)
         #expect(store.entries.count == 1)
     }
+
+    // MARK: Serialized mutations (concurrency)
+
+    /// Two concurrent mutations must both land — the second must not overwrite the
+    /// first's write by reading a stale snapshot. Without `serializedMutation` the
+    /// second toggleDone races the first's `persist` double-await and silently
+    /// drops the first toggle.
+    @Test func concurrentTogglesBothLand() async throws {
+        let store = try await makeStore([
+            entry(id: "a", date: refToday),
+            entry(id: "b", date: refToday),
+        ], today: refToday)
+        let a = store.entries.first { $0.id == "a" }!
+        let b = store.entries.first { $0.id == "b" }!
+
+        // Fire both without awaiting individually — the store must serialise them.
+        async let r1 = store.toggleDone(a)
+        async let r2 = store.toggleDone(b)
+        let (ok1, ok2) = await (r1, r2)
+
+        #expect(ok1)
+        #expect(ok2)
+        #expect(store.entries.first { $0.id == "a" }?.done == true)
+        #expect(store.entries.first { $0.id == "b" }?.done == true)
+    }
+
+    /// A toggleDone immediately followed by a remove must both land: the entry
+    /// must first be toggled then deleted (not silently resurrected by the toggle's
+    /// stale-snapshot persist racing the remove).
+    @Test func toggleThenRemoveSerializesCorrectly() async throws {
+        let store = try await makeStore([
+            entry(id: "a", date: refToday),
+            entry(id: "b", date: refToday),
+        ], today: refToday)
+        let a = store.entries.first { $0.id == "a" }!
+        let b = store.entries.first { $0.id == "b" }!
+
+        async let r1 = store.toggleDone(a)
+        async let r2 = store.remove(b)
+        let (ok1, ok2) = await (r1, r2)
+
+        #expect(ok1)
+        #expect(ok2)
+        #expect(store.entries.map(\.id) == ["a"])
+        #expect(store.entries.first { $0.id == "a" }?.done == true)
+    }
 }

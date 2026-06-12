@@ -16,6 +16,7 @@ struct ProfileEditView: View {
     @State private var pickerItem: PhotosPickerItem?
     /// Locally-picked avatar bytes (not yet uploaded) for instant preview.
     @State private var pickedAvatar: Data?
+    @State private var photoLoadError: String?
 
     private var canSave: Bool { !displayName.trimmed.isEmpty && !store.isSaving }
 
@@ -38,6 +39,9 @@ struct ProfileEditView: View {
                                     .foregroundStyle(Color.fkOnSurfaceVariant)
                             }
                         }
+                    }
+                    if let photoLoadError {
+                        errorBanner(photoLoadError, detail: nil)
                     }
                     if let errorMessage = store.errorMessage {
                         errorBanner(errorMessage, detail: store.lastFailureDetail)
@@ -67,8 +71,12 @@ struct ProfileEditView: View {
         }
         .onChange(of: pickerItem) { _, item in
             Task {
-                if let data = try? await item?.loadTransferable(type: Data.self) {
+                photoLoadError = nil
+                do {
+                    guard let data = try await item?.loadTransferable(type: Data.self) else { return }
                     pickedAvatar = compressed(data)
+                } catch {
+                    photoLoadError = "读取照片失败：\(error.localizedDescription)"
                 }
             }
         }

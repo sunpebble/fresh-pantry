@@ -174,8 +174,11 @@ private struct MealPlanContent: View {
         }
         .sheet(item: $cookSession) { session in
             NavigationStack {
-                DeductionReviewView(proposals: session.proposals) {
+                DeductionReviewView(proposals: session.proposals) { outcome in
                     // Apply landed → inventory changed; recompute the 缺料 card.
+                    if outcome.affectedCount > 0 {
+                        showToast("已扣减 \(outcome.affectedCount) 项库存")
+                    }
                     Task { await reloadMatchContext() }
                 }
             }
@@ -200,7 +203,7 @@ private struct MealPlanContent: View {
                     Text(MealPlanMissing.cardTitle(count: missingNames.count, isCurrentWeek: store.isShowingWeek()))
                         .font(.fkTitleMedium)
                         .foregroundStyle(Color.fkOnSurface)
-                    Text(isAddingMissing ? "加入中…" : "一键加入购物清单")
+                    Text(isAddingMissing ? "加入中…" : shoppingStore == nil ? "加载中…" : "一键加入购物清单")
                         .font(.fkBodySmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                 }
@@ -218,7 +221,7 @@ private struct MealPlanContent: View {
             .fkCardShadow()
         }
         .buttonStyle(.fkPressable)
-        .disabled(isAddingMissing)
+        .disabled(isAddingMissing || shoppingStore == nil)
     }
 
     @ViewBuilder

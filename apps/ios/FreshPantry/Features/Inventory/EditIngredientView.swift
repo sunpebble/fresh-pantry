@@ -12,6 +12,7 @@ struct EditIngredientView: View {
 
     @State private var form: EditIngredientForm
     @State private var isSaving = false
+    @State private var submitError: String?
     @State private var showUnitPicker = false
     @State private var showCategoryPicker = false
     @State private var showStoragePicker = false
@@ -38,6 +39,9 @@ struct EditIngredientView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: FkSpacing.lg) {
+                    if let submitError {
+                        FkSubmitErrorNotice(message: submitError)
+                    }
                     nameField
                     quantityRow
                     categoryField
@@ -198,6 +202,7 @@ struct EditIngredientView: View {
 
     private func submit() async {
         guard form.canSubmit, !isSaving else { return }
+        submitError = nil
         nameFocused = false
         isSaving = true
         defer { isSaving = false }
@@ -207,6 +212,8 @@ struct EditIngredientView: View {
         if saved {
             onSaved()
             dismiss()
+        } else {
+            submitError = "保存失败，请重试"
         }
     }
 }

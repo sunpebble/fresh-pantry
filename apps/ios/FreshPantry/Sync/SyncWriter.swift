@@ -78,8 +78,14 @@ final class SyncWriter {
                 clientId: session.clientId,
                 createdAt: Date()
             )
-            try? await outbox.enqueue(operation)
-            recordedAny = true
+            do {
+                try await outbox.enqueue(operation)
+                recordedAny = true
+            } catch {
+                // SwiftData write failed (disk full, migration mismatch, …).
+                // Do NOT set recordedAny — this op was never persisted; skipping
+                // the trailing push avoids a spurious badge-clear on a lost write.
+            }
         }
 
         // Fire-and-forget a single trailing push; the coordinator coalesces

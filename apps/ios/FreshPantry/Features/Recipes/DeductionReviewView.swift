@@ -10,7 +10,7 @@ struct DeductionReviewView: View {
     let proposals: [DeductionProposal]
     var title: String = "审核扣库存"
     /// Called after a successful apply (so the presenter can refresh + dismiss).
-    var onApplied: () -> Void = {}
+    var onApplied: (DeductionController.ApplyOutcome) -> Void = { _ in }
 
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.dismiss) private var dismiss
@@ -162,7 +162,7 @@ struct DeductionReviewView: View {
         applyError = nil
         let outcome = await store.apply()
         if outcome.persisted {
-            onApplied()
+            onApplied(outcome)
             dismiss()
         } else {
             // `DeductionController` contract: a failed apply mutated nothing —

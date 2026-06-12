@@ -56,6 +56,8 @@ private struct SettingsContent: View {
     /// Built when signed-in to drive the 家庭共享 row's dynamic subtitle (name · N
     /// 名成员) and the pending-invite red dot. nil in local-only / signed-out.
     @State private var householdStore: HouseholdSessionStore?
+    /// Drives the 清除常买记忆 destructive-action confirmation alert.
+    @State private var showClearHistoryConfirm = false
 
     var body: some View {
         Form {
@@ -81,6 +83,17 @@ private struct SettingsContent: View {
         }
         .onChange(of: dependencies.syncSession.inviteRefreshRevision) {
             Task { await householdStore?.refreshPendingInvites() }
+        }
+        .onChange(of: dependencies.syncSession.dataRevision) {
+            Task { await loadStats() }
+        }
+        .alert("清除常买记忆", isPresented: $showClearHistoryConfirm) {
+            Button("取消", role: .cancel) {}
+            Button("清除", role: .destructive) {
+                Task { try? await dependencies.inventoryRepository.clearHistory() }
+            }
+        } message: {
+            Text("将删除所有「常买」记录（添加频次与默认分类/存储位置），此操作不可撤销。")
         }
     }
 
@@ -401,6 +414,15 @@ private struct SettingsContent: View {
                     systemImage: "tray.and.arrow.up",
                     title: "数据备份",
                     subtitle: "导出或恢复本机数据"
+                )
+            }
+            Button(role: .destructive) {
+                showClearHistoryConfirm = true
+            } label: {
+                SettingsLinkLabel(
+                    systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90",
+                    title: "清除常买记忆",
+                    subtitle: "重置添加频次与记住的默认值"
                 )
             }
         } header: {
