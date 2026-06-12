@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.2](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.12.1...fresh_pantry-v1.12.2) (2026-06-12)
+
+
+### Bug Fixes
+
+* **ios:** restore persisted household scope at launch (offline-first) ([47b42db](https://github.com/kunish/fresh_pantry/commit/47b42db52042b65d7b14c03b0b3ab7a4bb8a7e53))
+
 ## [1.12.1](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.12.0...fresh_pantry-v1.12.1) (2026-06-11)
 
 
