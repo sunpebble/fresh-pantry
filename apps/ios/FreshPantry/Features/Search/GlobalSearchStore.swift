@@ -7,38 +7,49 @@ import Foundation
 /// Loads ONCE on present (`load()`); a transient overlay doesn't need to track
 /// live mutations, and it is NOT a second source of truth (no persistence / sync).
 /// Matching is case-insensitive contains on the name OR category, mirroring
-/// search_provider.dart. The 食材百科 (online encyclopedia) section is intentionally
-/// out of this Phase-1 slice — that lookup already lives inside every ingredient
-/// detail screen.
+/// search_provider.dart. Recipes (bundled + custom) are included; the 食材百科
+/// section remains deferred — it lives inside ingredient detail.
 @Observable
 @MainActor
 final class GlobalSearchStore {
     private let inventoryRepository: InventoryRepository
     private let shoppingRepository: ShoppingRepository
+    private let localRecipeRepository: LocalRecipeRepository
+    private let customRecipeRepository: CustomRecipeRepository
     private let householdID: String
 
     var query: String = ""
     private(set) var inventory: [Ingredient] = []
     private(set) var shopping: [ShoppingItem] = []
+    private(set) var recipes: [Recipe] = []
     private(set) var hasLoaded = false
 
     init(
         inventoryRepository: InventoryRepository,
         shoppingRepository: ShoppingRepository,
+        localRecipeRepository: LocalRecipeRepository,
+        customRecipeRepository: CustomRecipeRepository,
         householdID: String
     ) {
         self.inventoryRepository = inventoryRepository
         self.shoppingRepository = shoppingRepository
+        self.localRecipeRepository = localRecipeRepository
+        self.customRecipeRepository = customRecipeRepository
         self.householdID = householdID
     }
 
-    /// Snapshots both scopes off their repo actors. Best-effort: a load failure
-    /// surfaces an empty scope rather than blocking the overlay.
+    /// Snapshots inventory, shopping, and the merged recipe corpus. Best-effort:
+    /// a load failure surfaces an empty scope rather than blocking the overlay.
     func load() async {
         async let inventoryLoad = (try? await inventoryRepository.loadAllFor(householdID)) ?? []
         async let shoppingLoad = (try? await shoppingRepository.loadAllFor(householdID)) ?? []
+        async let bundledLoad = await localRecipeRepository.loadAll()
+        async let customLoad = (try? await customRecipeRepository.loadAllFor(householdID)) ?? []
         inventory = await inventoryLoad
         shopping = await shoppingLoad
+        let bundled = await bundledLoad
+        let custom = await customLoad
+        recipes = RecipesStore.merge(bundled: bundled, custom: custom)
         hasLoaded = true
     }
 
@@ -63,5 +74,19 @@ final class GlobalSearchStore {
         }
     }
 
-    var hasResults: Bool { !filteredInventory.isEmpty || !filteredShopping.isEmpty }
+    /// Recipe rows whose name OR any ingredient contains the query.
+    var filteredRecipes: [Recipe] {
+        let needle = trimmedQuery.lowercased()
+        guard !needle.isEmpty else { return [] }
+        return recipes.filter { recipe in
+            if recipe.name.lowercased().contains(needle) { return true }
+            return recipe.ingredients.contains {
+                $0.name.lowercased().contains(needle)
+            }
+        }
+    }
+
+    var hasResults: Bool {
+        !filteredInventory.isEmpty || !filteredShopping.isEmpty || !filteredRecipes.isEmpty
+    }
 }

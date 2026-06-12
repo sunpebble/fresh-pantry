@@ -101,6 +101,43 @@ final class HouseholdSessionStore {
         return members.contains { $0.role == "owner" && $0.email == email }
     }
 
+    /// Counts in the personal (`""`) scope — used to warn before joining a
+    /// household that the local data will become invisible.
+    struct PersonalScopeSnapshot: Equatable, Sendable {
+        let inventoryCount: Int
+        let shoppingCount: Int
+        let customRecipeCount: Int
+
+        var hasData: Bool { inventoryCount + shoppingCount + customRecipeCount > 0 }
+
+        var summaryText: String {
+            var parts: [String] = []
+            if inventoryCount > 0 { parts.append("\(inventoryCount) 项库存") }
+            if shoppingCount > 0 { parts.append("\(shoppingCount) 项采购") }
+            if customRecipeCount > 0 { parts.append("\(customRecipeCount) 个自建食谱") }
+            return parts.joined(separator: "、")
+        }
+    }
+
+    func loadPersonalScopeSnapshot() async -> PersonalScopeSnapshot {
+        async let inv = (try? await inventory.loadAllFor("")) ?? []
+        async let shop = (try? await shopping.loadAllFor("")) ?? []
+        async let recipes = (try? await customRecipe.loadAllFor("")) ?? []
+        return PersonalScopeSnapshot(
+            inventoryCount: await inv.count,
+            shoppingCount: await shop.count,
+            customRecipeCount: await recipes.count
+        )
+    }
+
+    /// True when a directed invite names a different email than the signed-in user.
+    static func inviteEmailMismatch(preview: HouseholdInvitePreview, signedInEmail: String?) -> Bool {
+        let invited = preview.invitedEmail.trimmed.lowercased()
+        guard !invited.isEmpty else { return false }
+        let signedIn = (signedInEmail ?? "").trimmed.lowercased()
+        return !signedIn.isEmpty && signedIn != invited
+    }
+
     // MARK: - Refresh
 
     /// Loads the user's households, picks the selected id (keep current if still

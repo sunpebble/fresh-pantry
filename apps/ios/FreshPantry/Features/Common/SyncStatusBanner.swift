@@ -20,32 +20,51 @@ struct SyncStatusBanner: View {
     let isOnline: Bool
     let pendingCount: Int
     var failedCount: Int = 0
+    /// Called when the user taps the banner while sync failures are shown.
+    var onFailedTap: (() -> Void)? = nil
 
-    private var isVisible: Bool { !isOnline || pendingCount > 0 }
+    private var isVisible: Bool { !isOnline || pendingCount > 0 || isFailed }
     private var isFailed: Bool { isOnline && failedCount > 0 }
 
     var body: some View {
         Group {
             if isVisible {
-                HStack(spacing: FkSpacing.sm) {
-                    Image(systemName: icon)
-                        .font(.system(size: 13, weight: .semibold))
-                    Text(message)
-                        .font(.fkLabelMedium)
-                    Spacer(minLength: 0)
-                }
-                .foregroundStyle(foreground)
-                .padding(.horizontal, FkSpacing.lg)
-                .padding(.vertical, FkSpacing.sm)
-                .frame(maxWidth: .infinity)
-                .background(background)
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(message)
+                bannerContent
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(message)
+                    .accessibilityAddTraits(isFailed ? .isButton : [])
             }
         }
         .animation(.easeInOut(duration: 0.2), value: isVisible)
         .animation(.easeInOut(duration: 0.2), value: message)
+    }
+
+    @ViewBuilder
+    private var bannerContent: some View {
+        let row = HStack(spacing: FkSpacing.sm) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+            Text(message)
+                .font(.fkLabelMedium)
+            Spacer(minLength: 0)
+            if isFailed {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+            }
+        }
+        .foregroundStyle(foreground)
+        .padding(.horizontal, FkSpacing.lg)
+        .padding(.vertical, FkSpacing.sm)
+        .frame(maxWidth: .infinity)
+        .background(background)
+
+        if isFailed, let onFailedTap {
+            Button(action: onFailedTap) { row }
+                .buttonStyle(.plain)
+        } else {
+            row
+        }
     }
 
     private var icon: String {

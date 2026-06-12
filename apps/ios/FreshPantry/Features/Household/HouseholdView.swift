@@ -51,6 +51,9 @@ struct HouseholdView: View {
             }
             await store?.refreshHouseholds()
         }
+        .onChange(of: dependencies.syncSession.inviteRefreshRevision) {
+            Task { await store?.refreshPendingInvites() }
+        }
     }
 }
 
@@ -85,7 +88,7 @@ private struct HouseholdContent: View {
         } else if auth.signedInEmail == nil {
             signedOutState
         } else if store.selectedHousehold == nil {
-            OnboardHouseholdSection(store: store)
+            OnboardHouseholdSection(store: store, auth: auth)
         } else {
             ActiveHouseholdSection(store: store, auth: auth)
         }
@@ -150,17 +153,62 @@ private struct HouseholdContent: View {
 /// form (paste invite → preview stats → accept).
 private struct OnboardHouseholdSection: View {
     let store: HouseholdSessionStore
+    let auth: AuthService
 
     @State private var newName = ""
     @State private var inviteInput = ""
+    @State private var showPersonalDataAlert = false
+    @State private var personalSnapshot: HouseholdSessionStore.PersonalScopeSnapshot?
+    @State private var pendingJoin: PendingJoin?
+
+    private enum PendingJoin {
+        case input(String)
+        case byId(String)
+    }
 
     var body: some View {
         VStack(spacing: FkSpacing.xl) {
             if !store.pendingInvitePreviews.isEmpty {
-                IncomingInvitesCard(store: store)
+                IncomingInvitesCard(store: store, auth: auth) { id in
+                    await requestJoin(.byId(id))
+                }
             }
             createCard
             joinCard
+        }
+        .alert("加入后个人数据将不可见", isPresented: $showPersonalDataAlert) {
+            Button("取消", role: .cancel) { pendingJoin = nil }
+            Button("仍要加入", role: .destructive) {
+                Task {
+                    if let action = pendingJoin { await performJoin(action) }
+                    pendingJoin = nil
+                }
+            }
+        } message: {
+            if let snapshot = personalSnapshot {
+                Text("本机还有 \(snapshot.summaryText)。加入家庭后，这些数据会留在个人 scope，暂时不可见。如需保留并共享，请先「创建家庭」。")
+            }
+        }
+    }
+
+    private func requestJoin(_ action: PendingJoin) async {
+        let snapshot = await store.loadPersonalScopeSnapshot()
+        if snapshot.hasData {
+            personalSnapshot = snapshot
+            pendingJoin = action
+            showPersonalDataAlert = true
+        } else {
+            await performJoin(action)
+        }
+    }
+
+    private func performJoin(_ action: PendingJoin) async {
+        switch action {
+        case .input(let input):
+            await store.acceptInvite(input: input)
+            if store.errorMessage == nil { inviteInput = "" }
+        case .byId(let id):
+            await store.acceptInviteById(id)
         }
     }
 
@@ -202,14 +250,11 @@ private struct OnboardHouseholdSection: View {
                     .disabled(store.isSubmitting || inviteInput.trimmed.isEmpty)
                 }
                 if let preview = store.invitePreview {
-                    InvitePreviewCard(preview: preview)
+                    InvitePreviewCard(preview: preview, signedInEmail: auth.signedInEmail)
                     primaryButton(title: "接受邀请", busyTitle: "加入中…", systemImage: "person.badge.plus") {
-                        Task {
-                            await store.acceptInvite(input: inviteInput)
-                            if store.errorMessage == nil { inviteInput = "" }
-                        }
+                        Task { await requestJoin(.input(inviteInput)) }
                     }
-                    .disabled(store.isSubmitting)
+                    .disabled(store.isSubmitting || joinEmailMismatch(preview))
                 }
             }
         }
@@ -245,6 +290,10 @@ private struct OnboardHouseholdSection: View {
         }
         .buttonStyle(.fkPressable)
     }
+
+    private func joinEmailMismatch(_ preview: HouseholdInvitePreview) -> Bool {
+        HouseholdSessionStore.inviteEmailMismatch(preview: preview, signedInEmail: auth.signedInEmail)
+    }
 }
 
 // MARK: - Active household
@@ -264,6 +313,9 @@ private struct ActiveHouseholdSection: View {
     @State private var showDissolveConfirm = false
     @State private var showLeaveConfirm = false
     @State private var inviteToRevoke: OwnerPendingInvite?
+    @State private var showPersonalDataAlert = false
+    @State private var personalSnapshot: HouseholdSessionStore.PersonalScopeSnapshot?
+    @State private var pendingJoinId: String?
 
     @Environment(AppDependencies.self) private var dependencies
 
@@ -272,7 +324,9 @@ private struct ActiveHouseholdSection: View {
     var body: some View {
         VStack(spacing: FkSpacing.xl) {
             if !store.pendingInvitePreviews.isEmpty {
-                IncomingInvitesCard(store: store)
+                IncomingInvitesCard(store: store, auth: auth) { id in
+                    await requestJoinById(id)
+                }
             }
             householdCard
             if store.households.count > 1 {
@@ -316,6 +370,30 @@ private struct ActiveHouseholdSection: View {
             Button("取消", role: .cancel) {}
         } message: { invite in
             Text("确定撤销发给 \(invite.email.isEmpty ? "该邮箱" : invite.email) 的邀请吗?")
+        }
+        .alert("加入后个人数据将不可见", isPresented: $showPersonalDataAlert) {
+            Button("取消", role: .cancel) { pendingJoinId = nil }
+            Button("仍要加入", role: .destructive) {
+                Task {
+                    if let id = pendingJoinId { await store.acceptInviteById(id) }
+                    pendingJoinId = nil
+                }
+            }
+        } message: {
+            if let snapshot = personalSnapshot {
+                Text("本机还有 \(snapshot.summaryText)。加入家庭后，这些数据会留在个人 scope，暂时不可见。")
+            }
+        }
+    }
+
+    private func requestJoinById(_ id: String) async {
+        let snapshot = await store.loadPersonalScopeSnapshot()
+        if snapshot.hasData {
+            personalSnapshot = snapshot
+            pendingJoinId = id
+            showPersonalDataAlert = true
+        } else {
+            await store.acceptInviteById(id)
         }
     }
 
@@ -655,6 +733,11 @@ private struct ActiveHouseholdSection: View {
 /// accepting (mirrors the Flutter join confirmation).
 private struct InvitePreviewCard: View {
     let preview: HouseholdInvitePreview
+    var signedInEmail: String? = nil
+
+    private var emailMismatch: Bool {
+        HouseholdSessionStore.inviteEmailMismatch(preview: preview, signedInEmail: signedInEmail)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: FkSpacing.sm) {
@@ -671,7 +754,12 @@ private struct InvitePreviewCard: View {
             if !preview.invitedEmail.isEmpty {
                 Text("邀请邮箱:\(preview.invitedEmail)")
                     .font(.fkBodySmall)
-                    .foregroundStyle(Color.fkOnSurfaceVariant)
+                    .foregroundStyle(emailMismatch ? Color.fkDanger : Color.fkOnSurfaceVariant)
+            }
+            if emailMismatch, let signedInEmail {
+                Text("此邀请发给 \(preview.invitedEmail)，你当前登录的是 \(signedInEmail)。")
+                    .font(.fkBodySmall)
+                    .foregroundStyle(Color.fkDanger)
             }
             HStack(spacing: FkSpacing.lg) {
                 stat(count: preview.memberCount, label: "成员")
@@ -722,6 +810,8 @@ struct InvitePreviewSheet: View {
     @Environment(InviteRouter.self) private var inviteRouter
     @Environment(\.dismiss) private var dismiss
     @State private var store: HouseholdSessionStore?
+    @State private var showPersonalDataAlert = false
+    @State private var personalSnapshot: HouseholdSessionStore.PersonalScopeSnapshot?
 
     var body: some View {
         NavigationStack {
@@ -746,6 +836,23 @@ struct InvitePreviewSheet: View {
             .tint(.fkPrimary)
         }
         .presentationDetents([.medium, .large])
+        .alert("加入后个人数据将不可见", isPresented: $showPersonalDataAlert) {
+            Button("取消", role: .cancel) {}
+            Button("仍要加入", role: .destructive) {
+                Task {
+                    guard let store else { return }
+                    await store.acceptInvite(input: input)
+                    if store.errorMessage == nil {
+                        inviteRouter.clear()
+                        dismiss()
+                    }
+                }
+            }
+        } message: {
+            if let snapshot = personalSnapshot {
+                Text("本机还有 \(snapshot.summaryText)。加入家庭后，这些数据会留在个人 scope，暂时不可见。如需保留并共享，请先「创建家庭」。")
+            }
+        }
         .task {
             if store == nil {
                 let store = HouseholdSessionStore(
@@ -766,14 +873,10 @@ struct InvitePreviewSheet: View {
     @ViewBuilder
     private func body(for store: HouseholdSessionStore) -> some View {
         if let preview = store.invitePreview {
-            InvitePreviewCard(preview: preview)
+            InvitePreviewCard(preview: preview, signedInEmail: dependencies.authService.signedInEmail)
             Button {
                 Task {
-                    await store.acceptInvite(input: input)
-                    if store.errorMessage == nil {
-                        inviteRouter.clear()
-                        dismiss()
-                    }
+                    await acceptFromSheet(input: input, store: store)
                 }
             } label: {
                 HStack(spacing: FkSpacing.sm) {
@@ -791,7 +894,13 @@ struct InvitePreviewSheet: View {
                 .background(Capsule().fill(store.isSubmitting ? Color.fkOutlineVariant : Color.fkPrimary))
             }
             .buttonStyle(.fkPressable)
-            .disabled(store.isSubmitting)
+            .disabled(
+                store.isSubmitting
+                    || HouseholdSessionStore.inviteEmailMismatch(
+                        preview: preview,
+                        signedInEmail: dependencies.authService.signedInEmail
+                    )
+            )
         } else if store.isSubmitting {
             ProgressView().padding(.top, FkSpacing.huge)
         }
@@ -806,6 +915,20 @@ struct InvitePreviewSheet: View {
             .background(RoundedRectangle(cornerRadius: FkRadius.sm, style: .continuous).fill(Color.fkDangerSoft))
         }
     }
+
+    private func acceptFromSheet(input: String, store: HouseholdSessionStore) async {
+        let snapshot = await store.loadPersonalScopeSnapshot()
+        if snapshot.hasData {
+            personalSnapshot = snapshot
+            showPersonalDataAlert = true
+        } else {
+            await store.acceptInvite(input: input)
+            if store.errorMessage == nil {
+                inviteRouter.clear()
+                dismiss()
+            }
+        }
+    }
 }
 
 // MARK: - Received invites (one-tap accept)
@@ -815,6 +938,8 @@ struct InvitePreviewSheet: View {
 /// `pendingInvitePreviews` is non-empty (ports the Flutter incoming-invite list).
 private struct IncomingInvitesCard: View {
     let store: HouseholdSessionStore
+    let auth: AuthService
+    let onAcceptInvite: (String) async -> Void
 
     var body: some View {
         FkCard {
@@ -822,9 +947,9 @@ private struct IncomingInvitesCard: View {
                 FkSectionHeader(title: "收到的邀请", count: store.pendingInvitePreviews.count)
                 ForEach(store.pendingInvitePreviews, id: \.inviteId) { preview in
                     VStack(alignment: .leading, spacing: FkSpacing.sm) {
-                        InvitePreviewCard(preview: preview)
+                        InvitePreviewCard(preview: preview, signedInEmail: auth.signedInEmail)
                         Button {
-                            Task { await store.acceptInviteById(preview.inviteId) }
+                            Task { await onAcceptInvite(preview.inviteId) }
                         } label: {
                             HStack(spacing: FkSpacing.sm) {
                                 if store.isSubmitting {
@@ -841,7 +966,13 @@ private struct IncomingInvitesCard: View {
                             .background(Capsule().fill(store.isSubmitting ? Color.fkOutlineVariant : Color.fkPrimary))
                         }
                         .buttonStyle(.fkPressable)
-                        .disabled(store.isSubmitting)
+                        .disabled(
+                            store.isSubmitting
+                                || HouseholdSessionStore.inviteEmailMismatch(
+                                    preview: preview,
+                                    signedInEmail: auth.signedInEmail
+                                )
+                        )
                     }
                 }
             }

@@ -11,14 +11,21 @@ import SwiftUI
 /// the reusable pattern every feature view follows. SwiftData is never touched
 /// here; all scoping / sorting / persistence lives in the store.
 struct ShoppingView: View {
+    /// Cross-tab intent: scroll to and briefly highlight this item. `RootView` owns it.
+    @Binding var pendingItemID: String?
+
     @Environment(AppDependencies.self) private var dependencies
     @State private var store: ShoppingStore?
+
+    init(pendingItemID: Binding<String?> = .constant(nil)) {
+        _pendingItemID = pendingItemID
+    }
 
     var body: some View {
         NavigationStack {
             Group {
                 if let store {
-                    ShoppingContent(store: store)
+                    ShoppingContent(store: store, pendingItemID: $pendingItemID)
                 } else {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -68,6 +75,7 @@ struct ShoppingView: View {
 /// the filter chips, and the add sheet / mutations get a concrete store).
 private struct ShoppingContent: View {
     @Bindable var store: ShoppingStore
+    @Binding var pendingItemID: String?
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Shared per-row sync-status set (injected at the tab root). Optional so a
@@ -88,6 +96,7 @@ private struct ShoppingContent: View {
     /// Row whose 数量 detail is being edited (sheet route — `ShoppingItem`
     /// itself isn't Identifiable, mirroring the `ReviewRoute` pattern).
     @State private var editRoute: ShoppingDetailEditRoute?
+    @State private var highlightedItemID: String?
 
     var body: some View {
         Group {
@@ -149,11 +158,27 @@ private struct ShoppingContent: View {
         } message: {
             Text("确定要移除所有已勾选的购物项吗？")
         }
+        .onChange(of: pendingItemID) { _, _ in consumePendingItem() }
+        .onAppear { consumePendingItem() }
+    }
+
+    private func consumePendingItem() {
+        guard let id = pendingItemID, store.hasLoaded else { return }
+        pendingItemID = nil
+        guard let item = store.items.first(where: { $0.id == id }) else { return }
+        store.filter = .all
+        store.ensureExpanded(item.category)
+        highlightedItemID = id
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            if highlightedItemID == id { highlightedItemID = nil }
+        }
     }
 
     // MARK: List
 
     private var itemList: some View {
+        ScrollViewReader { proxy in
         List {
             Section {
                 ShoppingProgressCard(done: store.checkedCount, total: store.total, progress: store.progress)
@@ -184,7 +209,12 @@ private struct ShoppingContent: View {
                                 ShoppingRow(item: item, showsPendingBadge: showsPendingBadge(for: item)) {
                                     Task { await store.toggleChecked(item) }
                                 }
-                                .listRowBackground(Color.fkSurfaceContainerLowest)
+                                .id(item.id)
+                                .listRowBackground(
+                                    item.id == highlightedItemID
+                                        ? Color.fkPrimarySoft
+                                        : Color.fkSurfaceContainerLowest
+                                )
                                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                     Button {
                                         openIntake(for: [item])
@@ -240,6 +270,13 @@ private struct ShoppingContent: View {
         .scrollContentBackground(.hidden)
         .background(Color.fkSurface)
         .refreshable { await store.load() }
+        .onChange(of: highlightedItemID) { _, id in
+            guard let id else { return }
+            withAnimation {
+                proxy.scrollTo(id, anchor: .center)
+            }
+        }
+        }
     }
 
     // MARK: Bottom intake CTA

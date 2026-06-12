@@ -11,13 +11,22 @@ import SwiftUI
 /// the same idempotent one-shot the other tabs use) before loading, so the
 /// screen has data even on a fresh install. SwiftData is never touched here.
 struct WasteInsightsView: View {
+    var onSelectCategory: (String) -> Void = { _ in }
+    var onSelectExpiringRecipes: () -> Void = {}
+
     @Environment(AppDependencies.self) private var dependencies
+    @Environment(\.dismiss) private var dismiss
     @State private var store: WasteInsightsStore?
 
     var body: some View {
         Group {
             if let store {
-                WasteInsightsContent(store: store)
+                WasteInsightsContent(
+                    store: store,
+                    onSelectCategory: onSelectCategory,
+                    onSelectExpiringRecipes: onSelectExpiringRecipes,
+                    onNavigateAway: { dismiss() }
+                )
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -43,7 +52,8 @@ struct WasteInsightsView: View {
             #endif
             let store = WasteInsightsStore(
                 repository: dependencies.foodLogRepository,
-                householdID: householdID
+                householdID: householdID,
+                syncWriter: dependencies.syncWriter
             )
             self.store = store
             await store.load()
@@ -60,6 +70,9 @@ struct WasteInsightsView: View {
 /// window selection.
 private struct WasteInsightsContent: View {
     @Bindable var store: WasteInsightsStore
+    var onSelectCategory: (String) -> Void
+    var onSelectExpiringRecipes: () -> Void
+    var onNavigateAway: () -> Void
 
     var body: some View {
         let summary = store.summary()
@@ -68,7 +81,11 @@ private struct WasteInsightsContent: View {
                 WindowSelector(selected: $store.window)
                     .padding(.horizontal, FkSpacing.lg)
 
-                body(stats: summary.stats, breakdown: summary.breakdown, mostWasted: summary.mostWasted)
+                body(
+                    stats: summary.stats,
+                    breakdown: summary.breakdown,
+                    mostWasted: summary.mostWasted
+                )
             }
             .padding(.top, FkSpacing.sm)
             .padding(.bottom, FkSpacing.huge)
@@ -96,14 +113,79 @@ private struct WasteInsightsContent: View {
                 MetricRow(stats: stats)
                     .padding(.horizontal, FkSpacing.lg)
 
+                if stats.rescued > 0 || stats.wasted > 0 {
+                    actionCard(stats: stats)
+                        .padding(.horizontal, FkSpacing.lg)
+                }
+
                 if !breakdown.isEmpty {
                     CategoryBreakdownSection(breakdown: breakdown)
                         .padding(.horizontal, FkSpacing.lg)
                 }
 
                 if !mostWasted.isEmpty {
-                    MostWastedSection(rows: mostWasted)
-                        .padding(.horizontal, FkSpacing.lg)
+                    MostWastedSection(rows: mostWasted, onSelectCategory: { category in
+                        onNavigateAway()
+                        onSelectCategory(category)
+                    })
+                    .padding(.horizontal, FkSpacing.lg)
+                }
+
+                NavigationLink {
+                    FoodLogHistoryView(store: store)
+                } label: {
+                    HStack(spacing: FkSpacing.sm) {
+                        Image(systemName: "list.bullet.rectangle")
+                            .foregroundStyle(Color.fkPrimary)
+                        Text("查看详细记录")
+                            .font(.fkBodyMedium)
+                            .foregroundStyle(Color.fkOnSurface)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color.fkOnSurfaceVariant)
+                    }
+                    .padding(.horizontal, FkSpacing.lg)
+                    .padding(.vertical, FkSpacing.md)
+                    .background(
+                        RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                            .fill(Color.fkSurfaceContainer)
+                    )
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, FkSpacing.lg)
+            }
+        }
+    }
+
+    /// Actionable next steps — bridges waste stats into inventory/recipe flows.
+    private func actionCard(stats: FoodLogStats) -> some View {
+        FkCard {
+            VStack(alignment: .leading, spacing: FkSpacing.md) {
+                FkSectionHeader(title: "下一步")
+                if stats.rescued > 0 {
+                    Button {
+                        onNavigateAway()
+                        onSelectExpiringRecipes()
+                    } label: {
+                        HStack(spacing: FkSpacing.sm) {
+                            Image(systemName: "leaf.arrow.circlepath")
+                                .foregroundStyle(Color.fkPrimary)
+                            Text("用临期食材做菜")
+                                .font(.fkBodyMedium)
+                                .foregroundStyle(Color.fkOnSurface)
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Color.fkOnSurfaceVariant)
+                        }
+                    }
+                    .buttonStyle(.fkPressable)
+                }
+                if stats.wasted > 0 {
+                    Text("点「最常浪费」分类可查看库存中同类食材，优先安排使用。")
+                        .font(.fkBodySmall)
+                        .foregroundStyle(Color.fkOnSurfaceVariant)
                 }
             }
         }
@@ -211,6 +293,7 @@ private struct MetricTile: View {
 /// ranking insight the category bar chart doesn't convey at a glance).
 private struct MostWastedSection: View {
     let rows: [WasteCategoryCount]
+    let onSelectCategory: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: FkSpacing.md) {
@@ -218,17 +301,25 @@ private struct MostWastedSection: View {
             FkCard(padding: 0) {
                 VStack(spacing: 0) {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
-                        HStack(spacing: FkSpacing.sm) {
-                            Text(row.category)
-                                .font(.fkBodyMedium)
-                                .foregroundStyle(Color.fkOnSurface)
-                            Spacer(minLength: 0)
-                            Text("\(row.count) 样")
-                                .font(.fkBodyMedium.weight(.semibold))
-                                .foregroundStyle(Color.fkDanger)
+                        Button {
+                            onSelectCategory(row.category)
+                        } label: {
+                            HStack(spacing: FkSpacing.sm) {
+                                Text(row.category)
+                                    .font(.fkBodyMedium)
+                                    .foregroundStyle(Color.fkOnSurface)
+                                Spacer(minLength: 0)
+                                Text("\(row.count) 样")
+                                    .font(.fkBodyMedium.weight(.semibold))
+                                    .foregroundStyle(Color.fkDanger)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Color.fkOnSurfaceVariant)
+                            }
+                            .padding(.horizontal, FkSpacing.lg)
+                            .padding(.vertical, FkSpacing.md)
                         }
-                        .padding(.horizontal, FkSpacing.lg)
-                        .padding(.vertical, FkSpacing.md)
+                        .buttonStyle(.fkPressable)
                         if index < rows.count - 1 {
                             Rectangle().fill(Color.fkHair).frame(height: 0.5)
                         }
@@ -281,5 +372,110 @@ private struct CategoryBreakdownSection: View {
     /// charts stay compact and many-category charts stay readable.
     private var chartHeight: CGFloat {
         CGFloat(breakdown.count) * 48 + 48
+    }
+}
+
+// MARK: - Detailed history + outcome correction
+
+/// Browsable per-departure log for the active stats window, with one-tap
+/// outcome correction when a row was logged as the wrong choice.
+private struct FoodLogHistoryView: View {
+    @Bindable var store: WasteInsightsStore
+
+    var body: some View {
+        let rows = store.historyEntries()
+        return Group {
+            if rows.isEmpty {
+                FkEmptyState(
+                    systemImage: "list.bullet",
+                    title: "这个时段还没有记录",
+                    message: "切换上方时间范围，或先去用掉 / 清理一些食材"
+                )
+                .padding(.top, FkSpacing.md)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(rows.enumerated()), id: \.element.id) { index, entry in
+                            FoodLogHistoryRow(entry: entry) { outcome in
+                                Task { await store.correctOutcome(entryId: entry.id, to: outcome) }
+                            }
+                            if index < rows.count - 1 {
+                                Rectangle().fill(Color.fkHair).frame(height: 0.5)
+                            }
+                        }
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                            .fill(Color.fkSurfaceContainer)
+                    )
+                    .padding(.horizontal, FkSpacing.lg)
+                    .padding(.vertical, FkSpacing.sm)
+                }
+            }
+        }
+        .background(Color.fkSurface)
+        .navigationTitle("详细记录")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct FoodLogHistoryRow: View {
+    let entry: FoodLogEntry
+    let onCorrect: (FoodLogOutcome) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FkSpacing.sm) {
+            HStack(alignment: .top, spacing: FkSpacing.sm) {
+                VStack(alignment: .leading, spacing: FkSpacing.xs) {
+                    Text(entry.name)
+                        .font(.fkBodyMedium.weight(.semibold))
+                        .foregroundStyle(Color.fkOnSurface)
+                    Text(FoodCategories.dropdownValue(entry.category))
+                        .font(.fkBodySmall)
+                        .foregroundStyle(Color.fkOnSurfaceVariant)
+                }
+                Spacer(minLength: 0)
+                VStack(alignment: .trailing, spacing: FkSpacing.xs) {
+                    Text(outcomeLabel)
+                        .font(.fkLabelSmall.weight(.semibold))
+                        .foregroundStyle(outcomeColor)
+                    Text(Self.dateLabel(entry.loggedAt))
+                        .font(.fkLabelSmall)
+                        .foregroundStyle(Color.fkOnSurfaceVariant)
+                }
+            }
+            if entry.wasExpiring && entry.isConsumed {
+                Text("抢救临期")
+                    .font(.fkLabelSmall)
+                    .foregroundStyle(Color.fkWarnInk)
+            }
+            HStack(spacing: FkSpacing.sm) {
+                Text("记错了？改成")
+                    .font(.fkBodySmall)
+                    .foregroundStyle(Color.fkOnSurfaceVariant)
+                Button(entry.isConsumed ? "浪费" : "用掉") {
+                    onCorrect(entry.isConsumed ? .wasted : .consumed)
+                }
+                .font(.fkBodySmall.weight(.semibold))
+                .foregroundStyle(Color.fkPrimary)
+            }
+        }
+        .padding(.horizontal, FkSpacing.lg)
+        .padding(.vertical, FkSpacing.md)
+    }
+
+    private var outcomeLabel: String { entry.isConsumed ? "用掉" : "浪费" }
+    private var outcomeColor: Color { entry.isConsumed ? .fkPrimary : .fkDanger }
+
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
+
+    private static func dateLabel(_ date: Date) -> String {
+        dateFormatter.string(from: date)
     }
 }

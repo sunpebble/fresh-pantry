@@ -120,6 +120,46 @@ actor SyncCoordinator {
     /// Read-only view of the held-back op ids (diagnostics / tests).
     var deadLetteredOpIds: Set<String> { quarantinedOpIds }
 
+    /// Quarantined entities surfaced in the sync-failure sheet.
+    var deadLetteredEntitiesList: [DeadLetterEntity] {
+        deadLetteredEntities.map { DeadLetterEntity(entityType: $0.type, entityId: $0.id) }
+            .sorted { $0.sortKey < $1.sortKey }
+    }
+
+    /// Human-readable rows for the failure sheet — one per quarantined entity,
+    /// preferring the `name` field from the earliest queued op's patch.
+    func deadLetterDisplayItems(pending: [SyncOperation]) -> [DeadLetterDisplayItem] {
+        let quarantined = Set(deadLetteredEntities)
+        var seen = Set<EntityKey>()
+        var items: [DeadLetterDisplayItem] = []
+        for op in pending {
+            let key = EntityKey(op)
+            guard quarantined.contains(key), seen.insert(key).inserted else { continue }
+            let name = Self.displayName(from: op.patch)
+            items.append(DeadLetterDisplayItem(
+                entityType: op.entityType,
+                entityId: op.entityId,
+                name: name
+            ))
+        }
+        return items.sorted { $0.sortKey < $1.sortKey }
+    }
+
+    /// Drops every quarantined op from the outbox and clears the in-memory
+    /// dead-letter state. Destructive — the user's unsynced writes are discarded.
+    func clearDeadLetters() async {
+        let ids = quarantinedOpIds
+        guard !ids.isEmpty else { return }
+        resetQuarantine()
+        try? await outbox.removeAcknowledged(ids)
+    }
+
+    private static func displayName(from patch: [String: JSONValue]) -> String? {
+        guard case .string(let raw) = patch["name"] else { return nil }
+        let trimmed = raw.trimmed
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     /// Pushes the queued outbox operations without overlapping runs. A caller
     /// arriving mid-run requests a trailing rerun and joins the in-flight task
     /// instead of starting a second concurrent run.
@@ -268,4 +308,42 @@ actor SyncCoordinator {
         deadLetteredEntities.insert(key)
         quarantinedOpIds.formUnion(pending.filter { EntityKey($0) == key }.map(\.id))
     }
+}
+
+/// One quarantined sync entity — the failure sheet's row identity.
+struct DeadLetterEntity: Sendable, Hashable, Identifiable {
+    let entityType: SyncEntityType
+    let entityId: String
+
+    var id: String { "\(entityType.rawValue):\(entityId)" }
+
+    var typeLabel: String { Self.label(for: entityType) }
+
+    var sortKey: String { "\(typeLabel):\(entityId)" }
+
+    static func label(for type: SyncEntityType) -> String {
+        switch type {
+        case .inventoryItem: "库存"
+        case .shoppingItem: "购物"
+        case .customRecipe: "食谱"
+        case .mealPlanEntry: "膳食计划"
+        case .foodLogEntry: "食材去向"
+        case .householdConfig: "家庭设置"
+        }
+    }
+}
+
+/// A quarantined entity with an optional display name from the outbox patch.
+struct DeadLetterDisplayItem: Sendable, Hashable, Identifiable {
+    let entityType: SyncEntityType
+    let entityId: String
+    let name: String?
+
+    var id: String { "\(entityType.rawValue):\(entityId)" }
+
+    var typeLabel: String { DeadLetterEntity.label(for: entityType) }
+
+    var title: String { name ?? entityId }
+
+    var sortKey: String { "\(typeLabel):\(title)" }
 }

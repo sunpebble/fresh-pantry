@@ -62,6 +62,11 @@ final class ShoppingStore {
         if collapsedCategories.remove(category) == nil { collapsedCategories.insert(category) }
     }
 
+    /// Ensures a category section is visible (e.g. after global-search handoff).
+    func ensureExpanded(_ category: String) {
+        collapsedCategories.remove(category)
+    }
+
     init(
         repository: ShoppingRepository,
         householdID: String,

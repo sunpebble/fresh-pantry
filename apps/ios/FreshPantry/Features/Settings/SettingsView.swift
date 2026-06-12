@@ -9,6 +9,8 @@ import SwiftUI
 /// the form rows directly to them. The 更多 section links to the 数据备份
 /// export/import sub-screen.
 struct SettingsView: View {
+    var onSelectCategory: (String) -> Void = { _ in }
+    var onSelectExpiringRecipes: () -> Void = {}
     @Environment(AppDependencies.self) private var dependencies
 
     var body: some View {
@@ -21,7 +23,9 @@ struct SettingsView: View {
                 appearanceStore: dependencies.appearanceStore,
                 auth: dependencies.authService,
                 notifications: dependencies.notificationCoordinator,
-                householdID: dependencies.householdID
+                householdID: dependencies.householdID,
+                onSelectCategory: onSelectCategory,
+                onSelectExpiringRecipes: onSelectExpiringRecipes
             )
             .navigationTitle("设置")
         }
@@ -39,6 +43,8 @@ private struct SettingsContent: View {
     @Bindable var auth: AuthService
     let notifications: NotificationCoordinator
     let householdID: String
+    var onSelectCategory: (String) -> Void = { _ in }
+    var onSelectExpiringRecipes: () -> Void = {}
 
     @Environment(AppDependencies.self) private var dependencies
     /// Live OS notification-permission state, refreshed on appear and after a
@@ -72,6 +78,9 @@ private struct SettingsContent: View {
             await loadStats()
             await loadHousehold()
             await dependencies.profileStore.load(signedIn: auth.signedInEmail != nil)
+        }
+        .onChange(of: dependencies.syncSession.inviteRefreshRevision) {
+            Task { await householdStore?.refreshPendingInvites() }
         }
     }
 
@@ -374,7 +383,10 @@ private struct SettingsContent: View {
     private var comingSoonSection: some View {
         Section {
             NavigationLink {
-                WasteInsightsView()
+                WasteInsightsView(
+                    onSelectCategory: onSelectCategory,
+                    onSelectExpiringRecipes: onSelectExpiringRecipes
+                )
             } label: {
                 SettingsLinkLabel(
                     systemImage: "leaf.fill",

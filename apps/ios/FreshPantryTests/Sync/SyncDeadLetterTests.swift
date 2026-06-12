@@ -285,6 +285,25 @@ struct SyncDeadLetterTests {
 
     // MARK: - Bookkeeping hygiene
 
+    @Test func clearDeadLettersRemovesQuarantinedOpsFromOutbox() async {
+        let outbox = FakeOutbox(pending: [
+            operation(id: "op_a", entityId: "ing_1"),
+            operation(id: "op_b", entityId: "ing_2"),
+        ])
+        let gateway = FakeGateway(script: [
+            .acknowledge([]), .acknowledge([]), .acknowledge([]),
+            .acknowledge(["op_b"]),
+        ])
+        let coordinator = SyncCoordinator(outbox: outbox, remote: gateway, deadLetterThreshold: 3)
+
+        for _ in 0..<3 { await coordinator.pushPending() }
+        #expect(await coordinator.deadLetterCount == 1)
+
+        await coordinator.clearDeadLetters()
+        #expect(await coordinator.deadLetterCount == 0)
+        #expect(await outbox.remainingIDs() == ["op_b"])
+    }
+
     @Test func externallyDrainedOutboxResetsQuarantine() async {
         let outbox = FakeOutbox(pending: [operation(id: "op_1")])
         let gateway = FakeGateway(script: [

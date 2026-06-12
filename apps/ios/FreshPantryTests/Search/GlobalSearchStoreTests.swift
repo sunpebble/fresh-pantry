@@ -18,7 +18,11 @@ struct GlobalSearchStoreTests {
         try await invRepo.saveItems(household, inventory)
         try await shopRepo.saveItems(household, shopping)
         let store = GlobalSearchStore(
-            inventoryRepository: invRepo, shoppingRepository: shopRepo, householdID: household
+            inventoryRepository: invRepo,
+            shoppingRepository: shopRepo,
+            localRecipeRepository: LocalRecipeRepository(payload: Data("[]".utf8)),
+            customRecipeRepository: CustomRecipeRepository(modelContainer: container),
+            householdID: household
         )
         await store.load()
         return store

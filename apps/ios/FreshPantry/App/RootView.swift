@@ -44,8 +44,15 @@ struct RootView: View {
     /// Spotlight deep-link intent: the recipe id whose detail the 食谱 tab should
     /// push. Cleared on consume.
     @State private var pendingRecipeID: String?
+    /// Cross-tab intent: preset the 食谱 tab (e.g. 用临期). Cleared on consume.
+    @State private var pendingRecipesTab: RecipesStore.Tab?
+    /// Cross-tab intent: scroll/highlight a shopping row after global search.
+    @State private var pendingShoppingItemID: String?
     /// Presents the global search overlay (launched from the 首页 toolbar).
     @State private var showSearch = false
+    /// Dead-letter detail sheet (tapped from the sync-failure banner).
+    @State private var showSyncFailureSheet = false
+    @State private var deadLetterItems: [DeadLetterDisplayItem] = []
     /// Drives the post-login onboarding profile cover (forces a display name).
     @State private var profileGateReady = false
 
@@ -62,15 +69,36 @@ struct RootView: View {
                 SyncStatusBanner(
                     isOnline: connectivity.isOnline,
                     pendingCount: pendingCount,
-                    failedCount: failedCount
+                    failedCount: failedCount,
+                    onFailedTap: failedCount > 0 ? { Task { await presentSyncFailures() } } : nil
                 )
                 tabs
             }
             .sheet(isPresented: $showSearch) {
-                GlobalSearchView(onSelectShopping: {
-                    showSearch = false
-                    selection = .shopping
-                })
+                GlobalSearchView(
+                    onSelectShopping: { itemID in
+                        showSearch = false
+                        pendingShoppingItemID = itemID
+                        selection = .shopping
+                    }
+                )
+            }
+            .sheet(isPresented: $showSyncFailureSheet) {
+                SyncFailureSheet(
+                    items: deadLetterItems,
+                    onRetry: {
+                        Task {
+                            await dependencies.syncCoordinator?.pushPending()
+                            await refreshPendingCount()
+                        }
+                    },
+                    onClear: {
+                        Task {
+                            await dependencies.syncCoordinator?.clearDeadLetters()
+                            await refreshPendingCount()
+                        }
+                    }
+                )
             }
             // Deep-link invite: present the preview/accept sheet once the user is
             // signed in. If signed-out, the token stays pending and re-fires after
@@ -168,6 +196,14 @@ struct RootView: View {
         await pendingSync?.refresh()
     }
 
+    @MainActor
+    private func presentSyncFailures() async {
+        let pending = (try? await dependencies.syncOutboxRepository.loadPending()) ?? []
+        deadLetterItems = await dependencies.syncCoordinator?
+            .deadLetterDisplayItems(pending: pending) ?? []
+        showSyncFailureSheet = true
+    }
+
     /// Composite content-sync trigger: fires when the Keychain restore settles,
     /// the signed-in identity changes, or the household switches — so the
     /// launch-restored scope starts syncing once (and only once) the session is
@@ -222,7 +258,11 @@ struct RootView: View {
                         pendingCategory = category
                         selection = .inventory
                     },
-                    onSearch: { showSearch = true }
+                    onSearch: { showSearch = true },
+                    onSelectExpiringRecipes: {
+                        pendingRecipesTab = .expiring
+                        selection = .recipes
+                    }
                 )
             }
             Tab("库存", systemImage: "tray.full", value: Section.inventory) {
@@ -232,13 +272,25 @@ struct RootView: View {
                 )
             }
             Tab("食谱", systemImage: "book", value: Section.recipes) {
-                RecipesView(pendingRecipeID: $pendingRecipeID)
+                RecipesView(
+                    pendingRecipeID: $pendingRecipeID,
+                    pendingRecipesTab: $pendingRecipesTab
+                )
             }
             Tab("购物", systemImage: "cart", value: Section.shopping) {
-                ShoppingView()
+                ShoppingView(pendingItemID: $pendingShoppingItemID)
             }
             Tab("设置", systemImage: "gearshape", value: Section.settings) {
-                SettingsView()
+                SettingsView(
+                    onSelectCategory: { category in
+                        pendingCategory = category
+                        selection = .inventory
+                    },
+                    onSelectExpiringRecipes: {
+                        pendingRecipesTab = .expiring
+                        selection = .recipes
+                    }
+                )
             }
         }
         .tabViewStyle(.sidebarAdaptable)
@@ -295,9 +347,11 @@ struct RootView: View {
                 // succeeded), then drain the outbox and the pending profile
                 // upload (idempotent; no-op without a queued avatar/name).
                 await dependencies.householdContentSync?.retryIfNeeded()
+                await dependencies.householdContentSync?.refreshDelta()
                 await dependencies.syncCoordinator?.pushPending()
                 await refreshPendingCount()
                 await dependencies.profileStore.retryPendingUpload()
+                dependencies.syncSession.bumpInviteRefresh()
             }
             Task {
                 await dependencies.notificationCoordinator
@@ -325,6 +379,7 @@ struct RootView: View {
                 // the last run completed). Then the outbound drain + the pending
                 // profile upload.
                 await dependencies.householdContentSync?.retryIfNeeded()
+                await dependencies.householdContentSync?.refreshDelta()
                 await dependencies.syncCoordinator?.pushPending()
                 await refreshPendingCount()
                 await dependencies.profileStore.retryPendingUpload()

@@ -11,10 +11,13 @@ import SwiftUI
 struct GlobalSearchView: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.dismiss) private var dismiss
-    /// Switches the root selection to the 购物 tab (owned by `RootView`).
-    var onSelectShopping: () -> Void = {}
+    /// Switches the root selection to the 购物 tab and highlights `itemID`.
+    var onSelectShopping: (String) -> Void = { _ in }
 
     @State private var store: GlobalSearchStore?
+    @State private var recipesStore: RecipesStore?
+    @State private var customStore: CustomRecipeStore?
+    @State private var selectedRecipe: Recipe?
     /// Built lazily so an inventory hit can push a fully-functional detail screen
     /// (IngredientDetailView requires an InventoryStore for its edit/删除/加购).
     @State private var inventoryStore: InventoryStore?
@@ -45,6 +48,16 @@ struct GlobalSearchView: View {
                     IngredientDetailView(ingredient: ingredient, store: inventoryStore)
                 }
             }
+            .navigationDestination(item: $selectedRecipe) { recipe in
+                if let recipesStore, let customStore {
+                    RecipeDetailView(
+                        recipe: recipe,
+                        store: recipesStore,
+                        customStore: customStore,
+                        isCustom: customStore.recipes.contains { $0.id == recipe.id }
+                    )
+                }
+            }
         }
         .tint(.fkPrimary)
         .task {
@@ -52,10 +65,34 @@ struct GlobalSearchView: View {
                 let search = GlobalSearchStore(
                     inventoryRepository: dependencies.inventoryRepository,
                     shoppingRepository: dependencies.shoppingRepository,
+                    localRecipeRepository: dependencies.localRecipeRepository,
+                    customRecipeRepository: dependencies.customRecipeRepository,
                     householdID: dependencies.householdID
                 )
                 await search.load()
                 store = search
+            }
+            if recipesStore == nil {
+                let built = RecipesStore(
+                    localRepository: dependencies.localRecipeRepository,
+                    customRepository: dependencies.customRecipeRepository,
+                    favoritesStore: dependencies.favoritesStore,
+                    householdID: dependencies.householdID,
+                    inventoryRepository: dependencies.inventoryRepository,
+                    dietaryStore: dependencies.dietaryPreferencesStore,
+                    dietPreferenceStore: dependencies.dietPreferenceStore
+                )
+                await built.load()
+                recipesStore = built
+            }
+            if customStore == nil {
+                let built = CustomRecipeStore(
+                    repository: dependencies.customRecipeRepository,
+                    householdID: dependencies.householdID,
+                    syncWriter: dependencies.syncWriter
+                )
+                await built.load()
+                customStore = built
             }
             if inventoryStore == nil {
                 let inv = InventoryStore(
@@ -74,7 +111,7 @@ struct GlobalSearchView: View {
     private func content(_ store: GlobalSearchStore) -> some View {
         @Bindable var store = store
         VStack(spacing: 0) {
-            FkSearchField(text: $store.query, placeholder: "搜索库存、购物清单…")
+            FkSearchField(text: $store.query, placeholder: "搜索库存、购物、食谱…")
                 .padding(.horizontal, FkSpacing.lg)
                 .padding(.vertical, FkSpacing.sm)
 
@@ -123,7 +160,7 @@ struct GlobalSearchView: View {
                         Button {
                             history.record(store.trimmedQuery)
                             dismiss()
-                            onSelectShopping()
+                            onSelectShopping(item.id)
                         } label: {
                             shoppingRow(item)
                         }
@@ -134,10 +171,44 @@ struct GlobalSearchView: View {
                     Text("购物清单 · \(store.filteredShopping.count)")
                 }
             }
+            if !store.filteredRecipes.isEmpty {
+                Section {
+                    ForEach(store.filteredRecipes, id: \.id) { recipe in
+                        Button {
+                            history.record(store.trimmedQuery)
+                            selectedRecipe = recipe
+                        } label: {
+                            recipeRow(recipe)
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(Color.fkSurfaceContainerLowest)
+                    }
+                } header: {
+                    Text("食谱 · \(store.filteredRecipes.count)")
+                }
+            }
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(Color.fkSurface)
+    }
+
+    private func recipeRow(_ recipe: Recipe) -> some View {
+        HStack(spacing: FkSpacing.md) {
+            FkCategoryAvatar(imageUrl: recipe.imageUrl ?? "", category: recipe.category, size: 36)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(recipe.name)
+                    .font(.fkBodyMedium)
+                    .foregroundStyle(Color.fkOnSurface)
+                Text(recipe.category)
+                    .font(.fkLabelSmall)
+                    .foregroundStyle(Color.fkOnSurfaceVariant)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "book")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.fkOnSurfaceVariant)
+        }
     }
 
     private func shoppingRow(_ item: ShoppingItem) -> some View {
@@ -171,8 +242,8 @@ struct GlobalSearchView: View {
         if history.entries.isEmpty {
             FkEmptyState(
                 systemImage: "magnifyingglass",
-                title: "搜索库存与购物清单",
-                message: "输入食材或分类名即可"
+                title: "搜索库存、购物与食谱",
+                message: "输入食材、分类或菜名即可"
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {

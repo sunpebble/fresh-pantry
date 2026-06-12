@@ -11,6 +11,8 @@ struct RecipesView: View {
     /// Spotlight deep-link intent: the recipe id whose detail to push once the
     /// corpus is loaded. Consumed (set to nil) once applied. `RootView` owns it.
     @Binding var pendingRecipeID: String?
+    /// Cross-tab intent: preset the browse tab (e.g. 用临期). `RootView` owns it.
+    @Binding var pendingRecipesTab: RecipesStore.Tab?
 
     @Environment(AppDependencies.self) private var dependencies
     @Environment(RecipeImportRouter.self) private var importRouter
@@ -40,6 +42,14 @@ struct RecipesView: View {
     /// the Spotlight miss feedback, so a stale deep link never lands silently.
     @State private var toast: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(
+        pendingRecipeID: Binding<String?> = .constant(nil),
+        pendingRecipesTab: Binding<RecipesStore.Tab?> = .constant(nil)
+    ) {
+        _pendingRecipeID = pendingRecipeID
+        _pendingRecipesTab = pendingRecipesTab
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -125,6 +135,7 @@ struct RecipesView: View {
             // Cold start: intents captured before this tab built/loaded.
             consumeImportIntent()
             consumePendingRecipe()
+            consumePendingRecipesTab()
             #if DEBUG
             // Snapshot affordance: `-initialRoute cook` seeds the inventory,
             // picks a recipe that matches it, and pushes its detail (whose own
@@ -141,6 +152,7 @@ struct RecipesView: View {
         }
         // Warm path for the Spotlight deep link (cold path = the `.task` above).
         .onChange(of: pendingRecipeID) { _, _ in consumePendingRecipe() }
+        .onChange(of: pendingRecipesTab) { _, _ in consumePendingRecipesTab() }
     }
 
     /// Applies a pending Spotlight deep link: pushes the matching recipe's
@@ -153,6 +165,12 @@ struct RecipesView: View {
     /// A miss toasts instead of landing silently — the index can lag a local
     /// delete until the next rebuild, and "nothing happened" reads as a broken
     /// route rather than gone data.
+    private func consumePendingRecipesTab() {
+        guard let tab = pendingRecipesTab, let store, store.hasLoaded else { return }
+        store.tab = tab
+        pendingRecipesTab = nil
+    }
+
     private func consumePendingRecipe() {
         guard let id = pendingRecipeID, let store, store.hasLoaded else { return }
         pendingRecipeID = nil
