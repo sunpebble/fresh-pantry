@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.1](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.13.0...fresh_pantry-v1.13.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* 闭合 13 处无闭环功能(静默吞错/流程断裂/并发丢写) ([773dbaf](https://github.com/kunish/fresh_pantry/commit/773dbaf8b49fca399f9f0130d1c912ca408adb31))
+
 ## [1.13.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.12.3...fresh_pantry-v1.13.0) (2026-06-12)
 
 
