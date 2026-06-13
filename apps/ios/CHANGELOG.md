@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.16.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.15.1...fresh_pantry-v1.16.0) (2026-06-13)
+
+
+### Features
+
+* **inventory:** 库存食材长按改为预览卡+快捷菜单(替代多选) ([06e3ca5](https://github.com/kunish/fresh_pantry/commit/06e3ca5339b705e26c745efa3fcee83b52c81563))
+* **search:** 搜索支持拼音筛选——全拼/首字母/多音字校正 ([f334126](https://github.com/kunish/fresh_pantry/commit/f334126256263ef8a295256b8e46ab15408363d2))
+
+
+### Bug Fixes
+
+* **ios:** 家庭共享离线优先——切换数据不闪 + 管理页本地缓存 ([c9225af](https://github.com/kunish/fresh_pantry/commit/c9225afa39cfa3c462139c567ee0dddc1556f533))
+* **recipes:** 回填缺量食材用量——步骤里的量不再漏 + 源无数字落「适量」 ([76aff06](https://github.com/kunish/fresh_pantry/commit/76aff06d43e4f750ff8645f06a0dc05cbf7a0dbd))
+
+
+### Performance Improvements
+
+* **ios:** 封面按尺寸解码 + 解码/目录 JSON 全移出主线程 + Replay 改 on-error ([74a1f64](https://github.com/kunish/fresh_pantry/commit/74a1f649ddc520f8872cdd5dd5810d3ac383c5e1))
+
 ## [1.15.1](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.15.0...fresh_pantry-v1.15.1) (2026-06-13)
 
 
