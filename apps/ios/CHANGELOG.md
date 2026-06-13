@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.14.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.13.1...fresh_pantry-v1.14.0) (2026-06-13)
+
+
+### Features
+
+* **diagnostics:** Diagnostics 门面协议 + measure 默认 + Noop ([ab7c919](https://github.com/kunish/fresh_pantry/commit/ab7c919d2b7c8386208d0a19605949b32d76132e))
+* **diagnostics:** DiagnosticsFactory(按构建配置分流 sink) ([0d857bd](https://github.com/kunish/fresh_pantry/commit/0d857bdeb0d6134889a55ed6580ca15d42fc070f))
+* **diagnostics:** OSLogDiagnostics(DEBUG 本地可见 sink) ([ba12c70](https://github.com/kunish/fresh_pantry/commit/ba12c708d8fa617d2ff0f550af677d69d6f5f756))
+* **diagnostics:** SentryDiagnostics(#if !DEBUG 的 Sentry sink) ([b2588e8](https://github.com/kunish/fresh_pantry/commit/b2588e83d22c89cb01bdb11c0ae7cc3797fec45b))
+* **diagnostics:** 同步流程埋点 + AppDependencies DI 接线 ([c7700fa](https://github.com/kunish/fresh_pantry/commit/c7700faf1a7479aac6b871bb28678fca891b93b0))
+* **ios:** add DebugMenuGate (hidden debug-menu unlock state) ([ff54419](https://github.com/kunish/fresh_pantry/commit/ff54419b97971fc2bb91a24fb4a55abc181301ab))
+* **ios:** add DebugMenuView (feature-flag toggles) ([b648e04](https://github.com/kunish/fresh_pantry/commit/b648e04053fdb8580a92ad2fc989837ca8126326))
+* **ios:** add FeatureFlag registry ([120ea00](https://github.com/kunish/fresh_pantry/commit/120ea008fb2d67f075bee98a078290357d10a96d))
+* **ios:** add FeatureFlagStore (UserDefaults override store) ([e40774c](https://github.com/kunish/fresh_pantry/commit/e40774cf145df81a1abeec69d574ac04a8f6b596))
+* **ios:** hidden debug menu unlock + demo flag row in Settings ([31624ee](https://github.com/kunish/fresh_pantry/commit/31624eeb070beb45239c0d298a9740ce6e911ba6))
+* **ios:** wire FeatureFlagStore + DebugMenuGate into AppDependencies ([52f77ca](https://github.com/kunish/fresh_pantry/commit/52f77ca62cd95339c43f4b05a336ce6d7566c6c1))
+* 食材用量数字化为无损 schema(管线+iOS+364 条数据) ([8cb35b3](https://github.com/kunish/fresh_pantry/commit/8cb35b3d2d773792309f5ad1affc2b20fe6934bc))
+
+
+### Bug Fixes
+
+* **ios:** 跨 tab 意图可靠投递 + 食谱目录远程化 ([e2f9403](https://github.com/kunish/fresh_pantry/commit/e2f9403e9403d7c11fa231bbff5fe2e6162e025a))
+
 ## [1.13.1](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.13.0...fresh_pantry-v1.13.1) (2026-06-12)
 
 
