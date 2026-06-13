@@ -36,7 +36,7 @@ struct RemoteRecipeCatalog: RecipeCatalogFetching {
     /// the numeric `ingredients` jsonb decodes through `RecipeIngredient`. Sync
     /// metadata columns are absent and default (remoteVersion 0, dates nil).
     private static let columns =
-        "id,name,category,difficulty,cookingMinutes:cooking_minutes,description,ingredients,steps,tags,imageUrl:image_url"
+        "id,name,category,difficulty,cookingMinutes:cooking_minutes,description,ingredients,steps,tags,imageUrl:image_url,videoUrl:video_url"
 
     /// Fetches the full catalog. Returns `[]` on any failure so callers fall back
     /// to the on-disk cache or the bundled corpus.
