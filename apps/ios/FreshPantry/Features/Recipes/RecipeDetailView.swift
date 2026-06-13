@@ -74,8 +74,8 @@ struct RecipeDetailView: View {
     @State private var leftoverPromptPending = false
     @State private var showLeftoverPrompt = false
     @State private var showLeftoverSheet = false
-    /// 「观看视频」外链的 in-app Safari 呈现。
-    @State private var showVideo = false
+    /// 「观看视频」外链的 in-app Safari 呈现(item 驱动:store 实时刷新清空 videoUrl 时不会留空白 sheet)。
+    @State private var videoLink: VideoLink?
     /// Cook Mode 完成 follow-up: set when the pager's 完成 (vs its X close) was
     /// tapped, consumed on the cover's onDismiss to offer the cook deduction —
     /// the same deferred-prompt timing as `leftoverPromptPending`. The offer only
@@ -213,10 +213,8 @@ struct RecipeDetailView: View {
                 Task { await refreshInventoryContext() }
             }
         }
-        .sheet(isPresented: $showVideo) {
-            if let videoUrl = recipe.videoUrl?.trimmed, let url = URL(string: videoUrl) {
-                SafariView(url: url).ignoresSafeArea()
-            }
+        .sheet(item: $videoLink) { link in
+            SafariView(url: link.url).ignoresSafeArea()
         }
         .sheet(isPresented: $showPlanPicker) {
             PlanDayPickerSheet(recipeName: recipe.name) { day in
@@ -389,6 +387,12 @@ struct RecipeDetailView: View {
         return args[index + 1] == "cook"
     }
 
+    /// 当前菜谱的合法视频外链(trim 后非空且能构造 URL),否则 nil。按钮与 sheet 共用。
+    private var videoURL: URL? {
+        guard let raw = recipe.videoUrl?.trimmed, !raw.isEmpty else { return nil }
+        return URL(string: raw)
+    }
+
     private var palette: FkCategoryColors { FkCategoryIcon.palette(for: recipe.category) }
 
     // MARK: Hero
@@ -439,9 +443,9 @@ struct RecipeDetailView: View {
                     .foregroundStyle(Color.fkOnSurfaceVariant)
                     .padding(.top, FkSpacing.xs)
             }
-            if let videoUrl = recipe.videoUrl?.trimmed, !videoUrl.isEmpty, URL(string: videoUrl) != nil {
+            if let url = videoURL {
                 Button {
-                    showVideo = true
+                    videoLink = VideoLink(url: url)
                 } label: {
                     Label("观看视频", systemImage: "play.rectangle.fill")
                         .font(.fkLabelLarge)
@@ -746,6 +750,12 @@ struct RecipeDetailView: View {
         }
         .buttonStyle(.fkPressable)
     }
+}
+
+/// `.sheet(item:)` 需要 Identifiable;裸 URL 不符合,用 absoluteString 作 id 包装。
+private struct VideoLink: Identifiable {
+    let url: URL
+    var id: String { url.absoluteString }
 }
 
 /// `Identifiable` wrapper around the built deduction proposals so the cook review
