@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.17.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.16.2...fresh_pantry-v1.17.0) (2026-06-13)
+
+
+### Features
+
+* **ios:** Recipe 加 videoUrl(encodeAlways + 向后兼容解码) ([40d58c8](https://github.com/kunish/fresh_pantry/commit/40d58c879c2b64c3b70eefb36b5f69dabc2e7cbc))
+* **ios:** RemoteRecipeCatalog select 加 videoUrl:video_url 列别名 ([a1f16c5](https://github.com/kunish/fresh_pantry/commit/a1f16c577f9df508600f1c2915d1f01fd9f9144a))
+* **ios:** 菜谱详情页加「观看视频」入口(SFSafariViewController 打开外链) ([9621667](https://github.com/kunish/fresh_pantry/commit/9621667f25611e4719f7190c86d11a425d90de8b))
+
+
+### Performance Improvements
+
+* **ios:** 入库 history 批量化 O(N²)→O(N) + 邀请卡片即时消失 ([8644e61](https://github.com/kunish/fresh_pantry/commit/8644e616b0a177345450e86f46f57921ef5dabfd))
+* **ios:** 全部列表 mutation 改离线优先乐观更新——消除点击卡顿 ([0edf925](https://github.com/kunish/fresh_pantry/commit/0edf925f503eff96011531a65966a1858aa5c05f))
+
 ## [1.16.2](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.16.1...fresh_pantry-v1.16.2) (2026-06-13)
 
 
