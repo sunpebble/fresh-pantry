@@ -37,9 +37,22 @@ enum RemoteImageCache {
         return directory.appendingPathComponent(name)
     }
 
-    /// Synchronous cache hit (memory, then disk). Returns nil when nothing is
-    /// cached — the caller then awaits `image(for:maxPixel:)`. Safe to call from a
-    /// view's `init`/body (the disk read is a small downsampled decode).
+    /// Synchronous **memory-tier** hit only — never touches disk, so it is safe to
+    /// call from a SwiftUI view's `init`/`body` without blocking the main thread.
+    /// A miss returns nil and the caller awaits `image(for:maxPixel:)`, which does
+    /// the disk read + ImageIO decode off the synchronous render path. A full-res
+    /// disk decode fanned across a `LazyVStack` of covers during one layout pass was
+    /// the main-thread hang vector behind FRESH_PANTRY-13/14, so it must not run in
+    /// view construction.
+    nonisolated static func cachedInMemory(for url: URL, maxPixel: Int) -> UIImage? {
+        memory.object(forKey: memoryKey(url, maxPixel))
+    }
+
+    /// Synchronous cache hit (memory, then disk). The disk branch is a full-res
+    /// ImageIO decode and MUST NOT run on the main thread — call it only from the
+    /// async `image(for:)` (or another background context), never from a view's
+    /// `init`/`body`. Use `cachedInMemory(for:maxPixel:)` for the synchronous
+    /// first-frame hit instead.
     nonisolated static func cached(for url: URL, maxPixel: Int) -> UIImage? {
         let key = memoryKey(url, maxPixel)
         if let hit = memory.object(forKey: key) { return hit }
@@ -88,8 +101,11 @@ struct CachedRemoteImage<Placeholder: View>: View {
         self.url = url
         self.maxPixel = maxPixel
         self.placeholder = placeholder
-        // Synchronous memory/disk hit → first frame already has the image.
-        _image = State(initialValue: url.flatMap { RemoteImageCache.cached(for: $0, maxPixel: maxPixel) })
+        // Synchronous MEMORY hit → first frame already has the image, with no disk
+        // I/O on the main thread. A memory miss falls through to `.task(id: url)`
+        // below, which reads + decodes from disk via `image(for:)` off the
+        // synchronous render path (FRESH_PANTRY-13/14: no full-res decode in `init`).
+        _image = State(initialValue: url.flatMap { RemoteImageCache.cachedInMemory(for: $0, maxPixel: maxPixel) })
     }
 
     var body: some View {

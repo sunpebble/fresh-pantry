@@ -35,6 +35,21 @@ struct RemoteImageCacheTests {
         #expect(RemoteImageCache.cached(for: url, maxPixel: 64) != nil)
     }
 
+    /// The synchronous first-frame path used in `CachedRemoteImage.init` must read
+    /// memory ONLY — never disk — so view construction can't block the main thread
+    /// (FRESH_PANTRY-13/14). A disk-only entry is invisible to `cachedInMemory`; the
+    /// async `cached`/`image(for:)` path is what promotes it into memory.
+    @Test func cachedInMemorySkipsDiskUntilPromoted() {
+        let url = freshURL()
+        RemoteImageCache.persist(pngData, for: url) // on disk, not yet in memory
+        // Cold: memory-only lookup must NOT touch disk → miss.
+        #expect(RemoteImageCache.cachedInMemory(for: url, maxPixel: 64) == nil)
+        // The disk-reading path resolves it and promotes it into the memory tier.
+        #expect(RemoteImageCache.cached(for: url, maxPixel: 64) != nil)
+        // Now the memory-only lookup hits.
+        #expect(RemoteImageCache.cachedInMemory(for: url, maxPixel: 64) != nil)
+    }
+
     @Test func distinctURLsDoNotCollide() {
         let a = freshURL()
         let b = freshURL()
