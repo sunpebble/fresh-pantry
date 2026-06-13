@@ -56,32 +56,34 @@ final class GlobalSearchStore {
     var trimmedQuery: String { query.trimmed }
     var isSearching: Bool { !trimmedQuery.isEmpty }
 
-    /// Inventory rows whose name OR category contains the query (case-insensitive).
+    /// Inventory rows whose name OR category matches the query (pinyin-aware).
     var filteredInventory: [Ingredient] {
         let needle = trimmedQuery.lowercased()
         guard !needle.isEmpty else { return [] }
         return inventory.filter {
-            $0.name.lowercased().contains(needle) || ($0.category ?? "").lowercased().contains(needle)
+            PinyinMatcher.matches($0.name, query: needle)
+                || PinyinMatcher.matches($0.category ?? "", query: needle)
         }
     }
 
-    /// Shopping rows whose name OR category contains the query (case-insensitive).
+    /// Shopping rows whose name OR category matches the query (pinyin-aware).
     var filteredShopping: [ShoppingItem] {
         let needle = trimmedQuery.lowercased()
         guard !needle.isEmpty else { return [] }
         return shopping.filter {
-            $0.name.lowercased().contains(needle) || $0.category.lowercased().contains(needle)
+            PinyinMatcher.matches($0.name, query: needle)
+                || PinyinMatcher.matches($0.category, query: needle)
         }
     }
 
-    /// Recipe rows whose name OR any ingredient contains the query.
+    /// Recipe rows whose name OR any ingredient matches the query (pinyin-aware).
     var filteredRecipes: [Recipe] {
         let needle = trimmedQuery.lowercased()
         guard !needle.isEmpty else { return [] }
         return recipes.filter { recipe in
-            if recipe.name.lowercased().contains(needle) { return true }
+            if PinyinMatcher.matches(recipe.name, query: needle) { return true }
             return recipe.ingredients.contains {
-                $0.name.lowercased().contains(needle)
+                PinyinMatcher.matches($0.name, query: needle)
             }
         }
     }

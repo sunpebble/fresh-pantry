@@ -316,13 +316,13 @@ final class RecipesStore {
         return recipe.category.trimmed == category.trimmed
     }
 
-    /// Case-insensitive contains on the recipe name OR any ingredient name
-    /// (ports the RecipesScreen search predicate).
+    /// Pinyin-aware contains on the recipe name OR any ingredient name — matches
+    /// 中文子串, 全拼 (`fanqie`), and 首字母 (`fq`) via `PinyinMatcher`.
     private static func matchesSearch(_ recipe: Recipe, query: String) -> Bool {
         let needle = query.trimmed.lowercased()
         if needle.isEmpty { return true }
-        if recipe.name.lowercased().contains(needle) { return true }
-        return recipe.ingredients.contains { $0.name.lowercased().contains(needle) }
+        if PinyinMatcher.matches(recipe.name, query: needle) { return true }
+        return recipe.ingredients.contains { PinyinMatcher.matches($0.name, query: needle) }
     }
 
     private func matchesFavorites(_ recipe: Recipe) -> Bool {

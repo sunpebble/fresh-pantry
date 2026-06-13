@@ -541,7 +541,7 @@ final class InventoryStore {
     private func matchesSearch(_ item: Ingredient) -> Bool {
         let query = searchQuery.trimmed.lowercased()
         if query.isEmpty { return true }
-        return item.name.lowercased().contains(query)
+        return PinyinMatcher.matches(item.name, query: query)
     }
 
     /// Sort: most-severe state first (expired→urgent→expiringSoon→fresh), then
