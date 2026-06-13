@@ -9,7 +9,7 @@ function rec(id: string, imageUrl: string | null): CleanRecipe {
   return {
     id, name: '菜', category: '荤菜', difficulty: 2, cookingMinutes: 20,
     description: '', ingredients: [], steps: [], tags: [], imageUrl,
-    remoteVersion: 0, clientUpdatedAt: null, deletedAt: null,
+    remoteVersion: 0, clientUpdatedAt: null, deletedAt: null, videoUrl: null,
   };
 }
 

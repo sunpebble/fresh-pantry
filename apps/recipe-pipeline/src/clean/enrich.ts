@@ -80,6 +80,7 @@ export function assembleRecipe(raw: RawRecipe, enr: Enrichment): CleanRecipe {
     steps,
     tags: uniq([category, ...enr.tags]),
     imageUrl: raw.imageUrl ?? null,
+    videoUrl: null,
     remoteVersion: 0,
     clientUpdatedAt: null,
     deletedAt: null,

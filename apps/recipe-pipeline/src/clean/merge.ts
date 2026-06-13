@@ -39,6 +39,7 @@ export function mergeWithExisting(
     byId.set(f.id, {
       ...f,
       imageUrl: prev.imageUrl || f.imageUrl,
+      videoUrl: prev.videoUrl || f.videoUrl,
       description,
       remoteVersion: prev.remoteVersion,
       clientUpdatedAt: prev.clientUpdatedAt,

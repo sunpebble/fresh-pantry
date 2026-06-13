@@ -7,7 +7,7 @@ function clean(over: Partial<CleanRecipe>): CleanRecipe {
   return {
     id: 'howtocook:x/菜', name: '菜', category: '荤菜', difficulty: 2, cookingMinutes: 20,
     description: '好吃。', ingredients: [], steps: ['做'], tags: ['荤菜'], imageUrl: null,
-    remoteVersion: 0, clientUpdatedAt: null, deletedAt: null, ...over,
+    remoteVersion: 0, clientUpdatedAt: null, deletedAt: null, videoUrl: null, ...over,
   };
 }
 

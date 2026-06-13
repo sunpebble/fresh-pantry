@@ -17,7 +17,7 @@ function rec(id: string, imageUrl: string | null, over: Partial<CleanRecipe> = {
   return {
     id, name: over.name ?? '咖喱炒蟹', category: '水产', difficulty: 2, cookingMinutes: 20,
     description: '', ingredients: [{ name: '蟹' }, { name: '咖喱' }], steps: [], tags: [],
-    imageUrl, remoteVersion: 0, clientUpdatedAt: null, deletedAt: null, ...over,
+    imageUrl, videoUrl: null, remoteVersion: 0, clientUpdatedAt: null, deletedAt: null, ...over,
   };
 }
 

@@ -6,7 +6,7 @@ function recipe(id: string, ingredients: Ingredient[]): CleanRecipe {
   return {
     id, name: id, category: '荤菜', difficulty: 2, cookingMinutes: 30,
     description: '', ingredients, steps: [], tags: [],
-    imageUrl: null, remoteVersion: 0, clientUpdatedAt: null, deletedAt: null,
+    imageUrl: null, videoUrl: null, remoteVersion: 0, clientUpdatedAt: null, deletedAt: null,
   };
 }
 

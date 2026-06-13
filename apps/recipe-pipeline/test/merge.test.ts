@@ -8,6 +8,7 @@ function rec(over: Partial<CleanRecipe> & { id: string }): CleanRecipe {
     difficulty: over.difficulty ?? 2, cookingMinutes: over.cookingMinutes ?? 20,
     description: over.description ?? '', ingredients: over.ingredients ?? [],
     steps: over.steps ?? [], tags: over.tags ?? [], imageUrl: over.imageUrl ?? null,
+    videoUrl: over.videoUrl ?? null,
     remoteVersion: over.remoteVersion ?? 0, clientUpdatedAt: over.clientUpdatedAt ?? null,
     deletedAt: over.deletedAt ?? null,
   };
@@ -101,5 +102,21 @@ describe('mergeWithExisting', () => {
     const existing = [rec({ id: 'howtocook:template/示例菜/示例菜' }), rec({ id: 'a' })];
     const { merged } = mergeWithExisting([rec({ id: 'a' })], existing, NOW);
     expect(merged.map((r) => r.id)).toEqual(['a']);
+  });
+});
+
+describe('mergeWithExisting videoUrl', () => {
+  const baseV = (over: Partial<CleanRecipe> = {}): CleanRecipe => ({
+    id: 'r1', name: '番茄炒蛋', category: '荤菜', difficulty: 1, cookingMinutes: 10,
+    description: 'd', ingredients: [], steps: [], tags: [], imageUrl: null,
+    videoUrl: null, remoteVersion: 0, clientUpdatedAt: null, deletedAt: null, ...over,
+  });
+  it('既有 videoUrl 优先,不被 fresh 的 null 覆盖', () => {
+    const { merged } = mergeWithExisting([baseV({ videoUrl: null })], [baseV({ videoUrl: 'https://b23.tv/x' })], '2026-06-13T00:00:00Z');
+    expect(merged[0].videoUrl).toBe('https://b23.tv/x');
+  });
+  it('既有无 videoUrl 时采纳 fresh 的', () => {
+    const { merged } = mergeWithExisting([baseV({ videoUrl: 'https://youtu.be/y' })], [baseV({ videoUrl: null })], '2026-06-13T00:00:00Z');
+    expect(merged[0].videoUrl).toBe('https://youtu.be/y');
   });
 });
