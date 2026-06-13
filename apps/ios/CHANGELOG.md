@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.1](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.16.0...fresh_pantry-v1.16.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* **recipes:** 剔除混入食材列表的 26 个厨具 ([2c1d67a](https://github.com/kunish/fresh_pantry/commit/2c1d67a46d468a712078f901e60af804251ea016))
+
 ## [1.16.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.15.1...fresh_pantry-v1.16.0) (2026-06-13)
 
 
