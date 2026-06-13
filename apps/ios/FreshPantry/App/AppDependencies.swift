@@ -54,6 +54,12 @@ final class AppDependencies {
     /// UserDefaults-backed 外观 preference (跟随系统/浅色/深色); drives the root
     /// `preferredColorScheme` override. Device-local, excluded from backup/sync.
     let appearanceStore: AppearanceStore
+    /// UserDefaults-backed feature-flag overrides (debug menu). Device-local,
+    /// excluded from backup/sync.
+    let featureFlagStore: FeatureFlagStore
+    /// UserDefaults-backed hidden debug-menu unlock state. Device-local, excluded
+    /// from backup/sync.
+    let debugMenuGate: DebugMenuGate
     /// Holds a household-invite deep link captured by `onOpenURL` until the UI
     /// presents its preview/accept flow. Always built (no backend dependency).
     let inviteRouter: InviteRouter
@@ -132,6 +138,8 @@ final class AppDependencies {
         self.dietPreferenceStore = DietPreferenceStore()
         self.aiSettingsStore = AiSettingsStore(secrets: KeychainStore())
         self.appearanceStore = AppearanceStore()
+        self.featureFlagStore = FeatureFlagStore()
+        self.debugMenuGate = DebugMenuGate()
         self.inviteRouter = InviteRouter()
         self.recipeImportRouter = RecipeImportRouter()
         let notificationTapRouter = NotificationTapRouter()
