@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import type { FlueContext } from '@flue/runtime';
 import recipeCleaner from '../agents/recipe-cleaner';
 import { createFlueEnricher } from '../clean/flue-enricher';
+import { createCloudflareEnricher } from '../clean/cloudflare-enricher';
 import { buildSources, type SourcesFile } from '../sources/registry';
 import { createOpenverseSearch } from '../sources/image-search-openverse';
 import { runPipeline } from '../pipeline';
@@ -18,8 +19,15 @@ export interface BuildPayload {
 }
 
 export async function run({ init, payload }: FlueContext<BuildPayload>) {
-  const harness = await init(recipeCleaner);
-  const enricher = createFlueEnricher(harness);
+  const enricher = config.useCloudflare
+    ? createCloudflareEnricher({
+        baseUrl: config.cloudflare.baseUrl,
+        apiKey: config.cloudflare.apiKey,
+        model: config.model,
+        maxTokens: config.cloudflare.maxTokens,
+        log: (m) => console.log(`[recipes:cf] ${m}`),
+      })
+    : createFlueEnricher(await init(recipeCleaner));
 
   const sourcesFile = JSON.parse(await readFile(config.sourcesPath, 'utf8')) as SourcesFile;
   const sources = buildSources(sourcesFile, enricher);

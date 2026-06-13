@@ -3,6 +3,10 @@ import { dirname, resolve } from 'node:path';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
+const CF_DEFAULT_BASE =
+  'https://api.cloudflare.com/client/v4/accounts/3967805080c0f0812c8e59d1f9c699a6/ai/v1';
+const recipeModel = process.env.RECIPE_MODEL ?? '@cf/moonshotai/kimi-k2.7-code';
+
 export const config = {
   outPath: resolve(root, '../ios/FreshPantry/Resources/howtocook.json'),
   existingPath: resolve(root, '../ios/FreshPantry/Resources/howtocook.json'),
@@ -10,12 +14,17 @@ export const config = {
   rejectsPath: resolve(root, 'data/rejects.json'),
   sourcesPath: resolve(root, 'data/sources.json'),
   attributionsPath: resolve(root, 'data/image-attributions.json'),
+  videoAttributionsPath: resolve(root, 'data/video-attributions.json'),
   workDir: resolve(root, '.cache'),
-  // 为仍缺图的菜谱联网补封面(默认走免 key 的 Openverse,覆盖有限,故 opt-in)。
-  // 全网最佳匹配 + 视觉校验的全量补图由 ultracode workflow 完成,不靠这条默认路径。
   acquireImages: process.env.RECIPE_ACQUIRE_IMAGES === '1',
-  model: process.env.RECIPE_MODEL ?? 'anthropic/claude-sonnet-4-6',
-  // 'xhigh' 在 deepseek-v4-pro 上映射到 "max" 思考档(pi-ai thinkingLevelMap)
+  model: recipeModel,
+  // RECIPE_MODEL 以 @cf/ 开头 → 走 CloudflareEnricher(直连 OpenAI 兼容端点),否则走 flue。
+  useCloudflare: recipeModel.startsWith('@cf/'),
+  cloudflare: {
+    baseUrl: process.env.CLOUDFLARE_AI_BASE_URL ?? CF_DEFAULT_BASE,
+    apiKey: process.env.CLOUDFLARE_AI_API_KEY ?? '',
+    maxTokens: Number(process.env.RECIPE_MAX_TOKENS ?? '4096'),
+  },
   thinkingLevel: (process.env.RECIPE_THINKING ?? 'xhigh') as 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh',
   concurrency: Number(process.env.RECIPE_CONCURRENCY ?? '6'),
 };
