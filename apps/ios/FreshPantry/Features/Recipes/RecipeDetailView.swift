@@ -74,6 +74,8 @@ struct RecipeDetailView: View {
     @State private var leftoverPromptPending = false
     @State private var showLeftoverPrompt = false
     @State private var showLeftoverSheet = false
+    /// 「观看视频」外链的 in-app Safari 呈现。
+    @State private var showVideo = false
     /// Cook Mode 完成 follow-up: set when the pager's 完成 (vs its X close) was
     /// tapped, consumed on the cover's onDismiss to offer the cook deduction —
     /// the same deferred-prompt timing as `leftoverPromptPending`. The offer only
@@ -209,6 +211,11 @@ struct RecipeDetailView: View {
                 // The leftover row just landed in inventory — re-sync the
                 // match pills + list ranking the same way a deduction does.
                 Task { await refreshInventoryContext() }
+            }
+        }
+        .sheet(isPresented: $showVideo) {
+            if let videoUrl = recipe.videoUrl?.trimmed, let url = URL(string: videoUrl) {
+                SafariView(url: url).ignoresSafeArea()
             }
         }
         .sheet(isPresented: $showPlanPicker) {
@@ -431,6 +438,18 @@ struct RecipeDetailView: View {
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
                     .padding(.top, FkSpacing.xs)
+            }
+            if let videoUrl = recipe.videoUrl?.trimmed, !videoUrl.isEmpty, URL(string: videoUrl) != nil {
+                Button {
+                    showVideo = true
+                } label: {
+                    Label("观看视频", systemImage: "play.rectangle.fill")
+                        .font(.fkLabelLarge)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.fkPrimary)
+                .padding(.top, FkSpacing.xs)
+                .accessibilityLabel("观看「\(recipe.name)」的做法视频")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
