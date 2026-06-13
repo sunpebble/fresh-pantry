@@ -35,6 +35,35 @@ xcodebuild test -project FreshPantry.xcodeproj -scheme FreshPantry \
 > `if (kDebugMode) return`),故本地 Debug/测试不会上报,也不会编译 Sentry 路径——
 > 要验证 Sentry 须做 Release 构建。
 
+### 编辑器/SourceKit 索引(sourcekit-lsp)
+
+这是 **Xcode 工程**(非 SwiftPM),sourcekit-lsp 没有 `buildServer.json` 就只能做
+**单文件分析**——看不到编译参数和整模块源文件,于是在编辑器 / Claude Code 里狂报
+**假阳性**:`No such module 'UIKit'/'Testing'/'XCTest'/'Supabase'/'Sentry'`、
+`Cannot find type 'Recipe'/'MealPlanRecord' ... in scope`、`#Predicate` 宏展开失败等。
+这些不是真错误(`xcodebuild` 一直通过),但会淹没真实诊断。
+
+修复 = 用 [`xcode-build-server`](https://github.com/SolaWing/xcode-build-server) 给
+sourcekit-lsp 喂构建上下文。**一次性**本地设置(随 `xcodegen generate` 重生不失效,
+因路径稳定;`buildServer.json` 已 gitignore——含机器特定绝对路径):
+
+```bash
+brew install xcode-build-server
+
+# 关键:buildServer.json 必须在「仓库根」生成——sourcekit-lsp 的工作区根是仓库根
+# (Claude Code / 多数编辑器都从这里打开),只在根目录找此文件,放进 apps/ios 不生效。
+cd <repo-root>   # 即本仓库根目录,不是 apps/ios
+xcode-build-server config -scheme FreshPantry -project apps/ios/FreshPantry.xcodeproj
+
+# 构建一次填充「索引库 + 编译参数日志」(用默认 DerivedData,勿加 -derivedDataPath)。
+# build-for-testing 会连测试 bundle 一起索引,顺带消掉测试文件里的 Testing/XCTest 假阳性。
+xcodebuild build-for-testing -project apps/ios/FreshPantry.xcodeproj -scheme FreshPantry \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+```
+
+大改动后重新 `xcodebuild build` 即可刷新索引;只有移动/重命名工程时才需重跑
+`xcode-build-server config`。改完后重启编辑器的 LSP(或新开会话)让其重新发现配置。
+
 ## 发布流程(CI 自动发 TestFlight)
 
 完全由 [release-please](https://github.com/googleapis/release-please) + GitHub Actions

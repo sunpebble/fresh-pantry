@@ -28,6 +28,11 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 
+# sourcekit-lsp build-server config (机器特定绝对路径,不入库)。
+# 一次性本地生成,见 apps/ios/README.md → 编辑器/SourceKit 索引。
+buildServer.json
+.compile
+
 # Monorepo generated outputs
 **/build/
 **/coverage/
