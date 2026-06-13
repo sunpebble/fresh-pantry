@@ -9,6 +9,7 @@
     "build:recipes": "flue run build-recipes --target node --payload '{}'",
     "build:recipes:dry": "flue run build-recipes --target node --payload '{\"dryRun\":true}'",
     "images:apply": "npx tsx src/db/apply-web-images.ts",
+    "videos:apply": "npx tsx src/db/apply-web-videos.ts",
     "images:upload": "npx tsx src/db/upload-images.ts",
     "images:rewrite-urls": "npx tsx src/db/rewrite-image-urls.ts",
     "gen:seed": "npx tsx src/db/gen-seed.ts"
