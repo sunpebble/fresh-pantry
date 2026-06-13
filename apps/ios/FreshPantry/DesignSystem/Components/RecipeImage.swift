@@ -20,10 +20,17 @@ import UIKit
 /// so list scrolling and view rebuilds don't re-read or re-decode from disk.
 struct RecipeImage<Fallback: View>: View {
     let source: String?
+    /// Longest-edge pixel cap for the decoded REMOTE cover. Defaults to 900 (crisp
+    /// for the full-width 220pt detail hero). Small surfaces pass their own render
+    /// size so a 96pt card doesn't decode a 900px cover (≈10× the pixels it shows)
+    /// on every cell — that per-cell full-res decode fanned across a scrolling list
+    /// was the FRESH_PANTRY-13/14 main-thread hang vector.
+    let maxPixel: Int
     @ViewBuilder var fallback: () -> Fallback
 
-    init(source: String?, @ViewBuilder fallback: @escaping () -> Fallback) {
+    init(source: String?, maxPixel: Int = 900, @ViewBuilder fallback: @escaping () -> Fallback) {
         self.source = source
+        self.maxPixel = maxPixel
         self.fallback = fallback
     }
 
@@ -37,7 +44,7 @@ struct RecipeImage<Fallback: View>: View {
             } else if let url = Self.remoteURL(trimmed) {
                 // Covers now ship from Supabase Storage — disk-cache them so browse
                 // works offline and cold launch shows the cover on the first frame.
-                CachedRemoteImage(url: url, maxPixel: 900) { fallback() }
+                CachedRemoteImage(url: url, maxPixel: maxPixel) { fallback() }
             } else {
                 // Non-empty but unresolvable (e.g. a missing bundled asset) — show the
                 // placeholder rather than an empty box.

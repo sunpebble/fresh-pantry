@@ -126,7 +126,15 @@ final class RecipesStore {
     /// (`refreshCatalogFromRemote`) updates the cache so subsequent loads are
     /// DB-sourced.
     private func catalogRecipes() async -> [Recipe] {
-        if let cached = catalogCache?.read(), !cached.isEmpty { return cached }
+        if let catalogCache {
+            // Decode the ~900KB on-disk catalog OFF the main actor — a synchronous
+            // JSON decode of that size on the main thread stalls the Recipes-tab open
+            // / pull-to-refresh (a main-thread hang contributor).
+            let cached = await Task.detached(priority: .userInitiated) {
+                catalogCache.read()
+            }.value
+            if let cached, !cached.isEmpty { return cached }
+        }
         return await localRepository.loadAll()
     }
 
@@ -168,7 +176,10 @@ final class RecipesStore {
         defer { isRefreshingCatalog = false }
         let fresh = await remoteCatalog.fetchAll()
         guard !fresh.isEmpty else { return }
-        catalogCache.write(fresh)
+        // Encode the ~900KB catalog to disk OFF the main actor (best-effort).
+        await Task.detached(priority: .utility) {
+            catalogCache.write(fresh)
+        }.value
         let custom = (try? await customRepository.loadAllFor(householdID)) ?? []
         recipes = Self.merge(bundled: fresh, custom: custom)
         customIDs = Set(custom.map(\.id))

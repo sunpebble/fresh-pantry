@@ -27,6 +27,10 @@ struct AppConfigTests {
         #expect(config.backend.apiBaseURL == BackendConfig.defaultAPIBaseURL)
         #expect(config.sentry.dsn == SentryConfig.defaultDSN)
         #expect(config.sentry.tracesSampleRate == 1.0)
+        // Session Replay defaults to on-error-only: no continuous session recording
+        // (0.0), but a replay is still attached to every error/crash (1.0).
+        #expect(config.sentry.replaySessionSampleRate == 0.0)
+        #expect(config.sentry.replayOnErrorSampleRate == 1.0)
         #expect(config.sentry.environment.isEmpty)
     }
 

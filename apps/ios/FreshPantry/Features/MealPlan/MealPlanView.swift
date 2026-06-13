@@ -621,7 +621,8 @@ private struct MealPlanDishRow: View {
     }
 
     private var coverImage: some View {
-        RecipeImage(source: entry.recipeImageUrl) { glyph }
+        // 52pt cover glyph — decode small, not at the 900px hero default.
+        RecipeImage(source: entry.recipeImageUrl, maxPixel: 208) { glyph }
     }
 
     private var glyph: some View {

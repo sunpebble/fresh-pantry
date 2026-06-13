@@ -48,7 +48,10 @@ struct RecipeCard: View {
     }
 
     private var coverImage: some View {
-        RecipeImage(source: recipe.imageUrl) { fallbackGlyph }
+        // 96pt square cover, scaledToFill from a landscape source → decode at ~4×
+        // the point size (3× retina + crop headroom), not the 900px hero default,
+        // so scrolling the list does far less per-cell decode work.
+        RecipeImage(source: recipe.imageUrl, maxPixel: 384) { fallbackGlyph }
     }
 
     private var fallbackGlyph: some View {

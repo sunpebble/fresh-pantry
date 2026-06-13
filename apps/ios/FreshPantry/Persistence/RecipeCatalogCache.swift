@@ -5,7 +5,7 @@ import Foundation
 /// Support and read on the next launch — before, and instead of when offline, a
 /// network round-trip. The bundled `howtocook.json` is used only when no cache
 /// exists yet (first launch with no network); see `RecipesStore`.
-struct RecipeCatalogCache {
+struct RecipeCatalogCache: Sendable {
     private let fileURL: URL
 
     /// Default location: `<ApplicationSupport>/recipe-catalog.json`. Returns nil

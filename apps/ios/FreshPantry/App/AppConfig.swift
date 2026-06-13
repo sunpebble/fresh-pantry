@@ -105,7 +105,14 @@ struct AppConfig: Sendable, Equatable {
         let sentry = SentryConfig(
             dsn: dsn,
             tracesSampleRate: try sampleRate("SENTRY_TRACES_SAMPLE_RATE", default: 1.0),
-            replaySessionSampleRate: try sampleRate("SENTRY_REPLAY_SESSION_SAMPLE_RATE", default: 1.0),
+            // Session Replay: default to ON-ERROR ONLY (no continuous session
+            // recording). Always-on replay (1.0) periodically captures a masked
+            // view-hierarchy snapshot on the main thread — a recurring main-thread
+            // cost — and burns replay quota. 0.0 keeps the high-value case (a replay
+            // attached to every error/crash via the on-error rate below).
+            // Secrets.plist carries no SENTRY_REPLAY_* key, so this default is what
+            // ships; add the key only to override per build.
+            replaySessionSampleRate: try sampleRate("SENTRY_REPLAY_SESSION_SAMPLE_RATE", default: 0.0),
             replayOnErrorSampleRate: try sampleRate("SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE", default: 1.0),
             environment: string("SENTRY_ENVIRONMENT")
         )

@@ -64,20 +64,44 @@ enum RemoteImageCache {
         return image
     }
 
+    /// Carries a freshly decoded `UIImage` from a background `Task` back to the
+    /// `@MainActor`. A sound `@unchecked Sendable`: the image is created inside the
+    /// task and never aliased elsewhere — a disconnected region safe to transfer,
+    /// which a plain `UIImage` (not `Sendable` under Swift 6 strict concurrency)
+    /// otherwise cannot be.
+    private struct SendableImage: @unchecked Sendable {
+        let image: UIImage?
+        init(_ image: UIImage?) { self.image = image }
+    }
+
     /// Cached image, or download → persist bytes to disk → decode. Returns nil on
     /// failure (offline + not cached, non-2xx, undecodable) so the caller shows its
-    /// placeholder. `@MainActor` so the decoded `UIImage` stays main-isolated for
-    /// the SwiftUI `.task` that assigns it to `@State`.
+    /// placeholder. `@MainActor` so the result is handed back on the main actor for
+    /// the SwiftUI `.task` that assigns it to `@State` — but the disk read and the
+    /// ImageIO downsample run OFF the main actor (a full-res decode on the main
+    /// thread was the FRESH_PANTRY-13/14 hang vector).
     @MainActor static func image(for url: URL, maxPixel: Int) async -> UIImage? {
-        if let hit = cached(for: url, maxPixel: maxPixel) { return hit }
+        if let hit = cachedInMemory(for: url, maxPixel: maxPixel) { return hit }
+        // Cold disk hit: read + decode off the main actor (`cached` also promotes
+        // the result into the thread-safe memory tier).
+        let diskHit = await Task.detached(priority: .userInitiated) {
+            SendableImage(cached(for: url, maxPixel: maxPixel))
+        }.value.image
+        if let diskHit { return diskHit }
+        // Not cached anywhere: download (URLSession already runs off-main), persist
+        // the bytes, then decode + cache off the main actor.
         guard
             let (data, response) = try? await URLSession.shared.data(from: url),
             (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? true
         else { return nil }
         persist(data, for: url)
-        guard let image = RecipeImageStore.downsample(data, maxPixel: maxPixel) else { return nil }
-        memory.setObject(image, forKey: memoryKey(url, maxPixel))
-        return image
+        return await Task.detached(priority: .userInitiated) {
+            guard let image = RecipeImageStore.downsample(data, maxPixel: maxPixel) else {
+                return SendableImage(nil)
+            }
+            memory.setObject(image, forKey: memoryKey(url, maxPixel))
+            return SendableImage(image)
+        }.value.image
     }
 
     /// Writes raw bytes to the on-disk tier. Used by `image(for:)`; exposed for tests
