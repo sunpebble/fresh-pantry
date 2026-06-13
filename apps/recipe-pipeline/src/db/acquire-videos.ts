@@ -15,6 +15,8 @@ const now = new Date().toISOString();
 const report = await acquireMissingVideos(recipes, {
   search: createBilibiliVideoSearch(),
   now,
+  // B站按请求频率风控:默认慢节流 1.5s(可用 RECIPE_VIDEO_DELAY_MS 调),配合 provider 命中风控重取 cookie 退避。
+  delayMs: Number(process.env.RECIPE_VIDEO_DELAY_MS ?? '1500'),
   log: (m) => console.log(`[videos] ${m}`),
 });
 writeFileSync(config.outPath, JSON.stringify(recipes, null, 2) + '\n', 'utf8');
