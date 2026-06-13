@@ -43,7 +43,17 @@ CLI 直接调用:`flue run build-recipes --target node --payload '{"limit":3,"dr
 - 封面:远程图自动 vendor 进 `apps/ios/.../RecipeImages/`(离线可用、零外链),
   json 写 `assets/recipes/images/` 路径;HowToCook 上游约半数菜谱无图,空值是客观缺口。
 
-## 后续:迁移到数据库
-howtocook.json 计划迁入数据库(Supabase)。管线核心(采集→清洗→闸门→合并)与输出介质无关:
-写盘集中在 `runPipeline` 末尾的 `atomicWriteJson`,迁移时以同位置替换/并联一个 DB writer
-(按 id upsert,沿用 merge 的 `remoteVersion`/软删语义)即可,采集与清洗层零改动。
+## 数据库:Supabase `recipes` 目录表
+菜谱目录已可迁入 Supabase。howtocook 是**全局共享目录**(人人一样),不走按家庭 RLS——
+`public.recipes` 表**匿名只读**、仅服务端/迁移可写;ingredients/steps/tags 存 jsonb(沿用无损数字结构)。
+
+- **生成种子迁移**:`npm run gen:seed` 读 `howtocook.json`,经 `src/db/recipe-sql.ts`(纯函数,
+  有单测)生成幂等迁移 `supabase/migrations/<version>_recipes_catalog.sql`(`create table if not exists`
+  + `insert … on conflict (id) do update`)。管线重跑→`gen:seed`→重新应用即更新 DB。
+- **应用**:`supabase db push`(或 `psql -f` 该迁移文件)。迁移自包含 DDL+数据、幂等,重复应用安全。
+- **iOS 读取**:DB 为权威源 + 本地缓存 + 内置 json 兜底(离线优先)。客户端从 `recipes` 表拉取
+  (列别名成 Recipe 的 JSON 键,直接解码)写本地缓存;离线读缓存,首启无网读内置 json。
+  详见 `apps/ios/.../RemoteRecipeCatalog.swift` / `RecipeCatalogCache.swift` / `RecipesStore`。
+- **图片**:封面随 app 打包,DB 只存 `assets/recipes/images/…` 引用,iOS 本地解析;零图片迁移。
+
+管线核心(采集→清洗→闸门→合并)与输出介质无关:写 json 与生成 DB 种子并联,采集/清洗层零改动。
