@@ -546,8 +546,8 @@ struct RecipeDetailView: View {
                     .background(Capsule().fill(Color.fkDangerSoft))
             }
             Spacer(minLength: FkSpacing.md)
-            if !ingredient.amount.trimmed.isEmpty {
-                Text(ingredient.amount)
+            if !ingredient.displayAmount.trimmed.isEmpty {
+                Text(ingredient.displayAmount)
                     .font(.fkLabelMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             }

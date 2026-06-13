@@ -10,10 +10,11 @@ struct RecipeIngredientDraft {
         self.amount = amount
     }
 
-    /// quantity/unit are derived from `amount` via the RecipeIngredient legacy
-    /// parse path (amount supplied, no quantity/unit).
+    /// quantity/quantityMax/unit/note are derived from the free-text `amount`
+    /// via the lossless `RecipeIngredient.fromAmountText` parser (number/range +
+    /// unit, or a fuzzy `note`).
     func toIngredient() -> RecipeIngredient {
-        RecipeIngredient(name: name.value, amount: amount.value)
+        RecipeIngredient.fromAmountText(name: name.value, amount: amount.value)
     }
 }
 

@@ -25,7 +25,7 @@ struct MealPlanGlanceTests {
         Recipe(
             id: id, name: id, category: "荤菜", difficulty: 1, cookingMinutes: 10,
             description: "",
-            ingredients: ingredients.map { RecipeIngredient(name: $0, quantity: "1", unit: "份") },
+            ingredients: ingredients.map { RecipeIngredient(name: $0, quantity: 1, unit: "份") },
             steps: [], tags: []
         )
     }

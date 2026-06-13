@@ -19,7 +19,7 @@ enum DeductionProposalFactory {
                     DeductionProposal.empty(
                         id: "d_\(recipe.id)_\(i)",
                         recipeIngredientName: ri.name,
-                        requiredQty: ri.amount
+                        requiredQty: ri.displayAmount
                     )
                 )
             } else {
@@ -27,7 +27,7 @@ enum DeductionProposalFactory {
                     DeductionProposal(
                         id: "d_\(recipe.id)_\(i)",
                         recipeIngredientName: ri.name,
-                        requiredQty: ri.amount,
+                        requiredQty: ri.displayAmount,
                         candidates: candidates,
                         chosenIndex: candidates.first!.inventoryRowIndex,
                         deductAmount: initialDeductAmount(ri, candidates.first!)
@@ -57,14 +57,10 @@ enum DeductionProposalFactory {
         return QuantityText.formatQuantity(magnitude)
     }
 
+    /// The numeric magnitude + unit straight off the structured ingredient. The
+    /// quantity is already a `Double?` (no string parsing); the range upper bound
+    /// is irrelevant for an initial deduction (we deduct the lower bound).
     private static func parseMagnitudeUnit(_ ri: RecipeIngredient) -> (Double?, String) {
-        if let structured = Double(ri.quantity.trimmed) {
-            return (structured, ri.unit.trimmed)
-        }
-        guard let parsed = QuantityText.parseLeadingQuantity(ri.amount.trimmed) else {
-            return (nil, ri.unit.trimmed)
-        }
-        let magnitude = Double(parsed.magnitude)
-        return (magnitude, parsed.remainder.isEmpty ? ri.unit.trimmed : parsed.remainder)
+        (ri.quantity, ri.unit?.trimmed ?? "")
     }
 }

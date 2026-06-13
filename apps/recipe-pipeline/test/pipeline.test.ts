@@ -18,7 +18,7 @@ const stubEnricher: RecipeEnricher = {
   async enrich(raw): Promise<Enrichment> {
     return {
       category: '荤菜', difficulty: 2, cookingMinutes: 15, description: raw.description ?? '描述',
-      ingredients: raw.rawIngredients.map((n) => ({ name: n, quantity: '', unit: '', amount: '' })),
+      ingredients: raw.rawIngredients.map((n) => ({ name: n })),
       steps: raw.steps, tags: [],
     };
   },
@@ -103,6 +103,19 @@ describe('runPipeline', () => {
     expect(rejects[0].name).toBe('坏菜');
   });
 
+  it('only 按 id 过滤采集(单条补跑)', async () => {
+    const { existingPath, outPath, rejectsPath } = await setup();
+    await writeFile(existingPath, '[]', 'utf8');
+    const report = await runPipeline({
+      sources: [source('s', [raw('howtocook:x/a', 'A'), raw('howtocook:x/b', 'B'), raw('howtocook:x/c', 'C')])],
+      enricher: stubEnricher, existingPath, outPath, rejectsPath,
+      now: '2026-06-12T00:00:00.000Z', only: ['howtocook:x/b'],
+    });
+    expect(report.collected).toBe(1);
+    const written = JSON.parse(await readFile(outPath, 'utf8'));
+    expect(written.map((r: { id: string }) => r.id)).toEqual(['howtocook:x/b']);
+  });
+
   it('limit 截断采集', async () => {
     const { existingPath, outPath, rejectsPath } = await setup();
     await writeFile(existingPath, '[]', 'utf8');
@@ -114,9 +127,10 @@ describe('runPipeline', () => {
     expect(report.collected).toBe(2);
   });
 
-  it('零拒绝时不写 rejects 文件', async () => {
+  it('零拒绝时不写 rejects 文件,且清掉上轮残留', async () => {
     const { existingPath, outPath, rejectsPath } = await setup();
     await writeFile(existingPath, '[]', 'utf8');
+    await writeFile(rejectsPath, '[{"id":"旧残留"}]', 'utf8');
     await runPipeline({
       sources: [source('s', [raw('howtocook:x/a', 'A')])],
       enricher: stubEnricher, existingPath, outPath, rejectsPath,

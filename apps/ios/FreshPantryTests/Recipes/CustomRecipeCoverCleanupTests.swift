@@ -56,7 +56,7 @@ struct CustomRecipeCoverCleanupTests {
             difficulty: 2,
             cookingMinutes: 15,
             description: "",
-            ingredients: [RecipeIngredient(name: "番茄", quantity: "2", unit: "个")],
+            ingredients: [RecipeIngredient(name: "番茄", quantity: 2, unit: "个")],
             steps: ["切块"],
             imageUrl: imageUrl
         )

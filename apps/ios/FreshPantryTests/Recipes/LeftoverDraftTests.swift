@@ -18,7 +18,7 @@ struct LeftoverDraftTests {
             difficulty: 1,
             cookingMinutes: 10,
             description: "",
-            ingredients: [RecipeIngredient(name: "番茄", quantity: "2", unit: "个")],
+            ingredients: [RecipeIngredient(name: "番茄", quantity: 2, unit: "个")],
             steps: ["炒熟"]
         )
     }

@@ -6,7 +6,7 @@ import Testing
 /// match/missing counts, 临期 ranking, and the 忌口 exclusion filter).
 struct RecipeMatchingTests {
     private func ingredient(_ name: String) -> RecipeIngredient {
-        RecipeIngredient(name: name, quantity: "1", unit: "份")
+        RecipeIngredient(name: name, quantity: 1, unit: "份")
     }
 
     private func recipe(_ name: String, _ ingredients: [String]) -> Recipe {

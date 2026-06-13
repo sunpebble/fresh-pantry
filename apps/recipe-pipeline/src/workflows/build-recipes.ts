@@ -8,6 +8,8 @@ import { config } from '../config';
 
 export interface BuildPayload {
   limit?: number;
+  /** 只处理这些 id(单条补跑)。 */
+  only?: string[];
   dryRun?: boolean;
   refreshDescriptions?: boolean;
 }
@@ -26,9 +28,11 @@ export async function run({ init, payload }: FlueContext<BuildPayload>) {
     outPath: config.outPath,
     rejectsPath: config.rejectsPath,
     workDir: config.workDir,
+    imagesDir: config.imagesDir,
     now: new Date().toISOString(),
     concurrency: config.concurrency,
     limit: payload?.limit,
+    only: payload?.only,
     dryRun: payload?.dryRun,
     refreshDescriptions: payload?.refreshDescriptions,
     log: (m) => console.log(`[recipes] ${m}`),

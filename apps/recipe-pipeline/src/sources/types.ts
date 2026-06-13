@@ -5,6 +5,8 @@ export interface RawRecipe {
   name: string;
   sourceCategory?: string;
   sourceDifficulty?: number;
+  /** 源声明的总制作时长(分钟);有则优先于 LLM 估算。 */
+  sourceCookingMinutes?: number;
   description?: string;
   rawIngredients: string[];
   portionText?: string;

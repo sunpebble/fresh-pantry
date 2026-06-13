@@ -256,8 +256,8 @@ struct CookModeView: View {
                                     .font(.fkBodyMedium)
                                     .foregroundStyle(Color.fkOnSurface)
                                 Spacer(minLength: FkSpacing.md)
-                                if !ingredient.amount.trimmed.isEmpty {
-                                    Text(ingredient.amount)
+                                if !ingredient.displayAmount.trimmed.isEmpty {
+                                    Text(ingredient.displayAmount)
                                         .font(.fkLabelMedium)
                                         .foregroundStyle(Color.fkOnSurfaceVariant)
                                 }

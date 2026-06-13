@@ -37,7 +37,7 @@ struct BackupServiceTests {
                 Recipe(
                     id: "r_1", name: "番茄炒蛋", category: "家常菜", difficulty: 2,
                     cookingMinutes: 15, description: "经典快手菜",
-                    ingredients: [RecipeIngredient(name: "鸡蛋", quantity: "3", unit: "个")],
+                    ingredients: [RecipeIngredient(name: "鸡蛋", quantity: 3, unit: "个")],
                     steps: ["打蛋", "下锅"], tags: ["快手"]
                 ),
             ],

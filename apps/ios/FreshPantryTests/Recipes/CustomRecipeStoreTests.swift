@@ -44,7 +44,7 @@ struct CustomRecipeStoreTests {
             difficulty: 2,
             cookingMinutes: 15,
             description: "经典家常菜",
-            ingredients: [RecipeIngredient(name: "番茄", quantity: "2", unit: "个")],
+            ingredients: [RecipeIngredient(name: "番茄", quantity: 2, unit: "个")],
             steps: ["切番茄", "炒蛋"],
             remoteVersion: remoteVersion
         )
@@ -167,6 +167,17 @@ struct CustomRecipeStoreTests {
         #expect(built.id == "abc")
         #expect(built.tags == ["快手"])
         #expect(built.remoteVersion == 7)
+    }
+
+    @Test func editPreservesRangeQuantity() {
+        // 编辑带范围用量的食材时,上界必须经文本框往返保留(回归:曾退化成下界,丢 quantityMax)
+        let existing = recipe(id: "r1").copyWith(
+            ingredients: [RecipeIngredient(name: "白糖", quantity: 6, quantityMax: 15, unit: "克")]
+        )
+        let built = CustomRecipeDraft(recipe: existing).buildRecipe(existing: existing)
+        #expect(built.ingredients[0].quantity == 6)
+        #expect(built.ingredients[0].quantityMax == 15)
+        #expect(built.ingredients[0].unit == "克")
     }
 
     // MARK: validation

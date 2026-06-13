@@ -38,8 +38,61 @@ describe('parseHowtocook', () => {
   });
 });
 
+describe('parseHowtocook sourceCookingMinutes', () => {
+  it('preamble 声明「制作时长约 30 分钟」→ 30', () => {
+    const md = '# 拔丝土豆的做法\n\n从备料到出锅，预计制作时长约 30 分钟。\n\n预估烹饪难度：★★★\n\n## 操作\n\n1. 切\n';
+    expect(parseHowtocook(md).sourceCookingMinutes).toBe(30);
+  });
+
+  it('「约需 1 小时」→ 60;「制作时长约 24 小时」→ 1440', () => {
+    const md1 = '# 咖喱饭的做法\n\n从备料到出锅约需 1 小时。\n\n## 操作\n\n1. 炒\n';
+    expect(parseHowtocook(md1).sourceCookingMinutes).toBe(60);
+    const md2 = '# 猪皮冻的做法\n\n含冷藏定型，制作时长约 24 小时。\n\n## 操作\n\n1. 煮\n';
+    expect(parseHowtocook(md2).sourceCookingMinutes).toBe(1440);
+  });
+
+  it('步骤里的「腌制 10 分钟」不算总时长声明', () => {
+    const md = '# 某菜的做法\n\n好吃。\n\n## 操作\n\n1. 腌制 10 分钟以上\n';
+    expect(parseHowtocook(md).sourceCookingMinutes).toBeUndefined();
+  });
+});
+
+describe('parseHowtocook imageRef', () => {
+  it('取全文第一张图的相对引用', () => {
+    const md = '# 拔丝土豆的做法\n\n简介。\n\n## 操作\n\n1. 切\n\n![拔丝土豆-预览图-1](./1.jpeg)\n![拔丝土豆-预览图-2](./2.jpeg)\n';
+    expect(parseHowtocook(md).imageRef).toBe('./1.jpeg');
+  });
+
+  it('绝对 http 引用原样保留', () => {
+    const md = '# 某菜的做法\n\n![成品](https://example.com/a.jpg?w=768)\n\n## 操作\n\n1. 切\n';
+    expect(parseHowtocook(md).imageRef).toBe('https://example.com/a.jpg?w=768');
+  });
+
+  it('文件名含半角括号不被截断', () => {
+    const md = '# 血浆鸭的做法\n\n## 操作\n\n1. 炒\n\n![血浆鸭](./血浆鸭(特辣).jpg)\n';
+    expect(parseHowtocook(md).imageRef).toBe('./血浆鸭(特辣).jpg');
+  });
+
+  it('无图时为 undefined', () => {
+    expect(parseHowtocook('# 炒蛋的做法\n\n## 操作\n\n1. 打蛋\n').imageRef).toBeUndefined();
+  });
+
+  it('preamble 中的图片行不混入 description', () => {
+    const md = '# 凉拌黄瓜的做法\n\n![凉拌黄瓜](./cover.jpg)\n\n清爽开胃。\n\n预估烹饪难度：★\n\n## 操作\n\n1. 拍\n';
+    const r = parseHowtocook(md);
+    expect(r.description).toBe('清爽开胃。');
+    expect(r.imageRef).toBe('./cover.jpg');
+  });
+});
+
 describe('isTool', () => {
   it.each(['一个不粘锅', '炒勺', '菜刀', '案板'])('%s 是工具', (s) => {
+    expect(isTool(s)).toBe(true);
+  });
+  it.each([
+    '一次性手套', '隔热手套', '密封袋', '保鲜袋', '防烫盘夹', '煲汤盅',
+    '电动打蛋器', '温度计', '吸管', '过滤网', '滤网', '过滤豆浆渣的纱布', '厨房剪刀',
+  ])('%s 是工具(全量跑混入回归)', (s) => {
     expect(isTool(s)).toBe(true);
   });
   it.each(['鸡蛋', '西红柿', '盐', '黄瓜'])('%s 不是工具', (s) => {

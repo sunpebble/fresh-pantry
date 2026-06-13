@@ -75,12 +75,25 @@ struct CustomRecipeDraft: Equatable {
         self.imageUrl = imageUrl
     }
 
-    /// Seeds the draft from an existing recipe (edit mode). Legacy amount-only
-    /// ingredients round-trip via `RecipeIngredient` (quantity/unit already
-    /// split on decode), so the visible rows match a reload.
+    /// Seeds the draft from an existing recipe (edit mode). The structured
+    /// quantity (`Double?`) renders into the text field via
+    /// `QuantityText.formatQuantity`; a range renders as "lower-upper" so it
+    /// round-trips (else `completeIngredients` would collapse it to the lower
+    /// bound on save); a fuzzy amount (`note`) drops into the quantity text with
+    /// no unit so the row stays editable and round-trips on save.
     init(recipe: Recipe) {
-        let rows = recipe.ingredients.map {
-            IngredientRow(name: $0.name, quantity: $0.quantity, unit: $0.unit)
+        let rows = recipe.ingredients.map { ri -> IngredientRow in
+            let quantityText: String
+            if let q = ri.quantity {
+                if let max = ri.quantityMax {
+                    quantityText = QuantityText.formatQuantity(q) + "-" + QuantityText.formatQuantity(max)
+                } else {
+                    quantityText = QuantityText.formatQuantity(q)
+                }
+            } else {
+                quantityText = ri.note ?? ""
+            }
+            return IngredientRow(name: ri.name, quantity: quantityText, unit: ri.unit ?? "")
         }
         let steps = recipe.steps.map { StepRow(text: $0) }
         self.init(
@@ -194,16 +207,45 @@ struct CustomRecipeDraft: Equatable {
     }
 
     /// The complete ingredient rows (name AND quantity-or-unit present), deduped
-    /// at build via `RecipeIngredient`. Mirrors Dart `_completeIngredients`.
+    /// at build via `RecipeIngredient`. The text quantity is parsed into the
+    /// lossless model: a number (or "6-15" range) → `quantity`/`quantityMax` +
+    /// `unit`; a non-numeric quantity ("少许") → `note` (no unit). Mirrors Dart
+    /// `_completeIngredients`.
     var completeIngredients: [RecipeIngredient] {
         ingredients.compactMap { row in
             let name = row.name.trimmed
-            let quantity = row.quantity.trimmed
-            let unit = row.unit.trimmed
+            let quantityText = row.quantity.trimmed
+            let unitText = row.unit.trimmed
             if name.isEmpty { return nil }
-            if quantity.isEmpty && unit.isEmpty { return nil }
-            return RecipeIngredient(name: name, quantity: quantity, unit: unit)
+            if quantityText.isEmpty && unitText.isEmpty { return nil }
+            let unit: String? = unitText.isEmpty ? nil : unitText
+            if quantityText.isEmpty {
+                // Unit only, no magnitude — keep the unit, no number.
+                return RecipeIngredient(name: name, unit: unit)
+            }
+            if let range = CustomRecipeDraft.parseRangeText(quantityText) {
+                return RecipeIngredient(
+                    name: name, quantity: range.lower, quantityMax: range.upper, unit: unit
+                )
+            }
+            if let value = Double(quantityText) {
+                return RecipeIngredient(name: name, quantity: value, unit: unit)
+            }
+            // Non-numeric quantity ("少许") → fuzzy note; the unit text (if any)
+            // is folded in so nothing is dropped.
+            let note = unit.map { "\(quantityText)\($0)" } ?? quantityText
+            return RecipeIngredient(name: name, note: note)
         }
+    }
+
+    /// Parses a "lower-upper" numeric range text ("6-15", "2-3") into bounds.
+    static func parseRangeText(_ input: String) -> (lower: Double, upper: Double)? {
+        let parts = input.split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false)
+        guard parts.count == 2,
+              let lower = Double(parts[0].trimmingCharacters(in: .whitespaces)),
+              let upper = Double(parts[1].trimmingCharacters(in: .whitespaces))
+        else { return nil }
+        return (lower, upper)
     }
 
     /// Per-field error messages. Empty dictionary ⇒ valid. Mirrors the Dart

@@ -63,8 +63,8 @@ struct EntityRoundTripTests {
             id: "r_1", name: "番茄炒蛋", category: "家常", difficulty: 2,
             cookingMinutes: 15, description: "经典",
             ingredients: [
-                RecipeIngredient(name: "番茄", quantity: "2", unit: "个"),
-                RecipeIngredient(name: "鸡蛋", quantity: "3", unit: "个"),
+                RecipeIngredient(name: "番茄", quantity: 2, unit: "个"),
+                RecipeIngredient(name: "鸡蛋", quantity: 3, unit: "个"),
             ],
             steps: ["切番茄", "打蛋"], tags: ["快手"], imageUrl: "x", remoteVersion: 1
         )
@@ -72,7 +72,9 @@ struct EntityRoundTripTests {
         let decoded = try DomainJSON.decode(Recipe.self, from: json)
         #expect(decoded == recipe) // identity by id
         #expect(decoded.ingredients.count == 2)
-        #expect(decoded.ingredients[0].amount == "2个")
+        #expect(decoded.ingredients[0].quantity == 2)
+        #expect(decoded.ingredients[0].unit == "个")
+        #expect(decoded.ingredients[0].displayAmount == "2个")
     }
 
     @Test func difficultyLabel() {
@@ -86,35 +88,103 @@ struct EntityRoundTripTests {
         #expect(recipe(9).difficultyLabel == "难度 5/5") // clamp to 5
     }
 
-    @Test func recipeIngredientLegacyAmountParse() throws {
-        // Legacy shape: only `amount` key, no quantity/unit.
+    // MARK: Backward-compatible decode (LOSSLESS) — the highest-risk path.
+
+    @Test func recipeIngredientLegacyStringRangeDecodesLossless() throws {
+        // Old all-string shape persisted by an older install / synced to
+        // Supabase: string `quantity` "6-15", a unit, and a redundant `amount`.
+        // The range MUST survive into quantity/quantityMax with no loss.
         let decoded = try DomainJSON.decode(
-            RecipeIngredient.self, from: #"{"name":"盐","amount":"3 克"}"#
+            RecipeIngredient.self,
+            from: #"{"name":"白糖","quantity":"6-15","unit":"克","amount":"6-15克"}"#
         )
-        #expect(decoded.quantity == "3")
+        #expect(decoded.name == "白糖")
+        #expect(decoded.quantity == 6)
+        #expect(decoded.quantityMax == 15)
         #expect(decoded.unit == "克")
-        #expect(decoded.amount == "3 克") // original amount preserved
+        #expect(decoded.note == nil) // numeric quantity present → legacy amount ignored
+        #expect(decoded.displayAmount == "6-15克")
     }
 
-    @Test func recipeIngredientLegacyNonNumericAmount() throws {
+    @Test func recipeIngredientLegacyStringQuantityDecodesNumber() throws {
         let decoded = try DomainJSON.decode(
-            RecipeIngredient.self, from: #"{"name":"盐","amount":"适量"}"#
+            RecipeIngredient.self,
+            from: #"{"name":"洋葱","quantity":"200","unit":"克","amount":"200克"}"#
         )
-        #expect(decoded.quantity == "")
-        #expect(decoded.unit == "适量") // all goes to unit when no leading number
+        #expect(decoded.quantity == 200)
+        #expect(decoded.quantityMax == nil)
+        #expect(decoded.unit == "克")
+        #expect(decoded.note == nil)
+        #expect(decoded.displayAmount == "200克")
     }
 
-    @Test func recipeIngredientNewShapeComposesAmount() {
-        let ingredient = RecipeIngredient(name: "糖", quantity: "10", unit: "g")
-        #expect(ingredient.amount == "10g")
+    @Test func recipeIngredientLegacyFuzzyAmountPreservedInNote() throws {
+        // Old fuzzy amount-only ingredient ("一小把") — no number anywhere. The
+        // word MUST be preserved (into `note`), never dropped.
+        let decoded = try DomainJSON.decode(
+            RecipeIngredient.self, from: #"{"name":"葱","amount":"一小把"}"#
+        )
+        #expect(decoded.quantity == nil)
+        #expect(decoded.unit == nil)
+        #expect(decoded.note == "一小把")
+        #expect(decoded.displayAmount == "一小把")
+    }
+
+    @Test func recipeIngredientLegacyEmptyStringsDecodeToNothing() throws {
+        // The bundled corpus's "no amount" rows: quantity/unit/amount all "".
+        // Empty strings must NOT become quantity 0 or a blank unit.
+        let decoded = try DomainJSON.decode(
+            RecipeIngredient.self, from: #"{"name":"生粉","quantity":"","unit":"","amount":""}"#
+        )
+        #expect(decoded.name == "生粉")
+        #expect(decoded.quantity == nil)
+        #expect(decoded.quantityMax == nil)
+        #expect(decoded.unit == nil)
+        #expect(decoded.note == nil)
+        #expect(decoded.displayAmount == "")
+    }
+
+    @Test func recipeIngredientNewNumberShapeRoundTrips() throws {
+        // The new on-disk shape: real JSON numbers, no `amount`, omitted keys.
+        let decoded = try DomainJSON.decode(
+            RecipeIngredient.self,
+            from: #"{"name":"白糖","quantity":6,"quantityMax":15,"unit":"克"}"#
+        )
+        #expect(decoded.quantity == 6)
+        #expect(decoded.quantityMax == 15)
+        #expect(decoded.unit == "克")
+        #expect(decoded.displayAmount == "6-15克")
+    }
+
+    @Test func recipeIngredientEncodeOmitsAbsentKeysAndAmount() throws {
+        let json = try DomainJSON.encodeToString(RecipeIngredient(name: "桂皮", note: "一小片"))
+        #expect(json.contains("\"name\":\"桂皮\""))
+        #expect(json.contains("\"note\":\"一小片\""))
+        #expect(!json.contains("amount"))
+        #expect(!json.contains("quantity"))
+        #expect(!json.contains("unit"))
+    }
+
+    @Test func recipeIngredientDisplayAmount() {
+        #expect(RecipeIngredient(name: "糖", quantity: 10, unit: "g").displayAmount == "10g")
+        #expect(RecipeIngredient(name: "糖", quantity: 6, quantityMax: 15, unit: "克").displayAmount == "6-15克")
+        #expect(RecipeIngredient(name: "桂皮", note: "一小片").displayAmount == "一小片")
+        #expect(RecipeIngredient(name: "蒜", unit: "瓣").displayAmount == "瓣")  // 仅单位无数量:仍显示单位
+        #expect(RecipeIngredient(name: "生粉").displayAmount == "")
     }
 
     @Test func recipeIngredientScaledBy() {
-        let ingredient = RecipeIngredient(name: "糖", quantity: "10", unit: "g")
-        #expect(ingredient.scaledBy(2).quantity == "20")
+        let ingredient = RecipeIngredient(name: "糖", quantity: 10, unit: "g")
+        #expect(ingredient.scaledBy(2).quantity == 20)
         #expect(ingredient.scaledBy(1) == ingredient) // factor==1 no-op
-        let nonNumeric = RecipeIngredient(name: "盐", quantity: "适量", unit: "")
-        #expect(nonNumeric.scaledBy(3) == nonNumeric) // non-numeric unchanged
+        // Range scales both bounds.
+        let ranged = RecipeIngredient(name: "糖", quantity: 6, quantityMax: 15, unit: "克")
+        let scaled = ranged.scaledBy(2)
+        #expect(scaled.quantity == 12)
+        #expect(scaled.quantityMax == 30)
+        // Fuzzy (no numeric quantity) is unchanged.
+        let nonNumeric = RecipeIngredient(name: "盐", note: "适量")
+        #expect(nonNumeric.scaledBy(3) == nonNumeric)
     }
 
     // MARK: FoodDetails

@@ -6,12 +6,21 @@ export const CATEGORIES = [
 
 export type Category = (typeof CATEGORIES)[number];
 
+/**
+ * 食材「无损数字 schema」:字段全部按需出现,绝不写空值/空字符串,能省则省。
+ * - quantity/quantityMax 是 JSON number(不是字符串);范围用量 quantity=下界、quantityMax=上界。
+ * - unit 为空省略;模糊量(无数字)清洗后进 note;完全无量只留 name。
+ * - 不存在 amount 字段(展示文本改由 UI 计算属性派生)。
+ */
 export const IngredientSchema = v.object({
   name: v.pipe(v.string(), v.minLength(1)),
-  quantity: v.string(),
-  unit: v.string(),
-  amount: v.string(),
+  quantity: v.optional(v.number()),
+  quantityMax: v.optional(v.number()),
+  unit: v.optional(v.string()),
+  note: v.optional(v.string()),
 });
+
+export type Ingredient = v.InferOutput<typeof IngredientSchema>;
 
 export const CleanRecipeSchema = v.object({
   id: v.pipe(v.string(), v.minLength(1)),

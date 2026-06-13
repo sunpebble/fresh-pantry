@@ -5,7 +5,7 @@ import type { CleanRecipe } from '../src/clean/schema';
 function rec(id: string, name: string, ings: string[]): CleanRecipe {
   return {
     id, name, category: '荤菜', difficulty: 2, cookingMinutes: 20,
-    description: '', ingredients: ings.map((n) => ({ name: n, quantity: '', unit: '', amount: '' })),
+    description: '', ingredients: ings.map((n) => ({ name: n })),
     steps: [], tags: [], imageUrl: null, remoteVersion: 0, clientUpdatedAt: null, deletedAt: null,
   };
 }

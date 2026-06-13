@@ -15,21 +15,21 @@ function rec(over: Partial<CleanRecipe> & { id: string }): CleanRecipe {
 const NOW = '2026-06-12T00:00:00.000Z';
 
 describe('mergeWithExisting', () => {
-  it('imageUrl 既有优先;amount 回填;description 黏住;remoteVersion 保留', () => {
+  it('imageUrl 既有优先;用量取 fresh;description 黏住;remoteVersion 保留', () => {
     const existing = [rec({
       id: 'a', imageUrl: 'https://img/a.jpg', description: '老描述', remoteVersion: 7,
-      ingredients: [{ name: '蛋', quantity: '', unit: '', amount: '' }],
+      ingredients: [{ name: '蛋' }],
     })];
     const fresh = [rec({
       id: 'a', imageUrl: null, description: '新描述', remoteVersion: 0,
-      ingredients: [{ name: '蛋', quantity: '2', unit: '个', amount: '2 个' }],
+      ingredients: [{ name: '蛋', quantity: 2, unit: '个' }],
     })];
     const { merged, stats } = mergeWithExisting(fresh, existing, NOW);
     const a = merged.find((r) => r.id === 'a')!;
     expect(a.imageUrl).toBe('https://img/a.jpg');
     expect(a.description).toBe('老描述');
     expect(a.remoteVersion).toBe(7);
-    expect(a.ingredients[0].amount).toBe('2 个');
+    expect(a.ingredients[0]).toEqual({ name: '蛋', quantity: 2, unit: '个' });
     expect(stats.updated).toBe(1);
   });
 
@@ -88,5 +88,18 @@ describe('mergeWithExisting', () => {
     const { merged } = mergeWithExisting([rec({ id: 'a', name: '新名' })], existing, NOW);
     expect(merged[0].clientUpdatedAt).toBe('2026-05-01T00:00:00.000Z');
     expect(merged[0].name).toBe('新名');
+  });
+
+  it('既有描述含 markdown 残留(旧导入脏数据)→ 不黏住,用新描述自愈', () => {
+    const existing = [rec({ id: 'a', description: '![小龙虾-预览图-1](./成品.jpg)' })];
+    const fresh = [rec({ id: 'a', description: '麻辣鲜香的下酒菜。' })];
+    const { merged } = mergeWithExisting(fresh, existing, NOW);
+    expect(merged[0].description).toBe('麻辣鲜香的下酒菜。');
+  });
+
+  it('既有 template 示例菜条目被剔除(幂等防残留)', () => {
+    const existing = [rec({ id: 'howtocook:template/示例菜/示例菜' }), rec({ id: 'a' })];
+    const { merged } = mergeWithExisting([rec({ id: 'a' })], existing, NOW);
+    expect(merged.map((r) => r.id)).toEqual(['a']);
   });
 });

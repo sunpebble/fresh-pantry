@@ -288,7 +288,7 @@ struct ProposalParityTests {
     // MARK: - DeductionProposalFactory
 
     @Test func deductionNoMatchProducesSkip() {
-        let recipe = makeRecipe(id: "r1", ingredients: [RecipeIngredient(name: "海带", quantity: "2", unit: "片")])
+        let recipe = makeRecipe(id: "r1", ingredients: [RecipeIngredient(name: "海带", quantity: 2, unit: "片")])
         let inventory: [Ingredient] = []
         let proposals = DeductionProposalFactory.forRecipe(recipe, inventory)
         #expect(proposals.count == 1)
@@ -300,7 +300,7 @@ struct ProposalParityTests {
     }
 
     @Test func deductionMatchPicksFirstCandidateAndComputesAmount() {
-        let recipe = makeRecipe(id: "r2", ingredients: [RecipeIngredient(name: "牛奶", quantity: "1", unit: "瓶")])
+        let recipe = makeRecipe(id: "r2", ingredients: [RecipeIngredient(name: "牛奶", quantity: 1, unit: "瓶")])
         let inventory = [row(name: "牛奶", unit: "瓶", quantity: "3")]
         let proposals = DeductionProposalFactory.forRecipe(recipe, inventory)
         #expect(proposals[0].action == .deduct)
@@ -311,29 +311,30 @@ struct ProposalParityTests {
 
     @Test func deductionUnitMismatchFallsBackToOne() {
         // Recipe unit "片" vs inventory unit "g" -> incompatible -> "1".
-        let recipe = makeRecipe(id: "r3", ingredients: [RecipeIngredient(name: "姜", quantity: "3", unit: "片")])
+        let recipe = makeRecipe(id: "r3", ingredients: [RecipeIngredient(name: "姜", quantity: 3, unit: "片")])
         let inventory = [row(name: "姜", unit: "g", quantity: "200")]
         let proposals = DeductionProposalFactory.forRecipe(recipe, inventory)
         #expect(proposals[0].deductAmount == "1")
     }
 
     @Test func deductionCompatibleUnitUsesRecipeMagnitude() {
-        let recipe = makeRecipe(id: "r4", ingredients: [RecipeIngredient(name: "米", quantity: "2.5", unit: "g")])
+        let recipe = makeRecipe(id: "r4", ingredients: [RecipeIngredient(name: "米", quantity: 2.5, unit: "g")])
         let inventory = [row(name: "米", unit: "g", quantity: "100")]
         let proposals = DeductionProposalFactory.forRecipe(recipe, inventory)
         #expect(proposals[0].deductAmount == "2.5")
     }
 
     @Test func deductionEmptyUnitIsCompatible() {
-        // Recipe with empty unit (amount has no unit) is treated as compatible.
-        let recipe = makeRecipe(id: "r5", ingredients: [RecipeIngredient(name: "鸡蛋", amount: "2")])
+        // Recipe with no unit (nil) is treated as compatible with any row unit.
+        let recipe = makeRecipe(id: "r5", ingredients: [RecipeIngredient(name: "鸡蛋", quantity: 2)])
         let inventory = [row(name: "鸡蛋", unit: "个", quantity: "6")]
         let proposals = DeductionProposalFactory.forRecipe(recipe, inventory)
         #expect(proposals[0].deductAmount == "2")
     }
 
     @Test func deductionZeroOrNegativeMagnitudeFallsBackToOne() {
-        let recipe = makeRecipe(id: "r6", ingredients: [RecipeIngredient(name: "盐", amount: "适量")])
+        // Fuzzy amount (note, no numeric quantity) -> magnitude nil -> "1".
+        let recipe = makeRecipe(id: "r6", ingredients: [RecipeIngredient(name: "盐", note: "适量")])
         let inventory = [row(name: "盐", unit: "g", quantity: "100")]
         let proposals = DeductionProposalFactory.forRecipe(recipe, inventory)
         // No leading number -> magnitude nil -> "1" (never silently 0).
@@ -680,8 +681,8 @@ struct ProposalParityTests {
         let recipe = makeRecipe(
             id: "rE",
             ingredients: [
-                RecipeIngredient(name: "牛奶", quantity: "1", unit: "瓶"),
-                RecipeIngredient(name: "海带", quantity: "2", unit: "片"), // no match -> skip
+                RecipeIngredient(name: "牛奶", quantity: 1, unit: "瓶"),
+                RecipeIngredient(name: "海带", quantity: 2, unit: "片"), // no match -> skip
             ]
         )
         let inventory = [row(id: "milk", name: "牛奶", unit: "瓶", quantity: "2")]

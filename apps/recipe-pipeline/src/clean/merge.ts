@@ -4,6 +4,10 @@ export interface MergeOptions {
   refreshDescriptions?: boolean;
 }
 
+// 旧导入工具会把 markdown 图片/链接/格式符漏进 description;
+// 这种脏值不享受「黏住」保护,用 fresh 值自愈
+const DIRTY_DESC_RE = /!?\[[^\]]*\]\([^)]*\)|[*_`#]/;
+
 export interface MergeResult {
   merged: CleanRecipe[];
   stats: { added: number; updated: number; unchanged: number };
@@ -29,8 +33,9 @@ export function mergeWithExisting(
     if (prev.deletedAt) {
       continue; // 软删的不复活、不改写;计入 unchanged(末尾统一结算)
     }
-    const description =
-      prev.description && !opts.refreshDescriptions ? prev.description : f.description;
+    const stickPrevDesc =
+      prev.description && !opts.refreshDescriptions && !DIRTY_DESC_RE.test(prev.description);
+    const description = stickPrevDesc ? prev.description : f.description;
     byId.set(f.id, {
       ...f,
       imageUrl: prev.imageUrl || f.imageUrl,
@@ -42,7 +47,10 @@ export function mergeWithExisting(
     stats.updated++;
   }
 
-  const merged = [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
+  // dishes/template/ 是菜谱模板示例,采集层已排除;存量残留在此剔除(幂等)
+  const merged = [...byId.values()]
+    .filter((r) => !r.id.startsWith('howtocook:template/'))
+    .sort((a, b) => a.id.localeCompare(b.id));
   stats.unchanged = merged.length - stats.added - stats.updated;
   return { merged, stats };
 }

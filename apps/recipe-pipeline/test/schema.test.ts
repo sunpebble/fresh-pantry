@@ -12,7 +12,7 @@ const valid = {
   difficulty: 1,
   cookingMinutes: 20,
   description: '清爽开胃',
-  ingredients: [{ name: '黄瓜', quantity: '200', unit: '克', amount: '200 克' }],
+  ingredients: [{ name: '黄瓜', quantity: 200, unit: '克' }],
   steps: ['拍碎'],
   tags: ['素菜'],
   imageUrl: null,

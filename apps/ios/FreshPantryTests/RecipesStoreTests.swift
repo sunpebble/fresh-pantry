@@ -202,7 +202,7 @@ struct RecipesStoreTests {
     // MARK: Tabs / time filter / 忌口 (the parity backfill)
 
     private func ri(_ name: String) -> RecipeIngredient {
-        RecipeIngredient(name: name, quantity: "1", unit: "份")
+        RecipeIngredient(name: name, quantity: 1, unit: "份")
     }
 
     private func inv(_ name: String, state: FreshnessState = .fresh) -> Ingredient {

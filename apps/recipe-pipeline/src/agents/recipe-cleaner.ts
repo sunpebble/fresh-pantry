@@ -4,5 +4,6 @@ import { config } from '../config';
 
 export default createAgent(() => ({
   model: config.model,
+  thinkingLevel: config.thinkingLevel,
   instructions: RECIPE_CLEANER_INSTRUCTIONS,
 }));
