@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.2](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.16.1...fresh_pantry-v1.16.2) (2026-06-13)
+
+
+### Bug Fixes
+
+* **ios:** 消除全部 Swift 6 并发隔离 warning(52→0) ([96d4e2d](https://github.com/kunish/fresh_pantry/commit/96d4e2dd1b00f7831bb695fa7331ff54d844f970))
+
 ## [1.16.1](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.16.0...fresh_pantry-v1.16.1) (2026-06-13)
 
 
