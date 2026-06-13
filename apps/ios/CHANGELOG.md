@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.1](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.15.0...fresh_pantry-v1.15.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* **ios:** 抑制外部 503 噪声 + 移除封面解码主线程阻塞 ([95d9beb](https://github.com/kunish/fresh_pantry/commit/95d9beb2112d03a68971b5129bcbb2b0a23bee77))
+
 ## [1.15.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.14.0...fresh_pantry-v1.15.0) (2026-06-13)
 
 
