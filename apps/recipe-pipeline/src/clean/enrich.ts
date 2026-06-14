@@ -1,7 +1,7 @@
 import type { RawRecipe } from '../sources/types';
 import { isTool } from '../parse/howtocook-parser';
 import { normalizeIngredient } from './normalize';
-import { CATEGORIES, type CleanRecipe, type Enrichment } from './schema';
+import { CATEGORIES, type CleanRecipe, type Enrichment, type Nutrition } from './schema';
 
 export interface RecipeEnricher {
   enrich(raw: RawRecipe): Promise<Enrichment>;
@@ -27,6 +27,8 @@ export const RECIPE_CLEANER_INSTRUCTIONS = `你是中文家常菜谱清洗助手
 - difficulty 取 1-5 整数;cookingMinutes 取正整数(可据步骤数与描述合理估算时长)。
 - description:若已提供则原样沿用,否则写一两句简介。
 - tags:给 3-6 个有用的检索标签,从下列维度中取适用的若干——口味(如 麻辣/清淡/酸甜/鲜香)、烹饪方式(如 炒/蒸/煎/炖/凉拌)、地域风味(如 川菜/粤式/江浙/东北)、食用场景(如 下饭/下酒/快手/家常/宴客)。标签须取自菜谱实际内容、简短(2-4 字)、互不重复;不要只返回分类名,也不要硬凑无关标签。
+- nutrition(每份营养,估算):给这道菜「每份」的大致 energyKcal(千卡)、protein(蛋白质,克)、carbs(碳水,克)、fat(脂肪,克),基于食材种类与常见用量合理估算,取整数或一位小数。这是估算值(UI 会标注「约」),不要造假精度;某字段实在估不出就省略。
+- stepDurations(每步时长):输出一个与上面「步骤」**逐条等长**的数组——某步文本里明确写了时长(如「煮 5 分钟」「焖 10 秒」「静置 2 小时」)就填该步的秒数(5 分钟→300、10 秒→10、2 小时→7200),没写明确时长的步骤填 null。只抽步骤里明确写出的时长、不要估算编造;数组长度必须等于步骤数,做不到就整个省略 stepDurations。
 - 只返回符合 schema 的结构化结果。`;
 
 export function buildEnrichPrompt(raw: RawRecipe): string {
@@ -37,6 +39,7 @@ export function buildEnrichPrompt(raw: RawRecipe): string {
       `分类必须取自:${CATEGORIES.join('、')}。`,
       `--- 网页正文 ---`,
       raw.rawText,
+      `另外输出:nutrition(每份营养估算 energyKcal/protein/carbs/fat)与 stepDurations(与步骤逐条等长的每步时长「秒」数组,某步没写明确时长就填 null)。`,
     ].join('\n');
   }
   return [
@@ -52,11 +55,39 @@ export function buildEnrichPrompt(raw: RawRecipe): string {
     `把每个食材名映射到用量:优先从「计算/总量」段抽;计算段没写的,再从上面的操作步骤里抽明确写出的用量(如步骤「撒 5g 生粉」→ 生粉 quantity:5、unit:"克")。「计算」段和步骤都没写数量的食材,note 填「适量」,不要留下只有 name 的食材。`,
     `⚠️ 用量「只抽不猜」:quantity(数字)/quantityMax(范围上界)/unit/note 只在源文本写了才填,字段按需出现、能省则省、绝不写空字符串,不要编造或猜测。`,
     `⚠️ 严禁运算:不乘份数/人数、不相加。公式里的系数不是用量——除式("张数 / 0.13"、"张数 / 2")的除数、配比("3 : 2 : 2")的比例数,一律留空 quantity;乘式每份率("X * 份数")抽带单位的每份量,单位不明则留空。不要把公式塞进任何字段。模糊量("适量"、"一小把")进 note。无 amount 字段。`,
+    `另外输出:nutrition(每份营养估算 energyKcal/protein/carbs/fat,千卡与克)与 stepDurations(与上面步骤逐条等长的每步时长「秒」数组,某步没写明确时长就填 null)。`,
   ].filter(Boolean).join('\n');
 }
 
 function uniq(xs: string[]): string[] {
   return [...new Set(xs.filter(Boolean))];
+}
+
+/** 规整 LLM 营养估算:剔除负数/非有限值,小数保留一位;全空 → undefined(不写)。 */
+function cleanNutrition(n: Nutrition | undefined): Nutrition | undefined {
+  if (!n) return undefined;
+  const pick = (x: number | undefined): number | undefined =>
+    typeof x === 'number' && Number.isFinite(x) && x >= 0 ? Math.round(x * 10) / 10 : undefined;
+  const out = {
+    energyKcal: pick(n.energyKcal),
+    protein: pick(n.protein),
+    carbs: pick(n.carbs),
+    fat: pick(n.fat),
+  };
+  const entries = Object.entries(out).filter(([, val]) => val !== undefined);
+  return entries.length ? (Object.fromEntries(entries) as Nutrition) : undefined;
+}
+
+/** 步骤时长与最终 steps 对齐:长度须相等(否则整个丢弃防错位);正数取整、其余归 null;全 null → undefined。 */
+function alignStepDurations(
+  steps: string[],
+  durations: (number | null)[] | undefined,
+): (number | null)[] | undefined {
+  if (!durations || durations.length !== steps.length) return undefined;
+  const cleaned = durations.map((d) =>
+    typeof d === 'number' && Number.isFinite(d) && d > 0 ? Math.round(d) : null,
+  );
+  return cleaned.some((d) => d !== null) ? cleaned : undefined;
 }
 
 export function assembleRecipe(raw: RawRecipe, enr: Enrichment): CleanRecipe {
@@ -67,6 +98,8 @@ export function assembleRecipe(raw: RawRecipe, enr: Enrichment): CleanRecipe {
   const difficulty = raw.sourceDifficulty ?? enr.difficulty;
   const description = raw.description?.trim() || enr.description;
   const steps = raw.steps.length ? raw.steps : enr.steps;
+  const nutrition = cleanNutrition(enr.nutrition);
+  const stepDurations = alignStepDurations(steps, enr.stepDurations);
   return {
     id: raw.id,
     name: raw.name,
@@ -81,6 +114,8 @@ export function assembleRecipe(raw: RawRecipe, enr: Enrichment): CleanRecipe {
     tags: uniq([category, ...enr.tags]),
     imageUrl: raw.imageUrl ?? null,
     videoUrl: null,
+    ...(nutrition ? { nutrition } : {}),
+    ...(stepDurations ? { stepDurations } : {}),
     remoteVersion: 0,
     clientUpdatedAt: null,
     deletedAt: null,

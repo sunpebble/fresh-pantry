@@ -15,7 +15,7 @@ import type { CleanRecipe } from '../clean/schema';
 export type CatalogRecipe = Pick<
   CleanRecipe,
   'id' | 'name' | 'category' | 'difficulty' | 'cookingMinutes' | 'description'
-  | 'ingredients' | 'steps' | 'tags' | 'imageUrl' | 'videoUrl'
+  | 'ingredients' | 'steps' | 'tags' | 'imageUrl' | 'videoUrl' | 'nutrition' | 'stepDurations'
 >;
 
 /** SQL 字符串字面量转义:单引号翻倍。 */
@@ -33,9 +33,15 @@ function nullableText(s: string | null | undefined): string {
   return s ? lit(s) : 'null';
 }
 
+/** 可空 jsonb:undefined/null → null,否则 jsonb 字面量(营养/步骤时长按需出现)。 */
+function nullableJsonb(value: unknown): string {
+  return value == null ? 'null' : jsonbLit(value);
+}
+
 const COLUMNS = [
   'id', 'name', 'category', 'difficulty', 'cooking_minutes',
   'description', 'ingredients', 'steps', 'tags', 'image_url', 'video_url',
+  'nutrition', 'step_durations',
 ] as const;
 
 export const RECIPES_DDL = `create table if not exists public.recipes (
@@ -50,11 +56,15 @@ export const RECIPES_DDL = `create table if not exists public.recipes (
   tags jsonb not null default '[]'::jsonb,
   image_url text,
   video_url text,
+  nutrition jsonb,
+  step_durations jsonb,
   updated_at timestamptz not null default now()
 );
 
--- 老库幂等升级:新增 video_url 列(已存在则无操作)
+-- 老库幂等升级:新增列(已存在则无操作)
 alter table public.recipes add column if not exists video_url text;
+alter table public.recipes add column if not exists nutrition jsonb;
+alter table public.recipes add column if not exists step_durations jsonb;
 
 alter table public.recipes enable row level security;
 -- 共享菜谱目录:匿名 + 已登录均可只读;无写策略(仅 service_role/迁移可写)
@@ -67,7 +77,7 @@ function valuesRow(r: CatalogRecipe): string {
   return `  (${lit(r.id)}, ${lit(r.name)}, ${lit(r.category)}, ${r.difficulty}, `
     + `${r.cookingMinutes}, ${lit(r.description)}, ${jsonbLit(r.ingredients)}, `
     + `${jsonbLit(r.steps)}, ${jsonbLit(r.tags)}, ${nullableText(r.imageUrl)}, `
-    + `${nullableText(r.videoUrl)})`;
+    + `${nullableText(r.videoUrl)}, ${nullableJsonb(r.nutrition)}, ${nullableJsonb(r.stepDurations)})`;
 }
 
 /** 生成 upsert 语句(多行 VALUES + on conflict 更新)。空列表返回空串。 */

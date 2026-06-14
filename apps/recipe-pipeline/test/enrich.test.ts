@@ -116,3 +116,52 @@ describe('assembleRecipe', () => {
     expect(r.steps).toEqual(['LLM步骤']);
   });
 });
+
+describe('assembleRecipe — 每份营养 + 每步时长', () => {
+  it('每份营养透传(估算值)', () => {
+    const r = assembleRecipe(tier1, { ...enr, nutrition: { energyKcal: 120, protein: 3, carbs: 8, fat: 5 } });
+    expect(r.nutrition).toEqual({ energyKcal: 120, protein: 3, carbs: 8, fat: 5 });
+  });
+
+  it('营养无有效字段 → 省略 nutrition', () => {
+    expect(assembleRecipe(tier1, { ...enr, nutrition: {} }).nutrition).toBeUndefined();
+  });
+
+  it('营养负数/非有限值被剔除,小数保留一位', () => {
+    const r = assembleRecipe(tier1, { ...enr, nutrition: { energyKcal: 120.46, protein: -3, carbs: NaN } });
+    expect(r.nutrition).toEqual({ energyKcal: 120.5 });
+  });
+
+  it('步骤时长与最终 steps 等长则保留(对齐 raw.steps,tier1 有 2 步)', () => {
+    const r = assembleRecipe(tier1, { ...enr, stepDurations: [null, 60] });
+    expect(r.steps).toEqual(['拍碎', '调味']);
+    expect(r.stepDurations).toEqual([null, 60]);
+  });
+
+  it('步骤时长长度与 steps 不符则整个丢弃(防错位)', () => {
+    expect(assembleRecipe(tier1, { ...enr, stepDurations: [60] }).stepDurations).toBeUndefined();
+  });
+
+  it('步骤时长全 null / 非正数 → 不输出', () => {
+    expect(assembleRecipe(tier1, { ...enr, stepDurations: [null, 0] }).stepDurations).toBeUndefined();
+  });
+
+  it('步骤时长小数取整、负数归 null', () => {
+    expect(assembleRecipe(tier1, { ...enr, stepDurations: [120.7, -5] }).stepDurations).toEqual([121, null]);
+  });
+
+  it('缺营养/时长时不输出(向后兼容,老路径)', () => {
+    const r = assembleRecipe(tier1, enr);
+    expect(r.nutrition).toBeUndefined();
+    expect(r.stepDurations).toBeUndefined();
+  });
+});
+
+describe('buildEnrichPrompt — 营养 + 时长指令', () => {
+  it('提示估算每份营养', () => {
+    expect(buildEnrichPrompt(tier1)).toMatch(/营养|热量|nutrition/);
+  });
+  it('提示抽取每步时长', () => {
+    expect(buildEnrichPrompt(tier1)).toMatch(/时长|stepDurations|多少秒/);
+  });
+});

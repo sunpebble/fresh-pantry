@@ -65,6 +65,22 @@ describe('recipesToSeedSQL', () => {
     const sql = recipesToUpsertSQL([recipe({ id: 'a' }), recipe({ id: 'b' })]);
     expect(sql).toContain("'a'");
     expect(sql).toContain("'b'");
-    expect((sql.match(/::jsonb/g) ?? []).length).toBe(6); // 2 条 × (ingredients+steps+tags)
+    expect((sql.match(/::jsonb/g) ?? []).length).toBe(6); // 2 条 × (ingredients+steps+tags),营养/时长缺省 → null
+  });
+
+  it('nutrition / step_durations 入列:DDL 含列 + 幂等 alter,缺省 → null,有值 → jsonb', () => {
+    expect(RECIPES_DDL).toContain('nutrition jsonb');
+    expect(RECIPES_DDL).toContain('step_durations jsonb');
+    expect(RECIPES_DDL).toContain('add column if not exists nutrition jsonb');
+    expect(RECIPES_DDL).toContain('add column if not exists step_durations jsonb');
+    // 列名进入 insert 列清单
+    expect(recipesToUpsertSQL([recipe()])).toContain('nutrition, step_durations');
+    // 老菜缺这俩 → null(不增 ::jsonb)
+    expect((recipesToUpsertSQL([recipe()]).match(/::jsonb/g) ?? []).length).toBe(3);
+    // 有值 → jsonb 字面量
+    const withData = recipesToUpsertSQL([recipe({ nutrition: { energyKcal: 120 }, stepDurations: [null, 60] })]);
+    expect(withData).toContain('"energyKcal":120');
+    expect(withData).toContain('[null,60]');
+    expect((withData.match(/::jsonb/g) ?? []).length).toBe(5); // ingredients+steps+tags+nutrition+step_durations
   });
 });
