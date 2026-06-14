@@ -108,6 +108,32 @@ enum RemoteRowCodec {
     ) -> [String: JSONValue] {
         payloadRowForUpsert(householdID: householdID, domain: entry)
     }
+
+    /// favorite_recipes ⇄ FavoriteRecipe map. Same opaque-`payload` shape — only
+    /// `id` and the sync columns are real columns; `recipeID` lives in payload.
+    static func favoriteRecipeRowFromJson(_ row: [String: JSONValue]) -> [String: JSONValue] {
+        payloadRowFromJson(row)
+    }
+
+    static func favoriteRecipeRowForUpsert(
+        householdID: String,
+        favorite: [String: JSONValue]
+    ) -> [String: JSONValue] {
+        payloadRowForUpsert(householdID: householdID, domain: favorite)
+    }
+
+    /// dietary_preferences ⇄ DietaryPreference map. Same opaque-`payload` shape;
+    /// the normalized `keyword` lives in payload.
+    static func dietaryPreferenceRowFromJson(_ row: [String: JSONValue]) -> [String: JSONValue] {
+        payloadRowFromJson(row)
+    }
+
+    static func dietaryPreferenceRowForUpsert(
+        householdID: String,
+        preference: [String: JSONValue]
+    ) -> [String: JSONValue] {
+        payloadRowForUpsert(householdID: householdID, domain: preference)
+    }
 }
 
 // MARK: - Column table

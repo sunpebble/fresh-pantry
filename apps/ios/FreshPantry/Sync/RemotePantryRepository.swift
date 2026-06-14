@@ -58,6 +58,8 @@ actor RemotePantryRepository {
         static let customRecipes = "custom_recipes"
         static let mealPlanEntries = "meal_plan_entries"
         static let foodLogEntries = "food_log_entries"
+        static let favoriteRecipes = "favorite_recipes"
+        static let dietaryPreferences = "dietary_preferences"
     }
 
     // MARK: - Content loads (soft-delete filtered)
@@ -84,6 +86,14 @@ actor RemotePantryRepository {
 
     func loadFoodLogEntries(_ hid: String, since: Date? = nil) async throws -> [[String: JSONValue]] {
         try await loadRows(from: Table.foodLogEntries, hid: hid, since: since, decode: RemoteRowCodec.foodLogEntryRowFromJson)
+    }
+
+    func loadFavoriteRecipes(_ hid: String, since: Date? = nil) async throws -> [[String: JSONValue]] {
+        try await loadRows(from: Table.favoriteRecipes, hid: hid, since: since, decode: RemoteRowCodec.favoriteRecipeRowFromJson)
+    }
+
+    func loadDietaryPreferences(_ hid: String, since: Date? = nil) async throws -> [[String: JSONValue]] {
+        try await loadRows(from: Table.dietaryPreferences, hid: hid, since: since, decode: RemoteRowCodec.dietaryPreferenceRowFromJson)
     }
 
     /// Shared load path: fetch household rows as `[String: AnyJSON]`, bridge each
@@ -165,6 +175,26 @@ actor RemotePantryRepository {
         )
     }
 
+    func upsertFavoriteRecipes(_ hid: String, _ rows: [[String: JSONValue]]) async throws {
+        try await upsertRows(
+            into: Table.favoriteRecipes,
+            hid: hid,
+            rows: rows,
+            method: "upsertFavoriteRecipes",
+            encode: RemoteRowCodec.favoriteRecipeRowForUpsert
+        )
+    }
+
+    func upsertDietaryPreferences(_ hid: String, _ rows: [[String: JSONValue]]) async throws {
+        try await upsertRows(
+            into: Table.dietaryPreferences,
+            hid: hid,
+            rows: rows,
+            method: "upsertDietaryPreferences",
+            encode: RemoteRowCodec.dietaryPreferenceRowForUpsert
+        )
+    }
+
     /// Shared upsert path: no-op on empty (mirrors Dart `if (rows.isEmpty) return`),
     /// reject versioned rows, build the per-entity upsert row, bridge to `AnyJSON`,
     /// and `upsert(..., ignoreDuplicates: true)` so a first write never downgrades an
@@ -237,6 +267,18 @@ actor RemotePantryRepository {
     func watchFoodLogEntries(_ hid: String) -> AsyncStream<[[String: JSONValue]]> {
         watch(table: Table.foodLogEntries, hid: hid) { [weak self] in
             try? await self?.loadFoodLogEntries(hid)
+        }
+    }
+
+    func watchFavoriteRecipes(_ hid: String) -> AsyncStream<[[String: JSONValue]]> {
+        watch(table: Table.favoriteRecipes, hid: hid) { [weak self] in
+            try? await self?.loadFavoriteRecipes(hid)
+        }
+    }
+
+    func watchDietaryPreferences(_ hid: String) -> AsyncStream<[[String: JSONValue]]> {
+        watch(table: Table.dietaryPreferences, hid: hid) { [weak self] in
+            try? await self?.loadDietaryPreferences(hid)
         }
     }
 

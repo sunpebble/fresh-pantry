@@ -426,6 +426,13 @@ struct RootView: View {
             await dependencies.notificationCoordinator
                 .reschedule(householdID: dependencies.householdID)
         }
+        // 收藏 / 忌口 是跨视图共享的单例 store(repository-backed),在启动、家庭切换、
+        // 以及每次远程合并(dataRevision)时从仓库重载,使其随家庭同步刷新。无 debounce:
+        // 重载很轻,且收藏心形状态应即时反映。
+        .task(id: householdRevisionKey) {
+            await dependencies.favoritesStore.reload()
+            await dependencies.dietaryPreferencesStore.reload()
+        }
         // Notification tap (临期提醒/每日汇总): switch to 首页 so DashboardView —
         // the consumer — pushes the 临期 screen. Deliberately NOT consumed here:
         // a cold-start tap can be captured before this view exists (no onChange

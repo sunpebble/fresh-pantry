@@ -339,6 +339,8 @@ struct DeadLetterEntity: Sendable, Hashable, Identifiable {
         case .customRecipe: "食谱"
         case .mealPlanEntry: "膳食计划"
         case .foodLogEntry: "食材去向"
+        case .favoriteRecipe: "收藏"
+        case .dietaryPreference: "忌口"
         case .householdConfig: "家庭设置"
         }
     }

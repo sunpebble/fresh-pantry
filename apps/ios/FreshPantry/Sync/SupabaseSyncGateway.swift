@@ -104,6 +104,24 @@ actor SupabaseSyncGateway: RemoteSyncGateway {
             case .intake, .deduction, .toggleChecked:
                 return
             }
+        case .favoriteRecipe:
+            switch op.operation {
+            case .create, .update:
+                try await pushVersionedRow(table: "favorite_recipes", op: op, codec: .favoriteRecipe)
+            case .delete:
+                try await softDeleteRemoteRow(table: "favorite_recipes", op: op)
+            case .intake, .deduction, .toggleChecked:
+                return
+            }
+        case .dietaryPreference:
+            switch op.operation {
+            case .create, .update:
+                try await pushVersionedRow(table: "dietary_preferences", op: op, codec: .dietaryPreference)
+            case .delete:
+                try await softDeleteRemoteRow(table: "dietary_preferences", op: op)
+            case .intake, .deduction, .toggleChecked:
+                return
+            }
         case .householdConfig:
             return // pushed via household table ops, not the outbox
         }
@@ -359,6 +377,14 @@ extension SupabaseSyncGateway {
         static let foodLog = EntityCodec(
             rowForUpsert: { RemoteRowCodec.foodLogEntryRowForUpsert(householdID: $0, entry: $1) },
             rowFromJson: { RemoteRowCodec.foodLogEntryRowFromJson($0) }
+        )
+        static let favoriteRecipe = EntityCodec(
+            rowForUpsert: { RemoteRowCodec.favoriteRecipeRowForUpsert(householdID: $0, favorite: $1) },
+            rowFromJson: { RemoteRowCodec.favoriteRecipeRowFromJson($0) }
+        )
+        static let dietaryPreference = EntityCodec(
+            rowForUpsert: { RemoteRowCodec.dietaryPreferenceRowForUpsert(householdID: $0, preference: $1) },
+            rowFromJson: { RemoteRowCodec.dietaryPreferenceRowFromJson($0) }
         )
     }
 }

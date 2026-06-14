@@ -89,6 +89,36 @@ enum HouseholdMergePolicy {
         )
     }
 
+    static func mergeFavoriteRecipe(
+        remote: [FavoriteRecipe],
+        local: [FavoriteRecipe],
+        scope: LocalUploadScope
+    ) -> [FavoriteRecipe] {
+        merge(
+            remote: remote,
+            local: local,
+            scope: scope,
+            entityType: .favoriteRecipe,
+            id: { $0.id },
+            isLocalOnly: isLocalOnlyFavoriteRecipe
+        )
+    }
+
+    static func mergeDietaryPreference(
+        remote: [DietaryPreference],
+        local: [DietaryPreference],
+        scope: LocalUploadScope
+    ) -> [DietaryPreference] {
+        merge(
+            remote: remote,
+            local: local,
+            scope: scope,
+            entityType: .dietaryPreference,
+            id: { $0.id },
+            isLocalOnly: isLocalOnlyDietaryPreference
+        )
+    }
+
     // MARK: Incremental patch (delta pull)
 
     static func patchInventory(remoteDelta: [Ingredient], local: [Ingredient]) -> [Ingredient] {
@@ -108,6 +138,14 @@ enum HouseholdMergePolicy {
     }
 
     static func patchFoodLog(remoteDelta: [FoodLogEntry], local: [FoodLogEntry]) -> [FoodLogEntry] {
+        patch(remoteDelta: remoteDelta, local: local, id: \.id)
+    }
+
+    static func patchFavoriteRecipe(remoteDelta: [FavoriteRecipe], local: [FavoriteRecipe]) -> [FavoriteRecipe] {
+        patch(remoteDelta: remoteDelta, local: local, id: \.id)
+    }
+
+    static func patchDietaryPreference(remoteDelta: [DietaryPreference], local: [DietaryPreference]) -> [DietaryPreference] {
         patch(remoteDelta: remoteDelta, local: local, id: \.id)
     }
 
@@ -155,6 +193,8 @@ enum HouseholdMergePolicy {
         case let item as Recipe: return item.deletedAt != nil
         case let item as MealPlanEntry: return item.deletedAt != nil
         case let item as FoodLogEntry: return item.deletedAt != nil
+        case let item as FavoriteRecipe: return item.deletedAt != nil
+        case let item as DietaryPreference: return item.deletedAt != nil
         default: return false
         }
     }
@@ -196,6 +236,20 @@ enum HouseholdMergePolicy {
             && entry.deletedAt == nil
             && !entry.id.isEmpty
             && !entry.name.trimmed.isEmpty
+    }
+
+    static func isLocalOnlyFavoriteRecipe(_ favorite: FavoriteRecipe) -> Bool {
+        favorite.remoteVersion <= 0
+            && favorite.deletedAt == nil
+            && !favorite.id.isEmpty
+            && !favorite.recipeID.trimmed.isEmpty
+    }
+
+    static func isLocalOnlyDietaryPreference(_ preference: DietaryPreference) -> Bool {
+        preference.remoteVersion <= 0
+            && preference.deletedAt == nil
+            && !preference.id.isEmpty
+            && !preference.keyword.trimmed.isEmpty
     }
 
     // MARK: Generic core

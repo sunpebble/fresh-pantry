@@ -23,6 +23,8 @@ actor HouseholdContentSyncCoordinator {
     private let customRecipe: CustomRecipeRepository
     private let mealPlan: MealPlanRepository
     private let foodLog: FoodLogRepository
+    private let favoriteRecipe: FavoriteRecipeRepository
+    private let dietaryPreference: DietaryPreferenceRepository
     private let session: SyncSession
     private let diagnostics: Diagnostics
 
@@ -53,6 +55,8 @@ actor HouseholdContentSyncCoordinator {
         customRecipe: CustomRecipeRepository,
         mealPlan: MealPlanRepository,
         foodLog: FoodLogRepository,
+        favoriteRecipe: FavoriteRecipeRepository,
+        dietaryPreference: DietaryPreferenceRepository,
         session: SyncSession,
         diagnostics: Diagnostics = NoopDiagnostics()
     ) {
@@ -64,6 +68,8 @@ actor HouseholdContentSyncCoordinator {
         self.customRecipe = customRecipe
         self.mealPlan = mealPlan
         self.foodLog = foodLog
+        self.favoriteRecipe = favoriteRecipe
+        self.dietaryPreference = dietaryPreference
         self.session = session
         self.diagnostics = diagnostics
     }
@@ -121,6 +127,8 @@ actor HouseholdContentSyncCoordinator {
             let recipeRows = try await remote.loadCustomRecipes(householdId, since: since)
             let mealPlanRows = try await remote.loadMealPlanEntries(householdId, since: since)
             let foodLogRows = try await remote.loadFoodLogEntries(householdId, since: since)
+            let favoriteRows = try await remote.loadFavoriteRecipes(householdId, since: since)
+            let dietaryRows = try await remote.loadDietaryPreferences(householdId, since: since)
             guard isCurrent(gen, householdId) else { return }
 
             await patchInventoryRows(inventoryRows, householdId, gen)
@@ -128,6 +136,8 @@ actor HouseholdContentSyncCoordinator {
             await patchCustomRecipeRows(recipeRows, householdId, gen)
             await patchMealPlanRows(mealPlanRows, householdId, gen)
             await patchFoodLogRows(foodLogRows, householdId, gen)
+            await patchFavoriteRows(favoriteRows, householdId, gen)
+            await patchDietaryRows(dietaryRows, householdId, gen)
 
             let advanced = [
                 SyncCursor.advance(since, with: inventoryRows),
@@ -135,6 +145,8 @@ actor HouseholdContentSyncCoordinator {
                 SyncCursor.advance(since, with: recipeRows),
                 SyncCursor.advance(since, with: mealPlanRows),
                 SyncCursor.advance(since, with: foodLogRows),
+                SyncCursor.advance(since, with: favoriteRows),
+                SyncCursor.advance(since, with: dietaryRows),
             ].compactMap { $0 }.max()
             if let advanced {
                 await MainActor.run { session.setSyncCursor(advanced, for: householdId) }
@@ -198,6 +210,8 @@ actor HouseholdContentSyncCoordinator {
             let recipeRows = try await remote.loadCustomRecipes(householdId, since: since)
             let mealPlanRows = try await remote.loadMealPlanEntries(householdId, since: since)
             let foodLogRows = try await remote.loadFoodLogEntries(householdId, since: since)
+            let favoriteRows = try await remote.loadFavoriteRecipes(householdId, since: since)
+            let dietaryRows = try await remote.loadDietaryPreferences(householdId, since: since)
             guard isCurrent(gen, householdId) else { return }
 
             if since == nil {
@@ -206,12 +220,16 @@ actor HouseholdContentSyncCoordinator {
                 await applyCustomRecipeRows(recipeRows, householdId, gen)
                 await applyMealPlanRows(mealPlanRows, householdId, gen)
                 await applyFoodLogRows(foodLogRows, householdId, gen)
+                await applyFavoriteRows(favoriteRows, householdId, gen)
+                await applyDietaryRows(dietaryRows, householdId, gen)
             } else {
                 await patchInventoryRows(inventoryRows, householdId, gen)
                 await patchShoppingRows(shoppingRows, householdId, gen)
                 await patchCustomRecipeRows(recipeRows, householdId, gen)
                 await patchMealPlanRows(mealPlanRows, householdId, gen)
                 await patchFoodLogRows(foodLogRows, householdId, gen)
+                await patchFavoriteRows(favoriteRows, householdId, gen)
+                await patchDietaryRows(dietaryRows, householdId, gen)
             }
 
             let advanced = [
@@ -220,6 +238,8 @@ actor HouseholdContentSyncCoordinator {
                 SyncCursor.advance(cursor, with: recipeRows),
                 SyncCursor.advance(cursor, with: mealPlanRows),
                 SyncCursor.advance(cursor, with: foodLogRows),
+                SyncCursor.advance(cursor, with: favoriteRows),
+                SyncCursor.advance(cursor, with: dietaryRows),
             ].compactMap { $0 }.max()
             if let advanced {
                 await MainActor.run { session.setSyncCursor(advanced, for: householdId) }
@@ -329,6 +349,36 @@ actor HouseholdContentSyncCoordinator {
                 uploaded.contains($0.id) ? $0.copyWith(remoteVersion: 1) : $0
             })
         }
+
+        // Favorite recipes (set-membership → upload never-synced marks)
+        guard isCurrent(gen, householdId) else { return }
+        let localFavorites = (try? await favoriteRecipe.loadAllFor(householdId)) ?? []
+        let uploadFavorites = localFavorites.filter {
+            HouseholdMergePolicy.isLocalOnlyFavoriteRecipe($0) && scope.allows(.favoriteRecipe, $0.id)
+        }
+        if !uploadFavorites.isEmpty {
+            try await remote.upsertFavoriteRecipes(householdId, uploadFavorites.compactMap { DomainJSON.valueMap($0) })
+            guard isCurrent(gen, householdId) else { return }
+            let uploaded = Set(uploadFavorites.map(\.id))
+            try? await favoriteRecipe.saveEntries(householdId, localFavorites.map {
+                uploaded.contains($0.id) ? $0.copyWith(remoteVersion: 1) : $0
+            })
+        }
+
+        // Dietary preferences (set-membership → upload never-synced keywords)
+        guard isCurrent(gen, householdId) else { return }
+        let localDietary = (try? await dietaryPreference.loadAllFor(householdId)) ?? []
+        let uploadDietary = localDietary.filter {
+            HouseholdMergePolicy.isLocalOnlyDietaryPreference($0) && scope.allows(.dietaryPreference, $0.id)
+        }
+        if !uploadDietary.isEmpty {
+            try await remote.upsertDietaryPreferences(householdId, uploadDietary.compactMap { DomainJSON.valueMap($0) })
+            guard isCurrent(gen, householdId) else { return }
+            let uploaded = Set(uploadDietary.map(\.id))
+            try? await dietaryPreference.saveEntries(householdId, localDietary.map {
+                uploaded.contains($0.id) ? $0.copyWith(remoteVersion: 1) : $0
+            })
+        }
     }
 
     /// Starts the four realtime subscriptions. Each iterates the entity's
@@ -360,6 +410,16 @@ actor HouseholdContentSyncCoordinator {
             Task { [remote] in
                 for await rows in await remote.watchFoodLogEntries(householdId) {
                     await self.applyFoodLogRows(rows, householdId, gen)
+                }
+            },
+            Task { [remote] in
+                for await rows in await remote.watchFavoriteRecipes(householdId) {
+                    await self.applyFavoriteRows(rows, householdId, gen)
+                }
+            },
+            Task { [remote] in
+                for await rows in await remote.watchDietaryPreferences(householdId) {
+                    await self.applyDietaryRows(rows, householdId, gen)
                 }
             },
         ]
@@ -461,6 +521,42 @@ actor HouseholdContentSyncCoordinator {
         await signalMerge()
     }
 
+    private func applyFavoriteRows(_ rows: [[String: JSONValue]], _ householdId: String, _ gen: Int) async {
+        guard isCurrent(gen, householdId) else { return }
+        let decoded = rows
+            .compactMap { DomainJSON.fromValueMap(FavoriteRecipe.self, from: $0) }
+            .filter { !$0.id.isEmpty && !$0.recipeID.trimmed.isEmpty }
+
+        let scope = LocalUploadScope(
+            householdID: householdId,
+            pendingOps: (try? await outbox.loadPending()) ?? []
+        )
+        let local = (try? await favoriteRecipe.loadAllFor(householdId)) ?? []
+        let merged = HouseholdMergePolicy.mergeFavoriteRecipe(remote: decoded, local: local, scope: scope)
+
+        guard isCurrent(gen, householdId) else { return }
+        try? await favoriteRecipe.saveEntries(householdId, merged)
+        await signalMerge()
+    }
+
+    private func applyDietaryRows(_ rows: [[String: JSONValue]], _ householdId: String, _ gen: Int) async {
+        guard isCurrent(gen, householdId) else { return }
+        let decoded = rows
+            .compactMap { DomainJSON.fromValueMap(DietaryPreference.self, from: $0) }
+            .filter { !$0.id.isEmpty && !$0.keyword.trimmed.isEmpty }
+
+        let scope = LocalUploadScope(
+            householdID: householdId,
+            pendingOps: (try? await outbox.loadPending()) ?? []
+        )
+        let local = (try? await dietaryPreference.loadAllFor(householdId)) ?? []
+        let merged = HouseholdMergePolicy.mergeDietaryPreference(remote: decoded, local: local, scope: scope)
+
+        guard isCurrent(gen, householdId) else { return }
+        try? await dietaryPreference.saveEntries(householdId, merged)
+        await signalMerge()
+    }
+
     private func patchInventoryRows(_ rows: [[String: JSONValue]], _ householdId: String, _ gen: Int) async {
         guard isCurrent(gen, householdId), !rows.isEmpty else { return }
         let decoded = rows
@@ -518,6 +614,30 @@ actor HouseholdContentSyncCoordinator {
         let merged = HouseholdMergePolicy.patchFoodLog(remoteDelta: decoded, local: local)
         guard isCurrent(gen, householdId) else { return }
         try? await foodLog.saveEntries(householdId, merged)
+        await signalMerge()
+    }
+
+    private func patchFavoriteRows(_ rows: [[String: JSONValue]], _ householdId: String, _ gen: Int) async {
+        guard isCurrent(gen, householdId), !rows.isEmpty else { return }
+        let decoded = rows
+            .compactMap { DomainJSON.fromValueMap(FavoriteRecipe.self, from: $0) }
+            .filter { !$0.id.isEmpty && !$0.recipeID.trimmed.isEmpty }
+        let local = (try? await favoriteRecipe.loadAllFor(householdId)) ?? []
+        let merged = HouseholdMergePolicy.patchFavoriteRecipe(remoteDelta: decoded, local: local)
+        guard isCurrent(gen, householdId) else { return }
+        try? await favoriteRecipe.saveEntries(householdId, merged)
+        await signalMerge()
+    }
+
+    private func patchDietaryRows(_ rows: [[String: JSONValue]], _ householdId: String, _ gen: Int) async {
+        guard isCurrent(gen, householdId), !rows.isEmpty else { return }
+        let decoded = rows
+            .compactMap { DomainJSON.fromValueMap(DietaryPreference.self, from: $0) }
+            .filter { !$0.id.isEmpty && !$0.keyword.trimmed.isEmpty }
+        let local = (try? await dietaryPreference.loadAllFor(householdId)) ?? []
+        let merged = HouseholdMergePolicy.patchDietaryPreference(remoteDelta: decoded, local: local)
+        guard isCurrent(gen, householdId) else { return }
+        try? await dietaryPreference.saveEntries(householdId, merged)
         await signalMerge()
     }
 

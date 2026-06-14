@@ -134,6 +134,8 @@ enum SyncEntityType: String, Codable, Sendable, CaseIterable {
     case customRecipe
     case mealPlanEntry
     case foodLogEntry
+    case favoriteRecipe
+    case dietaryPreference
     case householdConfig
 }
 

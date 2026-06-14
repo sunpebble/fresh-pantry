@@ -17,6 +17,10 @@ final class AppDependencies {
     /// Append-only food-departure log (consumed/wasted) — the waste-stats source
     /// of truth. The cook → deduction flow auto-logs consumed departures here.
     let foodLogRepository: FoodLogRepository
+    /// 收藏菜谱集合(家庭同步)— `FavoritesStore` 的本地落库 + 同步源。
+    let favoriteRecipeRepository: FavoriteRecipeRepository
+    /// 忌口关键字集合(家庭同步)— `DietaryPreferencesStore` 的本地落库 + 同步源。
+    let dietaryPreferenceRepository: DietaryPreferenceRepository
     /// Device-local per-recipe cook tally (#7) — drives 最常做/好久没做 + 做过 N 次.
     let cookHistoryRepository: CookHistoryRepository
     /// Single-row local cache of the current user's profile (avatar/name/nickname).
@@ -142,6 +146,8 @@ final class AppDependencies {
     ) {
         self.inventoryRepository = InventoryRepository(modelContainer: modelContainer)
         self.foodLogRepository = FoodLogRepository(modelContainer: modelContainer)
+        self.favoriteRecipeRepository = FavoriteRecipeRepository(modelContainer: modelContainer)
+        self.dietaryPreferenceRepository = DietaryPreferenceRepository(modelContainer: modelContainer)
         self.cookHistoryRepository = CookHistoryRepository(modelContainer: modelContainer)
         self.profileRepository = ProfileRepository(modelContainer: modelContainer)
         self.shoppingRepository = ShoppingRepository(modelContainer: modelContainer)
@@ -151,9 +157,7 @@ final class AppDependencies {
         self.foodDetailsRepository = FoodDetailsRepository(modelContainer: modelContainer)
         self.barcodeMemoryRepository = BarcodeMemoryRepository(modelContainer: modelContainer)
         self.foodDetailsClient = OpenFoodFactsDetailsClient()
-        self.favoritesStore = FavoritesStore()
         self.reminderSettingsStore = ReminderSettingsStore()
-        self.dietaryPreferencesStore = DietaryPreferencesStore()
         self.dietPreferenceStore = DietPreferenceStore()
         self.aiSettingsStore = AiSettingsStore(secrets: KeychainStore())
         self.appearanceStore = AppearanceStore()
@@ -225,6 +229,8 @@ final class AppDependencies {
                 customRecipe: self.customRecipeRepository,
                 mealPlan: self.mealPlanRepository,
                 foodLog: self.foodLogRepository,
+                favoriteRecipe: self.favoriteRecipeRepository,
+                dietaryPreference: self.dietaryPreferenceRepository,
                 session: session,
                 diagnostics: diagnostics
             )
@@ -234,6 +240,20 @@ final class AppDependencies {
             self.syncWriter = SyncWriter(outbox: outbox, coordinator: nil, session: session)
             self.householdContentSync = nil
         }
+        // 收藏 / 忌口 集合恒走仓库支撑 + 家庭同步:本地模式下 session 域为 ""、
+        // syncWriter 只记录 outbox 不推送(待接入后端后随首个 syncTo 上传)。需要在
+        // session + syncWriter 就绪后构造,故置于此处而非前段。
+        self.favoritesStore = FavoritesStore(
+            repository: self.favoriteRecipeRepository,
+            session: session,
+            syncWriter: self.syncWriter
+        )
+        self.dietaryPreferencesStore = DietaryPreferencesStore(
+            repository: self.dietaryPreferenceRepository,
+            session: session,
+            syncWriter: self.syncWriter
+        )
+
         // Built last so it can read the (optional) remote repository regardless of
         // which backend branch ran. `RemotePantryRepository` conforms to
         // `ProfileRemote`; local-only mode passes nil (store degrades to local).

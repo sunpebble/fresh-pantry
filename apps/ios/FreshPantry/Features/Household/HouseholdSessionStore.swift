@@ -273,6 +273,31 @@ final class HouseholdSessionStore {
             try? await foodLog.saveEntries(id, foodLogRows)
             try? await foodLog.deleteHouseholdScope("")
         }
+
+        // 收藏 / 忌口 (set-membership) move too — but their ids are DETERMINISTIC on
+        // `(household, key)`, so re-mapping is a re-KEY to the new household (not the
+        // random `reminted`), otherwise the adopted row keeps the `""`-scoped id and
+        // a member's later favorite of the same recipe makes a DISTINCT id → a
+        // duplicate. Only active marks are adopted (tombstones don't carry forward);
+        // remoteVersion resets to 0 so `uploadLocalOnly` uploads them as initial
+        // content. Repos derive from the shared container (init stays unchanged).
+        let favorites = FavoriteRecipeRepository(modelContainer: inventory.modelContainer)
+        let favoriteRows = ((try? await favorites.loadAllFor("")) ?? [])
+            .filter { $0.deletedAt == nil }
+            .map { FavoriteRecipe.make(householdID: id, recipeID: $0.recipeID) }
+        if !favoriteRows.isEmpty {
+            try? await favorites.saveEntries(id, favoriteRows)
+            try? await favorites.deleteHouseholdScope("")
+        }
+
+        let dietary = DietaryPreferenceRepository(modelContainer: inventory.modelContainer)
+        let dietaryRows = ((try? await dietary.loadAllFor("")) ?? [])
+            .filter { $0.deletedAt == nil }
+            .map { DietaryPreference.make(householdID: id, keyword: $0.keyword) }
+        if !dietaryRows.isEmpty {
+            try? await dietary.saveEntries(id, dietaryRows)
+            try? await dietary.deleteHouseholdScope("")
+        }
     }
 
     // MARK: - Join
