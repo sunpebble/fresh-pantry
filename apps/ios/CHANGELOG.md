@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.17.0...fresh_pantry-v1.18.0) (2026-06-14)
+
+
+### Features
+
+* **ios:** 库存/食谱/膳食/减废多项功能补齐 + 收尾清理 ([9f572b8](https://github.com/kunish/fresh_pantry/commit/9f572b8e2d2db005495567c7912abb2384ced30c))
+
 ## [1.17.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.16.2...fresh_pantry-v1.17.0) (2026-06-13)
 
 
