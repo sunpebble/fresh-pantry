@@ -264,6 +264,39 @@ struct MealPlanStoreTests {
         #expect(store.entries.count == 1)
     }
 
+    // MARK: Move (reschedule to another day)
+
+    @Test func moveDishChangesDayInPlaceKeepingId() async throws {
+        let store = try await makeStore([entry(id: "a", date: date(2026, 6, 10))], today: refToday)
+        let target = store.entries.first { $0.id == "a" }!
+        let moved = await store.moveDish(target, to: date(2026, 6, 12))
+        #expect(moved)
+        #expect(store.entries(forDay: date(2026, 6, 10)).isEmpty)         // left old day
+        #expect(store.entries(forDay: date(2026, 6, 12)).map(\.id) == ["a"]) // same id, new day
+    }
+
+    @Test func moveDishNormalizesToLocalMidnightAndPersists() async throws {
+        let store = try await makeStore([entry(id: "a", date: date(2026, 6, 10))], today: refToday)
+        let target = store.entries.first { $0.id == "a" }!
+        _ = await store.moveDish(target, to: date(2026, 6, 13, hour: 15))
+        await store.load()
+        let stored = store.entries.first { $0.id == "a" }!
+        #expect(MealPlanEntry.dateKey(stored.date) == "2026-06-13") // survives reload, time stripped
+    }
+
+    @Test func moveDishToSameDayIsNoOpButSucceeds() async throws {
+        let store = try await makeStore([entry(id: "a", date: date(2026, 6, 10))], today: refToday)
+        let target = store.entries.first { $0.id == "a" }!
+        #expect(await store.moveDish(target, to: date(2026, 6, 10, hour: 9))) // same calendar day
+        #expect(store.entries(forDay: date(2026, 6, 10)).map(\.id) == ["a"])
+    }
+
+    @Test func moveUnknownEntryReturnsFalse() async throws {
+        let store = try await makeStore([entry(id: "a", date: refToday)], today: refToday)
+        let ghost = entry(id: "zzz", date: refToday)
+        #expect(await store.moveDish(ghost, to: date(2026, 6, 12)) == false)
+    }
+
     // MARK: Serialized mutations (concurrency)
 
     /// Two concurrent mutations must both land — the second must not overwrite the

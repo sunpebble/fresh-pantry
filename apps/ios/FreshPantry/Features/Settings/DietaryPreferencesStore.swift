@@ -29,6 +29,15 @@ final class DietaryPreferencesStore {
     /// Normalized keyword count (sorted-stable; used by the chips UI).
     var sortedKeywords: [String] { keywords.sorted() }
 
+    /// Whether `keyword` (normalized the same way `add` would) is already stored.
+    /// Lets the editor distinguish a new add from a duplicate so a re-add isn't a
+    /// silent no-op. Blank input is never "contained".
+    func contains(_ keyword: String) -> Bool {
+        let normalized = Self.normalize(keyword)
+        guard !normalized.isEmpty else { return false }
+        return keywords.contains(normalized)
+    }
+
     // MARK: Mutations (normalization owned here)
 
     /// Normalizes (trim + lowercase) and inserts a keyword; blank input is a

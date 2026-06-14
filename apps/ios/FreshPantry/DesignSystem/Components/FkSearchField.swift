@@ -27,6 +27,7 @@ struct FkSearchField: View {
                         .foregroundStyle(Color.fkOutline)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("清空搜索")
             }
         }
         .padding(.horizontal, FkSpacing.md)

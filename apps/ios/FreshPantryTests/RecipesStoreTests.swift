@@ -17,12 +17,13 @@ struct RecipesStoreTests {
         difficulty: Int = 2,
         minutes: Int = 20,
         ingredients: [RecipeIngredient] = [],
-        description: String = ""
+        description: String = "",
+        tags: [String] = []
     ) -> Recipe {
         Recipe(
             id: id, name: name, category: category, difficulty: difficulty,
             cookingMinutes: minutes, description: description,
-            ingredients: ingredients, steps: []
+            ingredients: ingredients, steps: [], tags: tags
         )
     }
 
@@ -184,6 +185,74 @@ struct RecipesStoreTests {
         store.categoryFilter = nil
         store.favoritesOnly = true
         #expect(store.hasActiveQuery)
+    }
+
+    // MARK: Tag filter (user-defined recipe tags)
+
+    @Test func tagFilterRestrictsToSelectedTag() async throws {
+        let store = try await makeStore(bundled: [
+            recipe(id: "a", name: "快手菜", category: "家常", tags: ["快手"]),
+            recipe(id: "b", name: "宴客菜", category: "家常", tags: ["宴客"]),
+            recipe(id: "c", name: "又快又下饭", category: "家常", tags: ["快手", "下饭"]),
+        ])
+        store.selectedTag = "快手"
+        #expect(store.displayRecipes.map(\.id) == ["a", "c"])
+        store.selectedTag = nil
+        #expect(store.displayRecipes.count == 3)
+    }
+
+    @Test func tagOptionsOrderedByCountThenName() async throws {
+        let store = try await makeStore(bundled: [
+            recipe(id: "a", name: "n1", category: "家常", tags: ["快手"]),
+            recipe(id: "b", name: "n2", category: "家常", tags: ["快手", "宴客"]),
+            recipe(id: "c", name: "n3", category: "家常", tags: ["快手", "下饭"]),
+        ])
+        // 快手(3) first; then 下饭 / 宴客 (1 each) by scalar name order (下 < 宴).
+        #expect(store.tagOptions == ["快手", "下饭", "宴客"])
+    }
+
+    @Test func tagFilterIsCaseInsensitive() async throws {
+        let store = try await makeStore(bundled: [
+            recipe(id: "a", name: "n1", category: "西式", tags: ["BBQ"]),
+            recipe(id: "b", name: "n2", category: "西式", tags: ["甜点"]),
+        ])
+        store.selectedTag = "bbq"
+        #expect(store.displayRecipes.map(\.id) == ["a"])
+    }
+
+    @Test func hasActiveQueryIncludesTagFilter() async throws {
+        let store = try await makeStore(bundled: [
+            recipe(id: "a", name: "菜", category: "家常", tags: ["快手"]),
+        ])
+        #expect(!store.hasActiveQuery)
+        store.selectedTag = "快手"
+        #expect(store.hasActiveQuery)
+    }
+
+    // MARK: Clear filters (one-tap reset)
+
+    @Test func clearFiltersResetsEveryNarrowingFilterButKeepsTab() async throws {
+        let store = try await makeStore(bundled: [
+            recipe(id: "a", name: "川味鸡", category: "川菜", tags: ["快手"]),
+            recipe(id: "b", name: "家常菜", category: "家常"),
+        ])
+        store.tab = .mine
+        store.categoryFilter = "川菜"
+        store.selectedTag = "快手"
+        store.searchQuery = "鸡"
+        store.favoritesOnly = true
+        store.timeFilter = .fast15
+        #expect(store.hasActiveQuery)
+
+        store.clearFilters()
+
+        #expect(store.categoryFilter == nil)
+        #expect(store.selectedTag == nil)
+        #expect(store.searchQuery == "")
+        #expect(!store.favoritesOnly)
+        #expect(store.timeFilter == .all)
+        #expect(!store.hasActiveQuery)
+        #expect(store.tab == .mine) // tab is a primary selector, not cleared
     }
 
     // MARK: Source order not mutated by derivation

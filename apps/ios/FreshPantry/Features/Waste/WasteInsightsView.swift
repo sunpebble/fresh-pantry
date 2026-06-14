@@ -87,6 +87,8 @@ private struct WasteInsightsContent: View {
                 WindowSelector(selected: $store.window)
                     .padding(.horizontal, FkSpacing.lg)
 
+                categoryFilterChips
+
                 body(
                     stats: summary.stats,
                     breakdown: summary.breakdown,
@@ -98,6 +100,42 @@ private struct WasteInsightsContent: View {
         }
         .background(Color.fkSurface)
         .refreshable { await store.load() }
+    }
+
+    /// 分类下钻筛选行 — drills the whole window (stats / breakdown / 最常浪费 /
+    /// history) into one category. Derived from the in-window buckets; the row hides
+    /// on an empty log (no dead control). Mirrors the inventory/recipe filter rows,
+    /// including keeping a stale selection clearable.
+    @ViewBuilder
+    private var categoryFilterChips: some View {
+        let options = categoryChips
+        if !options.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: FkSpacing.sm) {
+                    FkChip(label: "全部分类", isSelected: store.categoryFilter == nil) {
+                        store.categoryFilter = nil
+                    }
+                    ForEach(options, id: \.self) { category in
+                        FkChip(label: category, isSelected: store.categoryFilter == category) {
+                            // Re-tap the active category to clear it (back to 全部分类).
+                            store.categoryFilter = (store.categoryFilter == category) ? nil : category
+                        }
+                    }
+                }
+                .padding(.horizontal, FkSpacing.lg)
+            }
+        }
+    }
+
+    /// In-window category buckets, with the active selection appended when it's no
+    /// longer present (e.g. after switching to a window where it has no departures),
+    /// so a stale filter always keeps a clearable chip.
+    private var categoryChips: [String] {
+        var options = store.categoryOptions()
+        if let selected = store.categoryFilter, !options.contains(selected) {
+            options.append(selected)
+        }
+        return options
     }
 
     @ViewBuilder

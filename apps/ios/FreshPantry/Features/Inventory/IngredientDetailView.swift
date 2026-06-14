@@ -26,6 +26,10 @@ struct IngredientDetailView: View {
     /// first add so the dedup runs against the live list).
     @State private var shoppingStore: ShoppingStore?
     @State private var isAddingToShopping = false
+    /// Drives the "用了一部分" amount-entry sheet + guards re-entrancy while a
+    /// partial consume is in flight.
+    @State private var showConsumeSheet = false
+    @State private var isConsuming = false
     /// Transient confirmation copy shown after an add-to-shopping tap.
     @State private var toast: String?
 
@@ -38,6 +42,7 @@ struct IngredientDetailView: View {
                 quantityAndFreshnessCard
                 foodDetailsSection
                 infoList
+                consumePartialButton
                 addToShoppingButton
             }
             .padding(.bottom, FkSpacing.huge)
@@ -85,6 +90,15 @@ struct IngredientDetailView: View {
         }) {
             EditIngredientView(original: ingredient, store: store) {
                 didSaveEdit = true
+            }
+        }
+        .sheet(isPresented: $showConsumeSheet) {
+            PartialConsumeSheet(
+                itemName: ingredient.name,
+                available: availableQuantity ?? 0,
+                unit: ingredient.unit
+            ) { amount in
+                Task { await performConsume(amount: amount) }
             }
         }
         .confirmationDialog(
@@ -136,6 +150,45 @@ struct IngredientDetailView: View {
                 try? await Task.sleep(for: .seconds(4))
                 if !Task.isCancelled { dismiss() }
             }
+        }
+    }
+
+    // MARK: 用了一部分 (partial consume)
+
+    /// The on-hand numeric magnitude of the quantity (the unit lives in the separate
+    /// `unit` field), or nil when the quantity isn't a positive number — the
+    /// "用了一部分" action only makes sense for a measurable quantity.
+    private var availableQuantity: Double? {
+        guard let parsed = QuantityText.parseLeadingQuantity(ingredient.quantity.trimmed),
+              let value = Double(parsed.magnitude), value > 0 else { return nil }
+        return value
+    }
+
+    /// "用了一部分" pill — opens the amount-entry sheet. Hidden for a non-numeric
+    /// quantity (where a subtract-from is meaningless), so there's no dead control.
+    @ViewBuilder
+    private var consumePartialButton: some View {
+        if availableQuantity != nil {
+            Button {
+                showConsumeSheet = true
+            } label: {
+                HStack(spacing: FkSpacing.sm) {
+                    Image(systemName: "minus.circle")
+                        .font(.system(size: FkSize.iconSm, weight: .semibold))
+                    Text("用了一部分")
+                        .font(.fkLabelLarge)
+                }
+                .foregroundStyle(Color.fkOnSurface)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, FkSpacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: FkRadius.chip, style: .continuous)
+                        .fill(Color.fkSurfaceContainer)
+                )
+            }
+            .buttonStyle(.fkPressable)
+            .disabled(isConsuming || isDeleting)
+            .padding(.horizontal, FkSpacing.lg)
         }
     }
 
@@ -437,5 +490,97 @@ struct IngredientDetailView: View {
     private func performUndo(_ undo: InventoryStore.RemovalUndo) async {
         _ = await store.undoRemove(undo)
         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { pendingUndo = nil }
+    }
+
+    /// Applies a partial consume. A decrement pops back to the list (which shows the
+    /// reduced quantity — this screen's `ingredient` is an immutable snapshot, like
+    /// the post-edit pop); a full depletion reuses the undo banner (row removed + a
+    /// `.consumed` departure logged); a failure surfaces a retry toast.
+    private func performConsume(amount: Double) async {
+        isConsuming = true
+        let result = await store.consumePartial(ingredient, amount: amount)
+        isConsuming = false
+        switch result {
+        case .decremented:
+            dismiss()
+        case let .depleted(undo):
+            withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { pendingUndo = undo }
+        case .invalid, .failed:
+            withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
+                toast = "操作失败，请重试"
+            }
+        }
+    }
+}
+
+/// Amount-entry sheet for "用了一部分": shows what's on hand and takes the amount
+/// used (decimal). "全部用完" is a shortcut that confirms the full remaining amount
+/// (which the store treats as a full consume + departure log).
+private struct PartialConsumeSheet: View {
+    let itemName: String
+    let available: Double
+    let unit: String
+    let onConfirm: (Double) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var amountText = ""
+    @FocusState private var fieldFocused: Bool
+
+    private var amount: Double? {
+        guard let value = Double(amountText.trimmed), value > 0 else { return nil }
+        return value
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: FkSpacing.lg) {
+                Text("剩余 \(QuantityText.formatQuantity(available)) \(unit)")
+                    .font(.fkBodyMedium)
+                    .foregroundStyle(Color.fkOnSurfaceVariant)
+
+                HStack(spacing: FkSpacing.sm) {
+                    TextField("用了多少", text: $amountText)
+                        .keyboardType(.decimalPad)
+                        .font(.fkTitleMedium)
+                        .focused($fieldFocused)
+                        .padding(FkSpacing.md)
+                        .background(
+                            RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
+                                .fill(Color.fkSurfaceContainer)
+                        )
+                    Text(unit)
+                        .font(.fkBodyMedium)
+                        .foregroundStyle(Color.fkOnSurfaceVariant)
+                }
+
+                Button("全部用完") {
+                    onConfirm(available)
+                    dismiss()
+                }
+                .font(.fkLabelLarge)
+                .foregroundStyle(Color.fkPrimary)
+                .accessibilityLabel("全部用完「\(itemName)」")
+
+                Spacer(minLength: 0)
+            }
+            .padding(FkSpacing.lg)
+            .navigationTitle("用了一部分")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("取消") { dismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("确认") {
+                        guard let amount else { return }
+                        onConfirm(amount)
+                        dismiss()
+                    }
+                    .disabled(amount == nil)
+                }
+            }
+            .task { fieldFocused = true }
+        }
+        .presentationDetents([.medium])
     }
 }

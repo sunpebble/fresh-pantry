@@ -90,6 +90,8 @@ private struct MealPlanContent: View {
     @State private var matchContextScope: String?
     @State private var isAddingMissing = false
     @State private var toast: String?
+    /// The dish being rescheduled — drives the move-to-another-day sheet.
+    @State private var reschedulingEntry: ReschedulingEntry?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// 缺料 over the VISIBLE week only — the card sits above the week strip, so
@@ -186,6 +188,15 @@ private struct MealPlanContent: View {
                         showToast("已扣减 \(outcome.affectedCount) 项库存")
                     }
                     Task { await reloadMatchContext() }
+                }
+            }
+        }
+        .sheet(item: $reschedulingEntry) { wrapper in
+            MovePlanEntrySheet(entry: wrapper.entry) { newDate in
+                Task {
+                    if !(await store.moveDish(wrapper.entry, to: newDate)) {
+                        showToast("移动失败,请重试")
+                    }
                 }
             }
         }
@@ -431,6 +442,11 @@ private struct MealPlanContent: View {
                     // ScrollView/LazyVStack — this is the screen's ONLY delete
                     // path, so it must be a control that actually renders.
                     .contextMenu {
+                        Button {
+                            reschedulingEntry = ReschedulingEntry(entry: entry)
+                        } label: {
+                            Label("移到其他日期", systemImage: "calendar")
+                        }
                         Button(role: .destructive) {
                             Task {
                                 if !(await store.remove(entry)) {
@@ -655,6 +671,56 @@ private struct PlanDeductionCandidate: Identifiable {
     let recipe: Recipe
     let servings: Int
     var id: String { recipe.id }
+}
+
+/// Identifiable wrapper so the move-to-another-day sheet can be driven by
+/// `.sheet(item:)` (MealPlanEntry itself isn't Identifiable).
+private struct ReschedulingEntry: Identifiable {
+    let entry: MealPlanEntry
+    var id: String { entry.id }
+}
+
+/// Date-picker sheet for rescheduling a planned dish to another day. Seeds the
+/// picker from the entry's current day; "移动" forwards the chosen date to
+/// `MealPlanStore.moveDish` (a same-day pick is a harmless no-op there).
+private struct MovePlanEntrySheet: View {
+    let entry: MealPlanEntry
+    let onMove: (Date) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedDate: Date
+
+    init(entry: MealPlanEntry, onMove: @escaping (Date) -> Void) {
+        self.entry = entry
+        self.onMove = onMove
+        _selectedDate = State(initialValue: entry.date)
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: FkSpacing.lg) {
+                DatePicker("移动到", selection: $selectedDate, displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .padding(.horizontal, FkSpacing.lg)
+                Spacer(minLength: 0)
+            }
+            .padding(.top, FkSpacing.md)
+            .navigationTitle("移动「\(entry.recipeName)」")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("取消") { dismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("移动") {
+                        onMove(selectedDate)
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
 }
 
 /// `Identifiable` wrapper around the built deduction proposals so the review can

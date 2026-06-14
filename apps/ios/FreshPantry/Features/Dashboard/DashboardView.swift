@@ -684,6 +684,7 @@ private struct CategorySection: View {
                     }
                     .buttonStyle(.fkPressable)
                     .accessibilityIdentifier("home.category.\(entry.category)")
+                    .accessibilityLabel("\(entry.category)，\(entry.count) 件")
                 }
             }
         }

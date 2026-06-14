@@ -169,6 +169,49 @@ struct CustomRecipeStoreTests {
         #expect(built.remoteVersion == 7)
     }
 
+    // MARK: editable tags
+
+    @Test func newRecipeCarriesDraftTags() {
+        let built = CustomRecipeDraft(
+            name: "测试",
+            cookingMinutes: "20",
+            difficulty: 3,
+            ingredients: [.init(name: "盐", quantity: "1", unit: "勺")],
+            steps: [.init(text: "拌匀")],
+            tags: ["快手", "下饭"]
+        ).buildRecipe()
+        // A brand-new recipe now carries the user's tags (was always [] before).
+        #expect(built.tags == ["快手", "下饭"])
+    }
+
+    @Test func buildCanonicalizesDraftTags() {
+        let built = CustomRecipeDraft(
+            name: "测试",
+            cookingMinutes: "20",
+            difficulty: 3,
+            ingredients: [.init(name: "盐", quantity: "1", unit: "勺")],
+            steps: [.init(text: "拌匀")],
+            tags: [" 快手 ", "快手", "", "下饭"]
+        ).buildRecipe()
+        // trim + drop-empty + case/space de-dupe, first casing & insertion order kept.
+        #expect(built.tags == ["快手", "下饭"])
+    }
+
+    @Test func seedFromRecipeExposesTags() {
+        let existing = recipe(id: "abc").copyWith(tags: ["宴客", "拿手"])
+        let draft = CustomRecipeDraft(recipe: existing)
+        #expect(draft.tags == ["宴客", "拿手"])
+    }
+
+    @Test func editCanReplaceTags() {
+        let existing = recipe(id: "abc").copyWith(tags: ["旧标签"])
+        var draft = CustomRecipeDraft(recipe: existing)
+        draft.tags = ["新标签", "宴客"]
+        let built = draft.buildRecipe(existing: existing)
+        // The edit is honored — tags are no longer frozen to the existing recipe.
+        #expect(built.tags == ["新标签", "宴客"])
+    }
+
     @Test func editPreservesRangeQuantity() {
         // 编辑带范围用量的食材时,上界必须经文本框往返保留(回归:曾退化成下界,丢 quantityMax)
         let existing = recipe(id: "r1").copyWith(

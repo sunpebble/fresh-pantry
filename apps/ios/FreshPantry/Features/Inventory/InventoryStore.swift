@@ -287,6 +287,65 @@ final class InventoryStore {
         )
     }
 
+    // MARK: Partial consume (用了一部分)
+
+    /// What a partial-consume action should do, derived purely from the quantity
+    /// string and the amount used. `.decrement` carries the new quantity string
+    /// (any unit text embedded in the quantity is preserved); `.deplete` means the
+    /// amount meets/exceeds what's on hand, so the row is fully consumed; `.invalid`
+    /// means the quantity isn't numeric or the amount is non-positive.
+    enum PartialConsumePlan: Equatable, Sendable {
+        case decrement(String)
+        case deplete
+        case invalid
+    }
+
+    /// Outcome of `consumePartial`. `.depleted` carries the removal undo (the row
+    /// was fully consumed + a `.consumed` departure logged); `.decremented` kept the
+    /// row with a smaller quantity (no log); `.invalid`/`.failed` made no change.
+    enum PartialConsumeResult: Sendable {
+        case decremented
+        case depleted(RemovalUndo)
+        case invalid
+        case failed
+    }
+
+    /// Pure decision for using `amount` (in the item's unit) of a `quantity` string.
+    /// A remainder below the 2-decimal display step (i.e. float noise) counts as
+    /// nothing left → `.deplete`, so a near-exact "use it all" never leaves a "0" row.
+    static func planPartialConsume(quantity: String, amount: Double) -> PartialConsumePlan {
+        guard amount > 0,
+              let parsed = QuantityText.parseLeadingQuantity(quantity.trimmed),
+              let available = Double(parsed.magnitude)
+        else { return .invalid }
+        let remainder = available - amount
+        if remainder < 0.005 { return .deplete }
+        let suffix = parsed.remainder.isEmpty ? "" : " \(parsed.remainder)"
+        return .decrement(QuantityText.formatQuantity(remainder) + suffix)
+    }
+
+    /// Records using `amount` of `target`. A positive remainder decrements the row's
+    /// quantity in place with NO FoodLog (partial use isn't a departure — mirrors the
+    /// cook flow's `remaining > 0` branch); meeting/exceeding what's on hand fully
+    /// removes the row AND logs a `.consumed` departure (so 减废 stats stay meaningful),
+    /// returning the undo handle. Reuses the tested `update` / `removeWithResult` paths
+    /// so optimistic state + sync enqueue behave exactly as a manual edit / removal.
+    @discardableResult
+    func consumePartial(_ target: Ingredient, amount: Double, now: Date = Date()) async -> PartialConsumeResult {
+        switch Self.planPartialConsume(quantity: target.quantity, amount: amount) {
+        case .invalid:
+            return .invalid
+        case .deplete:
+            switch await removeWithResult(target, outcome: .consumed, now: now) {
+            case let .removed(undo): return .depleted(undo)
+            case .notFound, .failed: return .failed
+            }
+        case let .decrement(newQuantity):
+            let ok = await update(target, to: target.copyWith(quantity: newQuantity))
+            return ok ? .decremented : .failed
+        }
+    }
+
     /// Enqueues a soft-delete outbox op for `removed` (the gateway derives
     /// `deleted_at`). Skipped — still a successful local delete — when the row
     /// can't be serialized to a wire patch.

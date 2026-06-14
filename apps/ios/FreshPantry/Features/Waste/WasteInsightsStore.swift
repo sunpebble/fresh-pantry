@@ -98,6 +98,10 @@ final class WasteInsightsStore {
 
     /// The active time window. Defaults to 本月 (matches the blueprint default).
     var window: WasteStatsWindow = .thisMonth
+    /// Active category drill-down. nil = 全部分类. Matched against the canonical
+    /// `FoodCategories.dropdownValue` bucket (so a legacy-alias entry still matches),
+    /// narrowing EVERY windowed aggregate at once.
+    var categoryFilter: String?
 
     init(repository: FoodLogRepository, householdID: String, syncWriter: SyncWriter? = nil) {
         self.repository = repository
@@ -127,10 +131,28 @@ final class WasteInsightsStore {
 
     // MARK: Derived view data
 
-    /// Entries at/after the selected window's lower bound (the visible slice).
-    func windowedEntries(now: Date = Date()) -> [FoodLogEntry] {
+    /// Entries inside the selected time window, BEFORE the category drill-down —
+    /// the source for the filter chips (which must list every in-window bucket).
+    private func windowSlice(now: Date) -> [FoodLogEntry] {
         let since = window.since(now)
         return entries.filter { $0.loggedAt >= since }
+    }
+
+    /// Entries at/after the window's lower bound, narrowed to `categoryFilter` when
+    /// set (matched on the canonical bucket). Every windowed aggregate derives from
+    /// this, so selecting a category drills the whole screen into it at once.
+    func windowedEntries(now: Date = Date()) -> [FoodLogEntry] {
+        let slice = windowSlice(now: now)
+        guard let categoryFilter else { return slice }
+        return slice.filter { FoodCategories.dropdownValue($0.category) == categoryFilter }
+    }
+
+    /// Distinct categories present in the window (IGNORING the active drill-down) in
+    /// canonical order — drives the filter chips. Empty when the window has no
+    /// departures, so the view hides the row (no dead control). Reuses the
+    /// breakdown's bucketing + sort for a single source of category shaping.
+    func categoryOptions(now: Date = Date()) -> [String] {
+        Self.computeCategoryBreakdown(windowSlice(now: now)).map(\.category)
     }
 
     /// Windowed aggregate stats (consumed / wasted / rescued / use-up rate).

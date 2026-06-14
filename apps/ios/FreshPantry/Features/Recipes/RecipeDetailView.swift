@@ -434,6 +434,27 @@ struct RecipeDetailView: View {
                 metaItem(systemImage: "clock", text: "\(recipe.cookingMinutes) 分钟")
             }
 
+            // User tags (read-only) — so a recipe the user tagged「宴客」/「快手」
+            // shows that label, closing the tag loop (edit in the form → see here →
+            // filter in the browse list). Hidden when the recipe carries no tags.
+            if !recipe.tags.isEmpty {
+                FlowLayout(spacing: FkSpacing.sm) {
+                    ForEach(recipe.tags, id: \.self) { tag in
+                        Text(tag)
+                            .font(.fkLabelMedium)
+                            .foregroundStyle(Color.fkOnSurface)
+                            .padding(.horizontal, FkSpacing.md)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(Color.fkSurfaceContainer)
+                                    .overlay(Capsule().strokeBorder(Color.fkHair, lineWidth: 1))
+                            )
+                    }
+                }
+                .padding(.top, FkSpacing.xs)
+            }
+
             // Description lives INSIDE the header group (sm rhythm) so the name →
             // meta → description read as one block; previously it sat in the outer
             // VStack and was pushed away by the larger lg gap (reversed rhythm).

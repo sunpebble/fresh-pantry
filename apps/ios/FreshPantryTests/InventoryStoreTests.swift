@@ -480,6 +480,98 @@ struct InventoryStoreTests {
         #expect(store.items.map(\.name) == ["牛奶"]) // untouched
     }
 
+    // MARK: Partial consume — plan (pure)
+
+    @Test func planDecrementsWhenAmountBelowAvailable() {
+        #expect(InventoryStore.planPartialConsume(quantity: "500", amount: 100) == .decrement("400"))
+    }
+
+    @Test func planDepletesWhenAmountMeetsOrExceedsAvailable() {
+        #expect(InventoryStore.planPartialConsume(quantity: "2", amount: 2) == .deplete)
+        #expect(InventoryStore.planPartialConsume(quantity: "2", amount: 5) == .deplete)
+    }
+
+    @Test func planInvalidForNonNumericQuantityOrNonPositiveAmount() {
+        #expect(InventoryStore.planPartialConsume(quantity: "适量", amount: 1) == .invalid)
+        #expect(InventoryStore.planPartialConsume(quantity: "500", amount: 0) == .invalid)
+        #expect(InventoryStore.planPartialConsume(quantity: "500", amount: -3) == .invalid)
+    }
+
+    @Test func planFormatsDecimalRemainderWithoutFloatNoise() {
+        #expect(InventoryStore.planPartialConsume(quantity: "1.5", amount: 0.3) == .decrement("1.2"))
+    }
+
+    @Test func planTreatsSubResolutionRemainderAsDeplete() {
+        // A remainder below the 2-decimal display step (float noise) is nothing left.
+        #expect(InventoryStore.planPartialConsume(quantity: "1", amount: 0.999) == .deplete)
+    }
+
+    @Test func planPreservesUnitTextEmbeddedInQuantityString() {
+        // Rare: the unit normally lives in the separate `unit` field, but a quantity
+        // string that carries it ("3 个") must keep it through the decrement.
+        #expect(InventoryStore.planPartialConsume(quantity: "3 个", amount: 1) == .decrement("2 个"))
+    }
+
+    // MARK: Partial consume — apply
+
+    @Test func consumePartialDecrementsInPlaceWithoutLogging() async throws {
+        let (store, log) = try await makeStoreWithLog([
+            Ingredient(id: "a", name: "面粉", quantity: "500", unit: "g", imageUrl: "",
+                       freshnessPercent: 1, state: .fresh),
+        ])
+        let target = store.items.first { $0.id == "a" }!
+        guard case .decremented = await store.consumePartial(target, amount: 100) else {
+            Issue.record("expected .decremented"); return
+        }
+        #expect(store.items.first { $0.id == "a" }?.quantity == "400") // in place
+        await store.load()
+        #expect(store.items.first { $0.id == "a" }?.quantity == "400") // persisted
+        #expect(try await log.loadAllFor("home").isEmpty) // partial use is no departure
+    }
+
+    @Test func consumePartialDepletingRemovesRowAndLogsConsumed() async throws {
+        let (store, log) = try await makeStoreWithLog([
+            Ingredient(id: "a", name: "牛奶", quantity: "1", unit: "瓶", imageUrl: "",
+                       freshnessPercent: 1, state: .fresh, category: FoodCategories.dairyAndEggs),
+            item(id: "b", name: "鸡蛋", state: .fresh),
+        ])
+        let target = store.items.first { $0.id == "a" }!
+        guard case .depleted = await store.consumePartial(target, amount: 1) else {
+            Issue.record("expected .depleted"); return
+        }
+        #expect(store.items.map(\.id) == ["b"]) // row removed
+        let entries = try await log.loadAllFor("home")
+        #expect(entries.count == 1)
+        #expect(entries.first?.outcome == .consumed)
+    }
+
+    @Test func consumePartialInvalidForNonNumericQuantityLeavesRowAndLog() async throws {
+        let (store, log) = try await makeStoreWithLog([
+            Ingredient(id: "a", name: "盐", quantity: "适量", unit: "", imageUrl: "",
+                       freshnessPercent: 1, state: .fresh),
+        ])
+        let target = store.items.first { $0.id == "a" }!
+        guard case .invalid = await store.consumePartial(target, amount: 1) else {
+            Issue.record("expected .invalid"); return
+        }
+        #expect(store.items.count == 1) // unchanged
+        #expect(try await log.loadAllFor("home").isEmpty)
+    }
+
+    @Test func consumePartialDepletingUndoRestoresRow() async throws {
+        let (store, _) = try await makeStoreWithLog([
+            Ingredient(id: "a", name: "牛奶", quantity: "1", unit: "瓶", imageUrl: "",
+                       freshnessPercent: 1, state: .fresh),
+        ])
+        let target = store.items.first { $0.id == "a" }!
+        guard case let .depleted(undo) = await store.consumePartial(target, amount: 2) else {
+            Issue.record("expected .depleted"); return
+        }
+        #expect(store.items.isEmpty)
+        #expect(await store.undoRemove(undo))
+        #expect(store.items.map(\.id) == ["a"]) // restored
+    }
+
     // MARK: Household re-scoping
 
     /// Regression for the live-sync bug where a feature view built its store ONCE

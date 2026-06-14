@@ -259,6 +259,44 @@ final class MealPlanStore {
         }
     }
 
+    /// Reschedules a planned dish to `newDate` OPTIMISTICALLY by stable id identity
+    /// (the model normalizes to local midnight), keeping the SAME row so it
+    /// reconciles as an in-place `.update` rather than a delete + re-add — sparing
+    /// the user the delete-and-recreate dance to move a dish. A move to the same
+    /// calendar day is a no-op that still succeeds (no write). Returns whether a row
+    /// moved; a persist failure rolls the move back, and a row a peer removed is
+    /// dropped locally. Mirrors `toggleDone`'s single-row contract.
+    @discardableResult
+    func moveDish(_ target: MealPlanEntry, to newDate: Date) async -> Bool {
+        guard let index = entries.firstIndex(where: { $0.id == target.id }) else { return false }
+        let prior = entries[index]
+        let normalized = MealPlanEntry.dateOnly(newDate)
+        guard normalized != prior.date else { return true } // already on that day — no write
+        let updatedEntry = prior.copyWith(date: normalized)
+        entries[index] = updatedEntry // optimistic
+        return await serializedPersist {
+            do {
+                guard try await self.repository.updateRow(self.householdID, updatedEntry) else {
+                    self.entries.removeAll { $0.id == updatedEntry.id }
+                    return false
+                }
+            } catch {
+                if let i = self.entries.firstIndex(where: { $0.id == prior.id }) { self.entries[i] = prior }
+                return false
+            }
+            if let patch = DomainJSON.valueMap(updatedEntry) {
+                await self.syncWriter?.enqueue(
+                    entityType: .mealPlanEntry,
+                    entityId: updatedEntry.id,
+                    operation: .update,
+                    patch: patch,
+                    baseVersion: prior.remoteVersion
+                )
+            }
+            return true
+        }
+    }
+
     // MARK: Static helpers
 
     /// The recipe a just-completed entry should offer cook-time deduction for —

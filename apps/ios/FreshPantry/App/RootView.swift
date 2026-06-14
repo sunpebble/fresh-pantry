@@ -523,32 +523,6 @@ struct RootView: View {
     }
 }
 
-/// Temporary stand-in shown for sections whose feature module has not yet been
-/// migrated from the Flutter app. Exercises the core design-system tokens.
-struct PlaceholderScreen: View {
-    let title: String
-    let systemImage: String
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: FkSpacing.lg) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 44, weight: .semibold))
-                    .foregroundStyle(Color.fkPrimary)
-                Text(title)
-                    .font(.fkHeadlineSmall)
-                    .foregroundStyle(Color.fkOnSurface)
-                Text("迁移进行中")
-                    .font(.fkBodyMedium)
-                    .foregroundStyle(Color.fkOnSurfaceVariant)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.fkSurface)
-            .navigationTitle(title)
-        }
-    }
-}
-
 #Preview {
     let container = try! ModelContainerFactory.makeInMemory()
     RootView()

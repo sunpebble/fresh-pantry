@@ -206,6 +206,50 @@ struct WasteInsightsStoreTests {
         #expect(store.stats(now: refNow).rescued == 1) // the expiring consumed one
     }
 
+    // MARK: Category drill-down filter
+
+    @Test func categoryFilterNarrowsEveryAggregateToSelectedBucket() async throws {
+        let store = try await makeStore([
+            entry(id: "p1", category: FoodCategories.freshProduce, outcome: .consumed, loggedAt: date(2026, 6, 10)),
+            entry(id: "p2", category: FoodCategories.freshProduce, outcome: .wasted, loggedAt: date(2026, 6, 11)),
+            entry(id: "m1", category: FoodCategories.meatAndSeafood, outcome: .wasted, loggedAt: date(2026, 6, 12)),
+        ])
+        store.window = .thisMonth
+        #expect(store.stats(now: refNow).total == 3) // unfiltered
+
+        store.categoryFilter = FoodCategories.freshProduce
+        let stats = store.stats(now: refNow)
+        #expect(stats.total == 2)        // only produce
+        #expect(stats.consumed == 1)
+        #expect(stats.wasted == 1)
+        #expect(store.historyEntries(now: refNow).allSatisfy {
+            FoodCategories.dropdownValue($0.category) == FoodCategories.freshProduce
+        })
+        #expect(store.categoryBreakdown(now: refNow).map(\.category) == [FoodCategories.freshProduce])
+    }
+
+    @Test func categoryFilterMatchesLegacyAliasViaCanonicalBucket() async throws {
+        let store = try await makeStore([
+            entry(id: "alias", category: "蔬菜", outcome: .wasted, loggedAt: date(2026, 6, 10)),
+        ])
+        store.window = .thisMonth
+        store.categoryFilter = FoodCategories.freshProduce // canonical bucket
+        #expect(store.stats(now: refNow).total == 1) // the alias entry matched via dropdownValue
+    }
+
+    @Test func categoryOptionsListInWindowBucketsIgnoringActiveFilter() async throws {
+        let store = try await makeStore([
+            entry(id: "p", category: FoodCategories.freshProduce, outcome: .consumed, loggedAt: date(2026, 6, 10)),
+            entry(id: "m", category: FoodCategories.meatAndSeafood, outcome: .wasted, loggedAt: date(2026, 6, 11)),
+            entry(id: "old", category: FoodCategories.dairyAndEggs, outcome: .wasted, loggedAt: date(2026, 5, 1)), // outside 本月
+        ])
+        store.window = .thisMonth
+        store.categoryFilter = FoodCategories.freshProduce // a filter is active…
+        // …options still list every in-window bucket (not just the selected one),
+        // and exclude the out-of-window dairy entry.
+        #expect(Set(store.categoryOptions(now: refNow)) == [FoodCategories.freshProduce, FoodCategories.meatAndSeafood])
+    }
+
     @Test func correctOutcomeUpdatesStats() async throws {
         let store = try await makeStore([
             entry(id: "1", outcome: .wasted, loggedAt: date(2026, 6, 10)),

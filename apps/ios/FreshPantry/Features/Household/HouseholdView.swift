@@ -553,6 +553,7 @@ private struct ActiveHouseholdSection: View {
                         .foregroundStyle(Color.fkDanger)
                 }
                 .buttonStyle(.fkPressable)
+                .accessibilityLabel("移除成员 \(member.resolvedName)")
                 .disabled(store.isSubmitting)
             }
         }

@@ -7,6 +7,9 @@ struct DietaryExclusionEditor: View {
     let store: DietaryPreferencesStore
 
     @State private var draft = ""
+    /// Shown when the user submits a keyword that's already in the list — so a
+    /// duplicate add isn't a silent field-clear with no visible effect.
+    @State private var showDuplicateNotice = false
     @FocusState private var fieldFocused: Bool
 
     var body: some View {
@@ -27,6 +30,7 @@ struct DietaryExclusionEditor: View {
                     .submitLabel(.done)
                     .focused($fieldFocused)
                     .onSubmit(commit)
+                    .onChange(of: draft) { _, _ in showDuplicateNotice = false }
                 Button(action: commit) {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: FkSize.iconMd))
@@ -34,6 +38,12 @@ struct DietaryExclusionEditor: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!canAdd)
+            }
+
+            if showDuplicateNotice {
+                Text("已添加过该忌口")
+                    .font(.fkLabelSmall)
+                    .foregroundStyle(Color.fkOnSurfaceVariant)
             }
         }
         .padding(.vertical, FkSpacing.xs)
@@ -44,8 +54,17 @@ struct DietaryExclusionEditor: View {
     }
 
     private func commit() {
+        guard canAdd else { return }
+        // Distinguish a duplicate (give visible feedback) from a fresh add (clear +
+        // keep focus). Without this, re-adding an existing keyword silently wiped the
+        // field with no effect, reading as a no-op bug.
+        if store.contains(draft) {
+            showDuplicateNotice = true
+            return
+        }
         guard store.add(draft) != nil else { return }
         draft = ""
+        showDuplicateNotice = false
         fieldFocused = true
     }
 }

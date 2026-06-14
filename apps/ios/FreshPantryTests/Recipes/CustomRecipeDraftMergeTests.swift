@@ -74,4 +74,13 @@ struct CustomRecipeDraftMergeTests {
         #expect(merge.merged.imageUrl == same)
         #expect(merge.replacedCover == nil)
     }
+
+    @Test func parsedWithoutTagsKeepsCurrentTags() {
+        var form = filledForm()
+        form.tags = ["我的标签", "宴客"]
+        let merge = CustomRecipeDraft.mergingParsed(parsedDraft(), over: form)
+        // The AI URL parse knows nothing about tags (like the cover) — the form's
+        // already-entered tags must survive rather than being silently dropped.
+        #expect(merge.merged.tags == ["我的标签", "宴客"])
+    }
 }

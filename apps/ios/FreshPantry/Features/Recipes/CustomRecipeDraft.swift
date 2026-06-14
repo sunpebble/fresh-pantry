@@ -54,6 +54,11 @@ struct CustomRecipeDraft: Equatable {
     /// `http(s)` URL for an AI-imported one. nil ⇒ no cover (the category hero
     /// renders). Persisted into `Recipe.imageUrl` on build.
     var imageUrl: String?
+    /// User-defined free-text labels (「快手」「宴客」「孩子爱吃」…) for cross-cutting
+    /// grouping beyond category. Held as the user types them (display casing kept);
+    /// `buildRecipe` canonicalizes via `Ingredient.normalizeTags` on save — the same
+    /// single-source shaping the inventory tags use.
+    var tags: [String]
 
     init(
         name: String = "",
@@ -63,7 +68,8 @@ struct CustomRecipeDraft: Equatable {
         description: String = "",
         ingredients: [IngredientRow] = [IngredientRow()],
         steps: [StepRow] = [StepRow()],
-        imageUrl: String? = nil
+        imageUrl: String? = nil,
+        tags: [String] = []
     ) {
         self.name = name
         self.category = category
@@ -73,6 +79,7 @@ struct CustomRecipeDraft: Equatable {
         self.ingredients = ingredients
         self.steps = steps
         self.imageUrl = imageUrl
+        self.tags = tags
     }
 
     /// Seeds the draft from an existing recipe (edit mode). The structured
@@ -104,7 +111,8 @@ struct CustomRecipeDraft: Equatable {
             description: recipe.description,
             ingredients: rows.isEmpty ? [IngredientRow()] : rows,
             steps: steps.isEmpty ? [StepRow()] : steps,
-            imageUrl: recipe.imageUrl
+            imageUrl: recipe.imageUrl,
+            tags: recipe.tags
         )
     }
 
@@ -328,6 +336,11 @@ struct CustomRecipeDraft: Equatable {
         if merged.imageUrl == nil {
             merged.imageUrl = current.imageUrl
         }
+        // The parse knows nothing about tags (same as the cover) — keep the form's
+        // already-entered tags rather than letting an empty parse silently drop them.
+        if merged.tags.isEmpty {
+            merged.tags = current.tags
+        }
         let replaced = current.imageUrl != nil && current.imageUrl != merged.imageUrl
             ? current.imageUrl
             : nil
@@ -351,7 +364,10 @@ struct CustomRecipeDraft: Equatable {
             description: description.trimmed,
             ingredients: completeIngredients,
             steps: trimmedSteps,
-            tags: existing?.tags ?? [],
+            // Canonicalize on save (single source: `Ingredient.normalizeTags`) so a
+            // new recipe carries the user's tags and an edit honors their changes —
+            // the seed-from-existing path keeps an untouched edit identical.
+            tags: Ingredient.normalizeTags(tags),
             imageUrl: imageUrl?.trimmed.isEmpty == false ? imageUrl?.trimmed : nil,
             remoteVersion: existing?.remoteVersion ?? 0,
             clientUpdatedAt: existing?.clientUpdatedAt,

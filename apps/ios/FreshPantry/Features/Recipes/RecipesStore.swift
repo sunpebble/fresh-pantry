@@ -57,6 +57,10 @@ final class RecipesStore {
     var tab: Tab = .explore
     /// Category filter. `nil` = 全部 (all categories).
     var categoryFilter: String?
+    /// User-tag filter. `nil` = 全部标签 (no tag restriction). Matched case-
+    /// insensitively against each recipe's tags so a stale differently-cased
+    /// selection still resolves (mirrors the inventory tag filter).
+    var selectedTag: String?
     var searchQuery: String = ""
     var favoritesOnly: Bool = false
     var timeFilter: TimeFilter = .all
@@ -245,6 +249,7 @@ final class RecipesStore {
         let exclusions = dietaryStore?.keywords ?? []
         return tabBaseList
             .filter { Self.matchesCategory($0, activeCategory) }
+            .filter(matchesTag)
             .filter { Self.matchesSearch($0, query: searchQuery) }
             .filter(matchesTime)
             .filter(matchesFavorites)
@@ -299,14 +304,48 @@ final class RecipesStore {
         return categoryFilter
     }
 
+    /// The tag chips to surface, derived from the CURRENT corpus: every user tag in
+    /// use, ordered by frequency (most-used first), ties broken by scalar name so
+    /// the row is stable across reloads. Empty when no recipe carries a tag (the
+    /// view hides the whole row, leaving no dead control). Mirrors the inventory
+    /// `tagOptions` exactly.
+    var tagOptions: [String] {
+        var counts: [String: Int] = [:]        // lowercased key -> count
+        var display: [String: String] = [:]    // lowercased key -> first-seen casing
+        for recipe in recipes {
+            for tag in recipe.tags {
+                let key = tag.lowercased()
+                counts[key, default: 0] += 1
+                if display[key] == nil { display[key] = tag }
+            }
+        }
+        return counts.keys
+            .sorted { lhs, rhs in
+                if counts[lhs]! != counts[rhs]! { return counts[lhs]! > counts[rhs]! }
+                return display[lhs]! < display[rhs]!
+            }
+            .map { display[$0]! }
+    }
+
     /// True when any filter/search is narrowing the list (drives empty-state copy).
     var hasActiveQuery: Bool {
         !searchQuery.trimmed.isEmpty || effectiveCategory != nil || favoritesOnly
-            || timeFilter != .all
+            || timeFilter != .all || selectedTag != nil
     }
 
     var favoriteCount: Int {
         recipes.filter { favoritesStore.isFavorite($0.id) }.count
+    }
+
+    /// One-tap reset of every NARROWING filter (category / tag / search / time /
+    /// favorites) back to 全部 — the tab stays put (it's the primary list selector,
+    /// not a filter). Drives the "清除筛选" chip shown while `hasActiveQuery`.
+    func clearFilters() {
+        categoryFilter = nil
+        selectedTag = nil
+        searchQuery = ""
+        favoritesOnly = false
+        timeFilter = .all
     }
 
     // MARK: Filtering internals
@@ -328,6 +367,14 @@ final class RecipesStore {
     private func matchesFavorites(_ recipe: Recipe) -> Bool {
         guard favoritesOnly else { return true }
         return favoritesStore.isFavorite(recipe.id)
+    }
+
+    /// Keeps recipes carrying the selected user tag (case-insensitive). No
+    /// selection keeps all.
+    private func matchesTag(_ recipe: Recipe) -> Bool {
+        guard let selectedTag else { return true }
+        let target = selectedTag.lowercased()
+        return recipe.tags.contains { $0.lowercased() == target }
     }
 
     /// Keeps recipes whose cooking time is within the selected bound (不限 keeps

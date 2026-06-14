@@ -50,6 +50,22 @@ struct DietaryPreferencesStoreTests {
         #expect(store.keywords.isEmpty)
     }
 
+    // MARK: Membership (drives the editor's duplicate feedback)
+
+    @Test func containsMatchesStoredKeywordRegardlessOfCasingOrPadding() {
+        let store = DietaryPreferencesStore(defaults: suite())
+        store.add("Peanut")
+        #expect(store.contains("peanut"))
+        #expect(store.contains("  PEANUT "))
+        #expect(!store.contains("shrimp"))
+    }
+
+    @Test func containsFalseForBlankInput() {
+        let store = DietaryPreferencesStore(defaults: suite())
+        store.add("egg")
+        #expect(!store.contains("   "))
+    }
+
     // MARK: Persistence round-trip
 
     @Test func keywordsPersistAsSortedJsonArray() throws {

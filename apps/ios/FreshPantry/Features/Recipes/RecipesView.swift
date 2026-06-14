@@ -347,6 +347,8 @@ private struct RecipesContent: View {
 
                 timeFilterChips
 
+                tagChips
+
                 // The banner is the 用临期 tab's whole premise — only surface it as a
                 // prompt on the OTHER tabs.
                 if store.expiringItemCount > 0, store.tab != .expiring {
@@ -412,6 +414,16 @@ private struct RecipesContent: View {
     private var filterChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: FkSpacing.sm) {
+                if store.hasActiveQuery {
+                    // One-tap reset when filters are stacked — clears category / tag /
+                    // time / favorites / search at once (the tab stays put). Never
+                    // "selected" (it's an action, not a toggle). Plain state set, like
+                    // the sibling category/time chips.
+                    FkChip(label: "清除筛选", isSelected: false) {
+                        store.clearFilters()
+                    }
+                }
+
                 FavoritesChip(
                     isOn: store.favoritesOnly,
                     count: store.favoriteCount
@@ -434,6 +446,42 @@ private struct RecipesContent: View {
             }
             .padding(.horizontal, FkSpacing.lg)
         }
+    }
+
+    // MARK: 标签筛选行 (user tags)
+
+    /// 标签筛选行 — dynamic from the corpus's in-use user tags (frequency-then-name
+    /// ordered). The whole row is hidden when no recipe carries a tag, so there's no
+    /// dead "全部标签" control on a tag-free corpus. Mirrors `InventoryView.tagChips`.
+    @ViewBuilder
+    private var tagChips: some View {
+        let options = chipTags
+        if !options.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: FkSpacing.sm) {
+                    FkChip(label: "全部标签", isSelected: store.selectedTag == nil) {
+                        store.selectedTag = nil
+                    }
+                    ForEach(options, id: \.self) { tag in
+                        FkChip(label: tag, isSelected: store.selectedTag == tag) {
+                            // Tap the active tag again to clear it (back to 全部标签).
+                            store.selectedTag = store.selectedTag == tag ? nil : tag
+                        }
+                    }
+                }
+                .padding(.horizontal, FkSpacing.lg)
+            }
+        }
+    }
+
+    /// In-use tags, with the active selection appended when it's no longer in the
+    /// derived set (so a stale filter still has a clearable chip).
+    private var chipTags: [String] {
+        var options = store.tagOptions
+        if let selected = store.selectedTag, !options.contains(selected) {
+            options.append(selected)
+        }
+        return options
     }
 
     // MARK: 临期 banner
