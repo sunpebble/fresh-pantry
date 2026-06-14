@@ -83,6 +83,10 @@ struct RecipeDetailView: View {
     /// on its own — no double deduction with the 做菜 CTA.
     @State private var cookDeductPromptPending = false
     @State private var showCookDeductPrompt = false
+    /// #6 AI 改写: preset options dialog + the rewritten draft pushed to the form.
+    @State private var showRewriteOptions = false
+    @State private var isRewriting = false
+    @State private var rewriteRoute: RewriteDraftRoute?
 
     /// The 备料倍数 presets (mirrors the Dart `_scalePresets`).
     private static let scalePresets: [Double] = [0.5, 1, 2, 3]
@@ -122,6 +126,22 @@ struct RecipeDetailView: View {
                 .disabled(mealPlanStore == nil)
                 .accessibilityLabel("加入膳食计划")
             }
+            if customStore != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showRewriteOptions = true
+                    } label: {
+                        if isRewriting {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "wand.and.stars")
+                        }
+                    }
+                    .tint(.fkPrimary)
+                    .disabled(isRewriting)
+                    .accessibilityLabel("AI 改写菜谱")
+                }
+            }
             if isCustom, customStore != nil {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -140,6 +160,23 @@ struct RecipeDetailView: View {
                     }
                     .accessibilityLabel("食谱操作")
                 }
+            }
+        }
+        .confirmationDialog("AI 改写菜谱", isPresented: $showRewriteOptions, titleVisibility: .visible) {
+            Button("改成素食版") { Task { await rewrite("改成素食版,把肉类换成合适的素食食材") } }
+            Button("低卡少油版") { Task { await rewrite("改成低卡少油版,减少油和高热量食材") } }
+            Button("用我现有的食材替换") { Task { await rewrite("尽量用我现有的食材替换缺少的材料") } }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("AI 会生成一个改写版本供你审核保存,原菜谱不变。")
+        }
+        .sheet(item: $rewriteRoute) { route in
+            if let customStore {
+                CustomRecipeFormView(
+                    store: customStore,
+                    onSaved: { Task { await store.load() } },
+                    initialGeneratedDraft: route.draft
+                )
             }
         }
         .sheet(isPresented: $showEditForm) {
@@ -185,6 +222,9 @@ struct RecipeDetailView: View {
                     // itself waits for this sheet's onDismiss) and re-sync the
                     // inventory-derived UI with the stock that just changed.
                     leftoverPromptPending = true
+                    // #7: 做菜 == cooking it → record a cook tally (best-effort).
+                    let cookedId = recipe.id
+                    Task { try? await dependencies.cookHistoryRepository.recordCook(recipeId: cookedId) }
                     if outcome.affectedCount > 0 {
                         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
                             toast = "已扣减 \(outcome.affectedCount) 项库存"
@@ -651,8 +691,8 @@ struct RecipeDetailView: View {
             Spacer(minLength: FkSpacing.sm)
             // Amount keeps layout priority so a long name truncates before it —
             // the quantity is the dense, must-read half of the row.
-            if !ingredient.displayAmount.trimmed.isEmpty {
-                Text(ingredient.displayAmount)
+            if !ingredient.fractionAmount.trimmed.isEmpty {
+                Text(ingredient.fractionAmount)
                     .font(.fkLabelMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
                     .layoutPriority(1)
@@ -691,9 +731,12 @@ struct RecipeDetailView: View {
         defer { isAddingMissing = false }
         var added = 0
         var failed = 0
-        for ingredient in missingIngredients {
-            let category = FoodKnowledge.lookup(ingredient.name)?.category
-            switch await shoppingStore.addItem(name: ingredient.name, category: category) {
+        // Carry the SCALED amount (备料倍数) as the shopping detail so the row shows
+        // a quantity and same-unit re-adds merge — fixes「改了份量却不进购物数量」.
+        let adds = RecipeMatching.missingShoppingDetails(inventoryNames, recipe, scaleFactor: scaleFactor)
+        for add in adds {
+            let category = FoodKnowledge.lookup(add.name)?.category
+            switch await shoppingStore.addItem(name: add.name, detail: add.detail, category: category) {
             case .added: added += 1
             case .duplicate: break // already on the list — the goal is met
             case .failed: failed += 1
@@ -706,6 +749,41 @@ struct RecipeDetailView: View {
             } else {
                 toast = added > 0 ? "已添加 \(added) 项到购物清单" : "缺少的食材已在购物清单中"
             }
+        }
+    }
+
+    // MARK: AI 改写 (#6)
+
+    /// Runs an AI rewrite of this recipe per `instruction` (转素/低卡/换在库),
+    /// feeding the current inventory names so it prefers what's on hand, then
+    /// pushes the result to the custom-recipe form for review + save. Failures
+    /// toast their Chinese message; the original recipe is never modified.
+    private func rewrite(_ instruction: String) async {
+        guard !isRewriting else { return }
+        let settings = dependencies.aiSettingsStore.settings
+        guard settings.isConfigured else {
+            toast = "请先在 设置 › AI 助手 配置 AI 后再用改写。"
+            return
+        }
+        isRewriting = true
+        defer { isRewriting = false }
+        do {
+            let draft = try await AiRecipeRewriter.rewrite(
+                recipe: recipe,
+                instruction: instruction,
+                inventoryNames: Array(inventoryNames)
+            ) { messages in
+                try await AiClient.chat(
+                    settings: settings,
+                    messages: messages,
+                    responseFormat: ["type": .string("json_object")]
+                )
+            }
+            rewriteRoute = RewriteDraftRoute(draft: draft)
+        } catch let error as AiError {
+            toast = error.message
+        } catch {
+            toast = "改写失败:\(error.localizedDescription)"
         }
     }
 
@@ -838,6 +916,13 @@ struct RecipeDetailView: View {
 private struct VideoLink: Identifiable {
     let url: URL
     var id: String { url.absoluteString }
+}
+
+/// `.sheet(item:)` wrapper for the AI-rewritten draft (#6) — `RecipeDraft` isn't
+/// Identifiable on its own.
+private struct RewriteDraftRoute: Identifiable {
+    let id = UUID()
+    let draft: RecipeDraft
 }
 
 /// `Identifiable` wrapper around the built deduction proposals so the cook review

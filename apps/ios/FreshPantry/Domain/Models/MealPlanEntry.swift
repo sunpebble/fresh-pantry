@@ -14,9 +14,24 @@ struct MealPlanEntry: Hashable, Sendable, Codable {
     var recipeImageUrl: String?
     var servings: Int
     var done: Bool
+    /// Free-text title for a NON-recipe entry (e.g. "外卖"/"泡面") — `recipeId` is
+    /// empty for these. nil for a normal recipe dish.
+    var title: String?
+    /// Optional meal slot: 早餐/午餐/晚餐/点心. nil = unslotted.
+    var mealType: String?
+    /// Marks this as a leftover serving — excluded from 缺料 shopping and from
+    /// cook-time deduction (it was already cooked).
+    var isLeftover: Bool
     var remoteVersion: Int
     var clientUpdatedAt: Date?
     var deletedAt: Date?
+
+    /// A free-text note (no recipe attached).
+    var isNote: Bool { recipeId.isEmpty }
+    /// What the row shows: the recipe name, or the note title for a note.
+    var displayTitle: String {
+        recipeName.isEmpty ? (title ?? "") : recipeName
+    }
 
     var syncMetadata: SyncMetadata {
         SyncMetadata(
@@ -34,6 +49,9 @@ struct MealPlanEntry: Hashable, Sendable, Codable {
         recipeImageUrl: String? = nil,
         servings: Int = 1,
         done: Bool = false,
+        title: String? = nil,
+        mealType: String? = nil,
+        isLeftover: Bool = false,
         remoteVersion: Int = 0,
         clientUpdatedAt: Date? = nil,
         deletedAt: Date? = nil
@@ -45,6 +63,9 @@ struct MealPlanEntry: Hashable, Sendable, Codable {
         self.recipeImageUrl = recipeImageUrl
         self.servings = servings
         self.done = done
+        self.title = title
+        self.mealType = mealType
+        self.isLeftover = isLeftover
         self.remoteVersion = remoteVersion
         self.clientUpdatedAt = clientUpdatedAt
         self.deletedAt = deletedAt
@@ -93,6 +114,7 @@ struct MealPlanEntry: Hashable, Sendable, Codable {
 
     private enum CodingKeys: String, CodingKey {
         case id, date, recipeId, recipeName, recipeImageUrl, servings, done
+        case title, mealType, isLeftover
         case remoteVersion, clientUpdatedAt, deletedAt
     }
 
@@ -105,6 +127,9 @@ struct MealPlanEntry: Hashable, Sendable, Codable {
         try c.encodeAlways(recipeImageUrl, forKey: .recipeImageUrl)
         try c.encode(servings, forKey: .servings)
         try c.encode(done, forKey: .done)
+        try c.encodeAlways(title, forKey: .title)
+        try c.encodeAlways(mealType, forKey: .mealType)
+        try c.encode(isLeftover, forKey: .isLeftover)
         try c.encode(remoteVersion, forKey: .remoteVersion)
         try c.encodeISODateAlways(clientUpdatedAt, forKey: .clientUpdatedAt)
         try c.encodeISODateAlways(deletedAt, forKey: .deletedAt)
@@ -129,6 +154,9 @@ struct MealPlanEntry: Hashable, Sendable, Codable {
             recipeImageUrl: c.decodeLenientIfPresent(String.self, forKey: .recipeImageUrl),
             servings: c.decodeIntIfPresent(forKey: .servings) ?? 1,
             done: c.decodeLenientIfPresent(Bool.self, forKey: .done) ?? false,
+            title: c.decodeLenientIfPresent(String.self, forKey: .title),
+            mealType: c.decodeLenientIfPresent(String.self, forKey: .mealType),
+            isLeftover: c.decodeLenientIfPresent(Bool.self, forKey: .isLeftover) ?? false,
             remoteVersion: c.decodeIntIfPresent(forKey: .remoteVersion) ?? 0,
             clientUpdatedAt: c.decodeISODateIfPresent(forKey: .clientUpdatedAt),
             deletedAt: c.decodeISODateIfPresent(forKey: .deletedAt)
@@ -143,6 +171,9 @@ struct MealPlanEntry: Hashable, Sendable, Codable {
         recipeImageUrl: String? = nil,
         servings: Int? = nil,
         done: Bool? = nil,
+        title: String? = nil,
+        mealType: String? = nil,
+        isLeftover: Bool? = nil,
         remoteVersion: Int? = nil,
         clientUpdatedAt: Date? = nil,
         deletedAt: Date? = nil,
@@ -157,6 +188,9 @@ struct MealPlanEntry: Hashable, Sendable, Codable {
             recipeImageUrl: recipeImageUrl ?? self.recipeImageUrl,
             servings: servings ?? self.servings,
             done: done ?? self.done,
+            title: title ?? self.title,
+            mealType: mealType ?? self.mealType,
+            isLeftover: isLeftover ?? self.isLeftover,
             remoteVersion: remoteVersion ?? self.remoteVersion,
             clientUpdatedAt: clearClientUpdatedAt ? nil : (clientUpdatedAt ?? self.clientUpdatedAt),
             deletedAt: clearDeletedAt ? nil : (deletedAt ?? self.deletedAt)

@@ -30,10 +30,15 @@ func isSupportedRecipeHost(_ url: URL) -> Bool {
 }
 
 /// Extracts + normalizes a recipe URL from raw input (a bare URL or pasted text
-/// that contains one), enforcing http(s) + a supported recipe host (services
-/// INVARIANT #13). Returns the normalized URL string; throws
-/// `AiError.parse(…)` with a Chinese message when the input is missing a URL,
-/// is not http(s), or targets an unsupported host.
+/// that contains one), requiring only a valid http(s) URL. Returns the normalized
+/// URL string; throws `AiError.parse(…)` with a Chinese message when the input is
+/// missing a URL or is not http(s).
+///
+/// #4: the host whitelist was RELAXED here — the explicit "URL 导入" path now
+/// accepts any web page (正文 / 视频描述 / 字幕 are stripped to text and fed to the
+/// AI, which returns an error when a page has no recipe). The whitelist still
+/// gates `extractSupportedRecipeURL` (clipboard auto-detect) so we don't offer to
+/// import every random link a user copies.
 func ensureRecipeUrl(_ raw: String) throws -> String {
     let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else {
@@ -45,21 +50,18 @@ func ensureRecipeUrl(_ raw: String) throws -> String {
     if let extracted = extractFirstURLString(in: trimmed) {
         candidate = extracted
     } else if !trimmed.lowercased().hasPrefix("http") {
-        // Bare host like "xiachufang.com/recipe/123" — prefix a scheme so the
-        // host gate can run (parity with Dart `ensureRecipeUrl`).
+        // Bare host like "example.com/recipe/123" — prefix a scheme so it parses.
         candidate = "https://\(trimmed)"
     }
 
     guard let url = URL(string: candidate),
           let scheme = url.scheme?.lowercased(),
           scheme == "http" || scheme == "https",
-          let host = url.host, !host.isEmpty
+          let host = url.host, host.contains(".")
     else {
+        // A bare sentence ("这不是一个链接") coerces to https://<text> with a
+        // dot-less host → rejected here, so only real web URLs get through.
         throw AiError.parse("请填入合法的 http(s) 链接")
-    }
-
-    guard isSupportedRecipeHost(host) else {
-        throw AiError.parse("暂不支持该网站，目前仅支持 懒饭、下厨房 的食谱链接")
     }
 
     return url.absoluteString

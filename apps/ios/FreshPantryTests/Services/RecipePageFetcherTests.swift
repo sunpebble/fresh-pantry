@@ -53,10 +53,12 @@ struct RecipeHostGateTests {
         #expect(normalized == "https://xiachufang.com/recipe/7")
     }
 
-    @Test func ensureRejectsUnsupportedHost() {
-        #expect(throws: AiError.self) { try ensureRecipeUrl("https://notxiachufang.com/r/1") }
-        #expect(throws: AiError.self) { try ensureRecipeUrl("https://xiachufang.com.evil.com/r/1") }
-        #expect(throws: AiError.self) { try ensureRecipeUrl("https://example.com/recipe") }
+    // #4: the explicit URL-import path now accepts ANY http(s) web page (the
+    // whitelist only still gates clipboard auto-detect, below).
+    @Test func ensureNowAcceptsGenericHosts() throws {
+        #expect(try ensureRecipeUrl("https://example.com/recipe").contains("example.com"))
+        #expect(try ensureRecipeUrl("https://www.bilibili.com/video/BV1").contains("bilibili.com"))
+        #expect(try ensureRecipeUrl("xiaohongshu.com/discovery/item/abc").contains("xiaohongshu.com"))
     }
 
     @Test func ensureRejectsNonHttpScheme() {
@@ -64,14 +66,15 @@ struct RecipeHostGateTests {
     }
 
     @Test func ensureRejectsNonUrlString() {
+        // A dot-less bare sentence must not coerce into a valid URL.
         #expect(throws: AiError.self) { try ensureRecipeUrl("这不是一个链接") }
         #expect(throws: AiError.self) { try ensureRecipeUrl("   ") }
     }
 
-    @Test func unsupportedHostErrorMessageIsChinese() {
-        #expect {
-            try ensureRecipeUrl("https://example.com/recipe")
-        } throws: { ($0 as? AiError)?.message.contains("仅支持") == true }
+    // Clipboard auto-detect stays conservative — only known recipe hosts.
+    @Test func clipboardDetectStillWhitelisted() {
+        #expect(extractSupportedRecipeURL(in: "看 https://www.xiachufang.com/recipe/9") != nil)
+        #expect(extractSupportedRecipeURL(in: "看 https://example.com/recipe") == nil)
     }
 }
 
@@ -210,16 +213,14 @@ struct RecipePageFetcherTests {
         } throws: { ($0 as? AiError) == .parse("网页中没有可解析的食谱内容") }
     }
 
-    @Test func unsupportedHostThrowsBeforeRequest() async {
-        StubURLProtocol.handler = nil
-        await #expect {
-            try await RecipePageFetcher.fetchText(
-                "https://example.com/recipe",
-                session: stubbedSession()
-            )
-        } throws: { error in
-            guard case .parse = error as? AiError else { return false }
-            return true
-        }
+    // #4: a generic (non-whitelisted) host is now fetched + parsed rather than
+    // rejected before the request.
+    @Test func genericHostNowFetched() async throws {
+        respond(status: 200, body: "<html><body><h1>家常菜</h1>番茄炒蛋 做法步骤</body></html>")
+        let text = try await RecipePageFetcher.fetchText(
+            "https://example.com/recipe",
+            session: stubbedSession()
+        )
+        #expect(text.contains("番茄炒蛋"))
     }
 }

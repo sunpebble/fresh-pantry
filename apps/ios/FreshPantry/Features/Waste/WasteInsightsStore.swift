@@ -160,6 +160,12 @@ final class WasteInsightsStore {
         Self.computeStats(windowedEntries(now: now))
     }
 
+    /// Gamification badges + zero-waste streak over the full loaded log (not the
+    /// selected window) — process rewards for the减废 habit. Purely derived.
+    func achievements(now: Date = Date()) -> [WasteAchievement] {
+        WasteAchievements.evaluate(entries, now: now)
+    }
+
     /// Per-category consumed/wasted breakdown for the selected window, ordered by
     /// `FoodCategories.values` (canonical sort), dropping categories with no
     /// departures. Categories are normalized so legacy aliases collapse correctly.

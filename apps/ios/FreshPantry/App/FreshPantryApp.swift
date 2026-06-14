@@ -80,6 +80,7 @@ struct FreshPantryApp: App {
                 .environment(syncSession)
                 .environment(dependencies.inviteRouter)
                 .environment(dependencies.recipeImportRouter)
+                .environment(dependencies.recipeFilterRouter)
                 .environment(dependencies.notificationTapRouter)
                 .environment(dependencies.spotlightRouter)
                 .onOpenURL { url in

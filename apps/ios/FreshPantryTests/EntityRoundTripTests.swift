@@ -270,7 +270,7 @@ struct EntityRoundTripTests {
 
     // MARK: FoodDetails
 
-    @Test func foodDetailsWritesCacheVersion5() throws {
+    @Test func foodDetailsWritesCacheVersion6() throws {
         let details = FoodDetails(
             displayName: "牛奶", description: "d", imageUrl: nil, category: "乳品蛋类",
             storage: .fridge, shelfLifeDays: 7, source: "off",
@@ -278,7 +278,7 @@ struct EntityRoundTripTests {
             nutrition: NutritionFacts(energyKcal: 42)
         )
         let json = try DomainJSON.encodeToString(details)
-        #expect(json.contains("\"cacheVersion\":5"))
+        #expect(json.contains("\"cacheVersion\":6"))
         let decoded = try DomainJSON.decode(FoodDetails.self, from: json)
         #expect(decoded.nutrition?.energyKcal == 42)
     }

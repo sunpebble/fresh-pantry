@@ -138,6 +138,8 @@ private struct ExpiringContent: View {
     @State private var pendingUndo: InventoryStore.RemovalUndo?
     /// True while the 清冰箱 AI generation is running (blocks re-tap + shows spinner).
     @State private var isGenerating = false
+    /// Free-text 约束 (口味/时间/餐次/忌口) folded into the generation prompt (#5).
+    @State private var generateConstraint = ""
     /// Inline 清冰箱 failure message (network / parse / not-configured), surfaced
     /// under the button. Cleared on a fresh attempt. nil ⇒ no error.
     @State private var generateError: String?
@@ -147,6 +149,7 @@ private struct ExpiringContent: View {
     /// Recipes' `RecipeRoute`).
     @State private var generatedDraft: GeneratedDraftRoute?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(RecipeFilterRouter.self) private var recipeFilterRouter
 
     var body: some View {
         VStack(spacing: FkSpacing.md) {
@@ -250,6 +253,16 @@ private struct ExpiringContent: View {
                     .font(.fkBodySmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
 
+                TextField("可选要求:清淡 / 15分钟 / 晚餐 / 不要香菜…", text: $generateConstraint)
+                    .font(.fkBodyMedium)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, FkSpacing.sm)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: FkRadius.chip, style: .continuous)
+                            .fill(Color.fkSurface)
+                    )
+
                 Button {
                     Task { await generate() }
                 } label: {
@@ -315,7 +328,10 @@ private struct ExpiringContent: View {
         defer { isGenerating = false }
 
         do {
-            let draft = try await AiRecipeGenerator.fromIngredients(names) { messages in
+            let draft = try await AiRecipeGenerator.fromIngredients(
+                names,
+                constraint: generateConstraint
+            ) { messages in
                 try await AiClient.chat(
                     settings: settings,
                     messages: messages,
@@ -357,6 +373,10 @@ private struct ExpiringContent: View {
                         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { toast = message }
                     }
                 }
+            }
+            // #18: jump to 食谱 tab filtered to dishes using this expiring item.
+            actionButton("做这道菜", systemImage: "frying.pan", tint: Color.fkPrimary) {
+                recipeFilterRouter.capture(ingredient: item.name)
             }
         }
     }

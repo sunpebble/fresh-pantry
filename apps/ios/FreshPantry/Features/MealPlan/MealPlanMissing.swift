@@ -14,7 +14,8 @@ enum MealPlanMissing {
     ) -> [String] {
         var seen = Set<String>()
         var missing: [String] = []
-        for entry in entries where !entry.done {
+        // Leftovers were already cooked (don't re-buy); notes have no recipe.
+        for entry in entries where !entry.done && !entry.isLeftover {
             guard let recipe = recipesById[entry.recipeId] else { continue }
             for ingredient in recipe.ingredients {
                 let name = ingredient.name.trimmed

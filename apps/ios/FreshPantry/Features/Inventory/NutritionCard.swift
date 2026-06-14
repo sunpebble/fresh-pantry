@@ -16,13 +16,75 @@ struct NutritionCard: View {
                 Text("营养成分 · \(caption)")
                     .font(.fkTitleMedium)
                     .foregroundStyle(Color.fkOnSurface)
-                HStack(alignment: .top, spacing: FkSpacing.md) {
-                    ForEach(columns, id: \.label) { column in
-                        statColumn(label: column.label, value: column.value, unit: column.unit)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                if nutrition.hasGrades {
+                    FlowLayout(spacing: FkSpacing.xs) {
+                        ForEach(gradeBadges, id: \.text) { badge in
+                            gradeBadge(badge.text, color: badge.color)
+                        }
+                    }
+                }
+                if !columns.isEmpty {
+                    HStack(alignment: .top, spacing: FkSpacing.md) {
+                        ForEach(columns, id: \.label) { column in
+                            statColumn(label: column.label, value: column.value, unit: column.unit)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                 }
             }
+        }
+    }
+
+    private struct Badge {
+        let text: String
+        let color: Color
+    }
+
+    /// At-a-glance OFF grades (Nutri-Score / NOVA 加工度 / Eco-Score / additives),
+    /// each tinted by severity (green → amber → red).
+    private var gradeBadges: [Badge] {
+        var result: [Badge] = []
+        if let score = nutrition.nutriScore {
+            result.append(Badge(text: "Nutri-Score \(score.uppercased())", color: Self.gradeColor(score)))
+        }
+        if let nova = nutrition.novaGroup {
+            result.append(Badge(text: "加工度 NOVA \(nova)", color: Self.novaColor(nova)))
+        }
+        if let eco = nutrition.ecoScore {
+            result.append(Badge(text: "环保 \(eco.uppercased())", color: Self.gradeColor(eco)))
+        }
+        if let count = nutrition.additivesCount {
+            result.append(Badge(text: "\(count) 种添加剂", color: count > 0 ? Color.fkWarn : Color.fkSuccess))
+        }
+        return result
+    }
+
+    private func gradeBadge(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.fkLabelSmall)
+            .foregroundStyle(color)
+            .padding(.horizontal, FkSpacing.sm)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(color.opacity(0.15)))
+            .accessibilityLabel(text)
+    }
+
+    /// a/b → green, c → amber, d/e → red. Pure — `nonisolated` so it's callable
+    /// off the main actor (tests, previews).
+    nonisolated static func gradeColor(_ grade: String) -> Color {
+        switch grade.lowercased() {
+        case "a", "b": return .fkSuccess
+        case "c": return .fkWarn
+        default: return .fkDanger
+        }
+    }
+
+    /// NOVA 1/2 → green, 3 → amber, 4 (ultra-processed) → red.
+    nonisolated static func novaColor(_ group: Int) -> Color {
+        switch group {
+        case 1, 2: return .fkSuccess
+        case 3: return .fkWarn
+        default: return .fkDanger
         }
     }
 

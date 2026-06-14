@@ -16,6 +16,7 @@ struct RecipesView: View {
 
     @Environment(AppDependencies.self) private var dependencies
     @Environment(RecipeImportRouter.self) private var importRouter
+    @Environment(RecipeFilterRouter.self) private var recipeFilterRouter
     @State private var store: RecipesStore?
     /// CRUD owner for the user's custom recipes — drives the create/edit form and
     /// distinguishes custom recipes (for the detail edit/delete affordances).
@@ -134,7 +135,8 @@ struct RecipesView: View {
                     dietaryStore: dependencies.dietaryPreferencesStore,
                     dietPreferenceStore: dependencies.dietPreferenceStore,
                     remoteCatalog: dependencies.remoteRecipeCatalog,
-                    catalogCache: dependencies.recipeCatalogCache
+                    catalogCache: dependencies.recipeCatalogCache,
+                    cookHistoryRepository: dependencies.cookHistoryRepository
                 )
                 let customStore = CustomRecipeStore(
                     repository: dependencies.customRecipeRepository,
@@ -162,6 +164,7 @@ struct RecipesView: View {
             consumeImportIntent()
             consumePendingRecipe()
             consumePendingRecipesTab()
+            consumePendingIngredient()
             #if DEBUG
             // Snapshot affordance: `-initialRoute cook` seeds the inventory,
             // picks a recipe that matches it, and pushes its detail (whose own
@@ -183,6 +186,19 @@ struct RecipesView: View {
         // appears. The cold `.task` above tail-applies the not-yet-loaded case.
         .task(id: pendingRecipeID) { consumePendingRecipe() }
         .task(id: pendingRecipesTab) { consumePendingRecipesTab() }
+        .task(id: recipeFilterRouter.pendingIngredient) { consumePendingIngredient() }
+    }
+
+    /// 临期→做这道菜 (#18): filter the 探索 tab to recipes using the tapped
+    /// ingredient by setting the search to its name. Clears other narrowing
+    /// filters first so the full set of matching dishes shows. Waits for load so a
+    /// cold-start intent resolves against the real corpus.
+    private func consumePendingIngredient() {
+        guard let name = recipeFilterRouter.pendingIngredient, let store, store.hasLoaded else { return }
+        recipeFilterRouter.consume()
+        store.tab = .explore
+        store.clearFilters()
+        store.searchQuery = name
     }
 
     /// Applies a pending Spotlight deep link: pushes the matching recipe's
@@ -355,6 +371,8 @@ private struct RecipesContent: View {
                     expiringBanner
                 }
 
+                seasonalCarousel
+
                 listBody
             }
             .padding(.top, FkSpacing.sm)
@@ -428,6 +446,14 @@ private struct RecipesContent: View {
                     isOn: store.favoritesOnly,
                     count: store.favoriteCount
                 ) { store.favoritesOnly.toggle() }
+
+                // #7 做过次数 sort — re-tap to turn off (back to source order).
+                FkChip(label: "最常做", isSelected: store.cookSort == .mostCooked) {
+                    store.cookSort = store.cookSort == .mostCooked ? .none : .mostCooked
+                }
+                FkChip(label: "好久没做", isSelected: store.cookSort == .leastRecent) {
+                    store.cookSort = store.cookSort == .leastRecent ? .none : .leastRecent
+                }
 
                 FkChip(
                     label: "全部",
@@ -508,6 +534,58 @@ private struct RecipesContent: View {
     }
 
     // MARK: List / empty / loading
+
+    /// 节气时令推荐 — a horizontal carousel of in-season dishes, only on the 探索
+    /// tab with no active query (so it never competes with a filtered list).
+    @ViewBuilder
+    private var seasonalCarousel: some View {
+        if store.tab == .explore, !store.hasActiveQuery {
+            let seasonal = store.seasonalRecipes()
+            if !seasonal.isEmpty {
+                VStack(alignment: .leading, spacing: FkSpacing.sm) {
+                    HStack(spacing: FkSpacing.xs) {
+                        Image(systemName: "leaf.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color.fkPrimary)
+                        Text("\(store.currentSolarTermName()) · 时令推荐")
+                            .font(.fkTitleSmall)
+                            .foregroundStyle(Color.fkOnSurface)
+                    }
+                    .padding(.horizontal, FkSpacing.lg)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: FkSpacing.sm) {
+                            ForEach(seasonal, id: \.id) { recipe in
+                                Button {
+                                    selectedRoute = RecipeRoute(recipe: recipe)
+                                } label: {
+                                    seasonalPill(recipe)
+                                }
+                                .buttonStyle(.fkPressable)
+                            }
+                        }
+                        .padding(.horizontal, FkSpacing.lg)
+                    }
+                }
+            }
+        }
+    }
+
+    private func seasonalPill(_ recipe: Recipe) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(recipe.name)
+                .font(.fkLabelLarge)
+                .foregroundStyle(Color.fkOnSurface)
+                .lineLimit(1)
+            Text(recipe.category)
+                .font(.fkLabelSmall)
+                .foregroundStyle(Color.fkOnSurfaceVariant)
+        }
+        .padding(FkSpacing.md)
+        .frame(width: 130, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous).fill(Color.fkPrimarySoft))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("时令推荐 \(recipe.name)")
+    }
 
     @ViewBuilder
     private var listBody: some View {

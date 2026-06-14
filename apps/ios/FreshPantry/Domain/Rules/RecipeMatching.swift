@@ -40,6 +40,21 @@ enum RecipeMatching {
         recipe.ingredients.filter { !ingredientMatchesInventory($0, inventoryNames) }
     }
 
+    /// Add to a shopping list for the recipe's missing ingredients, carrying the
+    /// SCALED amount as the row detail (so the shopping row shows the quantity and
+    /// same-name/same-unit re-adds merge via `ShoppingStore.mergeQuantity`). Uses
+    /// the decimal `displayAmount` (not `fractionAmount`) so the detail stays
+    /// parseable. `scaleFactor == 1` carries the unscaled amount.
+    static func missingShoppingDetails(
+        _ inventoryNames: Set<String>,
+        _ recipe: Recipe,
+        scaleFactor: Double = 1
+    ) -> [(name: String, detail: String)] {
+        missingIngredients(inventoryNames, recipe).map { ingredient in
+            (name: ingredient.name, detail: ingredient.scaledBy(scaleFactor).displayAmount)
+        }
+    }
+
     /// How many distinct expiring/expired inventory names the recipe would use up.
     static func expiringCount(_ expiringNames: Set<String>, _ recipe: Recipe) -> Int {
         guard !expiringNames.isEmpty, !recipe.ingredients.isEmpty else { return 0 }

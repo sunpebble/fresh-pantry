@@ -30,10 +30,27 @@ enum AiRecipeGenerator {
     /// inlined) so the prompt construction — "must list every passed ingredient" —
     /// is unit-testable WITHOUT the network. Names are trimmed + de-duplicated
     /// (order-preserving) and capped at `maxIngredients`; blanks are dropped.
-    static func buildUserPrompt(_ ingredientNames: [String]) -> String {
+    static func buildUserPrompt(
+        _ ingredientNames: [String],
+        constraint: String? = nil,
+        exclusions: [String] = []
+    ) -> String {
         let cleaned = sanitize(ingredientNames)
         let list = cleaned.map { "- \($0)" }.joined(separator: "\n")
-        return "现有食材(优先用掉)：\n\(list)\n\n请生成一道用到上述食材的家常菜。"
+        var prompt = "现有食材(优先用掉)：\n\(list)\n\n"
+        // #5: free-text constraint (口味/时间/餐次/无麸质…) + 忌口, fed into the prompt
+        // so the same generator becomes a conversational "用我现有食材做点…" assistant.
+        if let constraint = constraint?.trimmingCharacters(in: .whitespacesAndNewlines), !constraint.isEmpty {
+            prompt += "额外要求:\(constraint)\n"
+        }
+        let cleanExclusions = exclusions
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        if !cleanExclusions.isEmpty {
+            prompt += "忌口(请勿使用):\(cleanExclusions.joined(separator: "、"))\n"
+        }
+        prompt += "请生成一道用到上述食材的家常菜。"
+        return prompt
     }
 
     /// Trims, drops blanks, de-duplicates (first occurrence wins), and caps the
@@ -58,13 +75,18 @@ enum AiRecipeGenerator {
     /// `AiRecipeParser.mapToDraft`. Throws `AiError.parse("食材清单为空")` when no
     /// usable name was passed (parity with the other parsers' empty-input guard);
     /// propagates the parser's `AiError.parse` on malformed / missing JSON.
-    static func fromIngredients(_ ingredientNames: [String], chatFn: AiChatFn) async throws -> RecipeDraft {
+    static func fromIngredients(
+        _ ingredientNames: [String],
+        constraint: String? = nil,
+        exclusions: [String] = [],
+        chatFn: AiChatFn
+    ) async throws -> RecipeDraft {
         let cleaned = sanitize(ingredientNames)
         if cleaned.isEmpty { throw AiError.parse("食材清单为空") }
 
         let messages: [AiMessage] = [
             .text("system", systemPrompt),
-            .text("user", buildUserPrompt(cleaned)),
+            .text("user", buildUserPrompt(cleaned, constraint: constraint, exclusions: exclusions)),
         ]
         let raw = try await chatFn(messages)
         // No source URL — this recipe is generated, not imported from a page.

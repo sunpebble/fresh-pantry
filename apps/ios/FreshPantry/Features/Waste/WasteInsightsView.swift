@@ -89,6 +89,8 @@ private struct WasteInsightsContent: View {
 
                 categoryFilterChips
 
+                achievementsSection
+
                 body(
                     stats: summary.stats,
                     breakdown: summary.breakdown,
@@ -125,6 +127,44 @@ private struct WasteInsightsContent: View {
                 .padding(.horizontal, FkSpacing.lg)
             }
         }
+    }
+
+    /// 减废成就 / 零浪费连胜 — process rewards over the full loaded log. Hidden
+    /// until there's at least one log so an empty screen stays clean.
+    @ViewBuilder
+    private var achievementsSection: some View {
+        let badges = store.achievements()
+        if !store.entries.isEmpty {
+            FkCard {
+                VStack(alignment: .leading, spacing: FkSpacing.md) {
+                    Text("减废成就")
+                        .font(.fkTitleMedium)
+                        .foregroundStyle(Color.fkOnSurface)
+                    FlowLayout(spacing: FkSpacing.sm) {
+                        ForEach(badges) { badge in
+                            badgePill(badge)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, FkSpacing.lg)
+        }
+    }
+
+    private func badgePill(_ badge: WasteAchievement) -> some View {
+        HStack(spacing: FkSpacing.xs) {
+            Image(systemName: badge.icon)
+                .font(.system(size: 12, weight: .semibold))
+            Text(badge.title)
+                .font(.fkLabelMedium)
+        }
+        .foregroundStyle(badge.unlocked ? Color.fkPrimary : Color.fkOnSurfaceVariant)
+        .padding(.horizontal, FkSpacing.sm)
+        .padding(.vertical, 6)
+        .background(Capsule().fill(badge.unlocked ? Color.fkPrimarySoft : Color.fkSurfaceContainer))
+        .opacity(badge.unlocked ? 1 : 0.55)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(badge.title),\(badge.unlocked ? "已解锁" : "未解锁"),\(badge.detail)")
     }
 
     /// In-window category buckets, with the active selection appended when it's no

@@ -26,7 +26,8 @@ enum OpenFoodFactsService {
     private static let detailsFields =
         "product_name,generic_name,categories_tags,categories,"
         + "image_front_small_url,image_front_url,image_small_url,image_url,"
-        + "image_thumb_url,completeness,nutriments"
+        + "image_thumb_url,completeness,nutriments,"
+        + "nutriscore_grade,nova_group,ecoscore_grade,additives_tags"
     private static let timeout: TimeInterval = 8
     private static let retryCount = 1
     private static let retryDelay: TimeInterval = 0.5
@@ -370,8 +371,9 @@ enum OpenFoodFactsService {
     }
 
     static func nutritionForProduct(_ product: [String: Any]) -> NutritionFacts? {
-        guard let nutriments = product["nutriments"] as? [String: Any] else { return nil }
-        return NutritionFacts.fromOffNutriments(nutriments)
+        // Macros (from `nutriments`) PLUS product-level grades (Nutri-Score / NOVA
+        // / Eco-Score / additives), so a product with only a grade still surfaces.
+        NutritionFacts.fromOffProduct(product)
     }
 
     static func descriptionForProduct(_ product: [String: Any], category: String) -> String {

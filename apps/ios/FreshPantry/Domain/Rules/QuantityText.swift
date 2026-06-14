@@ -46,6 +46,39 @@ enum QuantityText {
         return text
     }
 
+    /// Common cooking fractions (vulgar-fraction glyphs) used for DISPLAY ONLY.
+    /// Deliberately limited to halves/thirds/quarters/eighths — the amounts cooks
+    /// actually read — so odd values like 0.2 fall back to a plain decimal rather
+    /// than rendering an unfamiliar "⅕".
+    private static let fractionGlyphs: [(value: Double, glyph: String)] = [
+        (1.0 / 8, "⅛"), (1.0 / 4, "¼"), (1.0 / 3, "⅓"), (3.0 / 8, "⅜"),
+        (1.0 / 2, "½"), (5.0 / 8, "⅝"), (2.0 / 3, "⅔"), (3.0 / 4, "¾"), (7.0 / 8, "⅞"),
+    ]
+    private static let fractionTolerance = 0.02
+
+    /// Renders `n` as a clean cooking fraction for DISPLAY ONLY (½ 杯, 1¼ 茶匙):
+    /// a whole number stays an int string; a fractional part close to a common
+    /// cooking fraction becomes its glyph (mixed numbers like "1½"); anything else
+    /// falls back to `formatQuantity` (plain decimal). NEVER use this for stored /
+    /// mergeable quantities — the glyphs don't parse back through
+    /// `parseLeadingQuantity`.
+    static func formatFraction(_ n: Double) -> String {
+        guard n.isFinite, n >= 0 else { return formatQuantity(n) }
+        if n == n.rounded() { return String(Int(n.rounded())) }
+        let whole = n.rounded(.down)
+        let frac = n - whole
+        var best: (glyph: String, dist: Double)?
+        for entry in fractionGlyphs {
+            let dist = abs(frac - entry.value)
+            if dist <= fractionTolerance, best == nil || dist < best!.dist {
+                best = (entry.glyph, dist)
+            }
+        }
+        guard let best else { return formatQuantity(n) }
+        if whole == 0 { return best.glyph }
+        return "\(Int(whole))\(best.glyph)"
+    }
+
     private static func group(_ match: NSTextCheckingResult, _ index: Int, in string: String) -> String? {
         let nsRange = match.range(at: index)
         guard nsRange.location != NSNotFound, let range = Range(nsRange, in: string) else {

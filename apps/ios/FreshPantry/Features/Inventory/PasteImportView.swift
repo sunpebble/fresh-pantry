@@ -16,6 +16,7 @@ struct PasteImportView: View {
 
     @State private var store: PasteImportStore?
     @State private var reviewRoute: ReviewRoute?
+    @State private var speech = SpeechTranscriber()
     @FocusState private var editorFocused: Bool
 
     var body: some View {
@@ -75,6 +76,8 @@ struct PasteImportView: View {
 
                     textEditor(store)
 
+                    voiceControl(store)
+
                     if let message = store.errorMessage {
                         FkInlineNotice(systemImage: "exclamationmark.triangle", message: message)
                     }
@@ -112,6 +115,52 @@ struct PasteImportView: View {
                 }
             }
             .focused($editorFocused)
+    }
+
+    /// Push-to-talk dictation that fills the editor hands-free (#13). Tapping
+    /// toggles recording; the live transcript shows while listening and is appended
+    /// to the editor text on stop.
+    @ViewBuilder
+    private func voiceControl(_ store: PasteImportStore) -> some View {
+        VStack(alignment: .leading, spacing: FkSpacing.sm) {
+            Button {
+                Task { await toggleVoice(store) }
+            } label: {
+                HStack(spacing: FkSpacing.xs) {
+                    Image(systemName: speech.isRecording ? "stop.circle.fill" : "mic.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text(speech.isRecording ? "停止录音" : "语音录入")
+                        .font(.fkLabelMedium)
+                }
+                .foregroundStyle(speech.isRecording ? Color.fkOnDanger : Color.fkPrimaryContainer)
+                .padding(.horizontal, FkSpacing.md)
+                .padding(.vertical, FkSpacing.sm)
+                .background(Capsule().fill(speech.isRecording ? Color.fkDanger : Color.fkPrimarySoft))
+            }
+            .buttonStyle(.fkPressable)
+            .accessibilityLabel(speech.isRecording ? "停止语音录入" : "语音录入食材")
+
+            if speech.isRecording, !speech.transcript.isEmpty {
+                Text(speech.transcript)
+                    .font(.fkBodyMedium)
+                    .foregroundStyle(Color.fkOnSurfaceVariant)
+            }
+            if let message = speech.errorMessage {
+                Text(message)
+                    .font(.fkLabelSmall)
+                    .foregroundStyle(Color.fkDanger)
+            }
+        }
+    }
+
+    private func toggleVoice(_ store: PasteImportStore) async {
+        if speech.isRecording {
+            speech.stop()
+            store.text = SpeechTranscriber.appendTranscript(speech.transcript, to: store.text)
+        } else {
+            editorFocused = false
+            await speech.start()
+        }
     }
 
     private var notConfigured: some View {

@@ -20,6 +20,7 @@ enum ModelContainerFactory {
         AddHistoryRecord.self,
         FoodDetailsCacheRecord.self,
         BarcodeMemoryRecord.self,
+        CookHistoryRecord.self,
     ]
 
     static var schema: Schema { Schema(models) }

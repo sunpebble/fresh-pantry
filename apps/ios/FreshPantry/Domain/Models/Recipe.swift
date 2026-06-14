@@ -51,6 +51,23 @@ struct RecipeIngredient: Equatable, Sendable, Codable {
         return ""
     }
 
+    /// Like `displayAmount` but renders the numeric magnitude as a clean cooking
+    /// fraction (½ 杯, 1¼ 茶匙) for DISPLAY ONLY (recipe rows, Cook Mode). Storage
+    /// and shopping-list details keep using the decimal `displayAmount` so they
+    /// stay parseable / mergeable.
+    var fractionAmount: String {
+        if let quantity {
+            var text = QuantityText.formatFraction(quantity)
+            if let quantityMax {
+                text += "-" + QuantityText.formatFraction(quantityMax)
+            }
+            return text + (unit ?? "")
+        }
+        if let note { return note }
+        if let unit { return unit }
+        return ""
+    }
+
     /// True when there is a numeric magnitude `scaledBy` can scale.
     var isScalable: Bool { quantity != nil }
 

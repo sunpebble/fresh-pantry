@@ -49,7 +49,8 @@ struct LowStockView: View {
             let householdID = dependencies.householdID
             let lowStock = LowStockStore(
                 repository: dependencies.inventoryRepository,
-                householdID: householdID
+                householdID: householdID,
+                foodLogRepository: dependencies.foodLogRepository
             )
             let shopping = ShoppingStore(
                 repository: dependencies.shoppingRepository,
@@ -195,7 +196,8 @@ private struct LowStockContent: View {
                                     FkCard {
                                         LowStockRow(
                                             item: item,
-                                            isSelected: store.selectedNames.contains(item.name)
+                                            isSelected: store.selectedNames.contains(item.name),
+                                            prediction: store.prediction(for: item.name)
                                         )
                                     }
                                 }
@@ -213,18 +215,34 @@ private struct LowStockContent: View {
     }
 }
 
-/// One candidate row: category avatar + name + "买过 N 次" stat + a check toggle.
+/// One candidate row: category avatar + name (+ reorder-cadence hint) + "买过 N
+/// 次" stat + a check toggle.
 private struct LowStockRow: View {
     let item: FrequentItem
     let isSelected: Bool
+    var prediction: ReorderPrediction? = nil
+
+    /// "该补了 · 约每7天" when due, else "约每7天" — nil when no cadence estimate.
+    private var cadenceHint: String? {
+        guard let prediction else { return nil }
+        let every = "约每 \(Int(prediction.avgIntervalDays.rounded())) 天"
+        return prediction.isDue ? "该补了 · \(every)" : every
+    }
 
     var body: some View {
         HStack(spacing: FkSpacing.md) {
             FkCategoryAvatar(imageUrl: "", category: item.category, size: 40)
 
-            Text(item.name)
-                .font(.fkTitleMedium)
-                .foregroundStyle(Color.fkOnSurface)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.name)
+                    .font(.fkTitleMedium)
+                    .foregroundStyle(Color.fkOnSurface)
+                if let cadenceHint {
+                    Text(cadenceHint)
+                        .font(.fkLabelSmall)
+                        .foregroundStyle(prediction?.isDue == true ? Color.fkPrimary : Color.fkOnSurfaceVariant)
+                }
+            }
 
             Spacer(minLength: FkSpacing.sm)
 

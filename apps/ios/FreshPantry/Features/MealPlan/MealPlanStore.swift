@@ -17,6 +17,9 @@ final class MealPlanStore {
     private let householdID: String
     /// Optional outbox seam — nil keeps existing tests/previews local-only.
     private let syncWriter: SyncWriter?
+    /// Optional device-local cook tally (#7) — marking a planned dish done records
+    /// a cook. nil keeps existing tests local-only.
+    private let cookHistoryRepository: CookHistoryRepository?
 
     /// Repo-ordered entries (the source of truth for the whole household scope —
     /// every persist re-syncs this from a canonical reload).
@@ -34,11 +37,13 @@ final class MealPlanStore {
         repository: MealPlanRepository,
         householdID: String,
         today: Date = Date(),
-        syncWriter: SyncWriter? = nil
+        syncWriter: SyncWriter? = nil,
+        cookHistoryRepository: CookHistoryRepository? = nil
     ) {
         self.repository = repository
         self.householdID = householdID
         self.syncWriter = syncWriter
+        self.cookHistoryRepository = cookHistoryRepository
         let start = MealPlanStore.weekStart(containing: today)
         self.weekStart = start
         self.selectedDay = MealPlanEntry.dateOnly(today)
@@ -167,15 +172,62 @@ final class MealPlanStore {
     /// tap lands), servings clamped to ≥ 1, minting a fresh UUID id (sync-clean).
     /// Returns whether a row was added; a persist failure removes it.
     @discardableResult
-    func addDish(recipe: Recipe, date: Date, servings: Int = 1) async -> Bool {
+    func addDish(recipe: Recipe, date: Date, servings: Int = 1, mealType: String? = nil, isLeftover: Bool = false) async -> Bool {
         guard !recipe.id.isEmpty else { return false }
-        let entry = MealPlanEntry(
-            id: Self.newId(),
-            date: date,
+        return await addPlannedEntry(
             recipeId: recipe.id,
             recipeName: recipe.name,
             recipeImageUrl: recipe.imageUrl,
-            servings: max(servings, 1)
+            date: date,
+            servings: servings,
+            mealType: mealType,
+            isLeftover: isLeftover
+        )
+    }
+
+    /// Plans a free-text NOTE (no recipe) on `day` — "周三吃外卖", "泡面" etc. Empty
+    /// title is rejected. Optimistic, same single-row contract as `addDish`.
+    @discardableResult
+    func addNote(title: String, date: Date, mealType: String? = nil) async -> Bool {
+        let trimmed = title.trimmed
+        guard !trimmed.isEmpty else { return false }
+        return await addPlannedEntry(
+            recipeId: "",
+            recipeName: "",
+            recipeImageUrl: nil,
+            date: date,
+            servings: 1,
+            title: trimmed,
+            mealType: mealType
+        )
+    }
+
+    /// Core optimistic add shared by `addDish` / `addNote` / `applyTemplate` —
+    /// plans an entry from its identity fields rather than a full `Recipe`. A note
+    /// passes an empty recipeId + a `title`.
+    @discardableResult
+    private func addPlannedEntry(
+        recipeId: String,
+        recipeName: String,
+        recipeImageUrl: String?,
+        date: Date,
+        servings: Int,
+        title: String? = nil,
+        mealType: String? = nil,
+        isLeftover: Bool = false
+    ) async -> Bool {
+        // Either a recipe dish (recipeId) or a note (title) must be present.
+        guard !recipeId.isEmpty || !(title?.trimmed.isEmpty ?? true) else { return false }
+        let entry = MealPlanEntry(
+            id: Self.newId(),
+            date: date,
+            recipeId: recipeId,
+            recipeName: recipeName,
+            recipeImageUrl: recipeImageUrl,
+            servings: max(servings, 1),
+            title: title,
+            mealType: mealType,
+            isLeftover: isLeftover
         )
         entries.append(entry) // optimistic
         return await serializedPersist {
@@ -225,6 +277,11 @@ final class MealPlanStore {
                     patch: patch,
                     baseVersion: prior.remoteVersion
                 )
+            }
+            // #7: marking a recipe dish done == cooking it → record a cook tally
+            // (best-effort; not for notes/leftovers, which weren't freshly cooked).
+            if updatedEntry.done, !updatedEntry.recipeId.isEmpty, !updatedEntry.isLeftover {
+                try? await self.cookHistoryRepository?.recordCook(recipeId: updatedEntry.recipeId)
             }
             return true
         }
@@ -297,6 +354,50 @@ final class MealPlanStore {
         }
     }
 
+    // MARK: Templates (#14 — reusable weekly plans, device-local)
+
+    /// Saved templates, newest first.
+    func templates() -> [MealPlanTemplate] { MealPlanTemplates.load() }
+
+    /// Serializes the VISIBLE week's dishes into a named template (device-local).
+    /// nil when the name is blank or the week has no recipe dishes. Replaces an
+    /// existing same-name template.
+    @discardableResult
+    func saveCurrentWeekAsTemplate(name: String) -> MealPlanTemplate? {
+        let trimmed = name.trimmed
+        let items = MealPlanTemplates.items(from: entriesInVisibleWeek, weekStart: weekStart)
+        guard !trimmed.isEmpty, !items.isEmpty else { return nil }
+        let template = MealPlanTemplate(id: Self.newId(), name: trimmed, items: items)
+        MealPlanTemplates.save(MealPlanTemplates.upserting(template, into: MealPlanTemplates.load()))
+        return template
+    }
+
+    func removeTemplate(id: String) {
+        MealPlanTemplates.save(MealPlanTemplates.load().filter { $0.id != id })
+    }
+
+    /// Applies a template to the VISIBLE week — adds each item at weekStart +
+    /// dayOffset. Returns how many dishes were added (additive: it never clears the
+    /// existing week). Mirrors `addDish`'s optimistic single-row contract per item.
+    @discardableResult
+    func applyTemplate(_ template: MealPlanTemplate) async -> Int {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        var added = 0
+        for item in template.items {
+            guard let date = calendar.date(byAdding: .day, value: item.dayOffset, to: weekStart) else { continue }
+            let ok = await addPlannedEntry(
+                recipeId: item.recipeId,
+                recipeName: item.recipeName,
+                recipeImageUrl: item.recipeImageUrl,
+                date: MealPlanEntry.dateOnly(date),
+                servings: item.servings
+            )
+            if ok { added += 1 }
+        }
+        return added
+    }
+
     // MARK: Static helpers
 
     /// The recipe a just-completed entry should offer cook-time deduction for —
@@ -306,6 +407,8 @@ final class MealPlanStore {
         for entry: MealPlanEntry,
         recipesById: [String: Recipe]
     ) -> Recipe? {
+        // Leftovers were already cooked → no deduction; notes have no recipe.
+        guard !entry.isLeftover, !entry.recipeId.isEmpty else { return nil }
         guard let recipe = recipesById[entry.recipeId], !recipe.ingredients.isEmpty else { return nil }
         return recipe
     }

@@ -16,9 +16,15 @@ import Foundation
 final class LowStockStore {
     private let repository: InventoryRepository
     private let householdID: String
+    /// Optional food-log source for consumption-cadence reorder prediction (#8).
+    /// nil keeps the store frequency-only (existing tests / NotificationCoordinator).
+    private let foodLogRepository: FoodLogRepository?
 
     /// The low-stock candidates (count≥3 & not in inventory), count-desc.
     private(set) var items: [FrequentItem] = []
+    /// Reorder cadence predictions keyed by lowercased item name (empty when no
+    /// food-log source). Drives the "约每 N 天 · 该补了" row hint.
+    private(set) var predictionsByName: [String: ReorderPrediction] = [:]
     /// Selected candidate names. Defaults to ALL on first load; kept in sync with
     /// the candidate list (intersected with the live names) thereafter.
     var selectedNames: Set<String> = []
@@ -29,14 +35,19 @@ final class LowStockStore {
     /// re-defaulting to all (preserving user de-selections across refreshes).
     private var hasInitializedSelection = false
 
-    init(repository: InventoryRepository, householdID: String) {
+    init(
+        repository: InventoryRepository,
+        householdID: String,
+        foodLogRepository: FoodLogRepository? = nil
+    ) {
         self.repository = repository
         self.householdID = householdID
+        self.foodLogRepository = foodLogRepository
     }
 
     // MARK: Loading
 
-    func load() async {
+    func load(now: Date = Date()) async {
         defer { hasLoaded = true }
         let frequent = (try? await repository.loadFrequentItems()) ?? []
         let inventory = (try? await repository.loadAllFor(householdID)) ?? []
@@ -44,7 +55,16 @@ final class LowStockStore {
         items = frequent
             .filter { $0.count >= 3 && !present.contains($0.name.trimmed.lowercased()) }
             .sorted { $0.count > $1.count }
+        if let foodLogRepository {
+            let log = (try? await foodLogRepository.loadAllFor(householdID)) ?? []
+            predictionsByName = ReorderPredictor.predictions(foodLog: log, now: now)
+        }
         syncSelection()
+    }
+
+    /// Cadence prediction for a candidate name (nil when unknown / too few events).
+    func prediction(for name: String) -> ReorderPrediction? {
+        predictionsByName[name.trimmed.lowercased()]
     }
 
     /// Defaults the selection to every candidate name on first load; on later loads

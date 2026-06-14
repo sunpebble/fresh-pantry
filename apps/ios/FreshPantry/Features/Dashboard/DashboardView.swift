@@ -428,7 +428,11 @@ private struct DashboardContent: View {
         mealPlan = MealPlanGlance.from(entries: windowed, missingCount: missing.count)
 
         // Low-stock restock candidates for the inline 库存不足 card.
-        let lowStock = LowStockStore(repository: dependencies.inventoryRepository, householdID: scope)
+        let lowStock = LowStockStore(
+            repository: dependencies.inventoryRepository,
+            householdID: scope,
+            foodLogRepository: dependencies.foodLogRepository
+        )
         await lowStock.load()
         guard scope == dependencies.householdID, !Task.isCancelled else { return }
         lowStockItems = lowStock.items

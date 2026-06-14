@@ -87,6 +87,15 @@ final class RecipesStore {
     /// Optional 饮食偏好 source — boosts matching recipes in the 现有 ranking.
     /// nil disables the boost (tests / meal-plan picker pass nil).
     private let dietPreferenceStore: DietPreferenceStore?
+    /// Optional device-local cook tally (#7) — powers cookCount + the 最常做/好久
+    /// 没做 sort. nil disables it (tests pass nil).
+    private let cookHistoryRepository: CookHistoryRepository?
+
+    /// 做过次数 sort over the 探索 list (#7). `none` keeps source order.
+    enum CookSort: Equatable { case none, mostCooked, leastRecent }
+    var cookSort: CookSort = .none
+    /// Cook tallies keyed by recipe id, refreshed alongside `recipes`.
+    private(set) var cookHistoryByRecipeId: [String: CookHistory] = [:]
 
     /// Merged, id-deduped recipes (bundled order first, custom appended; custom
     /// overrides a shared id in place). The parity-critical source order is never
@@ -112,7 +121,8 @@ final class RecipesStore {
         dietaryStore: DietaryPreferencesStore? = nil,
         dietPreferenceStore: DietPreferenceStore? = nil,
         remoteCatalog: (any RecipeCatalogFetching)? = nil,
-        catalogCache: RecipeCatalogCache? = nil
+        catalogCache: RecipeCatalogCache? = nil,
+        cookHistoryRepository: CookHistoryRepository? = nil
     ) {
         self.localRepository = localRepository
         self.customRepository = customRepository
@@ -123,7 +133,11 @@ final class RecipesStore {
         self.dietPreferenceStore = dietPreferenceStore
         self.remoteCatalog = remoteCatalog
         self.catalogCache = catalogCache
+        self.cookHistoryRepository = cookHistoryRepository
     }
+
+    /// Times the user has cooked `recipe` (0 when never / no source).
+    func cookCount(_ recipe: Recipe) -> Int { cookHistoryByRecipeId[recipe.id]?.cookCount ?? 0 }
 
     /// The catalog source for an immediate (offline-safe) load: the on-disk DB
     /// cache when present, else the bundled corpus. The background refresh
@@ -159,6 +173,7 @@ final class RecipesStore {
         let custom = (try? await customRepository.loadAllFor(householdID)) ?? []
         recipes = Self.merge(bundled: catalog, custom: custom)
         customIDs = Set(custom.map(\.id))
+        cookHistoryByRecipeId = (try? await cookHistoryRepository?.loadAll()) ?? [:]
         if let inventoryRepository {
             let inventory = (try? await inventoryRepository.loadAllFor(householdID)) ?? []
             inventoryNames = RecipeMatching.availableInventoryNameSet(inventory)
@@ -247,13 +262,54 @@ final class RecipesStore {
     var displayRecipes: [Recipe] {
         let activeCategory = effectiveCategory
         let exclusions = dietaryStore?.keywords ?? []
-        return tabBaseList
+        let filtered = tabBaseList
             .filter { Self.matchesCategory($0, activeCategory) }
             .filter(matchesTag)
             .filter { Self.matchesSearch($0, query: searchQuery) }
             .filter(matchesTime)
             .filter(matchesFavorites)
             .filter { !RecipeMatching.hasExcludedIngredient($0, exclusions) }
+        return applyCookSort(filtered)
+    }
+
+    /// #7 做过次数 sort: 最常做 (cookCount desc) or 好久没做 (cooked oldest-first,
+    /// never-cooked last). Stable by source order on ties. `none` = no reorder.
+    private func applyCookSort(_ list: [Recipe]) -> [Recipe] {
+        switch cookSort {
+        case .none:
+            return list
+        case .mostCooked:
+            return list.enumerated().sorted { lhs, rhs in
+                let a = cookCount(lhs.element), b = cookCount(rhs.element)
+                if a != b { return a > b }
+                return lhs.offset < rhs.offset
+            }.map(\.element)
+        case .leastRecent:
+            return list.enumerated().sorted { lhs, rhs in
+                let la = cookHistoryByRecipeId[lhs.element.id]?.lastCookedAt
+                let lb = cookHistoryByRecipeId[rhs.element.id]?.lastCookedAt
+                switch (la, lb) {
+                case let (x?, y?): return x != y ? x < y : lhs.offset < rhs.offset
+                case (_?, nil): return true   // cooked before never-cooked
+                case (nil, _?): return false
+                case (nil, nil): return lhs.offset < rhs.offset
+                }
+            }.map(\.element)
+        }
+    }
+
+    /// 当前节气名 (e.g. "芒种") — labels the 时令推荐 carousel.
+    func currentSolarTermName(now: Date = Date()) -> String {
+        SeasonalRules.currentTerm(now).name
+    }
+
+    /// In-season recipes for today (ranked by distinct in-season ingredients),
+    /// honoring 忌口 exclusions. Empty when nothing matches. Shown only on the
+    /// 探索 tab with no active query so it never fights the filtered list.
+    func seasonalRecipes(now: Date = Date(), limit: Int = 6) -> [Recipe] {
+        let exclusions = dietaryStore?.keywords ?? []
+        let eligible = recipes.filter { !RecipeMatching.hasExcludedIngredient($0, exclusions) }
+        return SeasonalRules.rankRecipes(eligible, date: now, limit: limit)
     }
 
     /// The per-tab source list BEFORE the shared filters. `explore`/`mine` keep
@@ -330,7 +386,7 @@ final class RecipesStore {
     /// True when any filter/search is narrowing the list (drives empty-state copy).
     var hasActiveQuery: Bool {
         !searchQuery.trimmed.isEmpty || effectiveCategory != nil || favoritesOnly
-            || timeFilter != .all || selectedTag != nil
+            || timeFilter != .all || selectedTag != nil || cookSort != .none
     }
 
     var favoriteCount: Int {
@@ -346,6 +402,7 @@ final class RecipesStore {
         searchQuery = ""
         favoritesOnly = false
         timeFilter = .all
+        cookSort = .none
     }
 
     // MARK: Filtering internals

@@ -104,6 +104,7 @@ private struct ShoppingContent: View {
     @Environment(PendingSyncStatusStore.self) private var pendingSync: PendingSyncStatusStore?
 
     @State private var isAddingItem = false
+    @State private var isEditingOrder = false
     /// Drives the intake-review push; `reviewSource` is the rows sent so the
     /// applied ones can be removed from the list on return.
     @State private var reviewRoute: ReviewRoute?
@@ -141,6 +142,14 @@ private struct ShoppingContent: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
+                    isEditingOrder = true
+                } label: {
+                    Image(systemName: "arrow.up.arrow.down")
+                }
+                .accessibilityLabel("分类排序")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
                     isAddingItem = true
                 } label: {
                     Image(systemName: "plus")
@@ -150,6 +159,9 @@ private struct ShoppingContent: View {
         }
         .sheet(isPresented: $isAddingItem) {
             ShoppingAddSheet(store: store)
+        }
+        .sheet(isPresented: $isEditingOrder) {
+            ShoppingCategoryOrderView { Task { await store.load() } }
         }
         .sheet(item: $editRoute) { route in
             ShoppingDetailEditSheet(store: store, item: route.item)

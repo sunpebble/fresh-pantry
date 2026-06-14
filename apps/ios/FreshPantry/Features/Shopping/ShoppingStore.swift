@@ -50,6 +50,11 @@ final class ShoppingStore {
     /// existing behavior (and tests) are unchanged.
     var filter: ShoppingFilter = .all
 
+    /// User shelf-aisle order for the category sections (device-local; defaults to
+    /// canonical). Reloaded from `ShoppingCategoryOrder` on every `load()` so a
+    /// change made in settings takes effect when the Shopping tab reappears.
+    var categoryOrder: [String] = ShoppingCategoryOrder.canonical
+
     /// Collapsed category section keys (the 分类分组折叠态). View state kept here
     /// like `filter`; in-memory only (load/reload never touch it), matching the
     /// Flutter non-persistent behavior. String keys tolerate a category vanishing
@@ -86,6 +91,7 @@ final class ShoppingStore {
             isLoading = false
             hasLoaded = true
         }
+        categoryOrder = ShoppingCategoryOrder.load()
         do {
             items = try await repository.loadAllFor(householdID)
         } catch {
@@ -471,10 +477,9 @@ final class ShoppingStore {
         }.map(\.element)
     }
 
-    /// Index of the item's normalized category in `FoodCategories.values`;
-    /// unknown/blank categories sort last.
+    /// Index of the item's normalized category in the user's `categoryOrder`
+    /// (defaults to canonical); unknown/blank categories sort last.
     private func categoryRank(_ category: String) -> Int {
-        let normalized = FoodCategories.normalize(category) ?? FoodCategories.other
-        return FoodCategories.values.firstIndex(of: normalized) ?? FoodCategories.values.count
+        ShoppingCategoryOrder.rank(category, order: categoryOrder)
     }
 }

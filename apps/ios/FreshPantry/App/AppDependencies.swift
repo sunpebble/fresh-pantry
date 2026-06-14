@@ -17,6 +17,8 @@ final class AppDependencies {
     /// Append-only food-departure log (consumed/wasted) — the waste-stats source
     /// of truth. The cook → deduction flow auto-logs consumed departures here.
     let foodLogRepository: FoodLogRepository
+    /// Device-local per-recipe cook tally (#7) — drives 最常做/好久没做 + 做过 N 次.
+    let cookHistoryRepository: CookHistoryRepository
     /// Single-row local cache of the current user's profile (avatar/name/nickname).
     let profileRepository: ProfileRepository
     /// Drives the profile-edit screen + the登录后 onboarding profile gate. Shared
@@ -77,6 +79,8 @@ final class AppDependencies {
     /// Holds a recipe URL handed in by the Share Extension until 食谱 can open the
     /// pre-filled 新建食谱 import form. Always built (no backend dependency).
     let recipeImportRouter: RecipeImportRouter
+    /// Carries an ingredient name from 临期看板「→做这道菜」 to the Recipes tab (#18).
+    let recipeFilterRouter: RecipeFilterRouter
     /// Holds a tapped expiry-notification id until the Dashboard pushes the 临期
     /// screen. Producer = `notificationService.onTap` (wired below); consumer =
     /// `DashboardView`. Always built (local notifications need no backend).
@@ -138,6 +142,7 @@ final class AppDependencies {
     ) {
         self.inventoryRepository = InventoryRepository(modelContainer: modelContainer)
         self.foodLogRepository = FoodLogRepository(modelContainer: modelContainer)
+        self.cookHistoryRepository = CookHistoryRepository(modelContainer: modelContainer)
         self.profileRepository = ProfileRepository(modelContainer: modelContainer)
         self.shoppingRepository = ShoppingRepository(modelContainer: modelContainer)
         self.customRecipeRepository = CustomRecipeRepository(modelContainer: modelContainer)
@@ -156,6 +161,7 @@ final class AppDependencies {
         self.debugMenuGate = DebugMenuGate()
         self.inviteRouter = InviteRouter()
         self.recipeImportRouter = RecipeImportRouter()
+        self.recipeFilterRouter = RecipeFilterRouter()
         let notificationTapRouter = NotificationTapRouter()
         self.notificationTapRouter = notificationTapRouter
         self.spotlightIndexer = SpotlightIndexer()

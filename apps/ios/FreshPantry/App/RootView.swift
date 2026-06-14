@@ -15,6 +15,7 @@ struct RootView: View {
     @Environment(AppDependencies.self) private var dependencies
     @Environment(InviteRouter.self) private var inviteRouter
     @Environment(RecipeImportRouter.self) private var recipeImportRouter
+    @Environment(RecipeFilterRouter.self) private var recipeFilterRouter
     @Environment(NotificationTapRouter.self) private var notificationTapRouter
     @Environment(SpotlightRouter.self) private var spotlightRouter
     @Environment(\.scenePhase) private var scenePhase
@@ -389,6 +390,11 @@ struct RootView: View {
         // consumes the pending URL and opens the pre-filled 新建食谱.
         .onChange(of: recipeImportRouter.pendingURL) { _, url in
             if url != nil { selection = .recipes }
+        }
+        // 临期→做这道菜 (#18): switch to the 食谱 tab so RecipesView consumes the
+        // pending ingredient and filters to dishes that use it.
+        .onChange(of: recipeFilterRouter.pendingIngredient) { _, name in
+            if name != nil { selection = .recipes }
         }
         // Spotlight result tap: switch to the owning tab and hand it the model
         // id (the tab pushes the detail). `.task(id:)` — not `.onChange` — so a

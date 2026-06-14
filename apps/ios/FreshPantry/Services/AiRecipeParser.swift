@@ -15,6 +15,15 @@ enum AiRecipeParser {
         + "JSON 字段：name, category, cookingMinutes (int 分钟), difficulty (int 1-5), "
         + "description, imageUrl (可空；如果网页内容包含“封面图片”，优先使用该 URL), "
         + "ingredients ([{name, amount}]), steps (string array)。"
+        + stepAtomizationRule
+
+    /// iOS-only addition (#16): instructs the model to keep steps atomic (one
+    /// action per step) so Cook Mode's one-step-per-screen pager reads cleanly.
+    /// Appended to both import prompts; does NOT change the JSON field contract the
+    /// "do NOT reword" parity note above protects.
+    static let stepAtomizationRule =
+        "steps 请拆成单一动作的短句：一步只做一件事，把“一大段塞进一步”拆成多步，"
+        + "保持原有先后顺序，不要合并步骤，也不要编造原文没有的步骤。"
 
     /// System prompt for the OCR-text path. The input is raw recognized text from
     /// a photographed / screenshotted recipe — lines may be out of order, broken
@@ -30,6 +39,7 @@ enum AiRecipeParser {
         + "只返回 JSON，不要前后文。如果文本不足以抽取出食谱，返回 {\"error\":\"...\"}。"
         + "JSON 字段：name, category, cookingMinutes (int 分钟), difficulty (int 1-5), "
         + "description, ingredients ([{name, amount}]), steps (string array)。"
+        + stepAtomizationRule
 
     /// Normalizes + gates the URL, fetches the page, runs the LLM, and parses the
     /// result into a `RecipeDraft`. `pageFetcher` is injectable so tests run with
