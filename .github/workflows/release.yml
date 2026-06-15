@@ -21,8 +21,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      # 非 workspace monorepo:根 package.json 只有便捷脚本,无依赖。各子包持有
+      # 自己的 package-lock.json,故在各子包内分别 npm ci(根目录 npm ci 只装空根,
+      # vitest 不会出现 → "vitest: not found" exit 127)。
       - name: Install dependencies
-        run: npm ci
+        run: |
+          cd apps/api && npm ci
+          cd ../recipe-pipeline && npm ci
       - name: Run quality checks (api:test && recipes:test)
         run: npm run check
 
