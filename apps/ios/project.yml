@@ -62,10 +62,13 @@ targets:
         embed: true
       - target: FreshPantryWidgets
         embed: true
-      # 共享 widget intent/类型的唯一模块。app 嵌入它(随 .app 进 Frameworks/),
-      # widget 链接同一份 → 单一类型身份,intent 元数据经 AppIntentsPackage 聚合进 app bundle。
+      # 共享 widget intent/类型的唯一模块,**静态**链接进 app 二进制 → 其 AppIntents 元数据
+      # 经处理器的 --static-metadata-file-list 直接【合并】进 app 自己的 Metadata.appintents。
+      # (动态 framework 的元数据只留在自己 bundle、不并入 app,chronod 按 app bundle id 查不到
+      # → 真机 "no metadata for ToggleShoppingItemIntent in com.kunish.freshPantry"。)静态库无
+      # 独立 bundle,不 embed。
       - target: FreshPantryWidgetKit
-        embed: true
+        embed: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kunish.freshPantry
@@ -161,19 +164,13 @@ targets:
         PRODUCT_NAME: FreshPantryWidgetKit
         GENERATE_INFOPLIST_FILE: YES
         DEFINES_MODULE: YES
-        # 嵌入式 framework 必须 SKIP_INSTALL: YES,否则它会作为【顶层产物】进归档,
-        # 使归档类型歧义 → Export IPA 报 "Unknown Distribution Error / method expected
-        # one {}"(分发方式检测返回空)。嵌入由 app 依赖的 embed: true 控制,与 SKIP_INSTALL
-        # 无关(已验证 SKIP_INSTALL: YES 下 framework 仍进 app/Frameworks/)。
+        # **静态库**:符号 + AppIntents 元数据被【链接进】每个消费方二进制(app / widget),
+        # 处理器经 --static-metadata-file-list 把本模块的 intent 元数据【合并】进消费方自己的
+        # Metadata.appintents(动态 framework 的元数据只留在自己 bundle、不并入,chronod 按
+        # app bundle id 查不到)。静态库无独立 Mach-O dylib,不签名、不嵌入。
+        MACH_O_TYPE: staticlib
         SKIP_INSTALL: YES
-      configs:
-        Debug:
-          CODE_SIGN_STYLE: Automatic
-        Release:
-          # 框架无 entitlements,不需描述文件;随 app 嵌入时以 app 的分发身份签名。
-          CODE_SIGN_STYLE: Manual
-          CODE_SIGN_IDENTITY: Apple Distribution
-          PROVISIONING_PROFILE_SPECIFIER: ""
+        CODE_SIGNING_ALLOWED: NO
 
   FreshPantryTests:
     type: bundle.unit-test
