@@ -81,11 +81,17 @@ struct ShoppingWidgetView: View {
     let snapshot: WidgetShoppingSnapshot
     let family: WidgetFamily
 
+    private static let shoppingURL = URL(string: "freshpantry://shopping")!
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 4) {
-                Image(systemName: "cart.fill").foregroundStyle(.blue)
-                Text("购物 \(snapshot.uncheckedCount) 项待买").font(.headline)
+            // 标题:medium/large 用 Link 承载深链,而非把 widgetURL 挂在整个容器上 ——
+            // 容器级 widgetURL 会抢占/吞掉行内 Button(intent:) 的点击(iOS 17/18 已知
+            // 行为),正是「勾选点了没反应」的根因。small 无交互按钮,整块仍走 widgetURL。
+            if family == .systemSmall {
+                header
+            } else {
+                Link(destination: Self.shoppingURL) { header }
             }
             if family == .systemSmall {
                 if let first = snapshot.items.first { Text(first.name).font(.subheadline).lineLimit(1) }
@@ -99,25 +105,37 @@ struct ShoppingWidgetView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .widgetURL(URL(string: "freshpantry://shopping"))
+        // 仅 small(无交互按钮)整块深链;medium/large 置 nil(深链改由上面标题 Link 承载),
+        // 避免容器 widgetURL 吞掉行内勾选按钮的点击。
+        .widgetURL(family == .systemSmall ? Self.shoppingURL : nil)
+    }
+
+    private var header: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "cart.fill").foregroundStyle(.blue)
+            Text("购物 \(snapshot.uncheckedCount) 项待买").font(.headline)
+        }
     }
 
     private var rowLimit: Int { family == .systemLarge ? 8 : 3 }
 }
 
-/// 单行购物项,带交互勾选按钮(iOS 17+)。点击翻转 store + 重载时间线。
+/// 单行购物项,带交互勾选(iOS 17+):**整行**(图标 + 名称 + 留白)都是勾选按钮。
+/// 点击翻转 store + 重载时间线。整行可点 + `.contentShape(Rectangle())` 兜住命中区 ——
+/// 避免「裸 SF Symbol 命中区收缩到 ~17pt + 容器 widgetURL 抢点」导致的「点了没反应」。
 struct ShoppingRowView: View {
     let item: WidgetShoppingSnapshot.Item
     var body: some View {
-        HStack {
-            Button(intent: ToggleShoppingItemIntent(itemID: item.id)) {
+        Button(intent: ToggleShoppingItemIntent(itemID: item.id)) {
+            HStack {
                 Image(systemName: item.isChecked ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(item.isChecked ? .blue : .secondary)
+                Text(item.name).font(.subheadline).strikethrough(item.isChecked).lineLimit(1)
+                Spacer()
             }
-            .buttonStyle(.plain)
-            Text(item.name).font(.subheadline).strikethrough(item.isChecked).lineLimit(1)
-            Spacer()
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 }
 
