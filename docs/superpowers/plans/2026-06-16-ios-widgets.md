@@ -778,9 +778,27 @@ cd /Users/shikun/Developer/opensource/fresh_pantry && \
 widget 从共享容器派生展示数据。所有派生为纯逻辑,用内存容器单测。
 
 **Files:**
+- Modify: `apps/ios/FreshPantry/Domain/Rules/FoodLogStatistics.swift`(加 `recentWindowDays`)
+- Modify: `apps/ios/FreshPantry/Features/Waste/WasteInsightsStore.swift`(`recentWindowDays` 转发,DRY)
 - Create: `apps/ios/FreshPantry/Widgets/Shared/WidgetSnapshots.swift`
 - Create: `apps/ios/FreshPantry/Widgets/Shared/WidgetDataReader.swift`
 - Test: `apps/ios/FreshPantryTests/Widgets/WidgetDataReaderTests.swift`
+
+- [ ] **Step 0: 把减废窗口常量下沉 Domain(reader 复用,避免依赖 Features/ 的 WasteInsightsStore)**
+
+在 `apps/ios/FreshPantry/Domain/Rules/FoodLogStatistics.swift` 的 `enum FoodLogStatistics {` 内、`computeStats` 之前加:
+
+```swift
+    /// 减废统计的有界滞留窗口(天)。app 的 WasteInsightsStore 与小组件 reader
+    /// 共用此单一真源(Flutter `foodLogRecentWindow = Duration(days: 90)`)。
+    static let recentWindowDays = 90
+```
+
+在 `apps/ios/FreshPantry/Features/Waste/WasteInsightsStore.swift` 中,把 `static let recentWindowDays = 90` 改为转发(保持其文档注释不变,只改值):
+
+```swift
+    static let recentWindowDays = FoodLogStatistics.recentWindowDays
+```
 
 - [ ] **Step 1: 投影值类型**
 
@@ -1015,7 +1033,9 @@ struct WidgetDataReader {
             let days = ing.expiryDate.map { ExpiryCalculator.daysUntilExpiry($0, now: now) }
             return Tagged(ingredient: ing, state: state, days: days)
         }
-        let nonFresh = tagged.filter { DashboardStore.isNonFresh($0.state) }
+        // 非新鲜 = 非 .fresh(等价 DashboardStore.isNonFresh,但 DashboardStore 在
+        // Features/ 未共享进 widget,故就地判定——reader 是自包含的镜像派生)。
+        let nonFresh = tagged.filter { $0.state != .fresh }
 
         // 排序:严重度(expired→urgent→soon),再最快到期优先(nil 到期日最后),稳定。
         let order: [FreshnessState] = [.expired, .urgent, .expiringSoon, .fresh]
@@ -1078,7 +1098,9 @@ struct WidgetDataReader {
 
     func wasteSnapshot(householdID: String, now: Date) async -> WidgetWasteSnapshot {
         let repo = FoodLogRepository(modelContainer: container)
-        let sinceMs = Int(now.addingTimeInterval(-Double(WasteInsightsStore.recentWindowDays) * 86_400).timeIntervalSince1970 * 1000)
+        // 窗口常量在 Domain 的 FoodLogStatistics(WasteInsightsStore 在 Features/
+        // 未共享进 widget;两者经 FoodLogStatistics.recentWindowDays 单一真源)。
+        let sinceMs = Int(now.addingTimeInterval(-Double(FoodLogStatistics.recentWindowDays) * 86_400).timeIntervalSince1970 * 1000)
         guard let entries = try? await repo.loadRecentFor(householdID, sinceMs: sinceMs) else { return .empty }
         let stats = FoodLogStatistics.computeStats(entries)
         return WidgetWasteSnapshot(
