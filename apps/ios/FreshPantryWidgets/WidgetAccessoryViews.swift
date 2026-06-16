@@ -18,9 +18,10 @@ struct AccessoryCircularView: View {
 /// accessoryRectangular:可配置内容的一行摘要。
 struct AccessoryRectangularView: View {
     let entry: WidgetEntry
+    let content: WidgetContentChoice
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            switch entry.content {
+            switch content {
             case .expiring:
                 Label("临期 \(entry.bundle.expiring.needsAttentionCount) 件", systemImage: "exclamationmark.triangle")
                 if let first = entry.bundle.expiring.items.first {
@@ -37,7 +38,7 @@ struct AccessoryRectangularView: View {
                 Label("用掉率 \(entry.bundle.waste.useUpPercent)%", systemImage: "leaf")
             }
         }
-        .widgetURL(URL(string: contentDeepLink(entry.content)))
+        .widgetURL(URL(string: contentDeepLink(content)))
     }
 }
 

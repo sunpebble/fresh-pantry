@@ -1,26 +1,9 @@
-import AppIntents
-import WidgetKit
-
-/// 用户在长按编辑 widget 时可选的内容。
-enum WidgetContentChoice: String, AppEnum {
+/// widget 内容类别。每个固定 widget 对应一类(见 FreshPantryWidget.swift)。
+///
+/// 历史:曾用 `AppEnum` + `SelectWidgetContentIntent`(`WidgetConfigurationIntent`)
+/// 做单个可配置 widget,但真机 Release 包不认该配置 intent(长按无「编辑小组件」),
+/// widget 卡在默认内容(临期),内容为空时看似空白。改为每类一个独立
+/// StaticConfiguration widget 后,这里退化为普通枚举,仅用于内部按类别分发视图。
+enum WidgetContentChoice {
     case expiring, mealPlan, shopping, waste
-
-    static var typeDisplayRepresentation: TypeDisplayRepresentation { "组件内容" }
-    static var caseDisplayRepresentations: [WidgetContentChoice: DisplayRepresentation] {
-        [
-            .expiring: "临期食材",
-            .mealPlan: "今日膳食",
-            .shopping: "购物清单",
-            .waste: "减废成效",
-        ]
-    }
-}
-
-/// widget 配置 intent:选择展示哪类内容(默认临期)。
-struct SelectWidgetContentIntent: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource { "选择内容" }
-    static var description: IntentDescription { "选择小组件展示的内容" }
-
-    @Parameter(title: "内容", default: .expiring)
-    var content: WidgetContentChoice
 }

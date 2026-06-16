@@ -4,6 +4,9 @@ import WidgetKit
 @main
 struct FreshPantryWidgetBundle: WidgetBundle {
     var body: some Widget {
-        FreshPantryWidget()
+        ExpiringWidget()
+        MealPlanWidget()
+        ShoppingWidget()
+        WasteWidget()
     }
 }

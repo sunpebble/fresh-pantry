@@ -1,8 +1,11 @@
 import SwiftUI
 import WidgetKit
 
-struct WidgetRootView: View {
+/// 固定 widget 的根视图:内容类别由所属 widget 传入(见 FreshPantryWidget.swift)。
+/// 锁屏 circular / inline 恒显示临期;rectangular 显示本 widget 的内容。
+struct StaticWidgetRootView: View {
     let entry: WidgetEntry
+    let content: WidgetContentChoice
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
@@ -13,20 +16,20 @@ struct WidgetRootView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            content
+            contentView
         }
     }
 
-    @ViewBuilder private var content: some View {
+    @ViewBuilder private var contentView: some View {
         switch family {
         case .accessoryCircular:
             AccessoryCircularView(snapshot: entry.bundle.expiring)
         case .accessoryRectangular:
-            AccessoryRectangularView(entry: entry)
+            AccessoryRectangularView(entry: entry, content: content)
         case .accessoryInline:
             AccessoryInlineView(snapshot: entry.bundle.expiring)
         default:
-            switch entry.content {
+            switch content {
             case .expiring: ExpiringWidgetView(snapshot: entry.bundle.expiring, family: family)
             case .mealPlan: MealPlanWidgetView(snapshot: entry.bundle.mealPlan, family: family)
             case .shopping: ShoppingWidgetView(snapshot: entry.bundle.shopping, family: family)
