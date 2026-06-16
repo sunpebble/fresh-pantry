@@ -34,6 +34,14 @@ enum FoodLogStatistics {
     /// 共用此单一真源(Flutter `foodLogRecentWindow = Duration(days: 90)`)。
     static let recentWindowDays = 90
 
+    /// 最近窗口起点的毫秒时间戳(用日历算,DST 安全)。app 的 WasteInsightsStore
+    /// 与小组件 reader 共用此口径,避免固定 86400s 算法在夏令时切换处对窗口边缘
+    /// 条目产生计数分歧。
+    static func recentWindowStartMillis(now: Date, calendar: Calendar = .current) -> Int {
+        let cutoff = calendar.date(byAdding: .day, value: -recentWindowDays, to: now) ?? now
+        return Int(cutoff.timeIntervalSince1970 * 1000)
+    }
+
     /// Tallies consumed / wasted / rescued / saved over `entries`. `rescued`
     /// counts a consumed entry whose batch was already expiring (`wasExpiring`).
     static func computeStats(_ entries: [FoodLogEntry]) -> FoodLogStats {

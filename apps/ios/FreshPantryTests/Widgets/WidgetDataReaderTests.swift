@@ -101,4 +101,33 @@ struct WidgetDataReaderTests {
         #expect(snap.useUpPercent == 67)
         #expect(!snap.isEmpty)
     }
+
+    @Test func expiringTruncatesToLimitButCountsAll() async throws {
+        let container = try makeContainer()
+        let inv = InventoryRepository(modelContainer: container)
+        let cal = Calendar.current
+        // 5 个全过期项,limit=3:items 截断到 3,但 expiredCount 计全部 5。
+        let items = (0..<5).map { i in
+            Ingredient(id: "x\(i)", name: "过期\(i)", quantity: "1", unit: "份",
+                       imageUrl: "", freshnessPercent: 0.1, state: .fresh,
+                       expiryDate: cal.date(byAdding: .day, value: -1, to: now())!)
+        }
+        try await inv.saveItems(hh, items)
+
+        let reader = WidgetDataReader(container: container)
+        let snap = await reader.expiringSnapshot(householdID: hh, now: now(), limit: 3)
+
+        #expect(snap.expiredCount == 5)   // 计数跨全部非新鲜
+        #expect(snap.items.count == 3)    // 展示项按 limit 截断
+    }
+
+    @Test func emptyContainerYieldsEmptySnapshots() async throws {
+        let container = try makeContainer()
+        let reader = WidgetDataReader(container: container)
+        let bundle = await reader.snapshotBundle(householdID: "nobody", now: now())
+        #expect(bundle.expiring == .empty)
+        #expect(bundle.mealPlan == .empty)
+        #expect(bundle.shopping == .empty)
+        #expect(bundle.waste == .empty)
+    }
 }

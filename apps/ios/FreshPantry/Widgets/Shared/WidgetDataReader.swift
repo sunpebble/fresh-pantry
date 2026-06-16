@@ -37,8 +37,9 @@ struct WidgetDataReader {
             let days = ing.expiryDate.map { ExpiryCalculator.daysUntilExpiry($0, now: now) }
             return Tagged(ingredient: ing, state: state, days: days)
         }
-        // 非新鲜 = 非 .fresh(等价 DashboardStore.isNonFresh,但 DashboardStore 在
-        // Features/ 未共享进 widget,故就地判定——reader 是自包含的镜像派生)。
+        // 非新鲜 = 非 .fresh。注意:这里按渲染时刻 now 用 ExpiryCalculator 重算 tier
+        // (而非读 ingredient.state 的存量值)——widget 每日跨午夜刷新需让剩余天数与
+        // tier 随当天重算,即便 app 当天未运行;故刻意不复用 DashboardStore 的存量 state。
         let nonFresh = tagged.filter { $0.state != .fresh }
 
         // 排序:严重度(expired→urgent→soon),再最快到期优先(nil 到期日最后),稳定。
@@ -74,9 +75,9 @@ struct WidgetDataReader {
         guard let entries = try? await repo.loadAllFor(householdID) else { return .empty }
         let cal = Calendar.current
         let todays = entries.filter { cal.isDate($0.date, inSameDayAs: now) }
-        let items = todays.map { entry -> WidgetMealPlanSnapshot.Item in
-            let title = (entry.title?.isEmpty == false) ? entry.title! : entry.recipeName
-            return WidgetMealPlanSnapshot.Item(title: title, done: entry.done, mealType: entry.mealType)
+        let items = todays.map { entry in
+            // 复用模型的 displayTitle(与 MealPlanView 同一真源),避免 widget 与 app 显示不一致。
+            WidgetMealPlanSnapshot.Item(title: entry.displayTitle, done: entry.done, mealType: entry.mealType)
         }
         return WidgetMealPlanSnapshot(items: items)
     }
@@ -102,9 +103,9 @@ struct WidgetDataReader {
 
     func wasteSnapshot(householdID: String, now: Date) async -> WidgetWasteSnapshot {
         let repo = FoodLogRepository(modelContainer: container)
-        // 窗口常量在 Domain 的 FoodLogStatistics(WasteInsightsStore 在 Features/
-        // 未共享进 widget;两者经 FoodLogStatistics.recentWindowDays 单一真源)。
-        let sinceMs = Int(now.addingTimeInterval(-Double(FoodLogStatistics.recentWindowDays) * 86_400).timeIntervalSince1970 * 1000)
+        // 窗口 cutoff 用 Domain 的日历感知 helper(WasteInsightsStore 与本 reader
+        // 共用,DST 安全;WasteInsightsStore 在 Features/ 未共享进 widget)。
+        let sinceMs = FoodLogStatistics.recentWindowStartMillis(now: now)
         guard let entries = try? await repo.loadRecentFor(householdID, sinceMs: sinceMs) else { return .empty }
         let stats = FoodLogStatistics.computeStats(entries)
         return WidgetWasteSnapshot(

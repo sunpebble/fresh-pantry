@@ -97,8 +97,7 @@ final class WasteInsightsStore {
             isLoading = false
             hasLoaded = true
         }
-        let cutoff = Calendar.current.date(byAdding: .day, value: -Self.recentWindowDays, to: now) ?? now
-        let sinceMs = Int(cutoff.timeIntervalSince1970 * 1000)
+        let sinceMs = FoodLogStatistics.recentWindowStartMillis(now: now)
         do {
             entries = try await repository.loadRecentFor(householdID, sinceMs: sinceMs)
         } catch {
