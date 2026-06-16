@@ -1,7 +1,6 @@
 import Foundation
 import SwiftData
 import Testing
-import WidgetKit
 @testable import FreshPantry
 
 @MainActor
@@ -130,63 +129,5 @@ struct WidgetDataReaderTests {
         #expect(bundle.mealPlan == .empty)
         #expect(bundle.shopping == .empty)
         #expect(bundle.waste == .empty)
-    }
-
-    // MARK: 选择性快照(widget 进程内存预算:每次只算真正要展示的那一类)
-
-    /// 四类数据全部种入,验证 `bundle(for:family:…)` 只填充当前所需那一类、其余留 .empty。
-    private func seedAllFour(_ container: ModelContainer) async throws {
-        let cal = Calendar.current
-        let inv = InventoryRepository(modelContainer: container)
-        try await inv.saveItems(hh, [
-            Ingredient(id: "i1", name: "过期菜", quantity: "1", unit: "份", imageUrl: "",
-                       freshnessPercent: 0.1, state: .fresh,
-                       expiryDate: cal.date(byAdding: .day, value: -1, to: now())!),
-        ])
-        let meal = MealPlanRepository(modelContainer: container)
-        try await meal.saveEntries(hh, [
-            MealPlanEntry(id: "m1", date: cal.startOfDay(for: now()), recipeId: "r",
-                          recipeName: "番茄炒蛋", servings: 1, done: false, remoteVersion: 0),
-        ])
-        let shop = ShoppingRepository(modelContainer: container)
-        try await shop.upsert(hh, ShoppingItem(id: "s1", name: "鸡蛋", detail: "",
-                                               category: FoodCategories.other, isChecked: false))
-        let food = FoodLogRepository(modelContainer: container)
-        try await food.append(hh, FoodLogEntry(id: "f1", name: "x", category: FoodCategories.other,
-                                               outcome: .consumed, loggedAt: now(),
-                                               wasExpiring: true, remoteVersion: 0))
-    }
-
-    @Test func bundleComputesOnlySelectedContentForSystemFamily() async throws {
-        let container = try makeContainer()
-        try await seedAllFour(container)
-        let reader = WidgetDataReader(container: container)
-
-        let meal = await reader.bundle(for: .mealPlan, family: .systemMedium, householdID: hh, now: now())
-        #expect(!meal.mealPlan.items.isEmpty)   // 选中的算了
-        #expect(meal.expiring == .empty)         // 其余三类不算(省内存)
-        #expect(meal.shopping == .empty)
-        #expect(meal.waste == .empty)
-
-        let waste = await reader.bundle(for: .waste, family: .systemSmall, householdID: hh, now: now())
-        #expect(!waste.waste.isEmpty)
-        #expect(waste.expiring == .empty)
-        #expect(waste.mealPlan == .empty)
-        #expect(waste.shopping == .empty)
-    }
-
-    @Test func bundleAlwaysComputesExpiringForCircularAndInline() async throws {
-        let container = try makeContainer()
-        try await seedAllFour(container)
-        let reader = WidgetDataReader(container: container)
-
-        // circular/inline 永远只展示临期,与所选内容无关 → 即便选了购物也只算临期。
-        for family in [WidgetFamily.accessoryCircular, .accessoryInline] {
-            let snap = await reader.bundle(for: .shopping, family: family, householdID: hh, now: now())
-            #expect(snap.expiring.needsAttentionCount == 1)
-            #expect(snap.shopping == .empty)
-            #expect(snap.mealPlan == .empty)
-            #expect(snap.waste == .empty)
-        }
     }
 }

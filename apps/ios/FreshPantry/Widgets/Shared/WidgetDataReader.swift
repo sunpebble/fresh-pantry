@@ -1,6 +1,5 @@
 import Foundation
 import SwiftData
-import WidgetKit
 
 /// 从共享 SwiftData 容器派生小组件展示数据。复用既有 `@ModelActor` repo 加载,
 /// 派生口径对齐 app(`ExpiryCalculator` 临期分级,`FoodLogStatistics` 减废)。
@@ -13,31 +12,9 @@ struct WidgetDataReader {
         self.container = container
     }
 
-    /// **Provider 实际走这条**:只算当前 family + 选中内容真正要展示的那一类快照,
-    /// 其余留 `.empty`。widget 扩展进程有约 30MB 硬内存上限,一次性算四类(各开一个
-    /// `@ModelActor` + 全量 fetch/decode)极易超限被系统 jetsam 杀掉 → 永远停在占位
-    /// 渲染不出内容;故按需只取一类,把峰值内存/CPU 压到最小。
-    /// circular / inline 配件永远只显示临期(与所选内容无关)。
-    func bundle(for content: WidgetContentChoice, family: WidgetFamily, householdID: String, now: Date) async -> WidgetSnapshotBundle {
-        switch family {
-        case .accessoryCircular, .accessoryInline:
-            return WidgetSnapshotBundle(expiring: await expiringSnapshot(householdID: householdID, now: now, limit: 8))
-        default:
-            switch content {
-            case .expiring:
-                return WidgetSnapshotBundle(expiring: await expiringSnapshot(householdID: householdID, now: now, limit: 8))
-            case .mealPlan:
-                return WidgetSnapshotBundle(mealPlan: await mealPlanSnapshot(householdID: householdID, now: now))
-            case .shopping:
-                return WidgetSnapshotBundle(shopping: await shoppingSnapshot(householdID: householdID, limit: 8))
-            case .waste:
-                return WidgetSnapshotBundle(waste: await wasteSnapshot(householdID: householdID, now: now))
-            }
-        }
-    }
-
-    /// 一次读满四类内容。仅供测试与非内存敏感场景;Provider 改走 `bundle(for:family:…)`
-    /// 选择性加载(见其文档:widget 进程内存预算)。
+    /// 一次读满四类内容。**app 侧** `WidgetSnapshotPublisher` 在主进程(内存充足)
+    /// 调用,算好写进 App Group;widget 时间线只读那份快照,从不在 widget 进程调用
+    /// 本类型(其内存预算约 30MB,开 13 模型容器 + 取数会被 jetsam 杀)。
     func snapshotBundle(householdID: String, now: Date) async -> WidgetSnapshotBundle {
         async let expiring = expiringSnapshot(householdID: householdID, now: now, limit: 8)
         async let mealPlan = mealPlanSnapshot(householdID: householdID, now: now)

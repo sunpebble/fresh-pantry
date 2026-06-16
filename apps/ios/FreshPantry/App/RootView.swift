@@ -366,7 +366,12 @@ struct RootView: View {
         .task { await refreshPendingCount() }
         .onChange(of: dependencies.syncSession.dataRevision) {
             Task { await refreshPendingCount() }
-            WidgetRefreshCoordinator.reloadAll()
+            Task {
+                await WidgetSnapshotPublisher.publish(
+                    container: dependencies.modelContainer,
+                    householdID: dependencies.householdID
+                )
+            }
         }
         // An outbound push finished (SyncWriter pulse): re-read the outbox so a
         // just-synced row's 待同步 badge clears without waiting for a foreground

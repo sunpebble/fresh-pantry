@@ -16,9 +16,12 @@ struct ToggleShoppingItemIntent: AppIntent {
         guard let container = ModelContainerFactory.makeSharedExisting() else { return .result() }
         let householdID = WidgetSharedDefaults.readHouseholdID()
         let clientID = WidgetSharedDefaults.readClientID()
-        await ShoppingToggleService.toggle(
+        let toggled = await ShoppingToggleService.toggle(
             container: container, householdID: householdID, itemID: itemID, clientID: clientID, now: .now
         )
+        // store 已翻转 → 就地补丁预算快照,使重载后立即反映新勾选(app 下次刷新
+        // 会用权威数据覆盖)。读路径只读这份快照,不再开 SwiftData。
+        if toggled { WidgetSnapshotStore.toggleShoppingItem(itemID: itemID) }
         WidgetCenter.shared.reloadAllTimelines()
         return .result()
     }

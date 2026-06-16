@@ -117,14 +117,22 @@ struct FreshPantryApp: App {
                         householdID: dependencies.householdID,
                         clientID: dependencies.syncSession.clientId
                     )
-                    WidgetRefreshCoordinator.reloadAll()
+                    await WidgetSnapshotPublisher.publish(
+                        container: dependencies.modelContainer,
+                        householdID: dependencies.householdID
+                    )
                 }
                 .onChange(of: dependencies.householdID) { _, newID in
                     WidgetSharedDefaults.writeIdentity(
                         householdID: newID,
                         clientID: dependencies.syncSession.clientId
                     )
-                    WidgetRefreshCoordinator.reloadAll()
+                    Task {
+                        await WidgetSnapshotPublisher.publish(
+                            container: dependencies.modelContainer,
+                            householdID: newID
+                        )
+                    }
                 }
                 // INTENT ADD HANDOFF: drain the names captured by
                 // `AddToShoppingListIntent` once the active household is resolved
@@ -142,7 +150,12 @@ struct FreshPantryApp: App {
                 // household is unchanged).
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .background {
-                        WidgetRefreshCoordinator.reloadAll()
+                        Task {
+                            await WidgetSnapshotPublisher.publish(
+                                container: dependencies.modelContainer,
+                                householdID: dependencies.householdID
+                            )
+                        }
                         Self.scheduleAppRefresh()
                         // Re-sync expiry reminders against the session's FINAL
                         // inventory before suspension — one hook covers every

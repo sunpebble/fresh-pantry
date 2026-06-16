@@ -44,6 +44,14 @@ enum SentryBootstrap {
             options.enableAppHangTracking = true                // default true
             options.appHangTimeoutInterval = 2.0                // default 2.0s
             options.enableReportNonFullyBlockingAppHangs = true // default true (~0.8s case)
+            // 结构化 Logs + Metrics。`Diagnostics` 门面会从 `measure`/`failure` 自动
+            // 派生结构化日志与 count/distribution/gauge 指标(facade auto-derive),
+            // 故必须显式打开二者:
+            // - enableLogs 默认 false → 不开则 `SentrySDK.logger.*` 静默丢弃。
+            // - enableMetrics SDK 默认 true,但显式钉死,避免日后 SDK 默认翻转时
+            //   `SentrySDK.metrics.*` 静默失效却无人察觉。
+            options.enableLogs = true
+            options.enableMetrics = true
             let environment = config.environment.trimmingCharacters(in: .whitespacesAndNewlines)
             if !environment.isEmpty {
                 options.environment = environment

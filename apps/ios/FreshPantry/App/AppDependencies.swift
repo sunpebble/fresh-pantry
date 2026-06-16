@@ -141,12 +141,17 @@ final class AppDependencies {
     /// init param seeds the session's initial scope.
     var householdID: String { syncSession.selectedHouseholdId }
 
+    /// 应用唯一的持久化容器(供 app 侧算小组件快照写入 App Group;widget 时间线
+    /// 只读那份快照,不再自己开容器)。
+    let modelContainer: ModelContainer
+
     init(
         modelContainer: ModelContainer,
         householdID: String = "",
         config: AppConfig? = nil,
         syncSession: SyncSession? = nil
     ) {
+        self.modelContainer = modelContainer
         self.inventoryRepository = InventoryRepository(modelContainer: modelContainer)
         self.foodLogRepository = FoodLogRepository(modelContainer: modelContainer)
         self.favoriteRecipeRepository = FavoriteRecipeRepository(modelContainer: modelContainer)
