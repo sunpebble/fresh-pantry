@@ -58,19 +58,34 @@ enum ModelContainerFactory {
         }
     }
 
-    /// 生产容器。优先 App Group 容器(供小组件共享);若 App Group 不可用
-    /// (本地未签名),回退 SwiftData 默认位置,保证 app 仍能启动。**仅主 app
-    /// 调用**——它负责一次性迁移;小组件用 `makeSharedExisting()`,从不迁移。
+    /// 生产容器。优先 App Group 容器(供小组件共享);App Group 不可用(本地未
+    /// 签名)或迁移后的 store 打不开时,回退 SwiftData 默认位置,保证 app 仍能
+    /// 启动且绝不丢数据——迁移是 COPY,旧位置 store 始终保留。
+    ///
+    /// 可由任一 app 进程内的入口调用(冷启动,或 `openAppWhenRun=false` 的后台
+    /// App Intent 等);迁移对并发/重入容忍:目标存在即整体跳过、逐文件存在性
+    /// 守卫、APFS `copyItem` 为原子 clone。小组件走 `makeSharedExisting()`,从不迁移。
     static func makeShared() throws -> ModelContainer {
         guard let storeURL = appGroupStoreURL() else {
             // 无 App Group 授权 → 默认位置(旧行为),小组件届时拿不到数据显示空态。
-            let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-            return try ModelContainer(for: schema, configurations: [configuration])
+            return try makeDefaultLocationContainer()
         }
         if let legacy = legacyDefaultStoreURL() {
             migrateStore(from: legacy, to: storeURL)
         }
-        let configuration = ModelConfiguration(schema: schema, url: storeURL)
+        do {
+            let configuration = ModelConfiguration(schema: schema, url: storeURL)
+            return try ModelContainer(for: schema, configurations: [configuration])
+        } catch {
+            // App Group store 打不开(迁移损坏 / 磁盘异常 / schema 不匹配)→ 回退默认
+            // 位置打开旧 store。绝不让一次性故障永久锁死数据(旧 store 因 COPY 仍完整)。
+            return try makeDefaultLocationContainer()
+        }
+    }
+
+    /// SwiftData 默认位置的持久化容器(无 App Group 授权 / App Group 打开失败的回退)。
+    private static func makeDefaultLocationContainer() throws -> ModelContainer {
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         return try ModelContainer(for: schema, configurations: [configuration])
     }
 
