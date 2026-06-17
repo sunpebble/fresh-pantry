@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.23.1](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.23.0...fresh_pantry-v1.23.1) (2026-06-17)
+
+
+### Performance Improvements
+
+* **ios:** 消除列表滚动时入场动画/分类头像弹入的「加载感」 ([f4e880c](https://github.com/kunish/fresh_pantry/commit/f4e880c354be52981faa59f0c603b96fbb8febbd))
+
 ## [1.23.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.22.2...fresh_pantry-v1.23.0) (2026-06-17)
 
 
