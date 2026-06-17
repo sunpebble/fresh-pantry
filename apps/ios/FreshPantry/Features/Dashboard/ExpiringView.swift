@@ -227,6 +227,7 @@ private struct ExpiringContent: View {
             }
             .padding(.top, FkSpacing.md)
             .padding(.bottom, FkSpacing.huge)
+            .fkEntranceWindow()
         }
     }
 

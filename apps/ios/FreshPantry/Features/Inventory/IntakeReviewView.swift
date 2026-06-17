@@ -69,6 +69,7 @@ struct IntakeReviewView: View {
                         }
                     }
                     .padding(FkSpacing.lg)
+                    .fkEntranceWindow()
                 }
                 if let applyError = store.applyError {
                     // 失败留在本屏可重试：库存一行没进、购物行也没被移除，

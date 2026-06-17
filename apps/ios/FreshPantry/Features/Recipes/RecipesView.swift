@@ -825,6 +825,7 @@ private struct RecipesContent: View {
                 }
             }
             .padding(.horizontal, FkSpacing.lg)
+            .fkEntranceWindow()
         }
     }
 

@@ -76,6 +76,7 @@ struct DeductionReviewView: View {
                         }
                     }
                     .padding(FkSpacing.lg)
+                    .fkEntranceWindow()
                 }
                 if let applyError {
                     applyErrorNotice(applyError)

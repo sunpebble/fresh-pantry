@@ -657,6 +657,7 @@ private struct InventoryContent: View {
                 }
             }
             .padding(.horizontal, FkSpacing.lg)
+            .fkEntranceWindow()
         }
     }
 

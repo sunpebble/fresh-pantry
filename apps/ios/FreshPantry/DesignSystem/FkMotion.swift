@@ -20,6 +20,11 @@ enum FkMotion {
     static let entranceOffset: CGFloat = 8 // 入场上移
     static let staggerStep: TimeInterval = 0.05 // 列表交错步长
     static let staggerMaxItems = 8 // 交错封顶
+    /// 一个列表入场窗口保持开启的时长。覆盖最坏情况下交错项(封顶延迟)再加一段
+    /// 入场时长,确保首屏交错动画完整播完;此后由 `fkEntranceWindow()` 关闭窗口,
+    /// `LazyVStack`/`List` 滚动时才懒创建的 cell 直接以终态呈现,不再重播入场——
+    /// 否则每个滚入视口的新行都淡入+上移,读起来像「列表一直在加载」。
+    static let entranceWindow: TimeInterval = Double(staggerMaxItems) * staggerStep + slow
 
     // Curves → SwiftUI animations
     static let standard = Animation.easeOut(duration: normal) // 平稳减速

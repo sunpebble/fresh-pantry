@@ -494,6 +494,7 @@ private struct MealPlanContent: View {
                 }
             }
             .padding(.horizontal, FkSpacing.lg)
+            .fkEntranceWindow()
         }
     }
 }
@@ -889,6 +890,7 @@ private struct PickerList: View {
                 }
             }
             .padding(.horizontal, FkSpacing.lg)
+            .fkEntranceWindow()
         }
     }
 }

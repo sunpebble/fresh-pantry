@@ -211,6 +211,7 @@ private struct LowStockContent: View {
             }
             .padding(.top, FkSpacing.md)
             .padding(.bottom, FkSpacing.huge)
+            .fkEntranceWindow()
         }
     }
 }

@@ -242,6 +242,7 @@ private struct DashboardContent: View {
             }
             .padding(.top, FkSpacing.sm)
             .padding(.bottom, FkSpacing.huge)
+            .fkEntranceWindow()
         }
         .background(Color.fkSurface)
         .overlay(alignment: .top) { toastBanner }
