@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.23.2](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.23.1...fresh_pantry-v1.23.2) (2026-06-17)
+
+
+### Bug Fixes
+
+* **ios:** 小组件勾选购物项后 App 跟随刷新 ([c0defc8](https://github.com/kunish/fresh_pantry/commit/c0defc83f1cf3083c8900d192a425d52ba66ac79))
+
 ## [1.23.1](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.23.0...fresh_pantry-v1.23.1) (2026-06-17)
 
 
