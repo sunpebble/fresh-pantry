@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.23.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.22.2...fresh_pantry-v1.23.0) (2026-06-17)
+
+
+### Features
+
+* **ios:** 首页重构为仪表盘密集网格,提高信息密度 ([90d8152](https://github.com/kunish/fresh_pantry/commit/90d8152859b6889cb6eb6596475c5a2597065d87))
+
 ## [1.22.2](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.22.1...fresh_pantry-v1.22.2) (2026-06-17)
 
 
