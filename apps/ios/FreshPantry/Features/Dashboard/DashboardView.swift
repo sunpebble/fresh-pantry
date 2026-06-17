@@ -1,16 +1,16 @@
 import SwiftUI
 
 /// The 首页 tab: a data-backed home hub summarizing the household's pantry —
-/// a tinted hero with headline + sub-stats, a 临期提醒 preview that pushes the
-/// full `ExpiringView`, and a 购物清单 summary that switches to the 购物 tab.
+/// laid out as a dense dashboard grid: a compact stat bar, a 今日推荐 card, an
+/// optional 用临期 strip, and a tile grid (临期/分类, 膳食/减废, 购物/库存不足).
 ///
 /// Builds its `DashboardStore` from the injected `AppDependencies` (the reusable
 /// feature pattern). In DEBUG it runs the inventory + shopping seeders (the same
 /// idempotent one-shots the other tabs use) before loading, so 首页 has data even
 /// when opened first. SwiftData is never touched here.
 struct DashboardView: View {
-    /// Switches the root tab selection — used by the 购物清单 summary row to jump
-    /// to the 购物 tab. Injected by `RootView`.
+    /// Switches the root tab selection — used by the 购物清单 tile to jump to the
+    /// 购物 tab. Injected by `RootView`.
     var onSelectShopping: () -> Void = {}
     /// Drills into the 库存 tab pre-filtered to a tapped 食材分类 (canonical name).
     /// Injected by `RootView` (mirrors `onSelectShopping`).
@@ -169,7 +169,7 @@ extension DashboardView {
     }
 }
 
-/// Inner content bound to a live store.
+/// Inner content bound to a live store. Lays out the dense dashboard grid.
 private struct DashboardContent: View {
     let store: DashboardStore
     var onSelectShopping: () -> Void
@@ -177,11 +177,11 @@ private struct DashboardContent: View {
 
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// View-local secondary stats for the entry-card subtitles (kept out of the
-    /// DashboardStore to avoid widening its init): waste use-up + meal-plan summary.
+    /// View-local secondary stats for the tiles (kept out of the DashboardStore to
+    /// avoid widening its init): waste use-up + meal-plan summary.
     @State private var wasteStats: FoodLogStats?
     @State private var mealPlan: MealPlanGlance?
-    /// Lazily-built shopping store for the 临期 preview "加购" action.
+    /// Lazily-built shopping store for the 临期 tile "加购" action.
     @State private var shoppingStore: ShoppingStore?
     /// Recipe browse store (favorites + the pushed detail) for the home recipe
     /// cards. Built once with the inventory/忌口 context, like the Recipes tab.
@@ -194,10 +194,8 @@ private struct DashboardContent: View {
     @State private var recommendationMatched = 0
     /// 用临期 fallback: the dish covering the most expiring items + covered names.
     @State private var fallback: FallbackSuggestion?
-    /// Low-stock restock candidates (count≥3 & not in stock) for the inline card.
+    /// Low-stock restock candidates (count≥3 & not in stock) for the 库存不足 tile.
     @State private var lowStockItems: [FrequentItem] = []
-    @State private var isAddingLowStock = false
-    @State private var showLowStockConfirm = false
     /// Set once the secondary load runs, so the recipe cards can show a skeleton
     /// only on the FIRST load (not on every pull-to-refresh).
     @State private var didLoadRecipes = false
@@ -207,46 +205,39 @@ private struct DashboardContent: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: FkSpacing.xl) {
-                HeroSummary(summary: store.summary, categoryCount: store.categoryCounts.count)
+            VStack(spacing: FkSpacing.md) {
+                StatBar(summary: store.summary, categoryCount: store.categoryCounts.count)
+                    .fkEntrance(index: 0)
                     .padding(.horizontal, FkSpacing.lg)
 
                 recommendationSection
-                    .padding(.horizontal, FkSpacing.lg)
-
-                let categoryCounts = store.categoryCounts
-                if !categoryCounts.isEmpty {
-                    CategorySection(counts: categoryCounts, onSelect: onSelectCategory)
-                        .padding(.horizontal, FkSpacing.lg)
-                }
-
-                ExpiringPreviewSection(summary: store.summary, onAddToShopping: addToShopping)
+                    .fkEntrance(index: 1)
                     .padding(.horizontal, FkSpacing.lg)
 
                 if let fallback {
-                    ExpiringFallbackCard(suggestion: fallback) { selectedRecipe = fallback.recipe }
+                    ExpiringFallbackStrip(suggestion: fallback) { selectedRecipe = fallback.recipe }
                         .padding(.horizontal, FkSpacing.lg)
                 }
 
-                MealPlanEntryRow(glance: mealPlan)
+                expiringAndCategoryRow
+                    .fkEntrance(index: 2)
                     .padding(.horizontal, FkSpacing.lg)
 
-                WasteInsightsEntryRow(stats: wasteStats)
-                    .padding(.horizontal, FkSpacing.lg)
-
-                if !lowStockItems.isEmpty {
-                    LowStockInlineCard(
-                        items: lowStockItems,
-                        isAdding: isAddingLowStock,
-                        onAddAll: { showLowStockConfirm = true }
-                    )
-                    .padding(.horizontal, FkSpacing.lg)
+                HStack(alignment: .top, spacing: FkSpacing.sm) {
+                    MealPlanTile(glance: mealPlan)
+                    WasteTile(stats: wasteStats)
                 }
+                .fkEntrance(index: 3)
+                .padding(.horizontal, FkSpacing.lg)
 
-                ShoppingSummaryRow(
-                    uncheckedCount: store.summary.uncheckedShoppingCount,
-                    onTap: onSelectShopping
-                )
+                HStack(alignment: .top, spacing: FkSpacing.sm) {
+                    ShoppingTile(
+                        uncheckedCount: store.summary.uncheckedShoppingCount,
+                        onTap: onSelectShopping
+                    )
+                    LowStockTile(count: lowStockItems.count)
+                }
+                .fkEntrance(index: 4)
                 .padding(.horizontal, FkSpacing.lg)
             }
             .padding(.top, FkSpacing.sm)
@@ -259,22 +250,12 @@ private struct DashboardContent: View {
                 RecipeDetailView(recipe: recipe, store: recipesStore)
             }
         }
-        .confirmationDialog(
-            "全部加入购物清单",
-            isPresented: $showLowStockConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("加入 \(lowStockItems.count) 项") { Task { await addAllLowStock() } }
-            Button("取消", role: .cancel) {}
-        } message: {
-            Text("把 \(lowStockItems.count) 项常买缺货食材加入购物清单？")
-        }
         .refreshable {
             await store.load()
             await loadSecondaryStats()
         }
         // Re-runs on every appear — so popping back from a pushed screen (临期
-        // 「用了」, 购物 etc.) refreshes the hero/preview/计数 alongside the
+        // 「用了」, 购物 etc.) refreshes the stat bar/preview/计数 alongside the
         // secondary cards — and on a household switch, where the lazily-built
         // stores must be dropped first: they capture their scope at init, so a
         // kept instance would write into the prior household (the MealPlanView
@@ -289,10 +270,25 @@ private struct DashboardContent: View {
             await loadSecondaryStats()
         }
         // Remote merge pulse: the host view reloads the main store; the
-        // secondary cards (减废/膳食/推荐/库存不足) consume it here so both
+        // secondary tiles (减废/膳食/推荐/库存不足) consume it here so both
         // halves of the screen track merged data together.
         .onChange(of: dependencies.syncSession.dataRevision) {
             Task { await loadSecondaryStats() }
+        }
+    }
+
+    /// Rich tile row: 临期提醒 alongside 食材分类. The category tile only renders when
+    /// the pantry has any non-empty categories — an empty pantry shows 临期 full-width.
+    @ViewBuilder
+    private var expiringAndCategoryRow: some View {
+        let categories = store.categoryCounts
+        if categories.isEmpty {
+            ExpiringTile(summary: store.summary, onAddToShopping: addToShopping)
+        } else {
+            HStack(alignment: .top, spacing: FkSpacing.sm) {
+                ExpiringTile(summary: store.summary, onAddToShopping: addToShopping)
+                CategoryTile(counts: categories, onSelect: onSelectCategory)
+            }
         }
     }
 
@@ -304,7 +300,7 @@ private struct DashboardContent: View {
     @ViewBuilder
     private var recommendationSection: some View {
         if let recommendation, let recipesStore {
-            VStack(alignment: .leading, spacing: FkSpacing.md) {
+            VStack(alignment: .leading, spacing: FkSpacing.sm) {
                 FkSectionHeader(title: "今日推荐")
                 Button {
                     selectedRecipe = recommendation
@@ -321,7 +317,7 @@ private struct DashboardContent: View {
                 .buttonStyle(.fkPressable)
             }
         } else if !didLoadRecipes {
-            VStack(alignment: .leading, spacing: FkSpacing.md) {
+            VStack(alignment: .leading, spacing: FkSpacing.sm) {
                 FkSectionHeader(title: "今日推荐")
                 RecipeSkeletonCard()
             }
@@ -368,7 +364,7 @@ private struct DashboardContent: View {
     private func loadSecondaryStats() async {
         let scope = dependencies.householdID
 
-        // Build the shopping store FIRST — the 临期 preview's 加购 button is
+        // Build the shopping store FIRST — the 临期 tile's 加购 button is
         // visible as soon as the main store loads, and everything below
         // (notably the recipe-corpus decode) would leave it a no-op for the
         // whole cold-start window otherwise.
@@ -433,7 +429,7 @@ private struct DashboardContent: View {
         // counts — a stale past week's pending dishes must not inflate it.
         // NOTE: this is a ROLLING window, deliberately different from
         // MealPlanView's Monday-anchored visible week (its 缺料 card scopes to
-        // the on-screen strip); the entry card's copy says 未来 7 天 to match.
+        // the on-screen strip); the entry tile's copy says 未来 7 天 to match.
         let byId = Dictionary(recipes.recipes.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
         let entries = (try? await dependencies.mealPlanRepository.loadAllFor(scope)) ?? []
         guard scope == dependencies.householdID, !Task.isCancelled else { return }
@@ -443,7 +439,7 @@ private struct DashboardContent: View {
         )
         mealPlan = MealPlanGlance.from(entries: windowed, missingCount: missing.count)
 
-        // Low-stock restock candidates for the inline 库存不足 card.
+        // Low-stock restock candidates for the 库存不足 tile.
         let lowStock = LowStockStore(
             repository: dependencies.inventoryRepository,
             householdID: scope,
@@ -467,38 +463,6 @@ private struct DashboardContent: View {
         return names
     }
 
-    /// Adds ALL low-stock candidates to the shopping list (the inline "全部加入"
-    /// action; per-item selection lives on the pushed `LowStockView`). Dedupe is
-    /// the shopping store's job, so the toast reports the真正 added count — and
-    /// failures are split from duplicates (a persist error must never read as
-    /// the affirmative「已在购物清单中」).
-    private func addAllLowStock() async {
-        guard let shoppingStore, !isAddingLowStock else { return }
-        isAddingLowStock = true
-        defer { isAddingLowStock = false }
-        var added = 0
-        var failed = 0
-        for item in lowStockItems {
-            let category = FoodKnowledge.lookup(item.name)?.category
-            switch await shoppingStore.addItem(name: item.name, category: category) {
-            case .added:
-                added += 1
-                // Optimistically bump the 购物清单 summary count (reads store.summary,
-                // not shoppingStore) instead of a full two-scope reload.
-                store.noteShoppingAdded(name: item.name, category: category)
-            case .duplicate: break // goal already satisfied — not a failure
-            case .failed: failed += 1
-            }
-        }
-        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-            if failed > 0 {
-                toast = added > 0 ? "已添加 \(added) 项，\(failed) 项添加失败" : "添加失败，请重试"
-            } else {
-                toast = added > 0 ? "已添加 \(added) 项到购物清单" : "常买缺货项已在购物清单中"
-            }
-        }
-    }
-
     private func addToShopping(_ item: Ingredient) async {
         // The store builds at the top of loadSecondaryStats, so this window is
         // near-zero — but a tap inside it must not silently no-op.
@@ -509,7 +473,7 @@ private struct DashboardContent: View {
             return
         }
         let outcome = await shoppingStore.addItem(name: item.name, category: item.category)
-        // Optimistically bump the summary count (same as addAllLowStock).
+        // Optimistically bump the summary count instead of a full two-scope reload.
         if outcome == .added { store.noteShoppingAdded(name: item.name, category: item.category) }
         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
             switch outcome {
@@ -523,7 +487,7 @@ private struct DashboardContent: View {
     }
 }
 
-/// Lightweight meal-plan summary for the Dashboard entry card: dishes planned in
+/// Lightweight meal-plan summary for the Dashboard entry tile: dishes planned in
 /// the next 7 days, how many are today, and the shortfall count. Ports
 /// `mealPlanWeekSummaryProvider`.
 struct MealPlanGlance: Equatable {
@@ -572,14 +536,14 @@ struct FallbackSuggestion: Equatable {
     let covered: [String]
 }
 
-// MARK: - Hero
+// MARK: - Stat bar
 
-/// Tinted hero block: a headline "需要关注" count over sub-stats for 临期 and
-/// 库存充足. Uses the primary brand fill with on-primary text (the blueprint's
-/// hero treatment, status-bar gradient omitted as optional).
-private struct HeroSummary: View {
+/// Compact stat bar that replaces the tall tinted hero: a small time-of-day
+/// greeting over a single horizontal row of triage counts (件食材 / 类 / 需处理 /
+/// 过期 / 充足). Reads the already-derived `DashboardSummary`; no new logic.
+private struct StatBar: View {
     let summary: DashboardSummary
-    /// Distinct non-empty inventory categories (covers "· N 类" next to 件食材).
+    /// Distinct non-empty inventory categories (the "类" segment).
     var categoryCount: Int = 0
 
     /// Time-of-day greeting (早安/午安/下午好/晚上好/夜深了),主厨。— ports the Flutter
@@ -600,463 +564,410 @@ private struct HeroSummary: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: FkSpacing.lg) {
-            VStack(alignment: .leading, spacing: FkSpacing.xs) {
+        FkCard {
+            VStack(alignment: .leading, spacing: FkSpacing.md) {
                 Text(Self.greeting())
                     .font(.fkTitleMedium)
-                    .foregroundStyle(Color.fkOnPrimary.opacity(0.8))
+                    .foregroundStyle(Color.fkOnSurfaceVariant)
 
-                HStack(alignment: .firstTextBaseline, spacing: FkSpacing.sm) {
-                    Text("\(summary.totalItems)")
-                        .font(.fkHeroStat)
-                        .foregroundStyle(Color.fkOnPrimary)
-                    Text("件食材")
-                        .font(.fkTitleMedium)
-                        .foregroundStyle(Color.fkOnPrimary.opacity(0.85))
-                    if categoryCount > 0 {
-                        Text("· \(categoryCount) 类")
-                            .font(.fkTitleMedium)
-                            .foregroundStyle(Color.fkOnPrimary.opacity(0.85))
-                    }
+                HStack(alignment: .top, spacing: FkSpacing.xs) {
+                    segment(value: summary.totalItems, label: "件食材", tint: .fkOnSurface)
+                    segment(value: categoryCount, label: "分类", tint: .fkOnSurface)
+                    segment(value: summary.needsAttentionCount, label: "需处理", tint: .fkWarnInk)
+                    segment(value: summary.expiredCount, label: "已过期", tint: .fkDanger)
+                    segment(value: summary.freshCount, label: "充足", tint: .fkSuccess)
                 }
             }
-
-            HStack(spacing: FkSpacing.sm) {
-                MiniStat(
-                    label: "需要处理",
-                    value: summary.needsAttentionCount,
-                    accent: .fkWarn
-                )
-                .fkEntrance(index: 0)
-
-                MiniStat(
-                    label: "已过期",
-                    value: summary.expiredCount,
-                    accent: .fkDanger
-                )
-                .fkEntrance(index: 1)
-
-                MiniStat(
-                    label: "库存充足",
-                    value: summary.freshCount,
-                    accent: .fkOnPrimary
-                )
-                .fkEntrance(index: 2)
-            }
         }
-        .padding(FkSpacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: FkRadius.hero, style: .continuous)
-                .fill(Color.fkPrimary)
-        )
-        .fkCardShadow()
     }
-}
 
-/// One hero sub-stat: a big accent number over a muted label, in a translucent
-/// tile (mirrors the blueprint's `_MiniStat`).
-private struct MiniStat: View {
-    let label: String
-    let value: Int
-    let accent: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: FkSpacing.xs) {
+    private func segment(value: Int, label: String, tint: Color) -> some View {
+        VStack(spacing: 2) {
             Text("\(value)")
-                .font(.fkHeroSubStat)
-                .foregroundStyle(accent)
+                .font(.fkTitleLarge)
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
             Text(label)
                 .font(.fkLabelSmall)
-                .foregroundStyle(Color.fkOnPrimary.opacity(0.85))
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, FkSpacing.md)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: FkRadius.chip, style: .continuous)
-                .fill(Color.fkOnPrimary.opacity(0.15))
-        )
-    }
-}
-
-// MARK: - 食材分类 grid
-
-/// 4-column grid of inventory categories (icon + canonical name + 件数). Tapping a
-/// tile drills into the 库存 tab pre-filtered to that category. Ports the Flutter
-/// `_CategorySection`/`_CategoryGrid`.
-private struct CategorySection: View {
-    let counts: [(category: String, count: Int)]
-    let onSelect: (String) -> Void
-
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: FkSpacing.sm), count: 4)
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: FkSpacing.md) {
-            FkSectionHeader(title: "食材分类")
-            LazyVGrid(columns: columns, spacing: FkSpacing.sm) {
-                ForEach(Array(counts.enumerated()), id: \.element.category) { index, entry in
-                    Button {
-                        onSelect(entry.category)
-                    } label: {
-                        tile(category: entry.category, count: entry.count)
-                            .fkEntrance(index: index)
-                    }
-                    .buttonStyle(.fkPressable)
-                    .accessibilityIdentifier("home.category.\(entry.category)")
-                    .accessibilityLabel("\(entry.category)，\(entry.count) 件")
-                }
-            }
-        }
-    }
-
-    private func tile(category: String, count: Int) -> some View {
-        let palette = FkCategoryIcon.palette(for: category)
-        return VStack(spacing: FkSpacing.xs) {
-            ZStack {
-                Circle().fill(palette.tint).frame(width: 40, height: 40)
-                Image(systemName: FkCategoryIcon.symbol(for: category))
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(palette.ink)
-            }
-            Text(category)
-                .font(.fkLabelSmall)
-                .foregroundStyle(Color.fkOnSurface)
-                .lineLimit(1)
-            Text("\(count)")
-                .font(.fkLabelSmall)
                 .foregroundStyle(Color.fkOnSurfaceVariant)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, FkSpacing.sm)
-        .background(
-            RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
-                .fill(Color.fkSurfaceContainerLowest)
-        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(value) \(label)")
     }
 }
 
-// MARK: - 临期提醒 section
+// MARK: - Tile surface
 
-private struct ExpiringPreviewSection: View {
+/// Soft surface tile that fills its column width and stretches to the row's
+/// height, so two tiles paired in an `HStack(alignment: .top)` stay equal height
+/// (the shorter one's background grows to match the taller). The `maxHeight`
+/// must sit BEFORE the background so the fill is drawn at the stretched size.
+private struct DashboardTileSurface<Content: View>: View {
+    var background: Color = .fkSurfaceContainerLowest
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        content()
+            .padding(FkSpacing.md)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(
+                RoundedRectangle(cornerRadius: FkRadius.xl, style: .continuous)
+                    .fill(background)
+            )
+            .fkCardShadow()
+    }
+}
+
+/// Small trailing chevron for tappable tiles.
+private struct TileChevron: View {
+    var body: some View {
+        Image(systemName: "chevron.right")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(Color.fkOnSurfaceVariant)
+    }
+}
+
+// MARK: - 临期提醒 tile
+
+/// Rich tile: 临期提醒 header + the soonest two expiring items (each with a quick
+/// 加购 button) + a 「查看全部」footer that pushes the full `ExpiringView`. Empty
+/// state shows a compact「暂无临期」success row.
+private struct ExpiringTile: View {
     let summary: DashboardSummary
     /// "该用了" quick add-to-shopping for a previewed expiring item.
     var onAddToShopping: (Ingredient) async -> Void = { _ in }
 
+    /// At most two inline rows keep the tile compact; the footer drills to the rest.
+    private var preview: [Ingredient] { Array(summary.expiringPreview.prefix(2)) }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: FkSpacing.md) {
-            FkSectionHeader(title: "临期提醒", count: summary.needsAttentionCount)
+        DashboardTileSurface {
+            VStack(alignment: .leading, spacing: FkSpacing.sm) {
+                header
 
-            if summary.hasNoExpiring {
-                FkCard {
-                    HStack(spacing: FkSpacing.md) {
+                if summary.hasNoExpiring {
+                    HStack(spacing: FkSpacing.xs) {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 28))
+                            .font(.system(size: 16))
                             .foregroundStyle(Color.fkSuccess)
-                        VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                            Text("暂无临期食材")
-                                .font(.fkTitleMedium)
-                                .foregroundStyle(Color.fkOnSurface)
-                            Text("冰箱状态健康，继续保持！")
-                                .font(.fkBodySmall)
-                                .foregroundStyle(Color.fkOnSurfaceVariant)
+                        Text("暂无临期")
+                            .font(.fkBodySmall)
+                            .foregroundStyle(Color.fkOnSurfaceVariant)
+                    }
+                } else {
+                    ForEach(preview, id: \.fkListIdentityKey) { item in
+                        row(item)
+                    }
+                    NavigationLink(value: DashboardRoute.expiring) {
+                        HStack(spacing: FkSpacing.xs) {
+                            Text("查看全部")
+                                .font(.fkLabelMedium)
+                                .foregroundStyle(Color.fkPrimary)
+                            TileChevron()
                         }
-                        Spacer(minLength: 0)
                     }
+                    .buttonStyle(.fkPressable)
                 }
-            } else {
-                LazyVStack(spacing: FkSpacing.sm) {
-                    ForEach(Array(summary.expiringPreview.enumerated()), id: \.element.fkListIdentityKey) { index, item in
-                        FkCard {
-                            HStack(spacing: FkSpacing.sm) {
-                                IngredientRow(ingredient: item)
-                                Button {
-                                    Task { await onAddToShopping(item) }
-                                } label: {
-                                    Image(systemName: "cart.badge.plus")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundStyle(Color.fkPrimaryContainer)
-                                        .padding(8)
-                                        .background(Circle().fill(Color.fkPrimarySoft))
-                                }
-                                .buttonStyle(.fkPressable)
-                                .accessibilityLabel("加入购物清单")
-                            }
-                        }
-                        .fkEntrance(index: index)
-                    }
-                }
-
-                NavigationLink(value: DashboardRoute.expiring) {
-                    HStack {
-                        Text("查看全部")
-                            .font(.fkLabelLarge)
-                            .foregroundStyle(Color.fkPrimary)
-                        Spacer()
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Color.fkPrimary)
-                    }
-                    .padding(.vertical, FkSpacing.md)
-                    .padding(.horizontal, FkSpacing.lg)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
-                            .fill(Color.fkPrimarySoft)
-                    )
-                }
-                .buttonStyle(.fkPressable)
             }
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: FkSpacing.xs) {
+            Image(systemName: "clock.badge.exclamationmark.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color.fkWarnInk)
+            Text("临期提醒")
+                .font(.fkTitleSmall)
+                .foregroundStyle(Color.fkOnSurface)
+            if summary.needsAttentionCount > 0 {
+                Text("\(summary.needsAttentionCount)")
+                    .font(.fkLabelSmall)
+                    .foregroundStyle(Color.fkPrimaryContainer)
+                    .padding(.horizontal, FkSpacing.xs)
+                    .padding(.vertical, 1)
+                    .background(Capsule().fill(Color.fkPrimarySoft))
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func row(_ item: Ingredient) -> some View {
+        HStack(spacing: FkSpacing.sm) {
+            FkCategoryAvatar(imageUrl: item.imageUrl, category: item.category, size: 28)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(item.name)
+                    .font(.fkBodyMedium)
+                    .foregroundStyle(item.state == .expired ? Color.fkOnSurfaceVariant : Color.fkOnSurface)
+                    .lineLimit(1)
+                if let label = item.expiryLabel, !label.isEmpty {
+                    Text(label)
+                        .font(.fkLabelSmall)
+                        .foregroundStyle(Color.fkOnSurfaceVariant)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+            Button {
+                Task { await onAddToShopping(item) }
+            } label: {
+                Image(systemName: "cart.badge.plus")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.fkPrimaryContainer)
+                    .padding(6)
+                    .background(Circle().fill(Color.fkPrimarySoft))
+            }
+            .buttonStyle(.fkPressable)
+            .accessibilityLabel("加入购物清单")
         }
     }
 }
 
-// MARK: - 膳食计划 entry
+// MARK: - 食材分类 tile
 
-/// Tappable card that pushes `MealPlanView` (the weekly meal-plan calendar) via
-/// the Dashboard's `DashboardRoute`. The only meal-plan touchpoint on 首页.
-private struct MealPlanEntryRow: View {
-    /// nil → static copy until the glance loads; non-nil drives the dynamic
-    /// "未来 7 天已排 N 顿 · 今天 M 顿" subtitle + a "还缺 K 样" badge.
+/// Rich tile: a 2-column mini grid of the canonical food categories (icon + name +
+/// 件数). Tapping a cell drills into the 库存 tab pre-filtered to that category —
+/// keeping the `home.category.<name>` accessibility identifier the UI tests assert.
+private struct CategoryTile: View {
+    let counts: [(category: String, count: Int)]
+    let onSelect: (String) -> Void
+
+    private let columns = Array(
+        repeating: GridItem(.flexible(), spacing: FkSpacing.xs),
+        count: 2
+    )
+
+    var body: some View {
+        DashboardTileSurface {
+            VStack(alignment: .leading, spacing: FkSpacing.sm) {
+                HStack(spacing: FkSpacing.xs) {
+                    Image(systemName: "square.grid.2x2.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.fkPrimaryContainer)
+                    Text("食材分类")
+                        .font(.fkTitleSmall)
+                        .foregroundStyle(Color.fkOnSurface)
+                    Spacer(minLength: 0)
+                }
+
+                LazyVGrid(columns: columns, spacing: FkSpacing.xs) {
+                    ForEach(counts, id: \.category) { entry in
+                        Button {
+                            onSelect(entry.category)
+                        } label: {
+                            cell(category: entry.category, count: entry.count)
+                        }
+                        .buttonStyle(.fkPressable)
+                        .accessibilityIdentifier("home.category.\(entry.category)")
+                        .accessibilityLabel("\(entry.category)，\(entry.count) 件")
+                    }
+                }
+            }
+        }
+    }
+
+    private func cell(category: String, count: Int) -> some View {
+        let palette = FkCategoryIcon.palette(for: category)
+        return HStack(spacing: 3) {
+            Image(systemName: FkCategoryIcon.symbol(for: category))
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(palette.ink)
+            Text(category)
+                .font(.fkLabelSmall)
+                .foregroundStyle(Color.fkOnSurface)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .layoutPriority(1)
+            Spacer(minLength: 2)
+            Text("\(count)")
+                .font(.fkLabelSmall)
+                .foregroundStyle(Color.fkOnSurfaceVariant)
+        }
+        .padding(.horizontal, FkSpacing.xs)
+        .padding(.vertical, FkSpacing.xs)
+        .background(
+            RoundedRectangle(cornerRadius: FkRadius.md, style: .continuous)
+                .fill(Color.fkSurfaceContainer)
+        )
+    }
+}
+
+// MARK: - Stat tiles (膳食 / 减废 / 购物 / 库存不足)
+
+/// 膳食计划 tile → pushes `MealPlanView`. Compact metric + 还缺 badge.
+private struct MealPlanTile: View {
     var glance: MealPlanGlance?
 
     var body: some View {
         NavigationLink(value: DashboardRoute.mealPlan) {
-            FkCard {
-                HStack(spacing: FkSpacing.md) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.fkPrimarySoft)
-                            .frame(width: 44, height: 44)
-                        Image(systemName: "calendar")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(Color.fkPrimaryContainer)
-                    }
-
-                    VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                        Text("膳食计划")
-                            .font(.fkTitleMedium)
-                            .foregroundStyle(Color.fkOnSurface)
-                        Text(subtitle)
-                            .font(.fkBodySmall)
-                            .foregroundStyle(Color.fkOnSurfaceVariant)
-                    }
-
-                    Spacer(minLength: FkSpacing.sm)
-
-                    if let glance, glance.missing > 0 {
-                        Text("还缺 \(glance.missing) 样")
-                            .font(.fkLabelSmall)
-                            .foregroundStyle(Color.fkDanger)
-                            .padding(.horizontal, FkSpacing.sm)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(Color.fkWarnSoft))
-                    }
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
+            DashboardTileSurface {
+                VStack(alignment: .leading, spacing: FkSpacing.xs) {
+                    StatTileHeader(systemImage: "calendar", title: "膳食计划")
+                    // Reuse the (unit-tested) glance subtitle as the single source of
+                    // this copy — no second wording to drift from it.
+                    Text(glance?.subtitle ?? "规划这一周吃什么")
+                        .font(.fkBodySmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
+                        .lineLimit(2)
+                    if let glance, glance.missing > 0 {
+                        StatTileBadge(text: "还缺 \(glance.missing) 样", tint: .fkDanger, fill: .fkWarnSoft)
+                    }
                 }
             }
         }
         .buttonStyle(.fkPressable)
     }
-
-    private var subtitle: String {
-        glance?.subtitle ?? "规划这一周吃什么"
-    }
 }
 
-// MARK: - 减废统计 entry
-
-/// Tappable card that pushes `WasteInsightsView` (the waste-reduction stats
-/// screen) via the Dashboard's `DashboardRoute`. Mirrors `MealPlanEntryRow`.
-private struct WasteInsightsEntryRow: View {
-    /// nil → static copy until stats load; non-nil drives the "用掉率 X%" subtitle
-    /// + a "抢救 N" badge.
+/// 减废统计 tile → pushes `WasteInsightsView`. Compact metric + 抢救 badge.
+private struct WasteTile: View {
     var stats: FoodLogStats?
 
     var body: some View {
         NavigationLink(value: DashboardRoute.wasteInsights) {
-            FkCard {
-                HStack(spacing: FkSpacing.md) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.fkPrimarySoft)
-                            .frame(width: 44, height: 44)
-                        Image(systemName: "leaf.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(Color.fkPrimaryContainer)
-                    }
-
-                    VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                        Text("减废统计")
-                            .font(.fkTitleMedium)
-                            .foregroundStyle(Color.fkOnSurface)
-                        Text(subtitle)
-                            .font(.fkBodySmall)
-                            .foregroundStyle(Color.fkOnSurfaceVariant)
-                    }
-
-                    Spacer(minLength: FkSpacing.sm)
-
-                    if let stats, stats.rescued > 0 {
-                        Text("抢救 \(stats.rescued)")
-                            .font(.fkLabelSmall)
-                            .foregroundStyle(Color.fkSuccess)
-                            .padding(.horizontal, FkSpacing.sm)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(Color.fkSuccess.opacity(0.15)))
-                    }
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
+            DashboardTileSurface {
+                VStack(alignment: .leading, spacing: FkSpacing.xs) {
+                    StatTileHeader(systemImage: "leaf.fill", title: "减废统计")
+                    Text(metric)
+                        .font(.fkBodySmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
+                        .lineLimit(2)
+                    if let stats, stats.rescued > 0 {
+                        StatTileBadge(text: "抢救 \(stats.rescued)", tint: .fkSuccess, fill: .fkSuccess.opacity(0.15))
+                    }
                 }
             }
         }
         .buttonStyle(.fkPressable)
     }
 
-    private var subtitle: String {
+    private var metric: String {
         guard let stats, !stats.isEmpty else { return "看看你的食材用掉率" }
         return "本月用掉率 \(stats.useUpPercent)%"
     }
 }
 
-// MARK: - 库存不足 (inline preview + 全部加购)
-
-/// The 库存不足 card with an INLINE preview of the top restock candidates and a
-/// "全部加入购物清单 (N)" bulk action — ports the Flutter `low_stock_card` so the
-/// user can restock from 首页 without first drilling into `LowStockView`. The
-/// header still navigates to `LowStockView` for per-item selection.
-private struct LowStockInlineCard: View {
-    let items: [FrequentItem]
-    let isAdding: Bool
-    /// Opens the confirm dialog for the bulk add (the parent owns the dialog).
-    let onAddAll: () -> Void
-
-    /// At most 4 inline rows; the rest collapse into a "+还有 N 项" line.
-    private var previewItems: [FrequentItem] { Array(items.prefix(4)) }
-    private var overflow: Int { max(0, items.count - previewItems.count) }
+/// 购物清单 tile → switches to the 购物 tab (not a push). Shows the unchecked count.
+private struct ShoppingTile: View {
+    let uncheckedCount: Int
+    let onTap: () -> Void
 
     var body: some View {
-        FkCard {
-            VStack(alignment: .leading, spacing: FkSpacing.md) {
-                NavigationLink(value: DashboardRoute.lowStock) {
-                    HStack(spacing: FkSpacing.md) {
-                        ZStack {
-                            Circle().fill(Color.fkPrimarySoft).frame(width: 44, height: 44)
-                            Image(systemName: "cart.badge.plus")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(Color.fkPrimaryContainer)
-                        }
-                        VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                            Text("库存不足")
-                                .font(.fkTitleMedium)
-                                .foregroundStyle(Color.fkOnSurface)
-                            Text("\(items.count) 项常买缺货")
-                                .font(.fkBodySmall)
-                                .foregroundStyle(Color.fkOnSurfaceVariant)
-                        }
-                        Spacer(minLength: FkSpacing.sm)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Color.fkOnSurfaceVariant)
-                    }
+        Button(action: onTap) {
+            DashboardTileSurface {
+                VStack(alignment: .leading, spacing: FkSpacing.xs) {
+                    StatTileHeader(systemImage: "cart.fill", title: "购物清单")
+                    Text(metric)
+                        .font(.fkBodySmall)
+                        .foregroundStyle(Color.fkOnSurfaceVariant)
+                        .lineLimit(2)
                 }
-                .buttonStyle(.fkPressable)
-
-                VStack(spacing: FkSpacing.xs) {
-                    ForEach(previewItems, id: \.name) { item in
-                        HStack(spacing: FkSpacing.sm) {
-                            FkCategoryAvatar(imageUrl: "", category: item.category, size: 28)
-                            Text(item.name)
-                                .font(.fkBodyMedium)
-                                .foregroundStyle(Color.fkOnSurface)
-                            Spacer(minLength: 0)
-                            Text("买过 \(item.count) 次")
-                                .font(.fkLabelSmall)
-                                .foregroundStyle(Color.fkOnSurfaceVariant)
-                        }
-                    }
-                    if overflow > 0 {
-                        HStack {
-                            Text("+还有 \(overflow) 项")
-                                .font(.fkLabelSmall)
-                                .foregroundStyle(Color.fkOnSurfaceVariant)
-                            Spacer(minLength: 0)
-                        }
-                    }
-                }
-
-                Button(action: onAddAll) {
-                    HStack(spacing: FkSpacing.sm) {
-                        if isAdding {
-                            ProgressView().controlSize(.small).tint(Color.fkOnPrimary)
-                        } else {
-                            Image(systemName: "cart.badge.plus")
-                                .font(.system(size: 14, weight: .semibold))
-                        }
-                        Text(isAdding ? "加入中…" : "全部加入购物清单 (\(items.count))")
-                            .font(.fkLabelLarge)
-                    }
-                    .foregroundStyle(Color.fkOnPrimary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, FkSpacing.md)
-                    .background(Capsule().fill(Color.fkPrimary))
-                }
-                .buttonStyle(.fkPressable)
-                .disabled(isAdding)
             }
+        }
+        .buttonStyle(.fkPressable)
+    }
+
+    private var metric: String {
+        uncheckedCount > 0 ? "还有 \(uncheckedCount) 项待购买" : "清单已全部完成"
+    }
+}
+
+/// 库存不足 tile → pushes `LowStockView` (per-item selection + bulk「加入购物清单」
+/// CTA live there). Shows the restock-candidate count.
+private struct LowStockTile: View {
+    let count: Int
+
+    var body: some View {
+        NavigationLink(value: DashboardRoute.lowStock) {
+            DashboardTileSurface {
+                VStack(alignment: .leading, spacing: FkSpacing.xs) {
+                    StatTileHeader(systemImage: "cart.badge.plus", title: "库存不足")
+                    Text(metric)
+                        .font(.fkBodySmall)
+                        .foregroundStyle(Color.fkOnSurfaceVariant)
+                        .lineLimit(2)
+                }
+            }
+        }
+        .buttonStyle(.fkPressable)
+    }
+
+    private var metric: String {
+        count > 0 ? "\(count) 项常买缺货" : "常买项库存充足"
+    }
+}
+
+/// Shared header for the simple stat tiles: a tinted glyph, the title, and a
+/// trailing chevron signalling tappability.
+private struct StatTileHeader: View {
+    let systemImage: String
+    let title: String
+
+    var body: some View {
+        HStack(spacing: FkSpacing.xs) {
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color.fkPrimaryContainer)
+            Text(title)
+                .font(.fkTitleSmall)
+                .foregroundStyle(Color.fkOnSurface)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            TileChevron()
         }
     }
 }
 
-// MARK: - 用临期 fallback recipe card
+/// Small capsule badge used inside the stat tiles (还缺 / 抢救).
+private struct StatTileBadge: View {
+    let text: String
+    let tint: Color
+    let fill: Color
 
-/// "用这些临期食材今天就能做" — a tappable card surfacing the single dish that
-/// clears the most expiring items, with covered-ingredient chips. Ports the
-/// Flutter `ExpiringFallbackCard`; taps push the recipe detail.
-private struct ExpiringFallbackCard: View {
+    var body: some View {
+        Text(text)
+            .font(.fkLabelSmall)
+            .foregroundStyle(tint)
+            .padding(.horizontal, FkSpacing.sm)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(fill))
+    }
+}
+
+// MARK: - 用临期 fallback strip
+
+/// "用临期食材 · 今天就能做" — a slim full-width accent strip surfacing the single
+/// dish that clears the most expiring items. Ports the Flutter `ExpiringFallbackCard`
+/// to one dense line; taps push the recipe detail.
+private struct ExpiringFallbackStrip: View {
     let suggestion: FallbackSuggestion
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
-            FkCard {
-                VStack(alignment: .leading, spacing: FkSpacing.sm) {
-                    HStack(spacing: FkSpacing.xs) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 13, weight: .semibold))
+            FkCard(padding: FkSpacing.md) {
+                HStack(spacing: FkSpacing.sm) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.fkDanger)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("用临期 · 今天就能做")
+                            .font(.fkLabelMedium)
                             .foregroundStyle(Color.fkDanger)
-                        Text("用临期食材 · 今天就能做")
-                            .font(.fkLabelLarge)
-                            .foregroundStyle(Color.fkDanger)
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Color.fkOnSurfaceVariant)
+                        Text(suggestion.recipe.name)
+                            .font(.fkTitleSmall)
+                            .foregroundStyle(Color.fkOnSurface)
+                            .lineLimit(1)
                     }
-                    Text(suggestion.recipe.name)
-                        .font(.fkTitleMedium)
-                        .foregroundStyle(Color.fkOnSurface)
-                    Text("可用 \(suggestion.covered.count) 件临期食材")
-                        .font(.fkBodySmall)
+                    Spacer(minLength: FkSpacing.sm)
+                    Text("可用 \(suggestion.covered.count) 件")
+                        .font(.fkLabelSmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
-                    if !suggestion.covered.isEmpty {
-                        HStack(spacing: FkSpacing.xs) {
-                            ForEach(suggestion.covered.prefix(3), id: \.self) { name in
-                                Text(name)
-                                    .font(.fkLabelSmall)
-                                    .foregroundStyle(Color.fkOnSurface)
-                                    .padding(.horizontal, FkSpacing.sm)
-                                    .padding(.vertical, 2)
-                                    .background(Capsule().fill(Color.fkWarnSoft))
-                            }
-                            Spacer(minLength: 0)
-                        }
-                    }
+                    TileChevron()
                 }
             }
         }
@@ -1083,50 +994,5 @@ private struct RecipeSkeletonCard: View {
             }
         }
         .accessibilityLabel("加载推荐中")
-    }
-}
-
-// MARK: - 购物清单 summary
-
-/// Summary row that switches to the 购物 tab. Shows the unchecked count.
-private struct ShoppingSummaryRow: View {
-    let uncheckedCount: Int
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            FkCard {
-                HStack(spacing: FkSpacing.md) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.fkPrimarySoft)
-                            .frame(width: 44, height: 44)
-                        Image(systemName: "cart.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(Color.fkPrimaryContainer)
-                    }
-
-                    VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                        Text("购物清单")
-                            .font(.fkTitleMedium)
-                            .foregroundStyle(Color.fkOnSurface)
-                        Text(subtitle)
-                            .font(.fkBodySmall)
-                            .foregroundStyle(Color.fkOnSurfaceVariant)
-                    }
-
-                    Spacer(minLength: FkSpacing.sm)
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.fkOnSurfaceVariant)
-                }
-            }
-        }
-        .buttonStyle(.fkPressable)
-    }
-
-    private var subtitle: String {
-        uncheckedCount > 0 ? "还有 \(uncheckedCount) 项待购买" : "清单已全部完成"
     }
 }

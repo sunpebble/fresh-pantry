@@ -49,13 +49,11 @@
 - 远端合并脉冲 `onChange(dataRevision)` 重载主 store + secondary stats。
 - reduce-motion 入场（`fkEntrance`）、a11y 标签/标识、下拉刷新、搜索 toolbar。
 
-## 新增可单测的纯逻辑（走 TDD）
+## 新增逻辑与测试策略
 
-- `DashboardSummary.statSegments(categoryCount:)` → 有序 `[(label, value, style)]`，供 StatBar 渲染（顺序、配色映射、0 值是否展示的口径）。
-- 紧凑分类瓦片复用既有 `DashboardStore.categoryCounts`（已测），不新增逻辑。
-- 临期瓦片复用既有 `summary.expiringPreview`（已测）。
+落地时确认：本次重构**无新增领域逻辑**——StatBar、临期瓦片、分类瓦片、统计瓦片读的全是已被 `DashboardStoreTests` / `MealPlanGlanceTests` 覆盖的字段（`DashboardSummary.{totalItems,needsAttentionCount,expiredCount,freshCount,uncheckedShoppingCount,expiringPreview}`、`categoryCounts`、`MealPlanGlance`、`FoodLogStats`）。
 
-视图重排本身靠「编译通过 + 既有 1280+ 测试全绿 + 模拟器截图核对」验证。
+因此**放弃原计划的 `DashboardSummary.statSegments` helper**（纯展示，会是冗余测试面）。这是一次纯展示层重排，验证靠「编译通过 + 既有 1280+ 测试全绿 + 模拟器截图核对 + 保留 `home.category.<name>` 标识符不破坏 `CategoryDrillDownUITests`」。
 
 ## 落地与验证
 
