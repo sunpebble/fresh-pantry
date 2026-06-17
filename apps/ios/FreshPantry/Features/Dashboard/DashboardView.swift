@@ -115,6 +115,13 @@ struct DashboardView: View {
         .onChange(of: dependencies.syncSession.dataRevision) {
             Task { await store?.load() }
         }
+        // Widget toggle drain pulse: a 小组件 check-off lands in the shared store on
+        // foreground via `WidgetPendingToggleDrainer`; reload so the 购物 tile's
+        // 待购买 count reflects the just-checked item (it would otherwise stay stale
+        // until a household switch / remote-sync apply).
+        .onReceive(NotificationCenter.default.publisher(for: .widgetDidDrainShoppingToggle)) { _ in
+            Task { await store?.load() }
+        }
         // NOTIFICATION TAP → push 临期. `.task(id:)` rather than `.onChange` so
         // BOTH cold-start orders work: a tap captured BEFORE this view exists
         // fires on appear, and a tap arriving while visible fires on the id

@@ -89,6 +89,13 @@ struct ShoppingView: View {
         .onReceive(NotificationCenter.default.publisher(for: .intentDidDrainShoppingAdd)) { _ in
             Task { await store?.load() }
         }
+        // Widget toggle drain pulse: a 小组件 check-off lands in the shared store
+        // via `WidgetPendingToggleDrainer` (a DIFFERENT store instance) on
+        // foreground, so without this reload the list keeps its pre-toggle
+        // snapshot (小组件勾选后 App 没跟随变更) until a manual pull.
+        .onReceive(NotificationCenter.default.publisher(for: .widgetDidDrainShoppingToggle)) { _ in
+            Task { await store?.load() }
+        }
     }
 }
 
