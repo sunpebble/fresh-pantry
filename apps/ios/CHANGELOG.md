@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.22.2](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.22.1...fresh_pantry-v1.22.2) (2026-06-17)
+
+
+### Bug Fixes
+
+* **ios:** FreshPantryWidgetKit 改静态库,把 widget intent 元数据合并进 app bundle ([01fd357](https://github.com/kunish/fresh_pantry/commit/01fd357e079b32ffd07a780499a6332f9bbbbd45))
+* **ios:** widget framework 设 SKIP_INSTALL YES 修 Export IPA 失败 ([caefc0d](https://github.com/kunish/fresh_pantry/commit/caefc0d7b5cd78f33cdaa672fa68813f28fcc8eb))
+* **ios:** widget intent 抽入共享 framework,根治真机交互/可配置失效 ([606c37e](https://github.com/kunish/fresh_pantry/commit/606c37e56fc117eac90d83b3a6847e468ee3eaed))
+* **ios:** widget intent 改 dual-target membership 根治真机 no metadata ([eabc0a0](https://github.com/kunish/fresh_pantry/commit/eabc0a0adfca026649a12499ae9f47f048ecd629))
+
 ## [1.22.1](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.22.0...fresh_pantry-v1.22.1) (2026-06-16)
 
 
