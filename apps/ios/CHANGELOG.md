@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.23.3](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.23.2...fresh_pantry-v1.23.3) (2026-06-17)
+
+
+### Bug Fixes
+
+* **ios:** 小组件勾选购物项后及时推送同步,消除「同步中,1 条待同步」滞留 ([dabcbd4](https://github.com/kunish/fresh_pantry/commit/dabcbd4dbbcd479d06ca2ff0e383101dab34998a))
+
 ## [1.23.2](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.23.1...fresh_pantry-v1.23.2) (2026-06-17)
 
 
