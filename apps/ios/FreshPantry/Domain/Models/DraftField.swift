@@ -1,8 +1,7 @@
 import Foundation
 
 /// Generic provenance-tracked field wrapper for AI/user-edited drafts.
-/// Value-equal over value+source. `hybrid` source exists but no factory
-/// produces it (parity with Dart — flagged as possibly dead, kept for safety).
+/// Value-equal over value+source.
 struct DraftField<T: Equatable>: Equatable {
     var value: T
     var source: DraftSource

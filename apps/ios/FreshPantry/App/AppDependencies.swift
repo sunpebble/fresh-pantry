@@ -54,7 +54,7 @@ final class AppDependencies {
     let barcodeMemoryRepository: BarcodeMemoryRepository
     /// Best-effort OFF lookup client (barcode-first, then name search). The DI
     /// seam the ingredient-detail nutrition card builds its store from.
-    let foodDetailsClient: FoodDetailsClient
+    let foodDetailsClient: OpenFoodFactsDetailsClient
     /// UserDefaults-backed favorites; shared so favorite state is consistent
     /// across the recipes list and detail screens.
     let favoritesStore: FavoritesStore

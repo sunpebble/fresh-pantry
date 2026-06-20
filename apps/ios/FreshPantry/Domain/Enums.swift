@@ -47,12 +47,6 @@ enum IconType: String, Codable, Sendable, CaseIterable {
     }
 }
 
-/// Free `iconTypeFromName` mirror for call-site parity with the Dart helper.
-func iconTypeFromName(_ name: String?) -> IconType { IconType.fromName(name) }
-
-/// Free `storageAreaLabel` mirror for call-site parity with the Dart helper.
-func storageAreaLabel(_ type: IconType) -> String { type.storageAreaLabel }
-
 // MARK: - Food log
 
 /// Departure outcome. `donated` (捐了) / `composted` (堆肥) are POSITIVE去向 —
@@ -114,8 +108,6 @@ enum FieldOrigin: String, Codable, Sendable, CaseIterable {
 enum DraftSource: String, Codable, Sendable, CaseIterable {
     case ai
     case user
-    /// Defined for parity; no factory produces it (see DraftField).
-    case hybrid
 }
 
 // MARK: - Notifications

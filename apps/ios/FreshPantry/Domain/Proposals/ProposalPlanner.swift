@@ -1,16 +1,5 @@
 import Foundation
 
-/// Minimal duck-typed view of an intake's identity fields. Both
-/// `IngredientDraft` (paste flow) and `ShoppingItem` (shopping flow) adapt to
-/// this when calling `ProposalPlanner`. Ported from the Dart
-/// `abstract class IntakeCandidate`.
-protocol IntakeCandidate {
-    var name: String { get }
-    var unit: String { get }
-    var storage: IconType { get }
-    var category: String? { get }
-}
-
 /// The default Intake action computed against live inventory.
 /// Mirrors the Dart `IntakeDefaultAction` (`.newRow()` / `.mergeInto(index)`).
 struct IntakeDefaultAction {
@@ -76,14 +65,17 @@ enum ProposalPlanner {
     /// always start a new batch; non-perishables merge when name×unit×storage
     /// match and the target row's quantity is numeric.
     static func computeIntakeDefaultAction(
-        candidate: IntakeCandidate,
+        name: String,
+        unit: String,
+        storage: IconType,
+        category: String?,
         inventory: [Ingredient]
     ) -> IntakeDefaultAction {
         let index = IngredientIdentity.resolveMergeTarget(
-            name: candidate.name,
-            unit: candidate.unit,
-            storage: candidate.storage,
-            category: candidate.category,
+            name: name,
+            unit: unit,
+            storage: storage,
+            category: category,
             inventory: inventory
         )
         return index < 0 ? .newRow() : .mergeInto(index)

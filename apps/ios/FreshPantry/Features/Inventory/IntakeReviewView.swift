@@ -257,7 +257,7 @@ private struct IntakeProposalRow: View {
             }
             .buttonStyle(.fkPressable)
 
-            ProvenanceBadge(origin: proposal.origin, userEdited: proposal.userEdited)
+            provenanceBadge
 
             nameField
 
@@ -270,6 +270,33 @@ private struct IntakeProposalRow: View {
                 onToggle: onToggleAction
             )
             .frame(maxWidth: 168, alignment: .trailing)
+        }
+    }
+
+    /// Small colored dot marking the proposal field's provenance. `userEdited`
+    /// always wins (手改); otherwise the dot reflects the data's origin.
+    private var provenanceBadge: some View {
+        Circle()
+            .fill(provenanceColor)
+            .frame(width: 8, height: 8)
+            .accessibilityLabel(provenanceLabel)
+    }
+
+    private var provenanceColor: Color {
+        if proposal.userEdited { return .fkWarn }
+        switch proposal.origin {
+        case .ai: return .fkPrimary
+        case .system: return .fkOutline
+        case .user: return .fkWarn
+        }
+    }
+
+    private var provenanceLabel: String {
+        if proposal.userEdited { return "手改" }
+        switch proposal.origin {
+        case .ai: return "AI 推断"
+        case .system: return "系统"
+        case .user: return "手填"
         }
     }
 

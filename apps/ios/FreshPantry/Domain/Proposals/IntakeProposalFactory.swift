@@ -76,7 +76,10 @@ enum IntakeProposalFactory {
         origin: FieldOrigin = .ai
     ) -> IntakeProposal {
         let action = ProposalPlanner.computeIntakeDefaultAction(
-            candidate: Candidate(name: name, unit: unit, storage: storage, category: category),
+            name: name,
+            unit: unit,
+            storage: storage,
+            category: category,
             inventory: inventory
         )
         let i = action.targetIndex
@@ -125,12 +128,5 @@ enum IntakeProposalFactory {
             }
         }
         return .fridge
-    }
-
-    private struct Candidate: IntakeCandidate {
-        let name: String
-        let unit: String
-        let storage: IconType
-        let category: String?
     }
 }

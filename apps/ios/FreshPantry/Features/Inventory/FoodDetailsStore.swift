@@ -20,12 +20,12 @@ final class FoodDetailsStore {
 
     private let ingredient: Ingredient
     private let repository: FoodDetailsRepository
-    private let client: FoodDetailsClient
+    private let client: OpenFoodFactsDetailsClient
 
     init(
         ingredient: Ingredient,
         repository: FoodDetailsRepository,
-        client: FoodDetailsClient
+        client: OpenFoodFactsDetailsClient
     ) {
         self.ingredient = ingredient
         self.repository = repository
