@@ -1,19 +1,16 @@
 import Foundation
 
-/// Ephemeral AI/intake review proposals — NOT persisted, no sync triplet.
-/// Drives the Review UI. Modeled as a protocol + concrete structs (Dart's
-/// `sealed class Proposal` with `id` + `selected`).
-protocol Proposal {
-    var id: String { get }
-    var selected: Bool { get }
-}
+// Ephemeral AI/intake review proposals — NOT persisted, no sync triplet; they
+// drive the Review UI. `IntakeProposal` and `DeductionProposal` both carry
+// `id` + `selected`, but the Review screens use them as concrete types, never
+// polymorphically, so no shared `Proposal` protocol earns its keep.
 
 /// Intake proposal (one parsed ingredient row awaiting confirmation).
 ///
 /// `mergeTargetId` corresponds to the inventory list INDEX-derived row id at
 /// proposal-compute time; callers MUST re-resolve via `IngredientIdentity`
 /// before applying (lists reorder/shrink via sync).
-struct IntakeProposal: Proposal {
+struct IntakeProposal {
     var id: String
     var name: String
     var quantity: String
@@ -136,7 +133,7 @@ struct DeductionCandidate: Equatable, Sendable {
 }
 
 /// Deduction proposal (one recipe ingredient to deduct from inventory).
-struct DeductionProposal: Proposal {
+struct DeductionProposal {
     var id: String
     var recipeIngredientName: String
     var requiredQty: String
