@@ -13,172 +13,57 @@ import Foundation
 /// household — parity invariant #7). Remote wins on id collisions, a synced
 /// local row is dropped (remote is the source of truth), and a soft-deleted
 /// local row is dropped (its remote absence already reflects the delete).
+///
+/// The merge/patch/local-only/soft-delete rules are GENERIC over `SyncableEntity`
+/// (ADR-0004) — the per-entity logic lives once in `merge`/`patch`. The named
+/// wrappers below are thin call-site shims kept until the coordinator collapse
+/// (Phase B) removes the last callers.
 enum HouseholdMergePolicy {
-    static func mergeInventory(
-        remote: [Ingredient],
-        local: [Ingredient],
-        scope: LocalUploadScope
-    ) -> [Ingredient] {
-        merge(
-            remote: remote,
-            local: local,
-            scope: scope,
-            entityType: .inventoryItem,
-            id: { $0.id },
-            isLocalOnly: isLocalOnlyInventory
-        )
-    }
 
-    static func mergeShopping(
-        remote: [ShoppingItem],
-        local: [ShoppingItem],
-        scope: LocalUploadScope
-    ) -> [ShoppingItem] {
-        merge(
-            remote: remote,
-            local: local,
-            scope: scope,
-            entityType: .shoppingItem,
-            id: { $0.id },
-            isLocalOnly: isLocalOnlyShopping
-        )
-    }
+    // MARK: Generic core (the rule, written once)
 
-    static func mergeCustomRecipe(
-        remote: [Recipe],
-        local: [Recipe],
-        scope: LocalUploadScope
-    ) -> [Recipe] {
-        merge(
-            remote: remote,
-            local: local,
-            scope: scope,
-            entityType: .customRecipe,
-            id: { $0.id },
-            isLocalOnly: isLocalOnlyRecipe
-        )
-    }
-
-    static func mergeMealPlan(
-        remote: [MealPlanEntry],
-        local: [MealPlanEntry],
-        scope: LocalUploadScope
-    ) -> [MealPlanEntry] {
-        merge(
-            remote: remote,
-            local: local,
-            scope: scope,
-            entityType: .mealPlanEntry,
-            id: { $0.id },
-            isLocalOnly: isLocalOnlyMealPlan
-        )
-    }
-
-    static func mergeFoodLog(
-        remote: [FoodLogEntry],
-        local: [FoodLogEntry],
-        scope: LocalUploadScope
-    ) -> [FoodLogEntry] {
-        merge(
-            remote: remote,
-            local: local,
-            scope: scope,
-            entityType: .foodLogEntry,
-            id: { $0.id },
-            isLocalOnly: isLocalOnlyFoodLog
-        )
-    }
-
-    static func mergeFavoriteRecipe(
-        remote: [FavoriteRecipe],
-        local: [FavoriteRecipe],
-        scope: LocalUploadScope
-    ) -> [FavoriteRecipe] {
-        merge(
-            remote: remote,
-            local: local,
-            scope: scope,
-            entityType: .favoriteRecipe,
-            id: { $0.id },
-            isLocalOnly: isLocalOnlyFavoriteRecipe
-        )
-    }
-
-    static func mergeDietaryPreference(
-        remote: [DietaryPreference],
-        local: [DietaryPreference],
-        scope: LocalUploadScope
-    ) -> [DietaryPreference] {
-        merge(
-            remote: remote,
-            local: local,
-            scope: scope,
-            entityType: .dietaryPreference,
-            id: { $0.id },
-            isLocalOnly: isLocalOnlyDietaryPreference
-        )
-    }
-
-    // MARK: Incremental patch (delta pull)
-
-    static func patchInventory(remoteDelta: [Ingredient], local: [Ingredient]) -> [Ingredient] {
-        patch(remoteDelta: remoteDelta, local: local, id: \.id)
-    }
-
-    static func patchShopping(remoteDelta: [ShoppingItem], local: [ShoppingItem]) -> [ShoppingItem] {
-        patch(remoteDelta: remoteDelta, local: local, id: \.id)
-    }
-
-    static func patchCustomRecipe(remoteDelta: [Recipe], local: [Recipe]) -> [Recipe] {
-        patch(remoteDelta: remoteDelta, local: local, id: \.id)
-    }
-
-    static func patchMealPlan(remoteDelta: [MealPlanEntry], local: [MealPlanEntry]) -> [MealPlanEntry] {
-        patch(remoteDelta: remoteDelta, local: local, id: \.id)
-    }
-
-    static func patchFoodLog(remoteDelta: [FoodLogEntry], local: [FoodLogEntry]) -> [FoodLogEntry] {
-        patch(remoteDelta: remoteDelta, local: local, id: \.id)
-    }
-
-    static func patchFavoriteRecipe(remoteDelta: [FavoriteRecipe], local: [FavoriteRecipe]) -> [FavoriteRecipe] {
-        patch(remoteDelta: remoteDelta, local: local, id: \.id)
-    }
-
-    static func patchDietaryPreference(remoteDelta: [DietaryPreference], local: [DietaryPreference]) -> [DietaryPreference] {
-        patch(remoteDelta: remoteDelta, local: local, id: \.id)
+    /// Shared merge: remote rows first, then the local-only rows absent remotely
+    /// and allowed by the scope. Order is preserved (remote in load order, then
+    /// the surviving locals in their original order).
+    static func merge<T: SyncableEntity>(
+        remote: [T],
+        local: [T],
+        scope: LocalUploadScope,
+        entityType: SyncEntityType
+    ) -> [T] {
+        let remoteIds = Set(remote.map(\.id))
+        let survivingLocals = local.filter { element in
+            element.isLocalOnly
+                && !remoteIds.contains(element.id)
+                && scope.allows(entityType, element.id)
+        }
+        return remote + survivingLocals
     }
 
     /// Applies an incremental remote delta onto the local snapshot: tombstones
     /// drop synced rows, upserts replace by id, unseen locals are kept.
-    private static func patch<Element>(
-        remoteDelta: [Element],
-        local: [Element],
-        id: KeyPath<Element, String>
-    ) -> [Element] {
-        var deltaById: [String: Element] = [:]
+    static func patch<T: SyncableEntity>(remoteDelta: [T], local: [T]) -> [T] {
+        var deltaById: [String: T] = [:]
         var deletedIds = Set<String>()
         for delta in remoteDelta {
-            let itemId = delta[keyPath: id]
-            if isSoftDeleted(delta) {
-                deltaById.removeValue(forKey: itemId)
-                deletedIds.insert(itemId)
+            if delta.deletedAt != nil {
+                deltaById.removeValue(forKey: delta.id)
+                deletedIds.insert(delta.id)
             } else {
-                deltaById[itemId] = delta
-                deletedIds.remove(itemId)
+                deltaById[delta.id] = delta
+                deletedIds.remove(delta.id)
             }
         }
-        var merged: [Element] = []
+        var merged: [T] = []
         var seen = Set<String>()
         for item in local {
-            let itemId = item[keyPath: id]
-            if deletedIds.contains(itemId) { continue }
-            if let delta = deltaById[itemId], !isSoftDeleted(delta) {
+            if deletedIds.contains(item.id) { continue }
+            if let delta = deltaById[item.id], delta.deletedAt == nil {
                 merged.append(delta)
-            } else if deltaById[itemId] == nil {
+            } else if deltaById[item.id] == nil {
                 merged.append(item)
             }
-            seen.insert(itemId)
+            seen.insert(item.id)
         }
         for (itemId, delta) in deltaById where !seen.contains(itemId) {
             merged.append(delta)
@@ -186,91 +71,69 @@ enum HouseholdMergePolicy {
         return merged
     }
 
-    private static func isSoftDeleted<T>(_ row: T) -> Bool {
-        switch row {
-        case let item as Ingredient: return item.deletedAt != nil
-        case let item as ShoppingItem: return item.deletedAt != nil
-        case let item as Recipe: return item.deletedAt != nil
-        case let item as MealPlanEntry: return item.deletedAt != nil
-        case let item as FoodLogEntry: return item.deletedAt != nil
-        case let item as FavoriteRecipe: return item.deletedAt != nil
-        case let item as DietaryPreference: return item.deletedAt != nil
-        default: return false
-        }
+    // MARK: Named shims (delegate to the generic core; removed in Phase B)
+
+    static func mergeInventory(remote: [Ingredient], local: [Ingredient], scope: LocalUploadScope) -> [Ingredient] {
+        merge(remote: remote, local: local, scope: scope, entityType: .inventoryItem)
     }
 
-    // MARK: Local-only predicates (mirror `_isLocalOnlyX`)
-
-    /// A row is local-only iff it has never synced (`remoteVersion <= 0`), is not
-    /// soft-deleted, has a non-empty id, and carries a non-blank identity field.
-    static func isLocalOnlyInventory(_ item: Ingredient) -> Bool {
-        item.remoteVersion <= 0
-            && item.deletedAt == nil
-            && !item.id.isEmpty
-            && !item.name.trimmed.isEmpty
+    static func mergeShopping(remote: [ShoppingItem], local: [ShoppingItem], scope: LocalUploadScope) -> [ShoppingItem] {
+        merge(remote: remote, local: local, scope: scope, entityType: .shoppingItem)
     }
 
-    static func isLocalOnlyShopping(_ item: ShoppingItem) -> Bool {
-        item.remoteVersion <= 0
-            && item.deletedAt == nil
-            && !item.id.isEmpty
-            && !item.name.trimmed.isEmpty
+    static func mergeCustomRecipe(remote: [Recipe], local: [Recipe], scope: LocalUploadScope) -> [Recipe] {
+        merge(remote: remote, local: local, scope: scope, entityType: .customRecipe)
     }
 
-    static func isLocalOnlyRecipe(_ recipe: Recipe) -> Bool {
-        recipe.remoteVersion <= 0
-            && recipe.deletedAt == nil
-            && !recipe.id.isEmpty
-            && !recipe.name.trimmed.isEmpty
+    static func mergeMealPlan(remote: [MealPlanEntry], local: [MealPlanEntry], scope: LocalUploadScope) -> [MealPlanEntry] {
+        merge(remote: remote, local: local, scope: scope, entityType: .mealPlanEntry)
     }
 
-    static func isLocalOnlyMealPlan(_ entry: MealPlanEntry) -> Bool {
-        entry.remoteVersion <= 0
-            && entry.deletedAt == nil
-            && !entry.id.isEmpty
-            && !entry.recipeId.trimmed.isEmpty
+    static func mergeFoodLog(remote: [FoodLogEntry], local: [FoodLogEntry], scope: LocalUploadScope) -> [FoodLogEntry] {
+        merge(remote: remote, local: local, scope: scope, entityType: .foodLogEntry)
     }
 
-    static func isLocalOnlyFoodLog(_ entry: FoodLogEntry) -> Bool {
-        entry.remoteVersion <= 0
-            && entry.deletedAt == nil
-            && !entry.id.isEmpty
-            && !entry.name.trimmed.isEmpty
+    static func mergeFavoriteRecipe(remote: [FavoriteRecipe], local: [FavoriteRecipe], scope: LocalUploadScope) -> [FavoriteRecipe] {
+        merge(remote: remote, local: local, scope: scope, entityType: .favoriteRecipe)
     }
 
-    static func isLocalOnlyFavoriteRecipe(_ favorite: FavoriteRecipe) -> Bool {
-        favorite.remoteVersion <= 0
-            && favorite.deletedAt == nil
-            && !favorite.id.isEmpty
-            && !favorite.recipeID.trimmed.isEmpty
+    static func mergeDietaryPreference(remote: [DietaryPreference], local: [DietaryPreference], scope: LocalUploadScope) -> [DietaryPreference] {
+        merge(remote: remote, local: local, scope: scope, entityType: .dietaryPreference)
     }
 
-    static func isLocalOnlyDietaryPreference(_ preference: DietaryPreference) -> Bool {
-        preference.remoteVersion <= 0
-            && preference.deletedAt == nil
-            && !preference.id.isEmpty
-            && !preference.keyword.trimmed.isEmpty
+    static func patchInventory(remoteDelta: [Ingredient], local: [Ingredient]) -> [Ingredient] {
+        patch(remoteDelta: remoteDelta, local: local)
     }
 
-    // MARK: Generic core
-
-    /// Shared merge: remote rows first, then the local-only rows absent remotely
-    /// and allowed by the scope. Order is preserved (remote in load order, then
-    /// the surviving locals in their original order).
-    private static func merge<Element>(
-        remote: [Element],
-        local: [Element],
-        scope: LocalUploadScope,
-        entityType: SyncEntityType,
-        id: (Element) -> String,
-        isLocalOnly: (Element) -> Bool
-    ) -> [Element] {
-        let remoteIds = Set(remote.map(id))
-        let survivingLocals = local.filter { element in
-            isLocalOnly(element)
-                && !remoteIds.contains(id(element))
-                && scope.allows(entityType, id(element))
-        }
-        return remote + survivingLocals
+    static func patchShopping(remoteDelta: [ShoppingItem], local: [ShoppingItem]) -> [ShoppingItem] {
+        patch(remoteDelta: remoteDelta, local: local)
     }
+
+    static func patchCustomRecipe(remoteDelta: [Recipe], local: [Recipe]) -> [Recipe] {
+        patch(remoteDelta: remoteDelta, local: local)
+    }
+
+    static func patchMealPlan(remoteDelta: [MealPlanEntry], local: [MealPlanEntry]) -> [MealPlanEntry] {
+        patch(remoteDelta: remoteDelta, local: local)
+    }
+
+    static func patchFoodLog(remoteDelta: [FoodLogEntry], local: [FoodLogEntry]) -> [FoodLogEntry] {
+        patch(remoteDelta: remoteDelta, local: local)
+    }
+
+    static func patchFavoriteRecipe(remoteDelta: [FavoriteRecipe], local: [FavoriteRecipe]) -> [FavoriteRecipe] {
+        patch(remoteDelta: remoteDelta, local: local)
+    }
+
+    static func patchDietaryPreference(remoteDelta: [DietaryPreference], local: [DietaryPreference]) -> [DietaryPreference] {
+        patch(remoteDelta: remoteDelta, local: local)
+    }
+
+    static func isLocalOnlyInventory(_ item: Ingredient) -> Bool { item.isLocalOnly }
+    static func isLocalOnlyShopping(_ item: ShoppingItem) -> Bool { item.isLocalOnly }
+    static func isLocalOnlyRecipe(_ recipe: Recipe) -> Bool { recipe.isLocalOnly }
+    static func isLocalOnlyMealPlan(_ entry: MealPlanEntry) -> Bool { entry.isLocalOnly }
+    static func isLocalOnlyFoodLog(_ entry: FoodLogEntry) -> Bool { entry.isLocalOnly }
+    static func isLocalOnlyFavoriteRecipe(_ favorite: FavoriteRecipe) -> Bool { favorite.isLocalOnly }
+    static func isLocalOnlyDietaryPreference(_ preference: DietaryPreference) -> Bool { preference.isLocalOnly }
 }

@@ -74,6 +74,30 @@ The one-method seam (`pushPending()`) that `SyncCoordinator` conforms to, so **S
 Finish** can be driven by a push-spy in tests — the structural gap whose absence let
 both bugs ship past the suite.
 
+**SyncableEntity**:
+The protocol the seven synced models conform to (`id`, `remoteVersion`, `deletedAt`,
+`hasSyncIdentity`, `withRemoteVersion`). It is what lets local⇄remote reconciliation be
+written *once*: `HouseholdMergePolicy.merge`/`patch` and the apply sequence are generic
+over it, so the soft-delete check and the local-only / well-formed predicates stop being
+per-entity copies. `hasSyncIdentity` is each model's non-blank identity field
+(`name` / `recipeId` / `keyword` / `recipeID`).
+
+**Entity Plan** (`EntityPlan`):
+One value per synced entity, holding its `SyncEntityType` plus the I/O bindings to its
+local repository and the remote (load / save / remoteLoad / remoteUpsert / watch). The
+coordinator holds `plans: [EntityPlan]` built in `init`; `startSync`, `refreshDelta`,
+`subscribe`, `uploadLocalOnly`, and cursor-advance all **loop** over it. A generic
+`plan<T: SyncableEntity>(…)` factory carries the decode→merge→save→signal sequence once,
+so *adding an eighth synced entity is one `plan(…)` line* instead of edits across ~8
+sites. This deepens `HouseholdContentSyncCoordinator` — a verbatim Dart port that
+repeated the sequence 21 times (apply/patch/upload × 7).
+_Avoid_: re-suggesting that `RemotePantryRepository`'s per-entity load/upsert/watch be
+collapsed too — its wire mapping is **parity-critical, byte-for-byte** with the Flutter
+client and its wrappers are already thin over shared cores; the `EntityPlan` references
+them via closures rather than touching them. The repo `save` names
+(`saveItems`/`saveRecipes`/`saveEntries`) are likewise left as-is and bound by closure,
+not renamed.
+
 ## Flagged ambiguities
 
 - "ingredient" — both inventory rows AND recipe-required food. Resolved: **Ingredient** = inventory row only; recipes use "recipe ingredient" / "required food".
