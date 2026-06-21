@@ -18,7 +18,7 @@ struct FoodLogMergeTests {
             entry("22222222-2222-4222-8222-222222222222", remoteVersion: 0), // local-only → kept
         ]
         let scope = LocalUploadScope(householdID: "home", pendingOps: [])
-        let merged = HouseholdMergePolicy.mergeFoodLog(remote: remote, local: local, scope: scope)
+        let merged = HouseholdMergePolicy.merge(remote: remote, local: local, scope: scope, entityType: .foodLogEntry)
         #expect(merged.map(\.id) == [
             "11111111-1111-4111-8111-111111111111",
             "22222222-2222-4222-8222-222222222222",
@@ -26,10 +26,10 @@ struct FoodLogMergeTests {
     }
 
     @Test func localOnlyGuardRejectsBlankNameAndSynced() {
-        #expect(HouseholdMergePolicy.isLocalOnlyFoodLog(entry("33333333-3333-4333-8333-333333333333", remoteVersion: 0)))
-        #expect(!HouseholdMergePolicy.isLocalOnlyFoodLog(entry("44444444-4444-4444-8444-444444444444", remoteVersion: 5))) // synced
+        #expect(entry("33333333-3333-4333-8333-333333333333", remoteVersion: 0).isLocalOnly)
+        #expect(!entry("44444444-4444-4444-8444-444444444444", remoteVersion: 5).isLocalOnly) // synced
         let blank = FoodLogEntry(id: "55555555-5555-4555-8555-555555555555", name: "  ", outcome: .consumed,
                                  loggedAt: Date(timeIntervalSince1970: 1_700_000_000))
-        #expect(!HouseholdMergePolicy.isLocalOnlyFoodLog(blank)) // blank name rejected
+        #expect(!blank.isLocalOnly) // blank name rejected
     }
 }

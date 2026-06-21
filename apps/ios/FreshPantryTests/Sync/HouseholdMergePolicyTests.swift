@@ -5,7 +5,8 @@ import Testing
 /// Parity with the `_mergeRemoteXWithLocalOnly` + `_isLocalOnlyX` rules from
 /// `lib/sync/household_content_sync_coordinator.dart`: remote rows are
 /// authoritative; only un-uploaded local rows absent remotely AND allowed by the
-/// upload scope survive alongside them.
+/// upload scope survive alongside them. Tests target the generic
+/// `merge`/`patch` (ADR-0004).
 struct HouseholdMergePolicyTests {
     // MARK: Fixtures
 
@@ -51,19 +52,21 @@ struct HouseholdMergePolicyTests {
     // MARK: Tests
 
     @Test func remoteRowsAlwaysSurvive() {
-        let merged = HouseholdMergePolicy.mergeInventory(
+        let merged = HouseholdMergePolicy.merge(
             remote: [remoteRow(id: "r1"), remoteRow(id: "r2")],
             local: [],
-            scope: openScope
+            scope: openScope,
+            entityType: .inventoryItem
         )
         #expect(merged.map(\.id) == ["r1", "r2"])
     }
 
     @Test func localOnlyAbsentRemotelyAndAllowedIsAppended() {
-        let merged = HouseholdMergePolicy.mergeInventory(
+        let merged = HouseholdMergePolicy.merge(
             remote: [remoteRow(id: "r1")],
             local: [localOnly(id: "l1")],
-            scope: openScope
+            scope: openScope,
+            entityType: .inventoryItem
         )
         // Remote first, then the surviving local-only row.
         #expect(merged.map(\.id) == ["r1", "l1"])
@@ -71,10 +74,11 @@ struct HouseholdMergePolicyTests {
 
     @Test func localOnlyAlreadyPresentRemotelyIsNotDuplicated() {
         // The local row shares its id with a remote row → remote wins, no dup.
-        let merged = HouseholdMergePolicy.mergeInventory(
+        let merged = HouseholdMergePolicy.merge(
             remote: [remoteRow(id: "shared", name: "远端版本")],
             local: [localOnly(id: "shared", name: "本地版本")],
-            scope: openScope
+            scope: openScope,
+            entityType: .inventoryItem
         )
         #expect(merged.map(\.id) == ["shared"])
         #expect(merged.first?.name == "远端版本")
@@ -83,10 +87,11 @@ struct HouseholdMergePolicyTests {
     @Test func syncedLocalRowIsDropped() {
         // remoteVersion > 0 → not local-only → remote is the source of truth.
         let synced = localOnly(id: "s1").copyWith(remoteVersion: 5)
-        let merged = HouseholdMergePolicy.mergeInventory(
+        let merged = HouseholdMergePolicy.merge(
             remote: [],
             local: [synced],
-            scope: openScope
+            scope: openScope,
+            entityType: .inventoryItem
         )
         #expect(merged.isEmpty)
     }
@@ -94,10 +99,11 @@ struct HouseholdMergePolicyTests {
     @Test func softDeletedLocalRowIsDropped() {
         // deletedAt != nil → not local-only → omitted from the merge.
         let deleted = localOnly(id: "d1").copyWith(deletedAt: Date(timeIntervalSince1970: 1))
-        let merged = HouseholdMergePolicy.mergeInventory(
+        let merged = HouseholdMergePolicy.merge(
             remote: [],
             local: [deleted],
-            scope: openScope
+            scope: openScope,
+            entityType: .inventoryItem
         )
         #expect(merged.isEmpty)
     }
@@ -105,20 +111,22 @@ struct HouseholdMergePolicyTests {
     @Test func localOnlyBlockedByScopeForAnotherHouseholdIsDropped() {
         // A pending op claims "l1" for "house-2"; it must not leak into house-1.
         let scope = scopeBlocking(entityID: "l1", forOtherHousehold: "house-2")
-        let merged = HouseholdMergePolicy.mergeInventory(
+        let merged = HouseholdMergePolicy.merge(
             remote: [],
             local: [localOnly(id: "l1")],
-            scope: scope
+            scope: scope,
+            entityType: .inventoryItem
         )
         #expect(merged.isEmpty)
     }
 
     @Test func blankNameLocalRowIsNotLocalOnly() {
         // Identity field blank → not local-only → dropped.
-        let merged = HouseholdMergePolicy.mergeInventory(
+        let merged = HouseholdMergePolicy.merge(
             remote: [],
             local: [localOnly(id: "b1", name: "   ")],
-            scope: openScope
+            scope: openScope,
+            entityType: .inventoryItem
         )
         #expect(merged.isEmpty)
     }
@@ -128,9 +136,10 @@ struct HouseholdMergePolicyTests {
     @Test func shoppingMergeAppendsLocalOnly() {
         let remote = ShoppingItem(id: "r1", name: "远端", detail: "", category: "其他", remoteVersion: 2)
         let local = ShoppingItem(id: "l1", name: "本地", detail: "", category: "其他", remoteVersion: 0)
-        let merged = HouseholdMergePolicy.mergeShopping(
+        let merged = HouseholdMergePolicy.merge(
             remote: [remote], local: [local],
-            scope: LocalUploadScope(householdID: household, pendingOps: [])
+            scope: LocalUploadScope(householdID: household, pendingOps: []),
+            entityType: .shoppingItem
         )
         #expect(merged.map(\.id) == ["r1", "l1"])
     }
@@ -140,9 +149,10 @@ struct HouseholdMergePolicyTests {
             id: "l1", name: "本地", category: "", difficulty: 1, cookingMinutes: 10,
             description: "", ingredients: [], steps: [], remoteVersion: 4
         )
-        let merged = HouseholdMergePolicy.mergeCustomRecipe(
+        let merged = HouseholdMergePolicy.merge(
             remote: [], local: [synced],
-            scope: LocalUploadScope(householdID: household, pendingOps: [])
+            scope: LocalUploadScope(householdID: household, pendingOps: []),
+            entityType: .customRecipe
         )
         #expect(merged.isEmpty)
     }
@@ -153,9 +163,10 @@ struct HouseholdMergePolicyTests {
             id: "m1", date: Date(timeIntervalSince1970: 0),
             recipeId: "", recipeName: "无食谱", remoteVersion: 0
         )
-        let merged = HouseholdMergePolicy.mergeMealPlan(
+        let merged = HouseholdMergePolicy.merge(
             remote: [], local: [entry],
-            scope: LocalUploadScope(householdID: household, pendingOps: [])
+            scope: LocalUploadScope(householdID: household, pendingOps: []),
+            entityType: .mealPlanEntry
         )
         #expect(merged.isEmpty)
     }
@@ -172,7 +183,7 @@ struct HouseholdMergePolicyTests {
             remoteRow(id: "r2", name: "远端米"),
             remoteRow(id: "r1", name: "删番茄").copyWith(deletedAt: Date(timeIntervalSince1970: 1)),
         ]
-        let merged = HouseholdMergePolicy.patchInventory(remoteDelta: delta, local: local)
+        let merged = HouseholdMergePolicy.patch(remoteDelta: delta, local: local)
         #expect(merged.map(\.id) == ["l1", "r2"])
         #expect(merged.first(where: { $0.id == "r2" })?.name == "远端米")
     }
