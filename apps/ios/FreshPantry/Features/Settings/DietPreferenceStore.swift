@@ -67,24 +67,13 @@ final class DietPreferenceStore {
     // MARK: Persistence (sorted JSON string-array codec)
 
     private func persist() {
-        let array = selected.sorted()
-        guard let data = try? JSONSerialization.data(withJSONObject: array),
-              let json = String(data: data, encoding: .utf8)
-        else {
-            return
-        }
+        guard let json = DomainJSON.encodeStringArray(selected.sorted()) else { return }
         defaults.set(json, forKey: Self.storageKey)
     }
 
     /// Defensive decode: nil/empty/non-array/malformed → empty set; otherwise the
     /// trimmed, non-blank string elements.
     static func decode(_ raw: String?) -> Set<String> {
-        guard let raw, !raw.isEmpty,
-              let data = raw.data(using: .utf8),
-              let array = try? JSONSerialization.jsonObject(with: data) as? [Any]
-        else {
-            return []
-        }
-        return Set(array.compactMap { $0 as? String }.map(normalize).filter { !$0.isEmpty })
+        DomainJSON.decodeStringSet(raw, transform: normalize)
     }
 }

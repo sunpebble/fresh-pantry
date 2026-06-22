@@ -189,27 +189,13 @@ final class FavoritesStore {
 
     /// Encodes the id set as a sorted JSON string array and writes the blob.
     private func persistLocal() {
-        let array = favoriteIDs.sorted()
-        guard
-            let data = try? JSONSerialization.data(withJSONObject: array),
-            let json = String(data: data, encoding: .utf8)
-        else {
-            return
-        }
+        guard let json = DomainJSON.encodeStringArray(favoriteIDs.sorted()) else { return }
         defaults.set(json, forKey: Self.storageKey)
     }
 
     /// Defensive decode: nil/empty/non-array/malformed → empty set; otherwise the
     /// non-blank string elements (mirrors the Flutter repo's lenient load).
     static func decode(_ raw: String?) -> Set<String> {
-        guard
-            let raw, !raw.isEmpty,
-            let data = raw.data(using: .utf8),
-            let array = try? JSONSerialization.jsonObject(with: data) as? [Any]
-        else {
-            return []
-        }
-        let ids = array.compactMap { $0 as? String }.filter { !$0.isEmpty }
-        return Set(ids)
+        DomainJSON.decodeStringSet(raw)
     }
 }

@@ -179,12 +179,7 @@ final class DietaryPreferencesStore {
     // MARK: Local persistence (the reusable JSON-string-array KV codec)
 
     private func persistLocal() {
-        let array = keywords.sorted()
-        guard let data = try? JSONSerialization.data(withJSONObject: array),
-              let json = String(data: data, encoding: .utf8)
-        else {
-            return
-        }
+        guard let json = DomainJSON.encodeStringArray(keywords.sorted()) else { return }
         defaults.set(json, forKey: Self.storageKey)
     }
 
@@ -192,16 +187,6 @@ final class DietaryPreferencesStore {
     /// normalized, non-blank string elements (re-normalized on load so a legacy
     /// blob with mixed casing collapses to the canonical set).
     static func decode(_ raw: String?) -> Set<String> {
-        guard let raw, !raw.isEmpty,
-              let data = raw.data(using: .utf8),
-              let array = try? JSONSerialization.jsonObject(with: data) as? [Any]
-        else {
-            return []
-        }
-        let keywords = array
-            .compactMap { $0 as? String }
-            .map(normalize)
-            .filter { !$0.isEmpty }
-        return Set(keywords)
+        DomainJSON.decodeStringSet(raw, transform: normalize)
     }
 }

@@ -104,4 +104,25 @@ enum DomainJSON {
         else { return nil }
         return model
     }
+
+    /// Defensive decode of a JSON string-array blob (a UserDefaults preference
+    /// list) → a de-duplicated set of its non-blank elements, each passed through
+    /// `transform` first (normalize for case-folded sets, identity for
+    /// case-sensitive ids). nil/empty/non-array/malformed → empty set.
+    static func decodeStringSet(_ raw: String?, transform: (String) -> String = { $0 }) -> Set<String> {
+        guard let raw, !raw.isEmpty,
+              let data = raw.data(using: .utf8),
+              let array = try? JSONSerialization.jsonObject(with: data) as? [Any]
+        else { return [] }
+        return Set(array.compactMap { $0 as? String }.map(transform).filter { !$0.isEmpty })
+    }
+
+    /// Encodes a string array to a compact JSON string for a UserDefaults blob —
+    /// the inverse of `decodeStringSet`. nil when serialization fails.
+    static func encodeStringArray(_ array: [String]) -> String? {
+        guard let data = try? JSONSerialization.data(withJSONObject: array),
+              let json = String(data: data, encoding: .utf8)
+        else { return nil }
+        return json
+    }
 }
