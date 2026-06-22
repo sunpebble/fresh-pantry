@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.24.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.23.4...fresh_pantry-v1.24.0) (2026-06-22)
+
+
+### Features
+
+* **ios:** 入库写入失败不再静默——重试 + Sentry + 应用内提示 ([9035e66](https://github.com/kunish/fresh_pantry/commit/9035e66ac9092f7909f8e482c203be9e7bf19dc6))
+
 ## [1.23.4](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.23.3...fresh_pantry-v1.23.4) (2026-06-20)
 
 
