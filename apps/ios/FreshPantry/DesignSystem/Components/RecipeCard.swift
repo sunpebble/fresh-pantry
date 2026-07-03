@@ -67,7 +67,9 @@ struct RecipeCard: View {
         Button(action: onToggleFavorite) {
             Image(systemName: isFavorite ? "heart.fill" : "heart")
                 .font(.system(size: FkSize.iconSm, weight: .semibold))
-                .foregroundStyle(isFavorite ? Color.fkDanger : Color.fkOnPrimary)
+                // Fixed white: sits on fkOnImageScrim over the photo, not on
+                // fkPrimary (fkOnPrimary is ink now that primary is sun gold).
+                .foregroundStyle(isFavorite ? Color.fkDanger : Color.white)
                 .padding(6)
                 .background(Circle().fill(Color.fkOnImageScrim))
         }

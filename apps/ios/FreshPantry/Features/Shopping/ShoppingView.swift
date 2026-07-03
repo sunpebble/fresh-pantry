@@ -226,7 +226,7 @@ private struct ShoppingContent: View {
             Section {
                 ShoppingProgressCard(done: store.checkedCount, total: store.total, progress: store.progress)
                     // leading/trailing 0: the section's `.listSectionMargins` already
-                    // insets the row to FkSpacing.lg (16pt), so the blue card's edges land
+                    // insets the row to FkSpacing.lg (16pt), so the hero card's edges land
                     // exactly where the 首页 hero's do. Adding FkSpacing.lg here again
                     // double-inset it (insetGrouped's ~20pt default section margin + 16 =
                     // ~36pt), making it visibly narrower than the home hero.
@@ -541,26 +541,26 @@ private struct ShoppingProgressCard: View {
                 VStack(alignment: .leading, spacing: FkSpacing.xs) {
                     Text("本次采购进度")
                         .font(.fkLabelSmall)
-                        .foregroundStyle(Color.white.opacity(0.85))
+                        .foregroundStyle(Color.fkOnPrimary.opacity(0.75))
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("\(done)")
                             // .largeTitle (34pt base) so the stat scales with Dynamic Type.
                             .font(.system(.largeTitle, design: .rounded, weight: .heavy))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Color.fkOnPrimary)
                         Text("/ \(total) 项")
                             .font(.fkBodyMedium)
-                            .foregroundStyle(Color.white.opacity(0.85))
+                            .foregroundStyle(Color.fkOnPrimary.opacity(0.75))
                     }
                 }
                 Spacer(minLength: FkSpacing.sm)
                 Text("\(percent)%")
                     .font(.fkHeadlineSmall)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.fkOnPrimary)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.2))
-                    Capsule().fill(Color.white)
+                    Capsule().fill(Color.fkOnPrimary.opacity(0.15))
+                    Capsule().fill(Color.fkOnPrimary)
                         .frame(width: geo.size.width * clamped)
                 }
             }
@@ -569,16 +569,11 @@ private struct ShoppingProgressCard: View {
         .padding(FkSpacing.lg)
         .frame(maxWidth: .infinity)
         .background(
+            // Flat sun-gold hero with ink content — the Sunpebble accent
+            // treatment (see Sleeptab's CTA). The old blue gradient hosted
+            // white; sun gold is too light for white anywhere on it.
             RoundedRectangle(cornerRadius: FkRadius.xl, style: .continuous)
-                .fill(
-                    // fkPrimaryDeep(双模式同为深蓝)而非 fkPrimaryContainer:
-                    // 后者在深色下是浅 ink,会让白字失去对比。
-                    LinearGradient(
-                        colors: [Color.fkPrimary, Color.fkPrimaryDeep],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(Color.fkPrimary)
         )
     }
 }

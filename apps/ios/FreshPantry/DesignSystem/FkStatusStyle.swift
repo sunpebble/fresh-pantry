@@ -5,7 +5,7 @@ import SwiftUI
 ///
 /// This (plus `FkStatusStyle.of`) is the SINGLE SOURCE OF TRUTH for urgency
 /// colors — no card/row/badge may re-derive "expired vs not" on its own, or the
-/// urgent (coral ink) / soon (butter ink) / expired (coral fill) distinction is
+/// urgent (coral ink) / soon (amber ink) / expired (coral fill) distinction is
 /// lost.
 enum FkStatus: String, Sendable, CaseIterable {
     case fresh
@@ -24,7 +24,9 @@ struct FkStatusStyle: Sendable {
     static func of(_ status: FkStatus) -> FkStatusStyle {
         switch status {
         case .fresh:
-            return FkStatusStyle(background: .fkPrimarySoft, foreground: .fkPrimaryContainer, label: "新鲜")
+            // Green, not primary: with the sun-gold primary, a gold "新鲜" chip
+            // would read as a caution next to the amber "即将过期" one.
+            return FkStatusStyle(background: .fkSuccessSoft, foreground: .fkOnSuccessContainer, label: "新鲜")
         case .soon:
             return FkStatusStyle(background: .fkWarnSoft, foreground: .fkOnWarnContainer, label: "即将过期")
         case .urgent:
