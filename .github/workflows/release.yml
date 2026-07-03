@@ -71,12 +71,11 @@ jobs:
           brew trust aws/tap azure/bicep
           brew install xcodegen
 
-      # altool(上传步骤)按固定目录找 key;xcodebuild -authenticationKeyPath 用仓库内路径
-      - name: Install ASC API key
+      # xcodebuild needs the key on disk for -allowProvisioningUpdates
+      - name: Write App Store Connect API key
         run: |
-          mkdir -p "$HOME/.appstoreconnect/private_keys" private_keys
-          printf '%s' "${{ secrets.ASC_API_KEY_P8 }}" > "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
-          printf '%s' "${{ secrets.ASC_API_KEY_P8 }}" > "private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          mkdir -p private_keys
+          printf '%s\n' "${{ secrets.ASC_API_KEY_P8 }}" > "private_keys/AuthKey_${ASC_KEY_ID}.p8"
           chmod 600 "private_keys/AuthKey_${ASC_KEY_ID}.p8"
 
       # 与 dayroll/simmer/sleeptab 相同的签名方案:导入 org 级 Distribution 证书
@@ -179,19 +178,16 @@ jobs:
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
 
-      - name: Upload to TestFlight (one retry)
-        run: |
-          ipas=(build/ipa/*.ipa)
-          IPA="${ipas[0]}"
-          echo "Uploading: $IPA"
-          for attempt in 1 2; do
-            if xcrun altool --upload-app -f "$IPA" -t ios \
-                 --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"; then
-              echo "upload ok"; exit 0
-            fi
-            echo "upload attempt $attempt failed; retrying in 30s"; sleep 30
-          done
-          echo "upload failed after retries"; exit 1
+      - name: Upload to TestFlight
+        uses: apple-actions/upload-testflight-build@v5
+        with:
+          app-path: apps/ios/build/ipa/FreshPantry.ipa
+          issuer-id: ${{ secrets.ASC_ISSUER_ID }}
+          api-key-id: ${{ secrets.ASC_KEY_ID }}
+          api-private-key: ${{ secrets.ASC_API_KEY_P8 }}
+          # The action signs one short-lived JWT up front; its processing-poll loop
+          # outlives the token and dies with a 401 even though the upload succeeded.
+          wait-for-processing: 'false'
 
       # 发版优先:符号上传放在上传之后,失败仅本步骤标红(continue-on-error),
       # 不影响已上架构建。dSYM 按 UUID 关联,无需对齐 release。org/project 与
@@ -208,4 +204,4 @@ jobs:
 
       - name: Clean up credentials
         if: always()
-        run: rm -rf private_keys ExportOptions.plist "$HOME/.appstoreconnect/private_keys"
+        run: rm -rf private_keys ExportOptions.plist
