@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.25.0](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v1.24.0...fresh_pantry-v1.25.0) (2026-07-03)
+
+
+### Features
+
+* App 图标重绘为 sunpebble 品牌配色 ([110f547](https://github.com/sunpebble/fresh-pantry/commit/110f547e05fbbd9f6af43f261584a9b1d042a87f))
+* bundle id 迁移至 com.sunpebble.freshpantry,发布流程与其他 sunpebble app 统一 ([fd2bbc2](https://github.com/sunpebble/fresh-pantry/commit/fd2bbc203d3fbb647d58b2d70e22e73e88175650))
+* 换肤到 sunpebble 品牌色——sun 金主色 + cream/ink 中性色 + 夜色深色模式 ([7ecb978](https://github.com/sunpebble/fresh-pantry/commit/7ecb978b035769c8e44af2a6e5d6e9c95b96f7ca))
+
 ## [1.24.0](https://github.com/kunish/fresh_pantry/compare/fresh_pantry-v1.23.4...fresh_pantry-v1.24.0) (2026-06-22)
 
 
