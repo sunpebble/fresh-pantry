@@ -21,15 +21,17 @@ updates:
         patterns:
           - "*"
 
-  # Cloudflare Worker API —— apps/api 的 npm 依赖
+  # npm —— apps/api(Cloudflare Worker)+ apps/recipe-pipeline,跨目录合并为一个 npm 组
   - package-ecosystem: "npm"
-    directory: "/apps/api"
+    directories:
+      - "/apps/api"
+      - "/apps/recipe-pipeline"
     schedule:
       interval: "weekly"
     commit-message:
       prefix: "chore"
       include: "scope"
     groups:
-      api-dependencies:
+      npm-dependencies:
         patterns:
           - "*"
