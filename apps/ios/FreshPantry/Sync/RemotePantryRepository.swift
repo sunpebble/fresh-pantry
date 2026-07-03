@@ -37,7 +37,7 @@ actor RemotePantryRepository {
     /// Realtime-channel diagnostics. Transient subscribe/channel errors are logged
     /// here and swallowed (invariant #9: reporting them as fatal previously caused
     /// production crashes), never propagated.
-    private let log = Logger(subsystem: "com.kunish.freshPantry", category: "RemotePantryRepository")
+    private let log = Logger(subsystem: "com.sunpebble.freshpantry", category: "RemotePantryRepository")
 
     init(
         client: SupabaseClient,

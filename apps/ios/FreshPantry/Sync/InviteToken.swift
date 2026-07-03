@@ -87,7 +87,7 @@ enum InviteToken {
     ///   (a) schemeless `/invite/<token>` — exactly 2 path segments, first ==
     ///       `invite`;
     ///   (b) http/https URL with path `/invite/<token>` — same 2-segment rule;
-    ///   (c) custom scheme `com.kunish.freshpantry` or `freshpantry`, host ==
+    ///   (c) custom scheme `com.sunpebble.freshpantry` or `freshpantry`, host ==
     ///       `invite`, exactly 1 path segment = the token.
     ///
     /// Like Dart's `Uri`, a trailing slash yields a trailing empty path segment,
@@ -116,7 +116,7 @@ enum InviteToken {
     }
 
     private static let inviteSegment = "invite"
-    private static let customScheme = "com.kunish.freshpantry"
+    private static let customScheme = "com.sunpebble.freshpantry"
     private static let shortScheme = "freshpantry"
 
     // MARK: - Hashing

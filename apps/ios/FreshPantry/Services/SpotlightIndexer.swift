@@ -67,7 +67,7 @@ final class SpotlightIndexer: @unchecked Sendable {
     static let descriptionLimit = 80
 
     private let index: CSSearchableIndex
-    private let logger = Logger(subsystem: "com.kunish.freshPantry", category: "spotlight")
+    private let logger = Logger(subsystem: "com.sunpebble.freshpantry", category: "spotlight")
 
     init(index: CSSearchableIndex = .default()) {
         self.index = index

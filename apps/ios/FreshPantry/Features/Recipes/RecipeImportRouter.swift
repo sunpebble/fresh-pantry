@@ -1,7 +1,7 @@
 import Foundation
 
 /// Holds a recipe URL handed in by the Share Extension via the custom scheme
-/// `com.kunish.freshpantry://import-recipe?url=…`, until the Recipes tab can open
+/// `com.sunpebble.freshpantry://import-recipe?url=…`, until the Recipes tab can open
 /// 新建食谱 pre-filled for AI import (parity with the Flutter share intent).
 ///
 /// A single instance lives on `AppDependencies` and is injected into the

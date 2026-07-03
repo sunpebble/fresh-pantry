@@ -7,7 +7,7 @@ import SwiftUI
 // 交互/配置 widget 的 AppIntents(ToggleShoppingItemIntent / SelectWidgetContentIntent)
 // 经 dual-target membership 直接编进本 app target(源在 Widgets/Shared,见 project.yml),
 // 主 app bundle 因此自带其元数据并由 linkd 在安装时注册进运行时索引,chronod 后台执行
-// (openAppWhenRun=NO)即可在 com.kunish.freshPantry 按 identifier 命中。无需 AppIntentsPackage。
+// (openAppWhenRun=NO)即可在 com.sunpebble.freshpantry 按 identifier 命中。无需 AppIntentsPackage。
 
 /// Application entry point.
 ///

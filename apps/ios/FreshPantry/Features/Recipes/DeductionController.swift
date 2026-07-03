@@ -14,7 +14,7 @@ import os
 /// means they stay testable without SwiftData.
 @MainActor
 final class DeductionController {
-    private static let logger = Logger(subsystem: "com.kunish.freshPantry", category: "food-log")
+    private static let logger = Logger(subsystem: "com.sunpebble.freshpantry", category: "food-log")
 
     private let inventoryRepository: InventoryRepository
     private let foodLogRepository: FoodLogRepository

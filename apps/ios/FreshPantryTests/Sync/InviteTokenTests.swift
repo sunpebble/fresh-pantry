@@ -89,7 +89,7 @@ struct InviteTokenTests {
 
     @Test func fromInputAcceptsCustomSchemeURLs() {
         #expect(
-            InviteToken.fromInput("com.kunish.freshpantry://invite/abcDEF123_-ghijklmnop")
+            InviteToken.fromInput("com.sunpebble.freshpantry://invite/abcDEF123_-ghijklmnop")
                 == "abcDEF123_-ghijklmnop"
         )
         #expect(

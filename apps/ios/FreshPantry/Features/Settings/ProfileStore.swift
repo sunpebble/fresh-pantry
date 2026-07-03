@@ -35,7 +35,7 @@ final class ProfileStore {
     /// already-persisted `avatarPath` (the user re-picks to retry the image).
     private var pendingAvatarData: Data?
 
-    private static let logger = Logger(subsystem: "com.kunish.freshPantry", category: "profile")
+    private static let logger = Logger(subsystem: "com.sunpebble.freshpantry", category: "profile")
 
     init(remote: ProfileRemote?, local: ProfileRepository) {
         self.remote = remote

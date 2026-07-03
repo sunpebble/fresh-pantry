@@ -28,10 +28,10 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>com.kunish.freshpantry.auth</string>
+			<string>com.sunpebble.freshpantry.auth</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.kunish.freshpantry</string>
+				<string>com.sunpebble.freshpantry</string>
 				<string>freshpantry</string>
 			</array>
 		</dict>

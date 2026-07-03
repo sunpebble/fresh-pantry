@@ -19,7 +19,7 @@ import Supabase
 struct SupabaseClientProvider {
     /// The custom-scheme auth callback, matching the Flutter
     /// `supabaseAuthRedirectUrl` and the Supabase project `site_url`.
-    static let authRedirectURL = URL(string: "com.kunish.freshpantry://signin-callback/")!
+    static let authRedirectURL = URL(string: "com.sunpebble.freshpantry://signin-callback/")!
 
     /// The shared client, or nil when no backend is configured.
     let client: SupabaseClient?

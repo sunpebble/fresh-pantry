@@ -1,6 +1,6 @@
 name: FreshPantry
 options:
-  bundleIdPrefix: com.kunish
+  bundleIdPrefix: com.sunpebble
   deploymentTarget:
     iOS: "26.0"
   developmentLanguage: zh-Hans
@@ -59,7 +59,7 @@ targets:
         embed: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.kunish.freshPantry
+        PRODUCT_BUNDLE_IDENTIFIER: com.sunpebble.freshpantry
         PRODUCT_NAME: FreshPantry
         INFOPLIST_FILE: FreshPantry/Support/Info.plist
         GENERATE_INFOPLIST_FILE: NO
@@ -69,17 +69,6 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_ENTITLEMENTS: FreshPantry/Support/FreshPantry.entitlements
-      configs:
-        # 本地调试:自动管理开发签名(无需手动证书/描述文件)
-        Debug:
-          CODE_SIGN_STYLE: Automatic
-        # 发布 / CI archive:manual 显式 distribution 签名。ephemeral runner 上自动签名
-        # 对 archive 一律退化为 Development → 撞证书配额;改用预生成 App Store profile
-        # + 导入的 Apple Distribution 证书,确定走分发签名。
-        Release:
-          CODE_SIGN_STYLE: Manual
-          CODE_SIGN_IDENTITY: Apple Distribution
-          PROVISIONING_PROFILE_SPECIFIER: FreshPantry App Store
 
   ShareExtension:
     type: app-extension
@@ -89,17 +78,10 @@ targets:
       - path: ShareExtension
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.kunish.freshPantry.ShareExtension
+        PRODUCT_BUNDLE_IDENTIFIER: com.sunpebble.freshpantry.share
         PRODUCT_NAME: ShareExtension
         INFOPLIST_FILE: ShareExtension/Info.plist
         GENERATE_INFOPLIST_FILE: NO
-      configs:
-        Debug:
-          CODE_SIGN_STYLE: Automatic
-        Release:
-          CODE_SIGN_STYLE: Manual
-          CODE_SIGN_IDENTITY: Apple Distribution
-          PROVISIONING_PROFILE_SPECIFIER: FreshPantry ShareExtension App Store
 
   FreshPantryWidgets:
     type: app-extension
@@ -120,18 +102,11 @@ targets:
       # ShoppingToggleService)。真机 30MB 预算不受影响。
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.kunish.freshPantry.Widgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.sunpebble.freshpantry.widget
         PRODUCT_NAME: FreshPantryWidgets
         INFOPLIST_FILE: FreshPantryWidgets/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: FreshPantryWidgets/FreshPantryWidgets.entitlements
-      configs:
-        Debug:
-          CODE_SIGN_STYLE: Automatic
-        Release:
-          CODE_SIGN_STYLE: Manual
-          CODE_SIGN_IDENTITY: Apple Distribution
-          PROVISIONING_PROFILE_SPECIFIER: FreshPantry Widgets App Store
 
   FreshPantryTests:
     type: bundle.unit-test
@@ -143,7 +118,7 @@ targets:
       - target: FreshPantry
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.kunish.freshPantry.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.sunpebble.freshpantry.tests
         GENERATE_INFOPLIST_FILE: YES
 
   # XCUITest — drives the real app over the live TabView lifecycle (the only place
@@ -159,7 +134,7 @@ targets:
       - target: FreshPantry
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.kunish.freshPantry.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.sunpebble.freshpantry.uitests
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: FreshPantry
 

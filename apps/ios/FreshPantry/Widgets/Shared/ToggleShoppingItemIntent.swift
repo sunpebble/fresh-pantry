@@ -9,7 +9,7 @@ import AppIntents
 /// project.yml),**不要收进 framework**:`openAppWhenRun=NO` 交互 intent 由 chronod 按主 app
 /// bundle 的运行时 AppIntents 索引(linkd 安装时注册)、按 **identifier** 解析;framework 的
 /// intent 在 release 下不被 linkd 注册进该索引(FB #425),真机恒报 "no metadata for
-/// ToggleShoppingItemIntent in com.kunish.freshPantry"。app 模块 `FreshPantry.*` 与 widget
+/// ToggleShoppingItemIntent in com.sunpebble.freshpantry"。app 模块 `FreshPantry.*` 与 widget
 /// 模块 `FreshPantryWidgets.*` mangled 名不同但**不失配**(匹配按 identifier,各 bundle 自洽)。
 public struct ToggleShoppingItemIntent: AppIntent {
     public static var title: LocalizedStringResource { "勾选购物项" }

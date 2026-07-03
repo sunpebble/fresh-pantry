@@ -32,7 +32,7 @@ actor HouseholdContentSyncCoordinator {
     /// adding a synced entity is one `EntitySync.make` line here (ADR-0004).
     private let entitySyncs: [EntitySync]
 
-    private static let logger = Logger(subsystem: "com.kunish.freshPantry", category: "sync")
+    private static let logger = Logger(subsystem: "com.sunpebble.freshpantry", category: "sync")
 
     /// The household currently reconciled. Empty = local-only (no sync running).
     private var activeHouseholdId = ""

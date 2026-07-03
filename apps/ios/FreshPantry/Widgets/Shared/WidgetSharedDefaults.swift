@@ -4,5 +4,5 @@ import Foundation
 /// `.entitlements` 里的 `application-groups` 一致;`WidgetSnapshotStore` /
 /// `WidgetPendingToggleStore` / `ModelContainerFactory` 用它解析共享容器 URL。
 public enum WidgetSharedDefaults {
-    public static let appGroupID = "group.com.kunish.freshPantry"
+    public static let appGroupID = "group.com.sunpebble.freshpantry"
 }

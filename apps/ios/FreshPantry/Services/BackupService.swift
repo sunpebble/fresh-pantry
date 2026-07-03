@@ -279,7 +279,7 @@ enum BackupService {
         .object(history.mapValues { object($0) })
     }
 
-    private static let logger = Logger(subsystem: "com.kunish.freshPantry", category: "backup")
+    private static let logger = Logger(subsystem: "com.sunpebble.freshpantry", category: "backup")
 
     /// Pretty-prints a `JSONValue` envelope with 2-space indentation + sorted keys
     /// (Foundation's `.prettyPrinted` uses 2-space indent, matching Dart's

@@ -55,7 +55,7 @@ struct AddIngredientView: View {
 
     /// Barcode-memory is a convenience cache, never a data path: failures here
     /// degrade to OFF / manual and are only logged (debug), never surfaced.
-    private static let barcodeLogger = Logger(subsystem: "com.kunish.freshPantry", category: "barcode-memory")
+    private static let barcodeLogger = Logger(subsystem: "com.sunpebble.freshpantry", category: "barcode-memory")
 
     private var controller: IntakeController {
         IntakeController(

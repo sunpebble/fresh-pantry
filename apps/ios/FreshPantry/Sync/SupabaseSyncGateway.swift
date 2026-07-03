@@ -28,7 +28,7 @@ actor SupabaseSyncGateway: RemoteSyncGateway {
     private let client: SupabaseClient
     private let diagnostics: Diagnostics
     private static let maxConflictRetries = 3
-    private static let logger = Logger(subsystem: "com.kunish.freshPantry", category: "sync")
+    private static let logger = Logger(subsystem: "com.sunpebble.freshpantry", category: "sync")
 
     init(client: SupabaseClient, diagnostics: Diagnostics = NoopDiagnostics()) {
         self.client = client

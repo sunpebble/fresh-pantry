@@ -471,7 +471,7 @@ enum OpenFoodFactsService {
         return components.url
     }
 
-    private static let logger = Logger(subsystem: "com.kunish.freshPantry", category: "openFoodFacts")
+    private static let logger = Logger(subsystem: "com.sunpebble.freshpantry", category: "openFoodFacts")
 
     private static func log(_ context: String, _ error: Error) {
         // Best-effort lookup: surface the failure (not silently hidden) but never

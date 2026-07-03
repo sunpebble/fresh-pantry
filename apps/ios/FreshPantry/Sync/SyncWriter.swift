@@ -26,7 +26,7 @@ final class SyncWriter {
         var baseVersion: Int?
     }
 
-    private static let logger = Logger(subsystem: "com.kunish.freshPantry", category: "sync")
+    private static let logger = Logger(subsystem: "com.sunpebble.freshpantry", category: "sync")
 
     /// Held behind the `OutboxEnqueuing` seam (not the concrete actor) so the
     /// enqueue-FAILURE escalation is assertable with a throwing fake.

@@ -96,7 +96,7 @@ actor SyncCoordinator: CoordinatorPushing {
     /// staying parked until relaunch. A true poison op simply re-quarantines.
     private var lastProbedOnline: Bool?
 
-    private static let logger = Logger(subsystem: "com.kunish.freshPantry", category: "sync")
+    private static let logger = Logger(subsystem: "com.sunpebble.freshpantry", category: "sync")
 
     /// Connectivity probe gating the silent-failure strike: the real gateway
     /// swallows error types, so a partial ack alone can't be told apart from an

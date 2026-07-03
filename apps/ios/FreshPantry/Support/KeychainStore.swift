@@ -18,7 +18,7 @@ struct KeychainStore: SecretStore {
 
     /// Defaults `service` to the running app's bundle id so secrets are scoped to
     /// this app and don't collide with other Keychain consumers on device.
-    init(service: String = Bundle.main.bundleIdentifier ?? "com.kunish.freshPantry") {
+    init(service: String = Bundle.main.bundleIdentifier ?? "com.sunpebble.freshpantry") {
         self.service = service
     }
 

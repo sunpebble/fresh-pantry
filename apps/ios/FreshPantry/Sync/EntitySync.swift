@@ -34,7 +34,7 @@ struct EntitySync: Sendable {
     /// run's SHARED scope (parity: the old `uploadLocalOnly` built it once).
     let uploadLocalOnly: @Sendable (_ scope: LocalUploadScope, _ ctx: SyncApplyContext) async throws -> Void
 
-    private static let log = Logger(subsystem: "com.kunish.freshPantry", category: "sync")
+    private static let log = Logger(subsystem: "com.sunpebble.freshpantry", category: "sync")
 
     static func make<T: SyncableEntity>(
         _ entityType: SyncEntityType,

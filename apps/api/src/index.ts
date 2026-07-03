@@ -1,5 +1,5 @@
 const INVITE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{10,160}$/;
-const APP_DEEP_LINK_SCHEME = "com.kunish.freshpantry";
+const APP_DEEP_LINK_SCHEME = "com.sunpebble.freshpantry";
 
 type Env = Record<string, never>;
 

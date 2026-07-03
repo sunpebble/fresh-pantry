@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 /// Share-extension principal class: when the user shares a 懒饭 / 下厨房 recipe
 /// link (or page) into 食材管家, it extracts the URL, host-gates it, and hands it
-/// to the main app via the custom scheme `com.kunish.freshpantry://import-recipe?url=…`.
+/// to the main app via the custom scheme `com.sunpebble.freshpantry://import-recipe?url=…`.
 /// The app then opens 新建食谱 pre-filled for AI import (parity with the Flutter
 /// share intent). The success path stays UI-less — forward and dismiss
 /// immediately; an unsupported share (no URL / unknown host) raises one alert
@@ -91,12 +91,12 @@ final class ShareViewController: UIViewController {
     /// extensions) nor `extensionContext.open` (Today-widget-only — it silently
     /// no-ops here). The portable workaround is to walk the responder chain to the
     /// app object and invoke its `openURL:`; this opens the containing app (which
-    /// registers `com.kunish.freshpantry://`). It's an undocumented selector, but
+    /// registers `com.sunpebble.freshpantry://`). It's an undocumented selector, but
     /// the standard share-extension handoff and low-risk for this TestFlight app.
     @MainActor
     private func open(recipe url: URL) {
         var components = URLComponents()
-        components.scheme = "com.kunish.freshpantry"
+        components.scheme = "com.sunpebble.freshpantry"
         components.host = "import-recipe"
         components.queryItems = [URLQueryItem(name: "url", value: url.absoluteString)]
         guard let appURL = components.url else { return }

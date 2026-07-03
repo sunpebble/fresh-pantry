@@ -38,7 +38,7 @@ enum ShoppingToggleService {
             // 与 SyncWriter 一致:outbox 写失败意味着这条翻转在该行被重新编辑前
             // 永不同步(本地已改、远程不知)。本地翻转已成功,故仍返 true,但记一条
             // error 供 Console 排查这种静默漂移。
-            Logger(subsystem: "com.kunish.freshPantry", category: "widget")
+            Logger(subsystem: "com.sunpebble.freshpantry", category: "widget")
                 .error("widget shopping toggle outbox enqueue failed for \(toggled.id, privacy: .public): \(error.localizedDescription, privacy: .public) — will not sync until re-edited")
         }
         return true

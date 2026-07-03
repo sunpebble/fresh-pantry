@@ -19,7 +19,7 @@ describe("fresh-pantry-api", () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe(
-      "com.kunish.freshpantry://invite/abcDEF123_-",
+      "com.sunpebble.freshpantry://invite/abcDEF123_-",
     );
   });
 
@@ -33,7 +33,7 @@ describe("fresh-pantry-api", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("text/html; charset=utf-8");
     await expect(response.text()).resolves.toContain(
-      'href="com.kunish.freshpantry://invite/abcDEF123_-"',
+      'href="com.sunpebble.freshpantry://invite/abcDEF123_-"',
     );
   });
 

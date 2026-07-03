@@ -25,7 +25,7 @@ final class InventoryStore {
         case category(String)
     }
 
-    private static let logger = Logger(subsystem: "com.kunish.freshPantry", category: "food-log")
+    private static let logger = Logger(subsystem: "com.sunpebble.freshpantry", category: "food-log")
 
     private let repository: InventoryRepository
     /// Append-only food-departure log — the waste-stats source of truth. A manual
