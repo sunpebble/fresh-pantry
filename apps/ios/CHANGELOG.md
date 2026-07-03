@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v1.25.0...fresh_pantry-v2.0.0) (2026-07-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* API 域名迁移至 api.freshpantry.sunpebblelabs.com
+
+### Features
+
+* API 域名迁移至 api.freshpantry.sunpebblelabs.com ([2ace26d](https://github.com/sunpebble/fresh-pantry/commit/2ace26d37b71b7aeb91989da95a8014fa8bb195b))
+
 ## [1.25.0](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v1.24.0...fresh_pantry-v1.25.0) (2026-07-03)
 
 
