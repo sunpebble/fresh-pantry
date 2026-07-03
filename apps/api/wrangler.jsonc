@@ -4,7 +4,7 @@
   "compatibility_date": "2026-05-27",
   "routes": [
     {
-      "pattern": "api.fresh-pantry.kunish.eu.org",
+      "pattern": "api.freshpantry.sunpebblelabs.com",
       "custom_domain": true
     }
   ]

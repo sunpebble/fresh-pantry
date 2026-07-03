@@ -49,7 +49,7 @@ npm test
 npx wrangler deploy
 ```
 
-The production Worker route is `api.fresh-pantry.kunish.eu.org`.
+The production Worker route is `api.freshpantry.sunpebblelabs.com`.
 
 ## Supabase Auth Redirect
 

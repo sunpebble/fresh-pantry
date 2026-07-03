@@ -61,7 +61,7 @@ struct AiSettingsView: View {
             .listRowBackground(Color.fkSurfaceContainerLowest)
 
             Section {
-                LabeledField(label: "Base URL", text: $baseUrl, placeholder: "https://cpa.kunish.eu.org/v1", keyboard: .URL)
+                LabeledField(label: "Base URL", text: $baseUrl, placeholder: "https://api.openai.com/v1", keyboard: .URL)
                 SecureField("API Key", text: $apiKey)
                     .font(.fkBodyMedium)
                     .textInputAutocapitalization(.never)

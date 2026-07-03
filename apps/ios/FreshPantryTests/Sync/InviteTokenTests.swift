@@ -77,7 +77,7 @@ struct InviteTokenTests {
 
     @Test func fromInputAcceptsHttpsInvitePath() {
         #expect(
-            InviteToken.fromInput("https://api.fresh-pantry.kunish.eu.org/invite/abcDEF123_-ghijklmnop")
+            InviteToken.fromInput("https://api.freshpantry.sunpebblelabs.com/invite/abcDEF123_-ghijklmnop")
                 == "abcDEF123_-ghijklmnop"
         )
         // Scheme casing is normalized like Dart's Uri.
@@ -167,16 +167,16 @@ struct InviteTokenTests {
     @Test func inviteURLStripsSingleTrailingSlash() {
         #expect(
             InviteToken.inviteURL(
-                apiBaseURL: "https://api.fresh-pantry.kunish.eu.org",
+                apiBaseURL: "https://api.freshpantry.sunpebblelabs.com",
                 token: "abc123"
-            ) == "https://api.fresh-pantry.kunish.eu.org/invite/abc123"
+            ) == "https://api.freshpantry.sunpebblelabs.com/invite/abc123"
         )
         // One trailing slash stripped, mirroring the Dart `substring` (not greedy).
         #expect(
             InviteToken.inviteURL(
-                apiBaseURL: "https://api.fresh-pantry.kunish.eu.org/",
+                apiBaseURL: "https://api.freshpantry.sunpebblelabs.com/",
                 token: "abc123"
-            ) == "https://api.fresh-pantry.kunish.eu.org/invite/abc123"
+            ) == "https://api.freshpantry.sunpebblelabs.com/invite/abc123"
         )
         // Only ONE slash removed → a double trailing slash keeps the inner one.
         #expect(

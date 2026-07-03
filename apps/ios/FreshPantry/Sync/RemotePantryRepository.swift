@@ -41,7 +41,7 @@ actor RemotePantryRepository {
 
     init(
         client: SupabaseClient,
-        apiBaseURL: String = "https://api.fresh-pantry.kunish.eu.org"
+        apiBaseURL: String = "https://api.freshpantry.sunpebblelabs.com"
     ) {
         self.client = client
         self.apiBaseURL = apiBaseURL

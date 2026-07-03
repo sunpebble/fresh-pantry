@@ -3,7 +3,7 @@ import worker from "../src/index";
 
 describe("fresh-pantry-api", () => {
   it("returns health status", async () => {
-    const response = await worker.fetch(new Request("https://api.fresh-pantry.kunish.eu.org/health"));
+    const response = await worker.fetch(new Request("https://api.freshpantry.sunpebblelabs.com/health"));
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -14,7 +14,7 @@ describe("fresh-pantry-api", () => {
 
   it("redirects valid invite tokens to the mobile deep link", async () => {
     const response = await worker.fetch(
-      new Request("https://api.fresh-pantry.kunish.eu.org/invite/abcDEF123_-"),
+      new Request("https://api.freshpantry.sunpebblelabs.com/invite/abcDEF123_-"),
     );
 
     expect(response.status).toBe(302);
@@ -25,7 +25,7 @@ describe("fresh-pantry-api", () => {
 
   it("returns an HTML invite fallback for browser requests", async () => {
     const response = await worker.fetch(
-      new Request("https://api.fresh-pantry.kunish.eu.org/invite/abcDEF123_-", {
+      new Request("https://api.freshpantry.sunpebblelabs.com/invite/abcDEF123_-", {
         headers: { accept: "text/html" },
       }),
     );
@@ -39,7 +39,7 @@ describe("fresh-pantry-api", () => {
 
   it("rejects malformed invite tokens", async () => {
     const response = await worker.fetch(
-      new Request("https://api.fresh-pantry.kunish.eu.org/invite/not valid"),
+      new Request("https://api.freshpantry.sunpebblelabs.com/invite/not valid"),
     );
 
     expect(response.status).toBe(400);
@@ -48,7 +48,7 @@ describe("fresh-pantry-api", () => {
 
   it("rejects malformed percent-encoded invite tokens", async () => {
     const response = await worker.fetch(
-      new Request("https://api.fresh-pantry.kunish.eu.org/invite/%E0%A4%A"),
+      new Request("https://api.freshpantry.sunpebblelabs.com/invite/%E0%A4%A"),
     );
 
     expect(response.status).toBe(400);
@@ -57,7 +57,7 @@ describe("fresh-pantry-api", () => {
 
   it("returns 405 for POST /health", async () => {
     const response = await worker.fetch(
-      new Request("https://api.fresh-pantry.kunish.eu.org/health", {
+      new Request("https://api.freshpantry.sunpebblelabs.com/health", {
         method: "POST",
       }),
     );
@@ -68,7 +68,7 @@ describe("fresh-pantry-api", () => {
 
   it("returns 405 for POST /invite/<token>", async () => {
     const response = await worker.fetch(
-      new Request("https://api.fresh-pantry.kunish.eu.org/invite/abcDEF123_-", {
+      new Request("https://api.freshpantry.sunpebblelabs.com/invite/abcDEF123_-", {
         method: "POST",
       }),
     );
@@ -79,7 +79,7 @@ describe("fresh-pantry-api", () => {
 
   it("HEAD /health returns 200", async () => {
     const response = await worker.fetch(
-      new Request("https://api.fresh-pantry.kunish.eu.org/health", { method: "HEAD" }),
+      new Request("https://api.freshpantry.sunpebblelabs.com/health", { method: "HEAD" }),
     );
 
     expect(response.status).toBe(200);
@@ -87,7 +87,7 @@ describe("fresh-pantry-api", () => {
 
   it("HEAD /invite/<token> returns 302", async () => {
     const response = await worker.fetch(
-      new Request("https://api.fresh-pantry.kunish.eu.org/invite/abcDEF123_-", {
+      new Request("https://api.freshpantry.sunpebblelabs.com/invite/abcDEF123_-", {
         method: "HEAD",
       }),
     );
@@ -97,7 +97,7 @@ describe("fresh-pantry-api", () => {
 
   it("GET /nonexistent returns 404", async () => {
     const response = await worker.fetch(
-      new Request("https://api.fresh-pantry.kunish.eu.org/nonexistent"),
+      new Request("https://api.freshpantry.sunpebblelabs.com/nonexistent"),
     );
 
     expect(response.status).toBe(404);
@@ -105,7 +105,7 @@ describe("fresh-pantry-api", () => {
 
   it("rejects a 9-char invite token (below minimum length)", async () => {
     const response = await worker.fetch(
-      new Request("https://api.fresh-pantry.kunish.eu.org/invite/123456789"),
+      new Request("https://api.freshpantry.sunpebblelabs.com/invite/123456789"),
     );
 
     expect(response.status).toBe(400);
@@ -113,7 +113,7 @@ describe("fresh-pantry-api", () => {
 
   it("accepts a 10-char invite token (minimum valid length)", async () => {
     const response = await worker.fetch(
-      new Request("https://api.fresh-pantry.kunish.eu.org/invite/1234567890"),
+      new Request("https://api.freshpantry.sunpebblelabs.com/invite/1234567890"),
     );
 
     expect(response.status).toBe(302);
@@ -122,7 +122,7 @@ describe("fresh-pantry-api", () => {
   it("accepts a 160-char invite token (maximum valid length)", async () => {
     const token = "a".repeat(160);
     const response = await worker.fetch(
-      new Request(`https://api.fresh-pantry.kunish.eu.org/invite/${token}`),
+      new Request(`https://api.freshpantry.sunpebblelabs.com/invite/${token}`),
     );
 
     expect(response.status).toBe(302);
@@ -131,7 +131,7 @@ describe("fresh-pantry-api", () => {
   it("rejects a 161-char invite token (above maximum length)", async () => {
     const token = "a".repeat(161);
     const response = await worker.fetch(
-      new Request(`https://api.fresh-pantry.kunish.eu.org/invite/${token}`),
+      new Request(`https://api.freshpantry.sunpebblelabs.com/invite/${token}`),
     );
 
     expect(response.status).toBe(400);

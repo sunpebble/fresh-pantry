@@ -7,7 +7,7 @@ struct BackendConfig: Sendable, Equatable {
     let supabasePublishableKey: String
     let apiBaseURL: URL
 
-    static let defaultAPIBaseURL = URL(string: "https://api.fresh-pantry.kunish.eu.org")!
+    static let defaultAPIBaseURL = URL(string: "https://api.freshpantry.sunpebblelabs.com")!
 }
 
 /// Sentry/observability config. Mirrors the Flutter `SentryConfig`.

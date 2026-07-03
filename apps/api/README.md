@@ -19,4 +19,4 @@ Deployment:
 npx wrangler deploy
 ```
 
-Production route: `api.fresh-pantry.kunish.eu.org`.
+Production route: `api.freshpantry.sunpebblelabs.com`.
