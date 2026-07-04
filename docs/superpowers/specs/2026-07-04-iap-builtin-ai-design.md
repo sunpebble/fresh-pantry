@@ -42,32 +42,32 @@
 - 中文原生强，4 个任务（食材解析、菜谱解析、菜谱生成、菜谱改写）全是中文结构化 JSON 抽取/轻生成，够用。
 - 已知局限：DeepSeek API 无视觉模型——将来"拍照识食材"上线时需另接视觉模型（AiClient 的 image 消息路径保留不动）。
 
-### 服务端：Supabase Edge Function `ai-chat`
+### 服务端：现有 Cloudflare Worker 加 `POST /ai/chat` 路由
 
-项目首个 edge function（`supabase/functions/ai-chat/`）。
+复用 `apps/api`（`fresh-pantry-api`，已部署在 `api.freshpantry.sunpebblelabs.com`），在现有手写路由里加一条，不建新项目、不引入框架。
 
-- 持有 `DEEPSEEK_API_KEY`（Supabase secret），客户端永远拿不到 key。
-- 鉴权：验证 Supabase Auth JWT（登录用户才能调）。
-- 转发：DeepSeek API 本身是 OpenAI 兼容格式，与 app 现有 `AiClient` 的消息格式一致——函数只做鉴权 + 注入 `model: deepseek-v4-flash` + 原样转发到 `https://api.deepseek.com/chat/completions`，不做格式翻译。
-- 限额：每用户每日调用上限（初值 100 次/日，存 Postgres 计数表，超限返回 429 + 中文提示）。ponytail: 简单日计数表，出现真实滥用再上更细的配额/封禁。
-- Pro 校验：v1 信任客户端（未购买用户客户端就不会发请求）；计数表按 user_id 记录，留有服务端拒绝的钩子。
+- 持有 `DEEPSEEK_API_KEY`（`wrangler secret`），客户端永远拿不到 key。
+- 鉴权：验证 Supabase Auth JWT（`jose`，优先走项目 JWKS，若项目仍是 legacy HS256 则用 `SUPABASE_JWT_SECRET`），登录用户才能调。这是该 worker 首个依赖（`jose` 是 Workers 兼容的标准选择）。
+- 转发：DeepSeek API 本身是 OpenAI 兼容格式，与 app 现有 `AiClient` 的消息格式一致——路由只做鉴权 + 注入 `model: deepseek-v4-flash` + 原样转发到 `https://api.deepseek.com/chat/completions`，不做格式翻译。
+- 限额：每用户每日调用上限（初值 100 次/日），Workers KV 计数（key `ai:{user_id}:{yyyymmdd}`，TTL 2 天），超限返回 429 + 中文提示。ponytail: KV 最终一致，突发并发可能略超限——可接受；真出现滥用再换 Durable Object 精确计数。
+- Pro 校验：v1 信任客户端（未购买用户客户端就不会发请求）；限额按 user_id 记录，留有服务端拒绝的钩子。
 
 ### 客户端改动
 
-- `AiClient` 默认指向 edge function URL，Authorization 用 Supabase session token；`AiBaseURL`/`AiSettingsStore` 的 BYOK 自定义 endpoint 保留为高级选项（用户填了自己的 endpoint 就绕过内置服务，此时不受每日限额约束）。
+- `AiClient` 默认指向 `https://api.freshpantry.sunpebblelabs.com/ai`，Authorization 用 Supabase session token；`AiBaseURL`/`AiSettingsStore` 的 BYOK 自定义 endpoint 保留为高级选项（用户填了自己的 endpoint 就绕过内置服务，此时不受每日限额约束）。
 - AI 门控逻辑：`isPro == true` 或已配置 BYOK → 放行。
 
 ## 错误处理
 
 - 购买失败/取消：StoreKit 错误就地吐回 PaywallSheet，文案平实（"购买没有完成"），不重试不弹循环。
-- edge function 429（限额）：AiError.network 通道透出中文提示"今天的 AI 次数用完了，明天再来"。
+- worker 429（限额）：AiError.network 通道透出中文提示"今天的 AI 次数用完了，明天再来"。
 - DeepSeek 上游错误：原样映射到现有 `AiError` 体系（notConfigured/network/auth/parse 已齐备）。
 
 ## 测试
 
 - `ProStore` 门控逻辑（含 50 条上限判定、BYOK 绕行）单元测试。
 - StoreKit Configuration 本地跑通：购买、恢复、Family Sharing 标记。
-- edge function：本地 `supabase functions serve` + 一个限额计数的 pgTAP/deno 测试。
+- worker：沿用 `apps/api` 现有 vitest（`@cloudflare/vitest-pool-workers`）——覆盖鉴权拒绝、限额 429、转发成功三条路径。
 - 上线前用 app 真实 prompt 对 `deepseek-v4-flash` 做一轮人工质量抽查（4 个任务各 3 条中文用例）。
 
 ## 明确跳过（YAGNI）
