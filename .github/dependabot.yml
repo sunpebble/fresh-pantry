@@ -35,3 +35,8 @@ updates:
       npm-dependencies:
         patterns:
           - "*"
+    ignore:
+      # wrangler 4.x 的 peer 依赖仍要求 workers-types ^4,v5 会让 npm ci ERESOLVE。
+      # wrangler 升到支持 v5 后可移除本条。
+      - dependency-name: "@cloudflare/workers-types"
+        update-types: ["version-update:semver-major"]
