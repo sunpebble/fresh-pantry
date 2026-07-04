@@ -47,7 +47,7 @@
 复用 `apps/api`（`fresh-pantry-api`，已部署在 `api.freshpantry.sunpebblelabs.com`），在现有手写路由里加一条，不建新项目、不引入框架。
 
 - 持有 `DEEPSEEK_API_KEY`（`wrangler secret`），客户端永远拿不到 key。
-- 鉴权：验证 Supabase Auth JWT（`jose`，优先走项目 JWKS，若项目仍是 legacy HS256 则用 `SUPABASE_JWT_SECRET`），登录用户才能调。这是该 worker 首个依赖（`jose` 是 Workers 兼容的标准选择）。
+- 鉴权：把客户端的 access token 转发给 Supabase `GET /auth/v1/user` 校验（200 即有效并取得 user_id）。零依赖、免去 JWKS/HS256 密钥管理；代价是每次 AI 调用多一次子请求（AI 调用本身秒级，可接受）。ponytail: 若这次往返成为瓶颈，再换 jose 本地校验。
 - 转发：DeepSeek API 本身是 OpenAI 兼容格式，与 app 现有 `AiClient` 的消息格式一致——路由只做鉴权 + 注入 `model: deepseek-v4-flash` + 原样转发到 `https://api.deepseek.com/chat/completions`，不做格式翻译。
 - 限额：每用户每日调用上限（初值 100 次/日），Workers KV 计数（key `ai:{user_id}:{yyyymmdd}`，TTL 2 天），超限返回 429 + 中文提示。ponytail: KV 最终一致，突发并发可能略超限——可接受；真出现滥用再换 Durable Object 精确计数。
 - Pro 校验：v1 信任客户端（未购买用户客户端就不会发请求）；限额按 user_id 记录，留有服务端拒绝的钩子。
