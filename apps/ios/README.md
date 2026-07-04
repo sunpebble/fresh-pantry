@@ -1,7 +1,7 @@
 # Fresh Pantry — 原生 iOS app(SwiftUI)
 
-家庭食材管理 app 的原生 SwiftUI 重写,取代 `apps/mobile` 的 Flutter 版(同 bundle id
-`com.kunish.freshPantry`,只有原生这一份发 TestFlight)。架构与迁移记录见
+家庭食材管理 app 的原生 SwiftUI 重写,取代 `apps/mobile` 的 Flutter 版(bundle id
+`com.sunpebble.freshpantry`,只有原生这一份发 TestFlight)。架构与迁移记录见
 [`docs/swiftui-migration/PLAN.md`](../../docs/swiftui-migration/PLAN.md)。
 
 ## 本地开发
@@ -83,51 +83,43 @@ xcodebuild build-for-testing -project apps/ios/FreshPantry.xcodeproj -scheme Fre
 - build number 不入库:CI 用 `date -u +%Y%m%d%H%M`,单调递增,天然规避 TestFlight「build 号必须更大」。
 - git tag 沿用 `fresh_pantry-v<version>`(release-please component=`fresh_pantry`),与历史标签连续。
 
-## 签名：手动签名（Apple Distribution 证书 + Provisioning Profiles）
+## 签名：自动签名（固定 Distribution 证书 + 云 provisioning）
 
-CI 使用**手动签名**——预先导出 Apple Distribution 证书及两个 App Store provisioning profiles，
-以 base64 编码存入 GitHub Secrets，每次 CI 构建时导入临时 keychain 并安装 profiles。
+与 dayroll / simmer / sleeptab 完全一致：`apple-actions/import-codesign-certs` 导入
+org 级共享的 Apple Distribution 证书作为固定签名身份，archive/export 以
+`CODE_SIGN_STYLE=Automatic` + `-allowProvisioningUpdates` + ASC API key 云签名
+按需生成 profile，**无需预生成或维护 provisioning profile**。
 
-**为何不用 `-allowProvisioningUpdates` 自动签名？** ephemeral runner 每次都是干净 keychain，
-Xcode 自动签名会新建证书，几次后撞上账户证书配额（"Your account has reached the maximum
-number of certificates"），导致连带报 "No profiles ... were found"。导入同一张固定 Distribution
-证书则不存在此问题（详见 `release.yml` 中 `Import Apple Distribution certificate` step 注释）。
-
-### 一次性准备步骤
-
-1. 在 App Store Connect 创建（或复用已有的）**Apple Distribution 证书**，导出为 `.p12`（含私钥）。
-2. 在 App Store Connect 创建两个 **App Store Distribution Provisioning Profiles**：
-   - 主 App：`com.kunish.freshPantry`
-   - Widget Extension：`com.kunish.freshPantry.widget`
-   并下载各自的 `.mobileprovision` 文件。
-3. Base64 编码各文件：
-
-   ```bash
-   base64 -i dist_cert.p12 | tr -d '\n' | pbcopy                   # → APPLE_DIST_CERT_P12_BASE64
-   base64 -i fp_app_store.mobileprovision | tr -d '\n' | pbcopy    # → APPLE_PROFILE_APP_BASE64
-   base64 -i fp_ext_app_store.mobileprovision | tr -d '\n' | pbcopy # → APPLE_PROFILE_EXT_BASE64
-   ```
-
-4. 将各值及证书导出密码一并写入 GitHub Secrets（见下表）。
+- 固定证书解决了 ephemeral runner 自动签名反复新建证书、撞账户证书配额的问题
+  （"Your account has reached the maximum number of certificates"）。
+- 注意：App ID 的 **App Group 关联须在 developer.apple.com 手动 Configure**，
+  云签名不会自动补（只勾能力不关联 group 会签名失败）。
 
 ## CI 需要的 GitHub Secrets
 
-仓库 Settings → Secrets and variables → Actions(**均已配置**):
+签名/上传相关的 6 个为 **org 级 secrets**（sunpebble 全部仓库共享，均已配置）：
 
-| Secret | 用途 |
+| Secret（org 级） | 用途 |
 |---|---|
 | `ASC_KEY_ID` | App Store Connect API Key ID |
 | `ASC_ISSUER_ID` | API Key Issuer ID |
-| `ASC_API_KEY_P8` | `.p8` 私钥全文（altool 上传 TestFlight） |
-| `APPLE_DIST_CERT_P12_BASE64` | Apple Distribution 证书（含私钥）的 base64 |
-| `APPLE_DIST_CERT_PASSWORD` | `.p12` 导出密码 |
-| `APPLE_PROFILE_APP_BASE64` | 主 App（`com.kunish.freshPantry`）App Store profile 的 base64 |
-| `APPLE_PROFILE_EXT_BASE64` | Widget Extension（`com.kunish.freshPantry.widget`）App Store profile 的 base64 |
+| `ASC_API_KEY_P8` | `.p8` 私钥全文（云签名 + TestFlight 上传） |
+| `APPLE_TEAM_ID` | 开发者 Team ID |
+| `DIST_CERT_P12` | Apple Distribution 证书（含私钥）的 base64 |
+| `DIST_CERT_PASSWORD` | `.p12` 导出密码 |
+
+仓库级 secrets（FreshPantry 特有）：
+
+| Secret（repo 级） | 用途 |
+|---|---|
 | `SUPABASE_URL` | 写入 CI 生成的 Secrets.plist |
 | `SUPABASE_PUBLISHABLE_KEY` | 写入 CI 生成的 Secrets.plist |
 | `SENTRY_AUTH_TOKEN` | sentry-cli 上传 dSYM（需 `project:releases` 权限） |
 
-非敏感、直接写在配置里：team `62HCT6Q83X`、bundle id `com.kunish.freshPantry`、
+TestFlight 上传用 `apple-actions/upload-testflight-build`（`wait-for-processing`
+关闭：action 预签的短时 JWT 会在处理轮询期间过期，上传成功也报 401）。
+
+非敏感、直接写在配置里：team `62HCT6Q83X`、bundle id `com.sunpebble.freshpantry`、
 Sentry org `kunish` / project `fresh_pantry`。`SENTRY_DSN` 不设 secret——CI 留空，
 运行时退回 `AppConfig` 内置默认 DSN；CI 固定 `SENTRY_ENVIRONMENT=production`。
 

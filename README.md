@@ -56,7 +56,7 @@ The production Worker route is `api.freshpantry.sunpebblelabs.com`.
 Email OTP sign-in redirects back into the iOS app with:
 
 ```text
-com.kunish.freshpantry://signin-callback/
+com.sunpebble.freshpantry://signin-callback/
 ```
 
 Set the Supabase project's Auth Site URL to that deep link and keep the same URL in the redirect allow list before testing magic-link sign-in on devices.
