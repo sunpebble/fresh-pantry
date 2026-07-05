@@ -123,6 +123,13 @@ struct AiClientTests {
         } throws: { ($0 as? AiError) == .auth(String(localized: "error.ai.authExpired")) }
     }
 
+    @Test func status401WithAuthMissingCodeMapsToLocalizedMessage() async {
+        respond(status: 401, body: #"{"error":{"code":"auth_missing","message":"missing credentials"}}"#)
+        await #expect {
+            try await chat()
+        } throws: { ($0 as? AiError) == .auth(String(localized: "error.ai.authExpired")) }
+    }
+
     @Test func status429MapsToBusyNetwork() async {
         respond(status: 429, body: "slow down")
         await #expect {

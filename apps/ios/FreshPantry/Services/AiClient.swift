@@ -188,7 +188,7 @@ enum AiClient {
             return
         case 401, 403:
             switch serverErrorCode(body) {
-            case "auth_expired": throw AiError.auth(String(localized: "error.ai.authExpired"))
+            case "auth_expired", "auth_missing": throw AiError.auth(String(localized: "error.ai.authExpired"))
             default: throw AiError.auth(String(localized: "error.ai.authFailed \(status)"))
             }
         case 429:
