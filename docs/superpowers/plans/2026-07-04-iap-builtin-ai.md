@@ -17,9 +17,9 @@
 - 内置模型 ID：`deepseek-v4-flash`（旧名 `deepseek-chat` 2026-07-24 弃用，禁用）。
 - 免费版库存上限：50 条（`FreeTier.inventoryLimit`）；每用户每日 AI 调用上限：100 次。
 - 现有中文错误文案（`AiError.message` 等）逐字保留（services invariant #1）；新增用户文案遵循 site 仓库 BRAND.md 的 plain and kind 语气（"还""再"类平实措辞，不惊叹号、不施压）。
-- **新建 Swift 文件必须注册进 `apps/ios/FreshPantry.xcodeproj/project.pbxproj`**（项目无 fileSystemSynchronized 组）：模仿同目录任一现有文件，在 PBXBuildFile、PBXFileReference、所属 PBXGroup children、目标 Sources build phase 四处各加一条（新 24 位大写十六进制 UUID，勿与现有冲突）。测试文件同样注册进 FreshPantryTests target。注册是否成功以 xcodebuild 编译通过为准。
-- iOS 测试命令模板：
-  `cd apps/ios && xcodebuild test -scheme FreshPantry -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -only-testing:FreshPantryTests/<套件名> 2>&1 | tail -30`
+- ~~新建 Swift 文件必须注册进 project.pbxproj~~ **勘误（Task 3 实测）**：`FreshPantry.xcodeproj/` 被 gitignore，工程由 xcodegen 从 `apps/ios/project.yml` 生成——新建 Swift 文件**无需注册**（sources 目录型自动收录），改动文件集后跑 `cd apps/ios && xcodegen generate`；禁止手改 pbxproj/xcscheme。
+- iOS 测试命令模板（本机无 iPhone 16 Pro，用 17 Pro）：
+  `cd apps/ios && xcodebuild test -scheme FreshPantry -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:FreshPantryTests/<套件名> 2>&1 | tail -30`
 - worker 测试命令：`cd apps/api && npm test`
 - 每个任务结束即 commit；仓库根为 `apps/` 上一级（FreshPantry/）。
 
