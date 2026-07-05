@@ -1029,9 +1029,7 @@ struct PlanDayPickerSheet: View {
         let today = MealPlanEntry.dateOnly(Date())
         let offset = calendar.dateComponents([.day], from: today, to: MealPlanEntry.dateOnly(day)).day ?? 0
 
-        let month = calendar.component(.month, from: day)
-        let date = calendar.component(.day, from: day)
-        let datePart = String(localized: "recipe.detail.dateFormat.monthDay \(month) \(date)")
+        let datePart = day.formatted(.dateTime.month().day())
 
         let prefix: String
         switch offset {

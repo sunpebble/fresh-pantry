@@ -2,7 +2,7 @@ import AVFoundation
 import Foundation
 import Speech
 
-/// On-device push-to-talk dictation (#13): live Chinese speech → text, used to
+/// On-device push-to-talk dictation (#13): live speech → text, used to
 /// fill the AI 文本解析 editor hands-free at the stove. The transcribed text flows
 /// into the SAME `AiIngredientParser.fromText` pipeline as pasted text, so only
 /// the capture is new. Audio I/O can't be unit-tested — the parsing it feeds is
@@ -14,7 +14,9 @@ final class SpeechTranscriber {
     private(set) var transcript = ""
     private(set) var errorMessage: String?
 
-    private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-Hans"))
+    // 语音录入按用户当前语言识别; 不支持时回退中文(历史默认)。
+    private let recognizer = SFSpeechRecognizer(locale: .autoupdatingCurrent)
+        ?? SFSpeechRecognizer(locale: Locale(identifier: "zh-Hans"))
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
