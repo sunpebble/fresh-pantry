@@ -47,6 +47,7 @@ struct CustomRecipeFormView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(AppDependencies.self) private var dependencies
 
     @State private var draft: CustomRecipeDraft
     @State private var initialDraft: CustomRecipeDraft
@@ -79,6 +80,8 @@ struct CustomRecipeFormView: View {
     /// that already has content (`isDirty`). nil otherwise — a parse onto a
     /// pristine form applies immediately.
     @State private var pendingParsedDraft: CustomRecipeDraft?
+    /// Pro 门控：.needsPro 时点 解析 弹 PaywallSheet。
+    @State private var showPaywall = false
 
     init(
         recipe: Recipe? = nil,
@@ -161,6 +164,7 @@ struct CustomRecipeFormView: View {
             }
             .sheet(isPresented: $showCategoryPicker) { categoryPicker }
             .sheet(item: unitPickerBinding) { wrapper in unitPicker(forRowID: wrapper.id) }
+            .sheet(isPresented: $showPaywall) { PaywallSheet(proStore: dependencies.proStore) }
             .alert("自定义分类", isPresented: $showCustomCategory) {
                 TextField("例如：日料", text: $customCategory)
                 Button("取消", role: .cancel) {}
@@ -203,8 +207,9 @@ struct CustomRecipeFormView: View {
 
     // MARK: AI 导入
 
-    /// Collapsible "AI 导入" banner (create mode only). Expanded, it shows a URL
-    /// field + 解析 button when AI is configured, or a "去设置配置 AI" hint when not.
+    /// Collapsible "AI 导入" banner (create mode only). Expanded, it shows the URL
+    /// field + 解析 button when the 三态 allows it (BYOK / Pro 内置 / needsPro——点
+    /// 解析 弹 paywall), or the "去设置配置 AI" hint (Pro + 本地模式) otherwise.
     private var aiImportBanner: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.md) {
@@ -228,7 +233,7 @@ struct CustomRecipeFormView: View {
                 .buttonStyle(.fkPressable)
 
                 if aiExpanded {
-                    if aiSettingsStore?.isConfigured == true {
+                    if aiImportAvailable {
                         aiImportEditor
                     } else {
                         aiImportNotConfigured
@@ -309,7 +314,22 @@ struct CustomRecipeFormView: View {
     }
 
     private var canParse: Bool {
-        !importURL.trimmed.isEmpty && !isParsing && aiSettingsStore?.isConfigured == true
+        !importURL.trimmed.isEmpty && !isParsing && aiImportAvailable
+    }
+
+    /// BYOK / 内置(Pro) / paywall 三态；nil ⇔ 无 aiSettingsStore（previews）。
+    private var aiAvailability: AiAvailability? {
+        aiSettingsStore.map { AiChatAccess.resolve(byok: $0.settings, isPro: dependencies.proStore.isPro) }
+    }
+
+    /// 三态下 URL 编辑器是否展示/可点：BYOK、Pro 内置可用，或 needsPro（点 解析
+    /// 弹 PaywallSheet）。仅 Pro + 本地模式（内置通道缺失）退回「去设置配置 AI」提示。
+    private var aiImportAvailable: Bool {
+        switch aiAvailability {
+        case .byok, .needsPro: return true
+        case .builtIn: return dependencies.builtInAiChatFn() != nil
+        case nil: return false
+        }
     }
 
     // MARK: 封面图片
@@ -831,8 +851,10 @@ struct CustomRecipeFormView: View {
             return
         }
 
+        // 剪贴板自动建议只在解析真正能跑（BYOK / Pro 内置）时出现——不为 paywall
+        // 做被动引流，needsPro 用户不被动弹窗。
         guard showsAiImport, importURL.trimmed.isEmpty, clipboardSuggestion == nil,
-              aiSettingsStore?.isConfigured == true,
+              aiImportAvailable, aiAvailability != .needsPro,
               let url = await clipboardDetector.peek()
         else { return }
 
@@ -862,9 +884,36 @@ struct CustomRecipeFormView: View {
         guard !isParsing else { return }
         let raw = importURL.trimmed
         guard !raw.isEmpty else { return }
-        guard let parser = makeURLParser() else {
-            importError = AiError.notConfigured.message
-            return
+
+        // 测试 override 优先；否则按 BYOK / 内置(Pro) / paywall 三态解析出 parser。
+        let parser: RecipeURLParser
+        if let urlParserOverride {
+            parser = urlParserOverride
+        } else {
+            switch aiAvailability {
+            case .byok(let settings):
+                parser = { url in
+                    try await AiRecipeParser.fromUrl(url) { messages in
+                        try await AiClient.chat(
+                            settings: settings,
+                            messages: messages,
+                            responseFormat: ["type": .string("json_object")]
+                        )
+                    }
+                }
+            case .builtIn:
+                guard let chatFn = dependencies.builtInAiChatFn(responseFormat: ["type": .string("json_object")]) else {
+                    importError = AiError.notConfigured.message
+                    return
+                }
+                parser = { url in try await AiRecipeParser.fromUrl(url, chatFn: chatFn) }
+            case .needsPro:
+                showPaywall = true
+                return
+            case nil:
+                importError = AiError.notConfigured.message
+                return
+            }
         }
 
         // Acting on the link resolves the suggestion; hide the hint.
@@ -899,23 +948,6 @@ struct CustomRecipeFormView: View {
         }
         draft = merge.merged
         errors = [:]
-    }
-
-    /// Builds the parser used by `parseURL` — the test override when present, else
-    /// the live `AiRecipeParser` over the configured AI settings (nil when AI is
-    /// not configured so the caller surfaces the not-configured message).
-    private func makeURLParser() -> RecipeURLParser? {
-        if let urlParserOverride { return urlParserOverride }
-        guard let settings = aiSettingsStore?.settings, settings.isConfigured else { return nil }
-        return { url in
-            try await AiRecipeParser.fromUrl(url) { messages in
-                try await AiClient.chat(
-                    settings: settings,
-                    messages: messages,
-                    responseFormat: ["type": .string("json_object")]
-                )
-            }
-        }
     }
 
     // MARK: Cover actions
@@ -1051,4 +1083,6 @@ private struct DifficultyStars: View {
         aiSettingsStore: aiSettings,
         clipboardDetector: detector
     )
+    // 三态门控读 proStore / builtInAiChatFn，预览也要有 AppDependencies。
+    .environment(AppDependencies(modelContainer: container))
 }

@@ -87,6 +87,7 @@ struct RecipeDetailView: View {
     @State private var showRewriteOptions = false
     @State private var isRewriting = false
     @State private var rewriteRoute: RewriteDraftRoute?
+    @State private var showPaywall = false
 
     /// The 备料倍数 presets (mirrors the Dart `_scalePresets`).
     private static let scalePresets: [Double] = [0.5, 1, 2, 3]
@@ -180,6 +181,9 @@ struct RecipeDetailView: View {
                     initialGeneratedDraft: route.draft
                 )
             }
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallSheet(proStore: dependencies.proStore)
         }
         .sheet(isPresented: $showEditForm) {
             if let customStore {
@@ -762,9 +766,24 @@ struct RecipeDetailView: View {
     /// toast their Chinese message; the original recipe is never modified.
     private func rewrite(_ instruction: String) async {
         guard !isRewriting else { return }
-        let settings = dependencies.aiSettingsStore.settings
-        guard settings.isConfigured else {
-            toast = "请先在 设置 › AI 助手 配置 AI 后再用改写。"
+        let chatFn: AiChatFn
+        switch AiChatAccess.resolve(byok: dependencies.aiSettingsStore.settings, isPro: dependencies.proStore.isPro) {
+        case .byok(let settings):
+            chatFn = { messages in
+                try await AiClient.chat(
+                    settings: settings,
+                    messages: messages,
+                    responseFormat: ["type": .string("json_object")]
+                )
+            }
+        case .builtIn:
+            guard let builtIn = dependencies.builtInAiChatFn(responseFormat: ["type": .string("json_object")]) else {
+                toast = AiError.notConfigured.message
+                return
+            }
+            chatFn = builtIn
+        case .needsPro:
+            showPaywall = true
             return
         }
         isRewriting = true
@@ -773,14 +792,9 @@ struct RecipeDetailView: View {
             let draft = try await AiRecipeRewriter.rewrite(
                 recipe: recipe,
                 instruction: instruction,
-                inventoryNames: Array(inventoryNames)
-            ) { messages in
-                try await AiClient.chat(
-                    settings: settings,
-                    messages: messages,
-                    responseFormat: ["type": .string("json_object")]
-                )
-            }
+                inventoryNames: Array(inventoryNames),
+                chatFn: chatFn
+            )
             rewriteRoute = RewriteDraftRoute(draft: draft)
         } catch let error as AiError {
             toast = error.message

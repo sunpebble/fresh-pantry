@@ -7,5 +7,13 @@
       "pattern": "api.freshpantry.sunpebblelabs.com",
       "custom_domain": true
     }
-  ]
+  ],
+  "kv_namespaces": [
+    { "binding": "AI_RATE", "id": "541d90d74efc4674b7fc487310e21212" }
+  ],
+  "vars": {
+    // 客户端公开值（与 iOS Secrets.plist 同源），非机密；DEEPSEEK_API_KEY 走 wrangler secret。
+    "SUPABASE_URL": "https://nkugeupizmphbeicykpj.supabase.co",
+    "SUPABASE_ANON_KEY": "sb_publishable_qJ7jn60P7hllnl7JTcIG4Q_1a65IE9k"
+  }
 }

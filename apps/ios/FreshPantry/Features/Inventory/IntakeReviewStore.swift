@@ -20,6 +20,9 @@ final class IntakeReviewStore {
     /// threw — inventory untouched, shopping rows kept, so retry is safe).
     /// Cleared when the next apply starts.
     private(set) var applyError: String?
+    /// True when the last apply was blocked by the free inventory cap.
+    /// Cleared when the next apply starts.
+    private(set) var limitReached = false
 
     private let controller: IntakeController
 
@@ -80,7 +83,9 @@ final class IntakeReviewStore {
     /// surface a retry" contract).
     func apply() async -> IntakeController.ApplyOutcome {
         applyError = nil
+        limitReached = false
         let outcome = await controller.apply(proposals)
+        limitReached = outcome.limitReached
         applyError = Self.applyErrorMessage(for: outcome)
         return outcome
     }
@@ -88,7 +93,7 @@ final class IntakeReviewStore {
     /// Failure-notice mapping kept pure so it's testable without forcing a real
     /// repository to throw: only a non-persisted outcome carries a message.
     static func applyErrorMessage(for outcome: IntakeController.ApplyOutcome) -> String? {
-        outcome.persisted ? nil : "入库失败，请重试"
+        outcome.persisted || outcome.limitReached ? nil : "入库失败，请重试"
     }
 
     // MARK: Rules

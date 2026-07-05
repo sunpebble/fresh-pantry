@@ -19,6 +19,7 @@ struct IntakeReviewApplyErrorTests {
         #expect(IntakeReviewStore.applyErrorMessage(
             for: IntakeController.ApplyOutcome(appliedIds: [], addedItems: [], persisted: true)
         ) == nil)
+        #expect(IntakeReviewStore.applyErrorMessage(for: .limitBlocked) == nil)
     }
 
     @Test func successfulApplyLeavesApplyErrorNil() async throws {

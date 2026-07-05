@@ -14,15 +14,19 @@ final class IntakeController {
     private let householdID: String
     /// Optional outbox seam — nil keeps existing tests/previews local-only.
     private let syncWriter: SyncWriter?
+    /// Optional Pro-state seam. Nil keeps lower-level tests and previews unlimited.
+    private let isPro: (() -> Bool)?
 
     init(
         repository: InventoryRepository,
         householdID: String,
-        syncWriter: SyncWriter? = nil
+        syncWriter: SyncWriter? = nil,
+        isPro: (() -> Bool)? = nil
     ) {
         self.repository = repository
         self.householdID = householdID
         self.syncWriter = syncWriter
+        self.isPro = isPro
     }
 
     /// Outcome of applying a batch of intake proposals, enough for the caller to
@@ -40,8 +44,11 @@ final class IntakeController {
         /// Whether the apply persisted successfully. `false` leaves inventory
         /// untouched (the save threw); the caller should surface a retry.
         var persisted: Bool
+        /// True when a free user tried to create rows past the inventory cap.
+        var limitReached: Bool = false
 
         static let failed = ApplyOutcome(appliedIds: [], addedItems: [], persisted: false)
+        static let limitBlocked = ApplyOutcome(appliedIds: [], addedItems: [], persisted: false, limitReached: true)
     }
 
     /// Loads the live inventory, applies the SELECTED proposals through the pure
@@ -70,6 +77,14 @@ final class IntakeController {
         }
 
         let addedItems = result.inventory.filter { !existingIds.contains($0.id) }
+        if let isPro, !addedItems.isEmpty {
+            // Check the last row this apply would create: 49 + 1 is allowed,
+            // while 49 + 2 (or any write starting at 50+) is blocked.
+            let lastCreatedRowIndex = inventory.count + addedItems.count - 1
+            if FreeTier.inventoryLimitReached(isPro: isPro(), currentCount: lastCreatedRowIndex) {
+                return .limitBlocked
+            }
+        }
 
         do {
             try await repository.saveItems(householdID, result.inventory)

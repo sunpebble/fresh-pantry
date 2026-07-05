@@ -92,10 +92,13 @@ struct LeftoverIntakeSheet: View {
         let controller = IntakeController(
             repository: dependencies.inventoryRepository,
             householdID: dependencies.householdID,
-            syncWriter: dependencies.syncWriter
+            syncWriter: dependencies.syncWriter,
+            isPro: { dependencies.proStore.isPro }
         )
         let outcome = await controller.apply([draft.proposal()])
-        if outcome.persisted {
+        if outcome.limitReached {
+            saveError = "免费版最多记录 \(FreeTier.inventoryLimit) 条库存"
+        } else if outcome.persisted {
             onSaved(draft.name.trimmed)
             dismiss()
         } else {

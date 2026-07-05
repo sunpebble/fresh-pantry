@@ -20,6 +20,7 @@ struct AddSubmitFeedbackTests {
         #expect(AddSubmitFeedback.applyFailureMessage(
             for: IntakeController.ApplyOutcome(appliedIds: [], addedItems: [], persisted: true)
         ) == nil)
+        #expect(AddSubmitFeedback.applyFailureMessage(for: .limitBlocked) == nil)
     }
 
     @Test func loadFailureCopyIsDistinctFromApplyFailure() {

@@ -187,6 +187,13 @@ enum AiClient {
         case 401, 403:
             throw AiError.auth("认证失败 (\(status))")
         case 429:
+            // 内置 worker 的日限额会带中文 error.message（如"今天的 AI 次数用完了，明天再来"），
+            // 优先透传；无 body 时保留原文案。
+            if let root = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+               let err = root["error"] as? [String: Any],
+               let message = err["message"] as? String, !message.isEmpty {
+                throw AiError.network(message)
+            }
             throw AiError.network("服务繁忙 (429)")
         case 404:
             throw AiError.network(

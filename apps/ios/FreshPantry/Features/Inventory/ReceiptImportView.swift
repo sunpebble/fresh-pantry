@@ -8,10 +8,10 @@ import SwiftUI
 /// parser → `IntakeReviewView` machinery, so the apply + sync-enqueue logic is never
 /// duplicated.
 ///
-/// Gated on a configured AI provider (the parse step needs the LLM) — when
-/// unconfigured it shows the same friendly "去设置配置 AI" note as the other AI
-/// import paths. Uses `PhotosUI.PhotosPicker` (out-of-process), so it works in the
-/// simulator and needs NO `NSPhotoLibraryUsageDescription`.
+/// Gated on the same BYOK / 内置(Pro) / paywall 三态 as the other AI import paths
+/// (`AiChatAccess.resolve`，the parse step needs the LLM) — 非 Pro 且未配置 BYOK
+/// 弹 PaywallSheet。Uses `PhotosUI.PhotosPicker` (out-of-process), so it works in
+/// the simulator and needs NO `NSPhotoLibraryUsageDescription`.
 struct ReceiptImportView: View {
     let aiSettings: AiSettings
     /// Called after a successful apply so the presenter can refresh + dismiss the
@@ -33,11 +33,14 @@ struct ReceiptImportView: View {
     /// Local (pre-parse) errors: photo load / OCR failures. AI-parse errors live on
     /// `store.errorMessage` (shared with the text path).
     @State private var ocrError: String?
+    /// Pro 门控：.needsPro 时弹 PaywallSheet。
+    @State private var showPaywall = false
 
     var body: some View {
         NavigationStack {
             Group {
-                if aiSettings.isConfigured {
+                // store 存在 ⇔ 三态解析出可用通道（见 .task）。
+                if store != nil {
                     picker
                 } else {
                     notConfigured
@@ -64,13 +67,30 @@ struct ReceiptImportView: View {
                 }
             }
         }
-        .task {
-            if store == nil {
+        .sheet(isPresented: $showPaywall) {
+            PaywallSheet(proStore: dependencies.proStore)
+        }
+        // 三态解析后再建 store；id 绑 isPro，paywall 内购买成功后自动重解析进入选图。
+        .task(id: dependencies.proStore.isPro) {
+            guard store == nil else { return }
+            switch AiChatAccess.resolve(byok: aiSettings, isPro: dependencies.proStore.isPro) {
+            case .byok:
                 store = PasteImportStore(
                     aiSettings: aiSettings,
                     inventoryRepository: dependencies.inventoryRepository,
                     householdID: dependencies.householdID
                 )
+            case .builtIn:
+                // 本地模式（无 Supabase 后端）内置通道不可用 → 停在 notConfigured note。
+                guard let chatFn = dependencies.builtInAiChatFn() else { return }
+                store = PasteImportStore(
+                    aiSettings: aiSettings,
+                    inventoryRepository: dependencies.inventoryRepository,
+                    householdID: dependencies.householdID,
+                    chatFn: chatFn
+                )
+            case .needsPro:
+                showPaywall = true
             }
         }
         .onChange(of: pickedItem) { _, item in

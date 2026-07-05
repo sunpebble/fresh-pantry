@@ -18,6 +18,7 @@ struct IntakeReviewView: View {
 
     @State private var store: IntakeReviewStore?
     @State private var isConfirming = false
+    @State private var showPaywall = false
 
     var body: some View {
         Group {
@@ -38,10 +39,14 @@ struct IntakeReviewView: View {
                     controller: IntakeController(
                         repository: dependencies.inventoryRepository,
                         householdID: dependencies.householdID,
-                        syncWriter: dependencies.syncWriter
+                        syncWriter: dependencies.syncWriter,
+                        isPro: { dependencies.proStore.isPro }
                     )
                 )
             }
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallSheet(proStore: dependencies.proStore)
         }
     }
 
@@ -75,6 +80,14 @@ struct IntakeReviewView: View {
                     // 失败留在本屏可重试：库存一行没进、购物行也没被移除，
                     // 不提示的话只会看到按钮闪回原状（mirrors LeftoverIntakeSheet）。
                     Label(applyError, systemImage: "exclamationmark.circle")
+                        .font(.fkBodySmall)
+                        .foregroundStyle(Color.fkDanger)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, FkSpacing.lg)
+                        .padding(.vertical, FkSpacing.sm)
+                }
+                if store.limitReached {
+                    Label(Self.inventoryLimitMessage, systemImage: "lock.circle")
                         .font(.fkBodySmall)
                         .foregroundStyle(Color.fkDanger)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -134,11 +147,17 @@ struct IntakeReviewView: View {
         isConfirming = true
         defer { isConfirming = false }
         let outcome = await store.apply()
-        if outcome.persisted {
+        if outcome.limitReached {
+            showPaywall = true
+        } else if outcome.persisted {
             onApplied(outcome)
             await dependencies.notificationCoordinator.reschedule(householdID: dependencies.householdID)
             dismiss()
         }
+    }
+
+    private static var inventoryLimitMessage: String {
+        "免费版最多记录 \(FreeTier.inventoryLimit) 条库存"
     }
 }
 

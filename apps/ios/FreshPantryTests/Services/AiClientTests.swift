@@ -121,6 +121,13 @@ struct AiClientTests {
         } throws: { ($0 as? AiError) == .network("服务繁忙 (429)") }
     }
 
+    @Test func status429PassesThroughServerErrorMessage() async {
+        respond(status: 429, body: #"{"error":{"message":"今天的 AI 次数用完了，明天再来"}}"#)
+        await #expect {
+            try await chat()
+        } throws: { ($0 as? AiError) == .network("今天的 AI 次数用完了，明天再来") }
+    }
+
     @Test func status500MapsToServerError() async {
         respond(status: 500, body: "boom")
         await #expect {

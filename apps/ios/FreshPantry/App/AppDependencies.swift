@@ -68,6 +68,8 @@ final class AppDependencies {
     /// UserDefaults-backed 外观 preference (跟随系统/浅色/深色); drives the root
     /// `preferredColorScheme` override. Device-local, excluded from backup/sync.
     let appearanceStore: AppearanceStore
+    /// Pro 买断状态（StoreKit 2）。根 `.task` 里 `start()` 一次；Pro 门控读 `isPro`。
+    let proStore: ProStore
     /// Holds a household-invite deep link captured by `onOpenURL` until the UI
     /// presents its preview/accept flow. Always built (no backend dependency).
     let inviteRouter: InviteRouter
@@ -96,6 +98,8 @@ final class AppDependencies {
     /// Owns the single `SupabaseClient` (nil in local-only mode). The seam both
     /// auth (this slice) and the household-data sync engine (next slice) read.
     let clientProvider: SupabaseClientProvider
+    /// 内置 AI 的 worker 基址（= 现有 api 域名）。
+    private let apiBaseURL: URL
     /// App-root-resident sync session: the active household scope + per-install
     /// client id every store enqueues against. The SINGLE source of truth for
     /// `householdID` (see below). Injected once via `.environment` at the root.
@@ -159,6 +163,7 @@ final class AppDependencies {
         self.dietPreferenceStore = DietPreferenceStore()
         self.aiSettingsStore = AiSettingsStore(secrets: KeychainStore())
         self.appearanceStore = AppearanceStore()
+        self.proStore = ProStore()
         self.inviteRouter = InviteRouter()
         self.recipeImportRouter = RecipeImportRouter()
         self.widgetDeepLinkRouter = WidgetDeepLinkRouter()
@@ -185,6 +190,7 @@ final class AppDependencies {
         self.diagnostics = diagnostics
         let clientProvider = SupabaseClientProvider(config: config)
         self.clientProvider = clientProvider
+        self.apiBaseURL = config?.backend.apiBaseURL ?? BackendConfig.defaultAPIBaseURL
         self.authService = AuthService(backend: clientProvider.authBackend)
         // Shared recipe catalog: DB source (anon-readable `recipes` table) + the
         // on-disk offline cache. Browse reads cache-or-bundle instantly, then
@@ -257,6 +263,16 @@ final class AppDependencies {
         self.profileStore = ProfileStore(
             remote: self.remotePantryRepository,
             local: self.profileRepository
+        )
+    }
+
+    /// 内置 AI chat 闭包工厂；本地模式（无 Supabase 后端）返回 nil。
+    func builtInAiChatFn(responseFormat: [String: JSONValue]? = nil) -> AiChatFn? {
+        guard clientProvider.client != nil else { return nil }
+        return AiChatAccess.builtInChatFn(
+            clientProvider: clientProvider,
+            apiBaseURL: apiBaseURL,
+            responseFormat: responseFormat
         )
     }
 }
