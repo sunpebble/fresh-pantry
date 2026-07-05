@@ -70,11 +70,11 @@ struct AiSettingsView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                 LabeledField(label: "Model", text: $model, placeholder: "gpt-4o")
-                LabeledField(label: "Timeout (秒)", text: $timeoutText, placeholder: "60", keyboard: .numberPad)
+                LabeledField(label: String(localized: "settings.ai.timeoutSeconds"), text: $timeoutText, placeholder: "60", keyboard: .numberPad)
             } header: {
-                Text("连接配置")
+                Text("settings.ai.connectionConfig")
             } footer: {
-                Text("API Key 加密存储于设备钥匙串(Keychain),不上传同步。")
+                Text("settings.ai.apiKeyStorageNote")
             }
             .listRowBackground(Color.fkSurfaceContainerLowest)
 
@@ -86,7 +86,7 @@ struct AiSettingsView: View {
                         } else {
                             Image(systemName: "bolt.horizontal.circle")
                         }
-                        Text(testResult == .testing ? "测试中…" : "测试连接")
+                        Text(testResult == .testing ? "settings.ai.testing" : "settings.ai.testConnection")
                             .font(.fkBodyMedium)
                     }
                     .foregroundStyle(draftSettings.isConfigured ? Color.fkPrimary : Color.fkOutline)
@@ -94,17 +94,17 @@ struct AiSettingsView: View {
                 .disabled(!draftSettings.isConfigured || testResult == .testing)
                 testResultRow
             } footer: {
-                Text("发送一条极简请求验证当前填写的配置（测试前无需保存）。")
+                Text("settings.ai.testConnectionFooter")
             }
             .listRowBackground(Color.fkSurfaceContainerLowest)
         }
         .scrollContentBackground(.hidden)
         .background(Color.fkSurface)
-        .navigationTitle("AI 设置")
+        .navigationTitle("settings.ai.title")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("保存", action: save)
+                Button("settings.ai.save", action: save)
             }
         }
         .tint(.fkPrimary)
@@ -114,9 +114,9 @@ struct AiSettingsView: View {
         // BYOK 已配置优先（保存后覆盖内置通道）；Pro 未配置时内置 AI 已在工作，
         // 这页只是可选的自定义接入，不能显示成"尚未配置"的警示。
         let (icon, color, text): (String, Color, String) =
-            store.isConfigured ? ("checkmark.seal.fill", .fkSuccess, "已配置")
-            : isPro ? ("checkmark.seal.fill", .fkSuccess, "正在使用内置 AI，无需配置")
-            : ("exclamationmark.circle", .fkOutline, "尚未配置")
+            store.isConfigured ? ("checkmark.seal.fill", .fkSuccess, String(localized: "settings.ai.status.configured"))
+            : isPro ? ("checkmark.seal.fill", .fkSuccess, String(localized: "settings.ai.status.usingBuiltIn"))
+            : ("exclamationmark.circle", .fkOutline, String(localized: "settings.ai.status.notConfigured"))
         return HStack(spacing: FkSpacing.sm) {
             Image(systemName: icon)
                 .foregroundStyle(color)
@@ -131,7 +131,7 @@ struct AiSettingsView: View {
     private var testResultRow: some View {
         switch testResult {
         case .ok:
-            resultLabel(icon: "checkmark.seal.fill", color: .fkSuccess, text: "连接成功")
+            resultLabel(icon: "checkmark.seal.fill", color: .fkSuccess, text: String(localized: "settings.ai.connectionSuccess"))
         case let .failure(message):
             resultLabel(icon: "exclamationmark.triangle.fill", color: .fkDanger, text: message)
         case .idle, .testing:
@@ -163,7 +163,7 @@ struct AiSettingsView: View {
         } catch let error as AiError {
             testResult = .failure(error.message)
         } catch {
-            testResult = .failure("连接失败：\(error.localizedDescription)")
+            testResult = .failure(String(localized: "settings.ai.connectionFailed \(error.localizedDescription)"))
         }
     }
 
@@ -172,7 +172,7 @@ struct AiSettingsView: View {
     private func save() {
         saveErrorMessage = nil
         guard store.save(draftSettings) else {
-            saveErrorMessage = "保存失败：无法写入钥匙串(Keychain)，配置未保存，请重试。"
+            saveErrorMessage = String(localized: "settings.ai.saveFailed")
             return
         }
         dismiss()

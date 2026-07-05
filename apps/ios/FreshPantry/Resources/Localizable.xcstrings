@@ -833,12 +833,116 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Compte" } }
       }
     },
+    "settings.ai.apiKeyStorageNote" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "API Key 加密存储于设备钥匙串(Keychain),不上传同步。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The API key is encrypted and stored in the device Keychain, never uploaded or synced." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "API Keyは暗号化してデバイスのキーチェーン(Keychain)に保存され、アップロードや同期は行われません。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "La clé API est chiffrée et stockée dans le trousseau (Keychain) de l'appareil, sans envoi ni synchronisation." } }
+      }
+    },
+    "settings.ai.connectionConfig" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "连接配置" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Connection settings" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "接続設定" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Paramètres de connexion" } }
+      }
+    },
+    "settings.ai.connectionFailed %@" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "连接失败：%@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Connection failed: %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "接続に失敗しました：%@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de la connexion : %@" } }
+      }
+    },
+    "settings.ai.connectionSuccess" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "连接成功" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Connected successfully" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "接続に成功しました" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connexion réussie" } }
+      }
+    },
     "settings.ai.save" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Save" } },
         "ja" : { "stringUnit" : { "state" : "translated", "value" : "保存" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Enregistrer" } }
+      }
+    },
+    "settings.ai.saveFailed" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存失败：无法写入钥匙串(Keychain)，配置未保存，请重试。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save failed: could not write to the Keychain. Your settings were not saved — please try again." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "保存に失敗しました：キーチェーン(Keychain)に書き込めませんでした。設定は保存されていません。もう一度お試しください。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l'enregistrement : impossible d'écrire dans le trousseau (Keychain). Vos paramètres n'ont pas été enregistrés, veuillez réessayer." } }
+      }
+    },
+    "settings.ai.status.configured" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已配置" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Configured" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "設定済み" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Configuré" } }
+      }
+    },
+    "settings.ai.status.notConfigured" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "尚未配置" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Not configured yet" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "まだ設定されていません" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Pas encore configuré" } }
+      }
+    },
+    "settings.ai.status.usingBuiltIn" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在使用内置 AI，无需配置" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Using the built-in AI, no configuration needed" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "内蔵AIを使用中です。設定は不要です" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Utilise l'IA intégrée, aucune configuration requise" } }
+      }
+    },
+    "settings.ai.testConnection" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "测试连接" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Test connection" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "接続をテスト" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Tester la connexion" } }
+      }
+    },
+    "settings.ai.testConnectionFooter" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "发送一条极简请求验证当前填写的配置（测试前无需保存）。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sends a minimal request to verify the settings currently entered (no need to save before testing)." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "最小限のリクエストを送信し、現在入力されている設定を検証します（テスト前に保存する必要はありません）。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Envoie une requête minimale pour vérifier les paramètres actuellement saisis (inutile d'enregistrer avant de tester)." } }
+      }
+    },
+    "settings.ai.testing" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "测试中…" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Testing…" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "テスト中…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Test en cours…" } }
+      }
+    },
+    "settings.ai.timeoutSeconds" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Timeout (秒)" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Timeout (seconds)" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Timeout（秒）" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Timeout (secondes)" } }
+      }
+    },
+    "settings.ai.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "AI 设置" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI Settings" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "AI設定" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Paramètres IA" } }
       }
     },
     "settings.appearance.dark" : {

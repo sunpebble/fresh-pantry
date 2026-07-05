@@ -50,6 +50,7 @@ struct BackupView: View {
                 shopping: dependencies.shoppingRepository,
                 customRecipe: dependencies.customRecipeRepository,
                 mealPlan: dependencies.mealPlanRepository,
+                aiSettings: dependencies.aiSettingsStore,
                 favorites: dependencies.favoritesStore,
                 dietaryPreferences: dependencies.dietaryPreferencesStore,
                 dietPreference: dependencies.dietPreferenceStore,
