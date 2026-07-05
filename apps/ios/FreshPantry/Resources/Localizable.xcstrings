@@ -25,20 +25,20 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Recettes" } }
       }
     },
-    "tab.shopping" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "购物" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Shopping" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "買い物" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Courses" } }
-      }
-    },
     "tab.settings" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "设置" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } },
         "ja" : { "stringUnit" : { "state" : "translated", "value" : "設定" } },
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réglages" } }
+      }
+    },
+    "tab.shopping" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "购物" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Shopping" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "買い物" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Courses" } }
       }
     }
   },
