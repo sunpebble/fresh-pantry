@@ -10414,9 +10414,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Added %lld item(s); %lld failed"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Added %lld item; %lld failed"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Added %lld items; %lld failed"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -10426,9 +10438,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld article(s) ajouté(s) ; %lld ont échoué"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld article ajouté ; %lld ont échoué"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld articles ajoutés ; %lld ont échoué"
+                }
+              }
+            }
           }
         }
       }
@@ -10442,9 +10466,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Added %lld ingredient(s) to the shopping list"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Added %lld ingredient to the shopping list"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Added %lld ingredients to the shopping list"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -10454,9 +10490,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld ingrédient(s) ajouté(s) à la liste de courses"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ingrédient ajouté à la liste de courses"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ingrédients ajoutés à la liste de courses"
+                }
+              }
+            }
           }
         }
       }
@@ -10513,90 +10561,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Annuler"
-          }
-        }
-      }
-    },
-    "mealPlan.dateFormat.monthDayWeekday %lld %lld %@": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld月%lld日 %@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld/%lld %@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld月%lld日 %@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld/%lld %@"
-          }
-        }
-      }
-    },
-    "mealPlan.dateFormat.range %lld %lld %lld %lld": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld月%lld日 - %lld月%lld日"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld/%lld - %lld/%lld"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld月%lld日 - %lld月%lld日"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld/%lld - %lld/%lld"
-          }
-        }
-      }
-    },
-    "mealPlan.dateFormat.weekdayDay %@ %lld": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ %lld日"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ the %lldth"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ %lld日"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ le %lld"
           }
         }
       }
@@ -10694,9 +10658,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deducted %lld inventory item(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Deducted %lld inventory item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Deducted %lld inventory items"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -10706,9 +10682,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld article(s) d'inventaire déduit(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld article d'inventaire déduit"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld articles d'inventaire déduits"
+                }
+              }
+            }
           }
         }
       }
@@ -10778,9 +10766,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld dish(es) planned"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld dish planned"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld dishes planned"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -10790,9 +10790,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld plat(s) prévu(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld plat prévu"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld plats prévus"
+                }
+              }
+            }
           }
         }
       }
@@ -10806,9 +10818,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": ", %lld dish(es)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": ", %lld dish"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": ", %lld dishes"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -10818,9 +10842,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": ", %lld plat(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": ", %lld plat"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": ", %lld plats"
+                }
+              }
+            }
           }
         }
       }
@@ -11002,9 +11038,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Still missing %lld item(s) that week"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Still missing %lld item that week"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Still missing %lld items that week"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -11014,9 +11062,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Encore %lld article(s) manquant(s) cette semaine-là"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Encore %lld article manquant cette semaine-là"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Encore %lld articles manquants cette semaine-là"
+                }
+              }
+            }
           }
         }
       }
@@ -11030,9 +11090,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Still missing %lld item(s) this week"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Still missing %lld item this week"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Still missing %lld items this week"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -11042,9 +11114,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Encore %lld article(s) manquant(s) cette semaine"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Encore %lld article manquant cette semaine"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Encore %lld articles manquants cette semaine"
+                }
+              }
+            }
           }
         }
       }
@@ -11422,9 +11506,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld serving(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld serving"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld servings"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -11434,9 +11530,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld portion(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld portion"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld portions"
+                }
+              }
+            }
           }
         }
       }
@@ -11506,9 +11614,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld dish(es)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld dish"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld dishes"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -11518,9 +11638,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld plat(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld plat"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld plats"
+                }
+              }
+            }
           }
         }
       }
@@ -11857,202 +11989,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Échec de la mise à jour. Veuillez réessayer."
-          }
-        }
-      }
-    },
-    "mealPlan.weekday.fri": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "周五"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fri"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "金"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ven."
-          }
-        }
-      }
-    },
-    "mealPlan.weekday.mon": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "周一"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mon"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "月"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "lun."
-          }
-        }
-      }
-    },
-    "mealPlan.weekday.sat": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "周六"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sat"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "土"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "sam."
-          }
-        }
-      }
-    },
-    "mealPlan.weekday.sun": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "周日"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sun"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "日"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "dim."
-          }
-        }
-      }
-    },
-    "mealPlan.weekday.thu": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "周四"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Thu"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "木"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "jeu."
-          }
-        }
-      }
-    },
-    "mealPlan.weekday.tue": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "周二"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tue"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "火"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "mar."
-          }
-        }
-      }
-    },
-    "mealPlan.weekday.wed": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "周三"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wed"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "水"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "mer."
           }
         }
       }
@@ -13870,9 +13806,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add %lld missing item(s) to shopping list"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Add %lld missing item to shopping list"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Add %lld missing items to shopping list"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -13882,9 +13830,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ajouter %lld article(s) manquant(s) à la liste de courses"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Ajouter %lld article manquant à la liste de courses"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Ajouter %lld articles manquants à la liste de courses"
+                }
+              }
+            }
           }
         }
       }
@@ -13982,9 +13942,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Added %lld item(s); some failed. Please try again."
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Added %lld item; some failed. Please try again."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Added %lld items; some failed. Please try again."
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -13994,9 +13966,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld article(s) ajouté(s) ; certains ont échoué. Veuillez réessayer."
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld article ajouté ; certains ont échoué. Veuillez réessayer."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld articles ajoutés ; certains ont échoué. Veuillez réessayer."
+                }
+              }
+            }
           }
         }
       }
@@ -14038,9 +14022,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Added %lld item(s) to the shopping list"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Added %lld item to the shopping list"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Added %lld items to the shopping list"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -14050,9 +14046,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld article(s) ajouté(s) à la liste de courses"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld article ajouté à la liste de courses"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld articles ajoutés à la liste de courses"
+                }
+              }
+            }
           }
         }
       }
@@ -14430,9 +14438,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deducted %lld inventory item(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Deducted %lld inventory item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Deducted %lld inventory items"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -14442,9 +14462,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld article(s) d'inventaire déduit(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld article d'inventaire déduit"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld articles d'inventaire déduits"
+                }
+              }
+            }
           }
         }
       }
@@ -14694,9 +14726,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld/%lld disponible(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld/%lld disponible"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld/%lld disponibles"
+                }
+              }
+            }
           }
         }
       }
@@ -17762,9 +17806,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld day(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld day"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld days"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -17774,9 +17830,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld jour(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld jour"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld jours"
+                }
+              }
+            }
           }
         }
       }
@@ -18042,9 +18110,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld serving(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld serving"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld servings"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -18054,9 +18134,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld portion(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld portion"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld portions"
+                }
+              }
+            }
           }
         }
       }
@@ -18994,9 +19086,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Prioritize %lld expiring item(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Prioritize %lld expiring item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Prioritize %lld expiring items"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -19006,9 +19110,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Priorisez %lld article(s) expirant(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Priorisez %lld article expirant"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Priorisez %lld articles expirants"
+                }
+              }
+            }
           }
         }
       }
@@ -23386,9 +23502,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@, %lld item(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%@, %lld item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%@, %lld items"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -23398,9 +23526,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@, %lld article(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%@, %lld article"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%@, %lld articles"
+                }
+              }
+            }
           }
         }
       }
@@ -24114,9 +24254,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Added %lld item(s) to inventory"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Added %lld item to inventory"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Added %lld items to inventory"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -24126,9 +24278,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld article(s) ajouté(s) à l'inventaire"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld article ajouté à l'inventaire"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld articles ajoutés à l'inventaire"
+                }
+              }
+            }
           }
         }
       }
@@ -24142,9 +24306,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "One-Tap Add %lld Purchased Item(s) to Inventory"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "One-Tap Add %lld Purchased Item to Inventory"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "One-Tap Add %lld Purchased Items to Inventory"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -24154,9 +24330,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ajouter en un geste %lld article(s) acheté(s) à l'inventaire"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Ajouter en un geste %lld article acheté à l'inventaire"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Ajouter en un geste %lld articles achetés à l'inventaire"
+                }
+              }
+            }
           }
         }
       }
@@ -24898,9 +25086,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cleared %lld item(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Cleared %lld item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Cleared %lld items"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -24910,9 +25110,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld article(s) effacé(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld article effacé"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld articles effacés"
+                }
+              }
+            }
           }
         }
       }
@@ -25598,9 +25810,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld item(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld items"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -25610,9 +25834,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld article(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld article"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld articles"
+                }
+              }
+            }
           }
         }
       }
@@ -25822,9 +26058,21 @@
           }
         },
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@: processed %lld item(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%@: processed %lld item"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%@: processed %lld items"
+                }
+              }
+            }
           }
         },
         "ja": {
@@ -25834,9 +26082,21 @@
           }
         },
         "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ : %lld article(s) traité(s)"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%@ : %lld article traité"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%@ : %lld articles traités"
+                }
+              }
+            }
           }
         }
       }

@@ -935,40 +935,29 @@ enum MealPlanFormat {
         sameDay(day, Date())
     }
 
-    /// Localization keys for the short weekday label (周一 … 周日), by
-    /// `Calendar.component(.weekday)` (1=Sun … 7=Sat).
-    private static let weekdayKeys = [
-        "mealPlan.weekday.sun", "mealPlan.weekday.mon", "mealPlan.weekday.tue",
-        "mealPlan.weekday.wed", "mealPlan.weekday.thu", "mealPlan.weekday.fri",
-        "mealPlan.weekday.sat",
-    ]
-
-    /// Short weekday label (周一 … 周日).
+    /// Short weekday label (周一 … 周日), locale-aware via `Date.FormatStyle`.
     static func weekdayShort(_ day: Date) -> String {
-        let weekday = calendar.component(.weekday, from: day) // 1=Sun … 7=Sat
-        return String(localized: String.LocalizationValue(weekdayKeys[(weekday - 1) % 7]))
+        day.formatted(Date.FormatStyle(timeZone: .current).weekday(.abbreviated))
     }
 
     static func dayNumber(_ day: Date) -> String {
         "\(calendar.component(.day, from: day))"
     }
 
+    private static func monthDay(_ day: Date) -> String {
+        day.formatted(Date.FormatStyle(timeZone: .current).month().day())
+    }
+
     /// "M月 d日 周X" for the selected-day header, with a 今天 prefix on today.
     static func dayTitle(_ day: Date) -> String {
-        let month = calendar.component(.month, from: day)
-        let date = calendar.component(.day, from: day)
-        let core = String(localized: "mealPlan.dateFormat.monthDayWeekday \(month) \(date) \(weekdayShort(day))")
+        let core = "\(monthDay(day)) \(weekdayShort(day))"
         return isToday(day) ? String(localized: "mealPlan.today.dated \(core)") : core
     }
 
     /// "M月d日 - M月d日" range across the visible week's first/last day.
     static func weekRange(_ days: [Date]) -> String {
         guard let first = days.first, let last = days.last else { return "" }
-        let fm = calendar.component(.month, from: first)
-        let fd = calendar.component(.day, from: first)
-        let lm = calendar.component(.month, from: last)
-        let ld = calendar.component(.day, from: last)
-        return String(localized: "mealPlan.dateFormat.range \(fm) \(fd) \(lm) \(ld)")
+        return "\(monthDay(first)) - \(monthDay(last))"
     }
 
     static func dishSummary(_ count: Int) -> String {
@@ -976,7 +965,7 @@ enum MealPlanFormat {
     }
 
     static func cellAccessibility(_ day: Date, dishCount: Int, isToday: Bool) -> String {
-        let base = String(localized: "mealPlan.dateFormat.weekdayDay \(weekdayShort(day)) \(dayNumber(day))")
+        let base = day.formatted(Date.FormatStyle(timeZone: .current).weekday(.abbreviated).day())
         let todayTag = isToday ? String(localized: "mealPlan.todayTag") : ""
         let dishes = dishCount > 0 ? String(localized: "mealPlan.dishesTag \(dishCount)") : ""
         return base + todayTag + dishes
