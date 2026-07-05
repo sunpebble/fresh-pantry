@@ -25,6 +25,7 @@ enum AiChatAccess {
             baseUrl: apiBaseURL.appendingPathComponent("ai").absoluteString,
             apiKey: accessToken,
             model: builtInModel,
+            // 比 AiSettings 默认 60s 宽：多一跳 worker 代理 + 上游生成长回复时的余量。
             timeout: 120
         )
     }
