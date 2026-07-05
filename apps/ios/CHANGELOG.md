@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.1.0...fresh_pantry-v2.1.1) (2026-07-05)
+
+
+### Bug Fixes
+
+* **ios:** handle unavailable pro product ([d9674f8](https://github.com/sunpebble/fresh-pantry/commit/d9674f8ec075769bbafce9f74491fa9ad2262f29))
+
 ## [2.1.0](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.0.0...fresh_pantry-v2.1.0) (2026-07-05)
 
 
