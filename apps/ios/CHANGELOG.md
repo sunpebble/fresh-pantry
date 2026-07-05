@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.1.1...fresh_pantry-v2.1.2) (2026-07-05)
+
+
+### Bug Fixes
+
+* **ios:** Pro 用户设置页不再引导配置 AI——标明内置通道已可用 ([c85c1d1](https://github.com/sunpebble/fresh-pantry/commit/c85c1d13478e16edb891d59676bb0a0b840234cc))
+
 ## [2.1.1](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.1.0...fresh_pantry-v2.1.1) (2026-07-05)
 
 
