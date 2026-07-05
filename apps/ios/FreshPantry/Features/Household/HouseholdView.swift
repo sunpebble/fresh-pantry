@@ -156,9 +156,11 @@ private struct OnboardHouseholdSection: View {
     let store: HouseholdSessionStore
     let auth: AuthService
 
+    @Environment(AppDependencies.self) private var dependencies
     @State private var newName = ""
     @State private var inviteInput = ""
     @State private var showPersonalDataAlert = false
+    @State private var showPaywall = false
     @State private var personalSnapshot: HouseholdSessionStore.PersonalScopeSnapshot?
     @State private var pendingJoin: PendingJoin?
 
@@ -181,6 +183,11 @@ private struct OnboardHouseholdSection: View {
             Button("取消", role: .cancel) { pendingJoin = nil }
             Button("仍要加入", role: .destructive) {
                 Task {
+                    guard dependencies.proStore.isPro else {
+                        showPaywall = true
+                        pendingJoin = nil
+                        return
+                    }
                     if let action = pendingJoin { await performJoin(action) }
                     pendingJoin = nil
                 }
@@ -190,9 +197,16 @@ private struct OnboardHouseholdSection: View {
                 Text("本机还有 \(snapshot.summaryText)。加入家庭后，这些数据会留在个人 scope，暂时不可见。如需保留并共享，请先「创建家庭」。")
             }
         }
+        .sheet(isPresented: $showPaywall) {
+            PaywallSheet(proStore: dependencies.proStore)
+        }
     }
 
     private func requestJoin(_ action: PendingJoin) async {
+        guard dependencies.proStore.isPro else {
+            showPaywall = true
+            return
+        }
         let snapshot = await store.loadPersonalScopeSnapshot()
         if snapshot.hasData {
             personalSnapshot = snapshot
@@ -224,6 +238,10 @@ private struct OnboardHouseholdSection: View {
                     FkTextFieldPill(text: $newName, placeholder: "例如:我的家")
                 }
                 primaryButton(title: "创建", busyTitle: "创建中…", systemImage: "house") {
+                    guard dependencies.proStore.isPro else {
+                        showPaywall = true
+                        return
+                    }
                     Task {
                         await store.createHousehold(name: newName)
                         if store.errorMessage == nil { newName = "" }
@@ -315,6 +333,7 @@ private struct ActiveHouseholdSection: View {
     @State private var showLeaveConfirm = false
     @State private var inviteToRevoke: OwnerPendingInvite?
     @State private var showPersonalDataAlert = false
+    @State private var showPaywall = false
     @State private var personalSnapshot: HouseholdSessionStore.PersonalScopeSnapshot?
     @State private var pendingJoinId: String?
 
@@ -376,6 +395,11 @@ private struct ActiveHouseholdSection: View {
             Button("取消", role: .cancel) { pendingJoinId = nil }
             Button("仍要加入", role: .destructive) {
                 Task {
+                    guard dependencies.proStore.isPro else {
+                        showPaywall = true
+                        pendingJoinId = nil
+                        return
+                    }
                     if let id = pendingJoinId { await store.acceptInviteById(id) }
                     pendingJoinId = nil
                 }
@@ -385,9 +409,16 @@ private struct ActiveHouseholdSection: View {
                 Text("本机还有 \(snapshot.summaryText)。加入家庭后，这些数据会留在个人 scope，暂时不可见。")
             }
         }
+        .sheet(isPresented: $showPaywall) {
+            PaywallSheet(proStore: dependencies.proStore)
+        }
     }
 
     private func requestJoinById(_ id: String) async {
+        guard dependencies.proStore.isPro else {
+            showPaywall = true
+            return
+        }
         let snapshot = await store.loadPersonalScopeSnapshot()
         if snapshot.hasData {
             personalSnapshot = snapshot
@@ -811,6 +842,7 @@ struct InvitePreviewSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var store: HouseholdSessionStore?
     @State private var showPersonalDataAlert = false
+    @State private var showPaywall = false
     @State private var personalSnapshot: HouseholdSessionStore.PersonalScopeSnapshot?
 
     var body: some View {
@@ -841,6 +873,10 @@ struct InvitePreviewSheet: View {
             Button("仍要加入", role: .destructive) {
                 Task {
                     guard let store else { return }
+                    guard dependencies.proStore.isPro else {
+                        showPaywall = true
+                        return
+                    }
                     await store.acceptInvite(input: input)
                     if store.errorMessage == nil {
                         inviteRouter.clear()
@@ -852,6 +888,9 @@ struct InvitePreviewSheet: View {
             if let snapshot = personalSnapshot {
                 Text("本机还有 \(snapshot.summaryText)。加入家庭后，这些数据会留在个人 scope，暂时不可见。如需保留并共享，请先「创建家庭」。")
             }
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallSheet(proStore: dependencies.proStore)
         }
         .task {
             if store == nil {
@@ -918,6 +957,10 @@ struct InvitePreviewSheet: View {
     }
 
     private func acceptFromSheet(input: String, store: HouseholdSessionStore) async {
+        guard dependencies.proStore.isPro else {
+            showPaywall = true
+            return
+        }
         let snapshot = await store.loadPersonalScopeSnapshot()
         if snapshot.hasData {
             personalSnapshot = snapshot

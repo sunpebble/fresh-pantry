@@ -14,7 +14,9 @@ struct MealPlanView: View {
 
     var body: some View {
         Group {
-            if let store {
+            if !dependencies.proStore.isPro {
+                ProLockedView(featureName: "周派餐", proStore: dependencies.proStore)
+            } else if let store {
                 MealPlanContent(store: store, dependencies: dependencies)
             } else {
                 ProgressView()
@@ -25,7 +27,7 @@ struct MealPlanView: View {
         .navigationTitle("膳食计划")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if let store {
+            if dependencies.proStore.isPro, let store {
                 ToolbarItem(placement: .topBarTrailing) {
                     MealPlanTemplateMenu(store: store)
                 }
@@ -35,42 +37,56 @@ struct MealPlanView: View {
         // switch, or leave) so the calendar re-scopes to the new household rather
         // than keeping the prior scope's stale entries.
         .task(id: dependencies.householdID) {
-            let householdID = dependencies.householdID
-            #if DEBUG
-            // Sample data is for the local-only personal scope only — a real
-            // household's entries come from sync, never the seeder.
-            if householdID.isEmpty {
-                await MealPlanSeeder.seedIfNeeded(
-                    repository: dependencies.mealPlanRepository,
-                    recipeRepository: dependencies.localRecipeRepository,
-                    householdID: householdID
-                )
-            }
-            #endif
-            // The seeder await above is a suspension point: a household switch
-            // landing there (login "" → uuid auto-select) starts a NEW run, and
-            // this stale run must not assign an old-scope store over its work.
-            guard householdID == dependencies.householdID, !Task.isCancelled else { return }
-            let store = MealPlanStore(
-                repository: dependencies.mealPlanRepository,
-                householdID: householdID,
-                syncWriter: dependencies.syncWriter,
-                cookHistoryRepository: dependencies.cookHistoryRepository
-            )
-            // OFFLINE-FIRST, NO FLASH: load the new scope's local entries BEFORE
-            // swapping the store in, so a household switch keeps the previous
-            // calendar on screen until the new (local, instant) data is ready
-            // instead of flashing an empty week. Re-guard after the load so a newer
-            // switch landing here doesn't assign this stale scope's store.
-            await store.load()
-            guard householdID == dependencies.householdID, !Task.isCancelled else { return }
-            self.store = store
+            await loadStore()
+        }
+        .onChange(of: dependencies.proStore.isPro) {
+            Task { await loadStore() }
         }
         // Remote merge pulse: a household-sync apply bumps dataRevision; reload
         // so meal-plan entries pulled from other household members show up.
         .onChange(of: dependencies.syncSession.dataRevision) {
-            Task { await store?.load() }
+            if dependencies.proStore.isPro {
+                Task { await store?.load() }
+            }
         }
+    }
+
+    private func loadStore() async {
+        guard dependencies.proStore.isPro else {
+            store = nil
+            return
+        }
+
+        let householdID = dependencies.householdID
+        #if DEBUG
+        // Sample data is for the local-only personal scope only — a real
+        // household's entries come from sync, never the seeder.
+        if householdID.isEmpty {
+            await MealPlanSeeder.seedIfNeeded(
+                repository: dependencies.mealPlanRepository,
+                recipeRepository: dependencies.localRecipeRepository,
+                householdID: householdID
+            )
+        }
+        #endif
+        // The seeder await above is a suspension point: a household switch
+        // landing there (login "" → uuid auto-select) starts a NEW run, and
+        // this stale run must not assign an old-scope store over its work.
+        guard householdID == dependencies.householdID, !Task.isCancelled else { return }
+        let store = MealPlanStore(
+            repository: dependencies.mealPlanRepository,
+            householdID: householdID,
+            syncWriter: dependencies.syncWriter,
+            cookHistoryRepository: dependencies.cookHistoryRepository
+        )
+        // OFFLINE-FIRST, NO FLASH: load the new scope's local entries BEFORE
+        // swapping the store in, so a household switch keeps the previous
+        // calendar on screen until the new (local, instant) data is ready
+        // instead of flashing an empty week. Re-guard after the load so a newer
+        // switch landing here doesn't assign this stale scope's store.
+        await store.load()
+        guard householdID == dependencies.householdID, !Task.isCancelled else { return }
+        self.store = store
     }
 }
 
