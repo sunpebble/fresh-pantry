@@ -3,8 +3,9 @@ import SwiftUI
 /// AI 文本解析 sheet: paste a free-form food list, tap 解析, and the AI parses it
 /// into reviewable `IntakeProposal`s pushed to the shared `IntakeReviewView`.
 ///
-/// Gated on a configured AI provider — when unconfigured it shows a friendly
-/// "去设置配置 AI" note instead of the editor (mirrors the local-only patterns).
+/// Gated on the BYOK / 内置(Pro) / paywall 三态 (`AiChatAccess.resolve`): BYOK 或
+/// Pro 内置通道可用时进编辑器；非 Pro 且未配置 BYOK 弹 PaywallSheet，底下保留
+/// "去设置配置 AI" note（BYOK 仍是免费替代路径）。
 struct PasteImportView: View {
     let aiSettings: AiSettings
     /// Called after a successful apply so the presenter can refresh + dismiss the
@@ -17,12 +18,15 @@ struct PasteImportView: View {
     @State private var store: PasteImportStore?
     @State private var reviewRoute: ReviewRoute?
     @State private var speech = SpeechTranscriber()
+    /// Pro 门控：.needsPro 时弹 PaywallSheet。
+    @State private var showPaywall = false
     @FocusState private var editorFocused: Bool
 
     var body: some View {
         NavigationStack {
             Group {
-                if aiSettings.isConfigured {
+                // store 存在 ⇔ 三态解析出可用通道（见 .task）。
+                if store != nil {
                     editor
                 } else {
                     notConfigured
@@ -35,7 +39,7 @@ struct PasteImportView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("取消") { dismiss() }
                 }
-                if aiSettings.isConfigured, let store {
+                if let store {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(store.isParsing ? "解析中…" : "解析") {
                             Task { await runParse(store) }
@@ -52,13 +56,30 @@ struct PasteImportView: View {
                 }
             }
         }
-        .task {
-            if store == nil {
+        .sheet(isPresented: $showPaywall) {
+            PaywallSheet(proStore: dependencies.proStore)
+        }
+        // 三态解析后再建 store；id 绑 isPro，paywall 内购买成功后自动重解析进入编辑器。
+        .task(id: dependencies.proStore.isPro) {
+            guard store == nil else { return }
+            switch AiChatAccess.resolve(byok: aiSettings, isPro: dependencies.proStore.isPro) {
+            case .byok:
                 store = PasteImportStore(
                     aiSettings: aiSettings,
                     inventoryRepository: dependencies.inventoryRepository,
                     householdID: dependencies.householdID
                 )
+            case .builtIn:
+                // 本地模式（无 Supabase 后端）内置通道不可用 → 停在 notConfigured note。
+                guard let chatFn = dependencies.builtInAiChatFn() else { return }
+                store = PasteImportStore(
+                    aiSettings: aiSettings,
+                    inventoryRepository: dependencies.inventoryRepository,
+                    householdID: dependencies.householdID,
+                    chatFn: chatFn
+                )
+            case .needsPro:
+                showPaywall = true
             }
         }
     }

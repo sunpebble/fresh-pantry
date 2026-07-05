@@ -148,8 +148,11 @@ private struct ExpiringContent: View {
     /// route since `RecipeDraft` is a transient model with no id (same pattern as
     /// Recipes' `RecipeRoute`).
     @State private var generatedDraft: GeneratedDraftRoute?
+    /// Pro 门控：.needsPro 时弹 PaywallSheet。
+    @State private var showPaywall = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(RecipeFilterRouter.self) private var recipeFilterRouter
+    @Environment(AppDependencies.self) private var dependencies
 
     var body: some View {
         VStack(spacing: FkSpacing.md) {
@@ -195,6 +198,9 @@ private struct ExpiringContent: View {
                 initialGeneratedDraft: route.draft
             )
         }
+        .sheet(isPresented: $showPaywall) {
+            PaywallSheet(proStore: dependencies.proStore)
+        }
     }
 
     private var tierList: some View {
@@ -234,10 +240,10 @@ private struct ExpiringContent: View {
     // MARK: 清冰箱 AI generation
 
     /// The "AI 生成清冰箱食谱" card — surfaced atop the tier list (so it only shows
-    /// when there ARE expiring items). Generates a recipe from the临期 names; when
-    /// AI isn't configured the button stays tappable but routes the inline error to
-    /// 去 设置 › AI 助手 配置 (reusing `AiError.notConfigured.message`), rather than
-    /// vanishing — the value prompt stays visible.
+    /// when there ARE expiring items). Generates a recipe from the临期 names via the
+    /// BYOK / 内置(Pro) / paywall 三态 (`AiChatAccess.resolve`) — non-Pro users
+    /// without BYOK get the PaywallSheet instead of an error; the button always
+    /// stays tappable so the value prompt stays visible.
     private var clearFridgeCard: some View {
         FkCard(background: .fkPrimarySoft) {
             VStack(alignment: .leading, spacing: FkSpacing.sm) {
@@ -313,9 +319,24 @@ private struct ExpiringContent: View {
         guard !isGenerating else { return }
         generateError = nil
 
-        let settings = aiSettingsStore.settings
-        guard settings.isConfigured else {
-            generateError = AiError.notConfigured.message + "，请在 设置 › AI 助手 配置后再试。"
+        let chatFn: AiChatFn
+        switch AiChatAccess.resolve(byok: aiSettingsStore.settings, isPro: dependencies.proStore.isPro) {
+        case .byok(let settings):
+            chatFn = { messages in
+                try await AiClient.chat(
+                    settings: settings,
+                    messages: messages,
+                    responseFormat: ["type": .string("json_object")]
+                )
+            }
+        case .builtIn:
+            guard let builtIn = dependencies.builtInAiChatFn(responseFormat: ["type": .string("json_object")]) else {
+                generateError = AiError.notConfigured.message
+                return
+            }
+            chatFn = builtIn
+        case .needsPro:
+            showPaywall = true
             return
         }
 
@@ -331,14 +352,9 @@ private struct ExpiringContent: View {
         do {
             let draft = try await AiRecipeGenerator.fromIngredients(
                 names,
-                constraint: generateConstraint
-            ) { messages in
-                try await AiClient.chat(
-                    settings: settings,
-                    messages: messages,
-                    responseFormat: ["type": .string("json_object")]
-                )
-            }
+                constraint: generateConstraint,
+                chatFn: chatFn
+            )
             generatedDraft = GeneratedDraftRoute(draft: draft)
         } catch let error as AiError {
             generateError = error.message

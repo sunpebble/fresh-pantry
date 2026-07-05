@@ -10,8 +10,8 @@ import SwiftUI
 /// `ImageDownscaler`, same as `ImageImportView`) and the EXISTING AI text →
 /// `RecipeDraft` → form chain (the `initialGeneratedDraft` seam the 清冰箱
 /// generator already feeds), so neither the photo pipeline nor the parse path is
-/// duplicated. Gated on a configured AI provider — when unconfigured it shows the
-/// same friendly "去设置配置 AI" note as the other AI flows.
+/// duplicated. Gated on BYOK / Pro built-in AI / paywall, matching the other AI
+/// flows.
 ///
 /// Uses `PhotosUI.PhotosPicker` (out-of-process `PHPickerViewController`), so it
 /// works in the simulator and needs NO `NSPhotoLibraryUsageDescription` key.
@@ -34,6 +34,7 @@ struct RecipePhotoImportView: View {
     private static let maxImageDimension = 2048
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppDependencies.self) private var dependencies
 
     @State private var pickedItem: PhotosPickerItem?
     @State private var isProcessing = false
@@ -42,11 +43,12 @@ struct RecipePhotoImportView: View {
     /// The parsed draft awaiting user review in the form sheet; presenting it pushes
     /// the editable `CustomRecipeFormView`.
     @State private var draftRoute: ParsedDraftRoute?
+    @State private var showPaywall = false
 
     var body: some View {
         NavigationStack {
             Group {
-                if aiSettingsStore.isConfigured {
+                if canImport {
                     picker
                 } else {
                     notConfigured
@@ -75,9 +77,32 @@ struct RecipePhotoImportView: View {
                 )
             }
         }
+        .sheet(isPresented: $showPaywall) {
+            PaywallSheet(proStore: dependencies.proStore)
+        }
+        .task(id: dependencies.proStore.isPro) {
+            if case .needsPro = aiAvailability {
+                showPaywall = true
+            }
+        }
         .onChange(of: pickedItem) { _, item in
             guard let item else { return }
             Task { await handlePicked(item) }
+        }
+    }
+
+    private var aiAvailability: AiAvailability {
+        AiChatAccess.resolve(byok: aiSettingsStore.settings, isPro: dependencies.proStore.isPro)
+    }
+
+    private var canImport: Bool {
+        switch aiAvailability {
+        case .byok:
+            return true
+        case .builtIn:
+            return dependencies.builtInAiChatFn(responseFormat: ["type": .string("json_object")]) != nil
+        case .needsPro:
+            return false
         }
     }
 
@@ -191,14 +216,27 @@ struct RecipePhotoImportView: View {
         if let parserOverride { return try await parserOverride(imageData) }
         let lines = try await TextRecognizer.recognizeLines(from: imageData)
         let text = lines.joined(separator: "\n")
-        let settings = aiSettingsStore.settings
-        return try await AiRecipeParser.fromText(text) { messages in
-            try await AiClient.chat(
-                settings: settings,
-                messages: messages,
-                responseFormat: ["type": .string("json_object")]
-            )
+
+        let chatFn: AiChatFn
+        switch aiAvailability {
+        case .byok(let settings):
+            chatFn = { messages in
+                try await AiClient.chat(
+                    settings: settings,
+                    messages: messages,
+                    responseFormat: ["type": .string("json_object")]
+                )
+            }
+        case .builtIn:
+            guard let builtIn = dependencies.builtInAiChatFn(responseFormat: ["type": .string("json_object")]) else {
+                throw AiError.notConfigured
+            }
+            chatFn = builtIn
+        case .needsPro:
+            showPaywall = true
+            throw AiError.cancelled
         }
+        return try await AiRecipeParser.fromText(text, chatFn: chatFn)
     }
 }
 
