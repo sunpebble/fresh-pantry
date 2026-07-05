@@ -120,7 +120,7 @@ struct AddIngredientView: View {
             .sheet(isPresented: $showUnitPicker) {
                 FkPickerSheet(
                     title: String(localized: "inventory.picker.unit"),
-                    options: form.unitOptions.map { FkPickerOption(value: $0, label: $0) },
+                    options: form.unitOptions.map { FkPickerOption(value: $0, label: UnitLabels.displayLabel(for: $0)) },
                     selected: form.unit
                 ) { form.setUnit($0) }
             }

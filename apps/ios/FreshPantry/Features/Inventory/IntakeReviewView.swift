@@ -179,7 +179,7 @@ private struct IntakeProposalRow: View {
     @State private var nameDraft = ""
     @FocusState private var nameFocused: Bool
 
-    private let unitOptions = ["个", "只", "把", "盒", "袋", "瓶", "罐", "kg", "g", "L", "ml", "份"] // i18n:ignore domain unit-default identity, not UI text
+    private let unitOptions = ["个", "只", "把", "盒", "袋", "瓶", "罐", "kg", "g", "L", "ml", "份"] // i18n:ignore identity; display via UnitLabels.displayLabel
 
     var body: some View {
         FkCard(background: proposal.selected ? .fkSurfaceContainerLowest : .fkSurfaceContainerLow) {
@@ -199,7 +199,7 @@ private struct IntakeProposalRow: View {
         .sheet(isPresented: $showUnitPicker) {
             FkPickerSheet(
                 title: String(localized: "inventory.picker.unit"),
-                options: unitOptions.map { FkPickerOption(value: $0, label: $0) },
+                options: unitOptions.map { FkPickerOption(value: $0, label: UnitLabels.displayLabel(for: $0)) },
                 selected: proposal.unit
             ) { onChanged(proposal.copyWith(unit: $0, userEdited: true)) }
         }

@@ -41,7 +41,7 @@ final class AddIngredientForm {
     /// the picker blueprint lists), de-duplicated, current unit appended so a
     /// custom value still shows as selected.
     var unitOptions: [String] {
-        var options = ["个", "只", "把", "盒", "袋", "瓶", "罐", "份"] // i18n:ignore domain unit-default identity, not UI text
+        var options = ["个", "只", "把", "盒", "袋", "瓶", "罐", "份"] // i18n:ignore identity; display via UnitLabels.displayLabel
         for unit in FoodKnowledge.units where !options.contains(unit) {
             options.append(unit)
         }

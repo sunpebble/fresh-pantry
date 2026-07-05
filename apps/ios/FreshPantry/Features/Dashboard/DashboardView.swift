@@ -771,7 +771,7 @@ private struct CategoryTile: View {
                         }
                         .buttonStyle(.fkPressable)
                         .accessibilityIdentifier("home.category.\(entry.category)")
-                        .accessibilityLabel(String(localized: "dashboard.category.itemCount \(entry.category) \(entry.count)"))
+                        .accessibilityLabel(String(localized: "dashboard.category.itemCount \(FoodCategories.displayLabel(for: entry.category)) \(entry.count)"))
                     }
                 }
             }
@@ -784,7 +784,7 @@ private struct CategoryTile: View {
             Image(systemName: FkCategoryIcon.symbol(for: category))
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(palette.ink)
-            Text(category)
+            Text(FoodCategories.displayLabel(for: category))
                 .font(.fkLabelSmall)
                 .foregroundStyle(Color.fkOnSurface)
                 .lineLimit(1)
