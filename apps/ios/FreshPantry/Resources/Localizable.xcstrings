@@ -49,7 +49,7 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Copier dans le presse-papiers" } }
       }
     },
-    "backup.export.copySuccess" : {
+    "backup.export.copySuccess %lld" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已复制 %lld 字节，粘贴到备忘录/邮件即可保存" } },
         "en" : { "variations" : { "plural" : {
@@ -375,7 +375,7 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cette photo n'a pas pu être lue. Veuillez réessayer avec une photo de reçu plus nette." } }
       }
     },
-    "error.ocr.visionFailed" : {
+    "error.ocr.visionFailed %@" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "识别小票文字失败：%@" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't recognize the receipt text: %@" } },
@@ -383,7 +383,7 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible de reconnaître le texte du reçu : %@" } }
       }
     },
-    "error.recipeParse.aiReported" : {
+    "error.recipeParse.aiReported %@" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "AI 报告：%@" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "AI reported: %@" } },
@@ -415,7 +415,7 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le texte de la recette est vide." } }
       }
     },
-    "error.recipeParse.fetchFailed" : {
+    "error.recipeParse.fetchFailed %@" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "网页抓取失败：%@" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't fetch the page: %@" } },
@@ -423,7 +423,7 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible de récupérer la page : %@" } }
       }
     },
-    "error.recipeParse.fetchStatus" : {
+    "error.recipeParse.fetchStatus %lld" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "网页抓取失败 (%lld)" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't fetch the page (%lld)" } },
@@ -439,7 +439,7 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible de récupérer la page : délai d'attente dépassé." } }
       }
     },
-    "error.recipeParse.fieldMissingOrNotInt" : {
+    "error.recipeParse.fieldMissingOrNotInt %@" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "字段 %@ 缺失或非整数" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Field %@ is missing or isn't an integer." } },
@@ -447,7 +447,7 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le champ %@ est manquant ou n'est pas un entier." } }
       }
     },
-    "error.recipeParse.fieldMissingOrNotString" : {
+    "error.recipeParse.fieldMissingOrNotString %@" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "字段 %@ 缺失或非字符串" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Field %@ is missing or isn't a string." } },
@@ -503,7 +503,7 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "L'accès au micro et à la reconnaissance vocale est requis. Veuillez l'activer dans Réglages." } }
       }
     },
-    "error.speech.startFailed" : {
+    "error.speech.startFailed %@" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法开始录音:%@" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't start recording: %@" } },
@@ -611,7 +611,7 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Partage familial" } }
       }
     },
-    "paywall.feature.inventory.detail" : {
+    "paywall.feature.inventory.detail %lld" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "免费版可记录 %lld 条" } },
         "en" : { "variations" : { "plural" : {
@@ -729,7 +729,7 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun achat précédent trouvé à restaurer." } }
       }
     },
-    "pro.error.productLoadFailed" : {
+    "pro.error.productLoadFailed %@" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "商品信息加载失败：%@" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't load item info: %@" } },
@@ -753,7 +753,7 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cet article n'est pas disponible pour le moment. Veuillez réessayer plus tard." } }
       }
     },
-    "pro.error.purchaseIncomplete" : {
+    "pro.error.purchaseIncomplete %@" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "购买没有完成：%@" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "The purchase didn't complete: %@" } },
@@ -1177,7 +1177,7 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Exclusions alimentaires" } }
       }
     },
-    "settings.dietary.removeChip" : {
+    "settings.dietary.removeChip %@" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除 %@" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Remove %@" } },
@@ -1415,7 +1415,7 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Complétez votre profil" } }
       }
     },
-    "settings.profile.photoLoadFailed" : {
+    "settings.profile.photoLoadFailed %@" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "读取照片失败：%@" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't load the photo: %@" } },
@@ -1719,7 +1719,7 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réduction du gaspillage" } }
       }
     },
-    "spotlight.ingredient.expiresOn" : {
+    "spotlight.ingredient.expiresOn %@" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%@ 到期" } },
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Expires %@" } },

@@ -69,11 +69,67 @@ def xcstrings_offenders() -> list[str]:
     return out
 
 
+LOCALIZED_CALL = re.compile(r'String\(localized:\s*"([a-z][A-Za-z0-9.]*)((?: |\()[^"]*)"\)')
+TEXT_LITERAL = re.compile(r'Text\("([a-z][A-Za-z0-9.]*)"\)')
+
+
+def _load_catalog_keys() -> list[set[str]]:
+    # 多个 catalog（未来 Widgets 会有自己的）时，key 存在于任一 catalog 即算命中
+    catalogs = []
+    for f in sorted(IOS.rglob("*.xcstrings")):
+        if "build" in f.parts:
+            continue
+        catalog = json.loads(f.read_text())
+        catalogs.append(set(catalog.get("strings", {}).keys()))
+    return catalogs
+
+
+def interpolation_offenders(dirs: list[Path]) -> list[str]:
+    """插值 key 交叉引用检查：源码里 String(localized: "key\\(expr)") 的 key 必须在某个
+    catalog 里以 "key %..." 的裸带后缀形式存在，而不是被错误存成裸 key（本缺陷的形态）。
+    不含插值的 String(localized:"key") 以及 Text("a.b.c") 视图字面量，则要求 key 精确存在。
+    """
+    out = []
+    catalogs = _load_catalog_keys()
+    all_keys: set[str] = set().union(*catalogs) if catalogs else set()
+
+    for base in dirs:
+        files = [base] if base.is_file() else sorted(base.rglob("*.swift"))
+        for f in files:
+            if "build" in f.parts:
+                continue
+            try:
+                rel = f.relative_to(ROOT)
+            except ValueError:
+                rel = f
+            for i, line in enumerate(strip_comments(f.read_text()).splitlines(), 1):
+                for m in LOCALIZED_CALL.finditer(line):
+                    key, rest = m.group(1), m.group(2)
+                    if "\\(" in rest:
+                        prefix = rest.split("\\(", 1)[0].strip()
+                        full_prefix = f"{key}{(' ' + prefix) if prefix else ''}".strip()
+                        bare_exists = full_prefix in all_keys
+                        suffixed_exists = any(k.startswith(full_prefix + " %") for k in all_keys)
+                        if bare_exists or not suffixed_exists:
+                            out.append(
+                                f"{rel}:{i}: 插值 key 疑似未带格式后缀/缺条目: '{full_prefix}'"
+                            )
+                    else:
+                        if key not in all_keys:
+                            out.append(f"{rel}:{i}: key 不存在于任何 catalog: '{key}'")
+                for m in TEXT_LITERAL.finditer(line):
+                    key = m.group(1)
+                    if key not in all_keys:
+                        out.append(f"{rel}:{i}: key 不存在于任何 catalog: '{key}'")
+    return out
+
+
 def main() -> int:
     args = [Path(a).resolve() for a in sys.argv[1:]]
     offenders = swift_offenders(args or DEFAULT_DIRS)
     if not args:
         offenders += xcstrings_offenders()
+        offenders += interpolation_offenders(DEFAULT_DIRS)
     for line in offenders:
         print(line)
     print(f"\n{'FAIL' if offenders else 'OK'}: {len(offenders)} 处未本地化/缺翻译")

@@ -101,7 +101,7 @@ struct AiRecipeParserTests {
     @Test func errorFieldThrowsParseWithMessage() async {
         await #expect {
             try await parse(replyingWith: #"{"error":"内容不足以抽取"}"#)
-        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.aiReported 内容不足以抽取")) }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.aiReported \("内容不足以抽取")")) }
     }
 
     @Test func nonJsonThrowsParse() async {
@@ -115,7 +115,7 @@ struct AiRecipeParserTests {
             try await parse(replyingWith: #"""
             {"category":"c","cookingMinutes":10,"difficulty":3,"ingredients":[],"steps":[]}
             """#)
-        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.fieldMissingOrNotString name")) }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.fieldMissingOrNotString \("name")")) }
     }
 
     @Test func nonIntCookingMinutesThrowsParse() async {
@@ -123,7 +123,7 @@ struct AiRecipeParserTests {
             try await parse(replyingWith: #"""
             {"name":"n","category":"c","cookingMinutes":"快","difficulty":3,"ingredients":[],"steps":[]}
             """#)
-        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.fieldMissingOrNotInt cookingMinutes")) }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.fieldMissingOrNotInt \("cookingMinutes")")) }
     }
 
     // MARK: Tolerant fields

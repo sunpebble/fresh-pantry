@@ -96,7 +96,7 @@ struct AiRecipeGeneratorTests {
                 ["白菜"],
                 chatFn: { _ in #"{"error":"食材太少"}"# }
             )
-        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.aiReported 食材太少")) }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.aiReported \("食材太少")")) }
     }
 
     @Test func nonJsonReplyThrowsParse() async {

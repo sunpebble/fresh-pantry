@@ -393,7 +393,7 @@ enum OpenFoodFactsService {
         // detection for non-zh-Hans locales (a real placeholder would then read as
         // "real" content). Needs a non-string-sniffing redesign (e.g. a sentinel
         // enum) before this can be localized — flagged as a follow-up, not done here.
-        return "Open Food Facts 记录的\(category)食品。" // i18n:ignore placeholder-detection template, see note above
+        return "Open Food Facts 记录的\(category)食品。" // i18n:ignore placeholder-detection template, see note above // i18n:ignore ——技术债:该兜底描述实际会渲染给用户,但与 isPlaceholderFoodDescription 字符串嗅探耦合,需先重构检测机制;见 task-6-report 遗留事项
     }
 
     static func storageForCategory(_ category: String) -> IconType {

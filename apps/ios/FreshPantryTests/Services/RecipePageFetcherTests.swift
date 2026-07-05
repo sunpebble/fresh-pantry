@@ -200,7 +200,7 @@ struct RecipePageFetcherTests {
                 "https://www.xiachufang.com/recipe/3",
                 session: stubbedSession()
             )
-        } throws: { ($0 as? AiError) == .network(String(localized: "error.recipeParse.fetchStatus 503")) }
+        } throws: { ($0 as? AiError) == .network(String(localized: "error.recipeParse.fetchStatus \(503)")) }
     }
 
     @Test func emptyBodyThrowsParse() async {

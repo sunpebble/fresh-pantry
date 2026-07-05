@@ -88,7 +88,7 @@ struct AiRecipeParserFromTextTests {
                 "看不清的几个字",
                 chatFn: { _ in #"{"error":"文本不足以抽取"}"# }
             )
-        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.aiReported 文本不足以抽取")) }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.aiReported \("文本不足以抽取")")) }
     }
 
     @Test func nonJsonReplyThrowsParse() async {
