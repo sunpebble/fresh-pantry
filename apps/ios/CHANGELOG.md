@@ -1,5 +1,30 @@
 # Changelog
 
+## [2.2.0](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.1.2...fresh_pantry-v2.2.0) (2026-07-05)
+
+
+### Features
+
+* **i18n:** 生成 DeepSeek 食谱翻译 overlay ([7b06996](https://github.com/sunpebble/fresh-pantry/commit/7b069962bfa0a8629cfa02e262f91a9f1728e9b7))
+* **i18n:** 补齐 iOS 多语言与食谱 overlay 接入 ([e12695a](https://github.com/sunpebble/fresh-pantry/commit/e12695a1f4cf57430710ba3d41744f3fe1f99bce))
+* **ios:** AI 错误文案本地化，429/401 按服务端 code 映射 ([63842b9](https://github.com/sunpebble/fresh-pantry/commit/63842b99e83737c07af92bdb6a105fdd1293c7b7))
+* **ios:** Services 残留文案本地化（OCR/解析器/AI 服务错误提示） ([e25a7b7](https://github.com/sunpebble/fresh-pantry/commit/e25a7b7c6f2b08c224dc5c24219c7a4f0ebbe93f))
+* **ios:** String Catalog 基建落地——Tab 标签四语言试点 ([fbc9ce1](https://github.com/sunpebble/fresh-pantry/commit/fbc9ce1e913b86a7782a29ed230b8aa6c70badda))
+* **ios:** 设置/付费/备份文案本地化 ([686335e](https://github.com/sunpebble/fresh-pantry/commit/686335e0db85a1cfdee5f207853be2ae8ec4b4b5))
+* **ios:** 通知文案本地化，en/fr 带复数变体 ([d93972a](https://github.com/sunpebble/fresh-pantry/commit/d93972aafac8374ad5618e9108a591cd50a537db))
+* **ios:** 食谱/购物/规划/搜索/浪费洞察文案本地化 ([caffe90](https://github.com/sunpebble/fresh-pantry/commit/caffe90ffe729684656f2a4f967af1afec59e0e8))
+* **ios:** 首页/库存/App 壳/组件文案本地化 ([f514b08](https://github.com/sunpebble/fresh-pantry/commit/f514b08f901d004d0e9d6556826c9b6169e89393))
+
+
+### Bug Fixes
+
+* **ios:** auth_missing 同样映射为重新登录文案 ([2c67c85](https://github.com/sunpebble/fresh-pantry/commit/2c67c85078aef108683b7556b3c37a09011d9e0c))
+* **ios:** xcstrings key 调整为严格字母序 ([d58f493](https://github.com/sunpebble/fresh-pantry/commit/d58f493348f1c2051bd94f552d2b05aa5c9c1a9f))
+* **ios:** 插值本地化 key 补格式后缀;check_i18n 增加 key 交叉引用闸门 ([b0800f6](https://github.com/sunpebble/fresh-pantry/commit/b0800f676ed87d948ef96a4cb0b265efa4bed488))
+* **ios:** 计数文案改真复数变体;MealPlan 日期改 FormatStyle 跟随 locale ([810277e](https://github.com/sunpebble/fresh-pantry/commit/810277ed92935528ecc26c8b08b6bf3bb0d97de4))
+* **ios:** 食谱日期改 FormatStyle;语音识别跟随界面语言 ([3823403](https://github.com/sunpebble/fresh-pantry/commit/3823403903e113b0cc5b288e75f522aac16fb997))
+* **ios:** 首页分类网格接 displayLabel;单位 picker 选项本地化 ([93e0f78](https://github.com/sunpebble/fresh-pantry/commit/93e0f7854cd2424a3852803803b18980d8c1edba))
+
 ## [2.1.2](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.1.1...fresh_pantry-v2.1.2) (2026-07-05)
 
 
