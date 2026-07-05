@@ -8,13 +8,14 @@ import Foundation
 enum AiRecipeParser {
     /// System prompt — copied VERBATIM from the Dart parser (the field contract
     /// the UI keys off of). Do NOT reword.
+    // LLM prompt text (never rendered to the user) — i18n:ignore below, not UI text
     static let systemPrompt =
-        "你是食谱抽取助手。用户会提供食谱网页的正文内容，请从中抽取结构化食谱。"
-        + "不要声称无法访问网页；只根据提供的内容工作。"
-        + "只返回 JSON，不要前后文。如果内容不足以抽取，返回 {\"error\":\"...\"}。"
-        + "JSON 字段：name, category, cookingMinutes (int 分钟), difficulty (int 1-5), "
-        + "description, imageUrl (可空；如果网页内容包含“封面图片”，优先使用该 URL), "
-        + "ingredients ([{name, amount}]), steps (string array)。"
+        "你是食谱抽取助手。用户会提供食谱网页的正文内容，请从中抽取结构化食谱。" // i18n:ignore LLM prompt text, not UI text
+        + "不要声称无法访问网页；只根据提供的内容工作。" // i18n:ignore LLM prompt text, not UI text
+        + "只返回 JSON，不要前后文。如果内容不足以抽取，返回 {\"error\":\"...\"}。" // i18n:ignore LLM prompt text, not UI text
+        + "JSON 字段：name, category, cookingMinutes (int 分钟), difficulty (int 1-5), " // i18n:ignore LLM prompt text, not UI text
+        + "description, imageUrl (可空；如果网页内容包含“封面图片”，优先使用该 URL), " // i18n:ignore LLM prompt text, not UI text
+        + "ingredients ([{name, amount}]), steps (string array)。" // i18n:ignore LLM prompt text, not UI text
         + stepAtomizationRule
 
     /// iOS-only addition (#16): instructs the model to keep steps atomic (one
@@ -22,8 +23,8 @@ enum AiRecipeParser {
     /// Appended to both import prompts; does NOT change the JSON field contract the
     /// "do NOT reword" parity note above protects.
     static let stepAtomizationRule =
-        "steps 请拆成单一动作的短句：一步只做一件事，把“一大段塞进一步”拆成多步，"
-        + "保持原有先后顺序，不要合并步骤，也不要编造原文没有的步骤。"
+        "steps 请拆成单一动作的短句：一步只做一件事，把“一大段塞进一步”拆成多步，" // i18n:ignore LLM prompt text, not UI text
+        + "保持原有先后顺序，不要合并步骤，也不要编造原文没有的步骤。" // i18n:ignore LLM prompt text, not UI text
 
     /// System prompt for the OCR-text path. The input is raw recognized text from
     /// a photographed / screenshotted recipe — lines may be out of order, broken
@@ -33,12 +34,12 @@ enum AiRecipeParser {
     /// Chinese, per the product requirement. Do NOT add fields without teaching
     /// `mapToDraft` about them.
     static let fromTextSystemPrompt =
-        "你是食谱整理助手。用户会提供一段从纸质菜谱或截图 OCR 识别出来的杂乱文本，"
-        + "可能有错别字、断行、顺序混乱或多余内容。请把它整理成一份结构化食谱。"
-        + "尽量纠正明显的识别错误，合理拆分食材与步骤；只根据提供的文本工作，不要编造原文没有的内容。"
-        + "只返回 JSON，不要前后文。如果文本不足以抽取出食谱，返回 {\"error\":\"...\"}。"
-        + "JSON 字段：name, category, cookingMinutes (int 分钟), difficulty (int 1-5), "
-        + "description, ingredients ([{name, amount}]), steps (string array)。"
+        "你是食谱整理助手。用户会提供一段从纸质菜谱或截图 OCR 识别出来的杂乱文本，" // i18n:ignore LLM prompt text, not UI text
+        + "可能有错别字、断行、顺序混乱或多余内容。请把它整理成一份结构化食谱。" // i18n:ignore LLM prompt text, not UI text
+        + "尽量纠正明显的识别错误，合理拆分食材与步骤；只根据提供的文本工作，不要编造原文没有的内容。" // i18n:ignore LLM prompt text, not UI text
+        + "只返回 JSON，不要前后文。如果文本不足以抽取出食谱，返回 {\"error\":\"...\"}。" // i18n:ignore LLM prompt text, not UI text
+        + "JSON 字段：name, category, cookingMinutes (int 分钟), difficulty (int 1-5), " // i18n:ignore LLM prompt text, not UI text
+        + "description, ingredients ([{name, amount}]), steps (string array)。" // i18n:ignore LLM prompt text, not UI text
         + stepAtomizationRule
 
     /// Normalizes + gates the URL, fetches the page, runs the LLM, and parses the
@@ -55,7 +56,7 @@ enum AiRecipeParser {
 
         let messages: [AiMessage] = [
             .text("system", systemPrompt),
-            .text("user", "来源 URL：\(normalized)\n\n网页内容：\n\(pageText)"),
+            .text("user", "来源 URL：\(normalized)\n\n网页内容：\n\(pageText)"), // i18n:ignore LLM prompt text, not UI text
         ]
 
         let raw = try await chatFn(messages)
@@ -67,7 +68,7 @@ enum AiRecipeParser {
     /// unit-testable WITHOUT the network. Trims surrounding whitespace; the body is
     /// passed through verbatim so the model sees exactly what OCR produced.
     static func buildFromTextUserPrompt(_ text: String) -> String {
-        "食谱文本（OCR 识别，可能有误）：\n\(text.trimmingCharacters(in: .whitespacesAndNewlines))"
+        "食谱文本（OCR 识别，可能有误）：\n\(text.trimmingCharacters(in: .whitespacesAndNewlines))" // i18n:ignore LLM prompt text, not UI text
     }
 
     /// Extracts a structured `RecipeDraft` from a block of free-form recipe text —
@@ -80,7 +81,7 @@ enum AiRecipeParser {
     /// malformed / missing JSON and surfaces an AI-reported `error` field.
     static func fromText(_ text: String, chatFn: AiChatFn) async throws -> RecipeDraft {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { throw AiError.parse("食谱文本为空") }
+        if trimmed.isEmpty { throw AiError.parse(String(localized: "error.recipeParse.emptyText")) }
 
         let messages: [AiMessage] = [
             .text("system", fromTextSystemPrompt),
@@ -99,10 +100,10 @@ enum AiRecipeParser {
     /// JSON and surfaces an AI-reported `error` field as `AiError.parse("AI 报告：…")`.
     static func mapToDraft(_ raw: String, sourceUrl: String?) throws -> RecipeDraft {
         guard let json = extractJsonObjectWithFallbacks(raw) else {
-            throw AiError.parse("AI 返回不是合法 JSON")
+            throw AiError.parse(String(localized: "error.recipeParse.invalidJson"))
         }
         if let errorValue = json["error"] {
-            throw AiError.parse("AI 报告：\(describeError(errorValue))")
+            throw AiError.parse(String(localized: "error.recipeParse.aiReported \(describeError(errorValue))"))
         }
 
         return RecipeDraft(
@@ -123,7 +124,7 @@ enum AiRecipeParser {
     /// Non-empty string at `key`, else `AiError.parse`.
     private static func requireString(_ map: [String: JSONValue], _ key: String) throws -> String {
         guard case let .string(value) = map[key], !value.isEmpty else {
-            throw AiError.parse("字段 \(key) 缺失或非字符串")
+            throw AiError.parse(String(localized: "error.recipeParse.fieldMissingOrNotString \(key)"))
         }
         return value
     }
@@ -138,7 +139,7 @@ enum AiRecipeParser {
         case let .double(value):
             raw = Int(value.rounded())
         default:
-            throw AiError.parse("字段 \(key) 缺失或非整数")
+            throw AiError.parse(String(localized: "error.recipeParse.fieldMissingOrNotInt \(key)"))
         }
         if key == "difficulty" { return min(max(raw, 1), 5) }
         if key == "cookingMinutes" { return raw <= 0 ? 30 : raw }
@@ -188,7 +189,7 @@ enum AiRecipeParser {
         case let .int(int): return String(int)
         case let .double(double): return String(double)
         case let .bool(bool): return String(bool)
-        case .null, .array, .object: return "内容不足以抽取"
+        case .null, .array, .object: return String(localized: "error.recipeParse.insufficientContent")
         }
     }
 }

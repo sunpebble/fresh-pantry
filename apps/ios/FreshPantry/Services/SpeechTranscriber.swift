@@ -28,11 +28,11 @@ final class SpeechTranscriber {
         errorMessage = nil
         transcript = ""
         guard await Self.requestAuthorization() else {
-            errorMessage = "需要麦克风与语音识别权限,请在系统设置中开启。"
+            errorMessage = String(localized: "error.speech.permissionDenied")
             return
         }
         guard let recognizer, recognizer.isAvailable else {
-            errorMessage = "当前语音识别不可用,请稍后再试。"
+            errorMessage = String(localized: "error.speech.unavailable")
             return
         }
         do {
@@ -64,7 +64,7 @@ final class SpeechTranscriber {
                 }
             }
         } catch {
-            errorMessage = "无法开始录音:\(error.localizedDescription)"
+            errorMessage = String(localized: "error.speech.startFailed \(error.localizedDescription)")
             cleanup()
         }
     }

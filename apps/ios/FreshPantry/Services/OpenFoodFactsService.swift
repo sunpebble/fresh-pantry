@@ -41,44 +41,50 @@ enum OpenFoodFactsService {
     /// INVARIANT #10). Stored as an ORDERED array (not a dictionary) so the
     /// FIRST-declared key wins on a tie — a Swift dictionary's unordered
     /// iteration would break that determinism.
+    // The Chinese literals below are `FoodCategories.*` domain-identity values
+    // (e.g. `dairyAndEggs = "乳品蛋类"`) — the same category strings persisted on
+    // `Ingredient.category` and rendered app-wide (Inventory/Recipes/etc, all
+    // outside Settings/Services). Localizing category display is a cross-cutting
+    // change beyond this file's scope; these are data-matching literals, not new
+    // UI text authored here. // i18n:ignore domain category identity, not new UI text
     static let categoryMapping: [(key: String, value: String)] = [
         // 乳品蛋类
-        ("dairy", "乳品蛋类"),
-        ("milk", "乳品蛋类"),
-        ("cheese", "乳品蛋类"),
-        ("yogurt", "乳品蛋类"),
-        ("butter", "乳品蛋类"),
-        ("cream", "乳品蛋类"),
-        ("egg", "乳品蛋类"),
-        ("lait", "乳品蛋类"),
-        ("fromage", "乳品蛋类"),
+        ("dairy", "乳品蛋类"), // i18n:ignore domain category identity, not new UI text
+        ("milk", "乳品蛋类"), // i18n:ignore domain category identity, not new UI text
+        ("cheese", "乳品蛋类"), // i18n:ignore domain category identity, not new UI text
+        ("yogurt", "乳品蛋类"), // i18n:ignore domain category identity, not new UI text
+        ("butter", "乳品蛋类"), // i18n:ignore domain category identity, not new UI text
+        ("cream", "乳品蛋类"), // i18n:ignore domain category identity, not new UI text
+        ("egg", "乳品蛋类"), // i18n:ignore domain category identity, not new UI text
+        ("lait", "乳品蛋类"), // i18n:ignore domain category identity, not new UI text
+        ("fromage", "乳品蛋类"), // i18n:ignore domain category identity, not new UI text
         // 果蔬生鲜
-        ("fruit", "果蔬生鲜"),
-        ("vegetable", "果蔬生鲜"),
-        ("legume", "果蔬生鲜"),
-        ("salad", "果蔬生鲜"),
-        ("produce", "果蔬生鲜"),
-        ("fresh", "果蔬生鲜"),
+        ("fruit", "果蔬生鲜"), // i18n:ignore domain category identity, not new UI text
+        ("vegetable", "果蔬生鲜"), // i18n:ignore domain category identity, not new UI text
+        ("legume", "果蔬生鲜"), // i18n:ignore domain category identity, not new UI text
+        ("salad", "果蔬生鲜"), // i18n:ignore domain category identity, not new UI text
+        ("produce", "果蔬生鲜"), // i18n:ignore domain category identity, not new UI text
+        ("fresh", "果蔬生鲜"), // i18n:ignore domain category identity, not new UI text
         // 肉类海鲜
-        ("meat", "肉类海鲜"),
-        ("beef", "肉类海鲜"),
-        ("pork", "肉类海鲜"),
-        ("chicken", "肉类海鲜"),
-        ("poultry", "肉类海鲜"),
-        ("fish", "肉类海鲜"),
-        ("seafood", "肉类海鲜"),
-        ("shrimp", "肉类海鲜"),
-        ("viande", "肉类海鲜"),
-        ("poisson", "肉类海鲜"),
+        ("meat", "肉类海鲜"), // i18n:ignore domain category identity, not new UI text
+        ("beef", "肉类海鲜"), // i18n:ignore domain category identity, not new UI text
+        ("pork", "肉类海鲜"), // i18n:ignore domain category identity, not new UI text
+        ("chicken", "肉类海鲜"), // i18n:ignore domain category identity, not new UI text
+        ("poultry", "肉类海鲜"), // i18n:ignore domain category identity, not new UI text
+        ("fish", "肉类海鲜"), // i18n:ignore domain category identity, not new UI text
+        ("seafood", "肉类海鲜"), // i18n:ignore domain category identity, not new UI text
+        ("shrimp", "肉类海鲜"), // i18n:ignore domain category identity, not new UI text
+        ("viande", "肉类海鲜"), // i18n:ignore domain category identity, not new UI text
+        ("poisson", "肉类海鲜"), // i18n:ignore domain category identity, not new UI text
         // 香料草本
-        ("spice", "香料草本"),
-        ("herb", "香料草本"),
-        ("seasoning", "香料草本"),
-        ("pepper", "香料草本"),
-        ("salt", "香料草本"),
+        ("spice", "香料草本"), // i18n:ignore domain category identity, not new UI text
+        ("herb", "香料草本"), // i18n:ignore domain category identity, not new UI text
+        ("seasoning", "香料草本"), // i18n:ignore domain category identity, not new UI text
+        ("pepper", "香料草本"), // i18n:ignore domain category identity, not new UI text
+        ("salt", "香料草本"), // i18n:ignore domain category identity, not new UI text
         ("condiment", FoodCategories.herbsAndSpices),
         ("sauce", FoodCategories.herbsAndSpices),
-        ("épice", "香料草本"),
+        ("épice", "香料草本"), // i18n:ignore domain category identity, not new UI text
         // Broad shelf-stable catchall.
         ("cereal", FoodCategories.other),
         ("pasta", FoodCategories.other),
@@ -381,7 +387,13 @@ enum OpenFoodFactsService {
         if let genericName = firstNonEmpty([product["generic_name"]]), !genericName.trimmed.isEmpty {
             return genericName.trimmed
         }
-        return "Open Food Facts 记录的\(category)食品。"
+        // Kept Chinese (not `String(localized:)`) on purpose: `isPlaceholderFoodDescription`
+        // below detects this exact template via literal Chinese prefix/suffix
+        // matching. Localizing the generated text would silently break that
+        // detection for non-zh-Hans locales (a real placeholder would then read as
+        // "real" content). Needs a non-string-sniffing redesign (e.g. a sentinel
+        // enum) before this can be localized — flagged as a follow-up, not done here.
+        return "Open Food Facts 记录的\(category)食品。" // i18n:ignore placeholder-detection template, see note above
     }
 
     static func storageForCategory(_ category: String) -> IconType {
@@ -498,10 +510,12 @@ private extension String {
 func isPlaceholderFoodDescription(_ description: String) -> Bool {
     let trimmed = description.trimmed
     if trimmed.isEmpty { return true }
-    if trimmed.hasPrefix("Open Food Facts 记录的") && trimmed.hasSuffix("食品。") {
+    // Literal-text sniffing against the (deliberately unlocalized, see
+    // `descriptionForProduct`) generated placeholder templates.
+    if trimmed.hasPrefix("Open Food Facts 记录的") && trimmed.hasSuffix("食品。") { // i18n:ignore placeholder-detection template match, see descriptionForProduct
         return true
     }
-    if trimmed.hasPrefix("建议存放在") { return true }
-    if trimmed.hasPrefix("暂无联网详情") { return true }
+    if trimmed.hasPrefix("建议存放在") { return true } // i18n:ignore placeholder-detection template match, see descriptionForProduct
+    if trimmed.hasPrefix("暂无联网详情") { return true } // i18n:ignore placeholder-detection template match, see descriptionForProduct
     return false
 }

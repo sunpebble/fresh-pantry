@@ -31,7 +31,7 @@ struct AiRecipeParserFromTextTests {
     @Test func emptyTextThrowsParse() async {
         await #expect {
             _ = try await AiRecipeParser.fromText("   \n  ", chatFn: { _ in "{}" })
-        } throws: { ($0 as? AiError) == .parse("食谱文本为空") }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.emptyText")) }
     }
 
     // MARK: Reply maps through the shared parser
@@ -88,7 +88,7 @@ struct AiRecipeParserFromTextTests {
                 "看不清的几个字",
                 chatFn: { _ in #"{"error":"文本不足以抽取"}"# }
             )
-        } throws: { ($0 as? AiError) == .parse("AI 报告：文本不足以抽取") }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.aiReported 文本不足以抽取")) }
     }
 
     @Test func nonJsonReplyThrowsParse() async {
@@ -97,7 +97,7 @@ struct AiRecipeParserFromTextTests {
                 "番茄炒蛋",
                 chatFn: { _ in "抱歉，我无法整理这段文本。" }
             )
-        } throws: { ($0 as? AiError) == .parse("AI 返回不是合法 JSON") }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.invalidJson")) }
     }
 
     @Test func malformedIngredientEntryIsSkipped() async throws {

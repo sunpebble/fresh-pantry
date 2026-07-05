@@ -36,7 +36,7 @@ struct AiRecipeRewriterTests {
     @Test func blankInstructionThrows() async {
         await #expect {
             try await AiRecipeRewriter.rewrite(recipe: recipe(), instruction: "  ") { _ in "{}" }
-        } throws: { ($0 as? AiError) == .parse("请填写改写要求") }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.emptyInstruction")) }
     }
 
     @Test func rewriteMapsReplyThroughSharedParser() async throws {

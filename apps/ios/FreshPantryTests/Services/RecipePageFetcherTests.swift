@@ -200,7 +200,7 @@ struct RecipePageFetcherTests {
                 "https://www.xiachufang.com/recipe/3",
                 session: stubbedSession()
             )
-        } throws: { ($0 as? AiError) == .network("网页抓取失败 (503)") }
+        } throws: { ($0 as? AiError) == .network(String(localized: "error.recipeParse.fetchStatus 503")) }
     }
 
     @Test func emptyBodyThrowsParse() async {
@@ -210,7 +210,7 @@ struct RecipePageFetcherTests {
                 "https://www.xiachufang.com/recipe/4",
                 session: stubbedSession()
             )
-        } throws: { ($0 as? AiError) == .parse("网页中没有可解析的食谱内容") }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.noContent")) }
     }
 
     // #4: a generic (non-whitelisted) host is now fetched + parsed rather than

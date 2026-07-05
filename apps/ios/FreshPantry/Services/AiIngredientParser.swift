@@ -14,21 +14,21 @@ enum AiIngredientParser {
     /// System prompt — copied VERBATIM from the Dart parser (the field contract
     /// the model must honor: name/quantity/unit/category/storage/shelfLifeDays).
     static let systemPrompt =
-        "你是食材清单解析助手。把用户输入的食材文本拆为多条结构化条目。"
-        + "只返回 JSON 数组，每条 {name, quantity, unit, category, storage (fridge/pantry), shelfLifeDays}。"
-        + "估算合理的数量、单位、分类、存储、保质期。"
+        "你是食材清单解析助手。把用户输入的食材文本拆为多条结构化条目。" // i18n:ignore LLM prompt text, not UI text
+        + "只返回 JSON 数组，每条 {name, quantity, unit, category, storage (fridge/pantry), shelfLifeDays}。" // i18n:ignore LLM prompt text, not UI text
+        + "估算合理的数量、单位、分类、存储、保质期。" // i18n:ignore LLM prompt text, not UI text
 
     /// Vision system prompt — copied VERBATIM from the Dart `fromImage` (the same
     /// field contract as the text path, scoped to recognizing items in a photo).
     static let imageSystemPrompt =
-        "你是食材识别助手。识别图中所有可入库的食材，返回 JSON 数组："
-        + "{name, quantity, unit, category, storage (fridge/pantry), shelfLifeDays}。"
+        "你是食材识别助手。识别图中所有可入库的食材，返回 JSON 数组：" // i18n:ignore LLM prompt text, not UI text
+        + "{name, quantity, unit, category, storage (fridge/pantry), shelfLifeDays}。" // i18n:ignore LLM prompt text, not UI text
 
     /// Trims + truncates the input, runs the chat call, and parses the result.
     /// Throws `AiError.parse("文本不能为空")` on empty input.
     static func fromText(_ text: String, chatFn: AiChatFn) async throws -> [IngredientDraft] {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { throw AiError.parse("文本不能为空") }
+        if trimmed.isEmpty { throw AiError.parse(String(localized: "error.ingredientParse.emptyText")) }
         let input = trimmed.count > maxTextLength ? String(trimmed.prefix(maxTextLength)) : trimmed
 
         let messages: [AiMessage] = [
@@ -45,12 +45,12 @@ enum AiIngredientParser {
     /// `AiError.parse("图片为空")` when the data is empty (parity with the Dart
     /// `ArgumentError('图片为空')`).
     static func fromImage(_ imageData: Data, chatFn: AiChatFn) async throws -> [IngredientDraft] {
-        if imageData.isEmpty { throw AiError.parse("图片为空") }
+        if imageData.isEmpty { throw AiError.parse(String(localized: "error.ingredientParse.emptyImage")) }
         let dataUrl = "data:image/jpeg;base64,\(imageData.base64EncodedString())"
 
         let messages: [AiMessage] = [
             .text("system", imageSystemPrompt),
-            .userWithImage("请识别图中食材", dataUrl),
+            .userWithImage("请识别图中食材", dataUrl), // i18n:ignore LLM prompt text, not UI text
         ]
         let raw = try await chatFn(messages)
         return try parseList(raw)
@@ -60,7 +60,7 @@ enum AiIngredientParser {
     /// row never discards the whole batch (parity with the Dart `_parseList`).
     static func parseList(_ raw: String) throws -> [IngredientDraft] {
         guard let list = extractJsonArrayWithFallbacks(raw) else {
-            throw AiError.parse("AI 返回不是合法 JSON 数组")
+            throw AiError.parse(String(localized: "error.ingredientParse.invalidJsonArray"))
         }
         var items: [IngredientDraft] = []
         let nowMs = Int(Date().timeIntervalSince1970 * 1000)
@@ -77,7 +77,7 @@ enum AiIngredientParser {
                     id: "ai_\(nowMs)_\(idCounter)",
                     name: .ai(name),
                     quantity: .ai(stringValue(map["quantity"]) ?? "1"),
-                    unit: .ai(string(map["unit"]) ?? "个"),
+                    unit: .ai(string(map["unit"]) ?? "个"), // i18n:ignore domain unit-default identity (used app-wide in Inventory), not new UI text
                     category: .ai(category),
                     storage: .ai(parseStorage(string(map["storage"]))),
                     shelfLifeDays: .ai(parsePositiveInt(map["shelfLifeDays"]))

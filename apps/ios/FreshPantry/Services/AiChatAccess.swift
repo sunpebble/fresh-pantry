@@ -1,9 +1,7 @@
 import Foundation
 
-/// 一次 AI 调用可用的传输通道。BYOK（用户自填 endpoint）优先且不受 Pro/限额约束；
-/// 其次 Pro 用户走内置 worker 代理；否则引导购买。
+/// 一次 AI 调用可用的传输通道。Pro 用户走内置 worker 代理；否则引导购买。
 enum AiAvailability: Equatable {
-    case byok(AiSettings)
     case builtIn
     case needsPro
 }
@@ -12,9 +10,8 @@ enum AiAvailability: Equatable {
 enum AiChatAccess {
     static let builtInModel = "deepseek-v4-flash"
 
-    static func resolve(byok: AiSettings, isPro: Bool) -> AiAvailability {
-        if byok.isConfigured { return .byok(byok) }
-        return isPro ? .builtIn : .needsPro
+    static func resolve(isPro: Bool) -> AiAvailability {
+        isPro ? .builtIn : .needsPro
     }
 
     /// worker 基址 + Supabase access token → 可直接喂给 AiClient 的 AiSettings。
@@ -42,7 +39,7 @@ enum AiChatAccess {
                 throw AiError.notConfigured
             }
             guard let session = try? await client.auth.session else {
-                throw AiError.auth("请先登录后再使用 AI 功能")
+                throw AiError.auth(String(localized: "error.auth.signInRequired"))
             }
             let settings = builtInSettings(apiBaseURL: apiBaseURL, accessToken: session.accessToken)
             return try await AiClient.chat(

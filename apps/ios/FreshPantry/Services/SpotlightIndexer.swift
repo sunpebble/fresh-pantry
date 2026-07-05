@@ -150,7 +150,7 @@ final class SpotlightIndexer: @unchecked Sendable {
             segments.append(amount)
         }
         if let expiry = ingredient.expiryDate {
-            segments.append("\(expiryFormatter.string(from: expiry)) 到期")
+            segments.append(String(localized: "spotlight.ingredient.expiresOn \(expiryFormatter.string(from: expiry))"))
         }
         return segments.joined(separator: " · ")
     }

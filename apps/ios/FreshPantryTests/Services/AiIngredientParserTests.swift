@@ -16,7 +16,7 @@ struct AiIngredientParserTests {
     @Test func emptyTextThrowsParse() async {
         await #expect {
             _ = try await AiIngredientParser.fromText("   ", chatFn: chat(returning: "[]"))
-        } throws: { ($0 as? AiError) == .parse("文本不能为空") }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.ingredientParse.emptyText")) }
     }
 
     // MARK: Clean array
@@ -108,7 +108,7 @@ struct AiIngredientParserTests {
     @Test func nonArrayThrowsParse() async {
         await #expect {
             _ = try await AiIngredientParser.fromText("x", chatFn: chat(returning: "not json at all"))
-        } throws: { ($0 as? AiError) == .parse("AI 返回不是合法 JSON 数组") }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.ingredientParse.invalidJsonArray")) }
     }
 
     // MARK: parseStorage mapping
@@ -126,7 +126,7 @@ struct AiIngredientParserTests {
     @Test func emptyImageDataThrowsParse() async {
         await #expect {
             _ = try await AiIngredientParser.fromImage(Data(), chatFn: chat(returning: "[]"))
-        } throws: { ($0 as? AiError) == .parse("图片为空") }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.ingredientParse.emptyImage")) }
     }
 
     // MARK: fromImage — valid array parses (reuses parseList, same draft shape)

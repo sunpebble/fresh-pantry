@@ -25,9 +25,9 @@ enum TextRecognizer {
 
         var message: String {
             switch self {
-            case .undecodable: return "无法读取这张图片，请换一张更清晰的小票照片重试。"
-            case let .vision(text): return "识别小票文字失败：\(text)"
-            case .noText: return "没能从这张小票上识别出文字，请确保小票清晰、光线充足后重拍。"
+            case .undecodable: return String(localized: "error.ocr.undecodable")
+            case let .vision(text): return String(localized: "error.ocr.visionFailed \(text)")
+            case .noText: return String(localized: "error.ocr.noText")
             }
         }
     }
@@ -172,13 +172,7 @@ enum ReceiptTextCleaner {
     /// Receipt-summary terms that never appear inside an item name — safe to match
     /// as a substring. All Chinese rows are here (2+ chars, unambiguous), plus a
     /// few English words/phrases with no food-name collision.
-    private static let strongNoiseKeywords: [String] = [
-        "合计", "小计", "总计", "应收", "实收", "找零", "找赎", "抹零",
-        "现金", "支付", "微信", "支付宝", "银联", "刷卡", "会员", "积分",
-        "优惠", "折扣", "税额", "税率", "发票", "收银", "门店", "电话",
-        "地址", "欢迎", "谢谢", "营业", "单号", "流水", "数量", "金额", "单价",
-        "subtotal", "thank you", "receipt", "invoice", "cashier",
-    ]
+    private static let strongNoiseKeywords: [String] = ["合计", "小计", "总计", "应收", "实收", "找零", "找赎", "抹零", "现金", "支付", "微信", "支付宝", "银联", "刷卡", "会员", "积分", "优惠", "折扣", "税额", "税率", "发票", "收银", "门店", "电话", "地址", "欢迎", "谢谢", "营业", "单号", "流水", "数量", "金额", "单价", "subtotal", "thank you", "receipt", "invoice", "cashier"] // i18n:ignore OCR noise-matching data table, not UI text
 
     /// Short English words that ARE common summary rows but also collide with real
     /// item words. Only flag noise when EVERY letter-word on the line is one of

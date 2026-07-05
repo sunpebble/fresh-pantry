@@ -42,7 +42,7 @@ func isSupportedRecipeHost(_ url: URL) -> Bool {
 func ensureRecipeUrl(_ raw: String) throws -> String {
     let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else {
-        throw AiError.parse("请填入合法的食谱链接")
+        throw AiError.parse(String(localized: "error.recipeParse.invalidUrl"))
     }
 
     // Accept a bare URL or pasted text — pull the first http(s) URL out.
@@ -61,7 +61,7 @@ func ensureRecipeUrl(_ raw: String) throws -> String {
     else {
         // A bare sentence ("这不是一个链接") coerces to https://<text> with a
         // dot-less host → rejected here, so only real web URLs get through.
-        throw AiError.parse("请填入合法的 http(s) 链接")
+        throw AiError.parse(String(localized: "error.recipeParse.invalidHttpUrl"))
     }
 
     return url.absoluteString
@@ -106,7 +106,7 @@ enum RecipePageFetcher {
     static func fetchText(_ url: String, session: URLSession = .shared) async throws -> String {
         let normalized = try ensureRecipeUrl(url)
         guard let requestURL = URL(string: normalized) else {
-            throw AiError.parse("请填入合法的 http(s) 链接")
+            throw AiError.parse(String(localized: "error.recipeParse.invalidHttpUrl"))
         }
 
         var request = URLRequest(url: requestURL)
@@ -121,18 +121,18 @@ enum RecipePageFetcher {
         do {
             (data, response) = try await session.data(for: request)
         } catch let error as URLError where error.code == .timedOut {
-            throw AiError.network("网页抓取失败：请求超时")
+            throw AiError.network(String(localized: "error.recipeParse.fetchTimeout"))
         } catch is CancellationError {
             throw AiError.cancelled
         } catch let error as URLError where error.code == .cancelled {
             throw AiError.cancelled
         } catch {
-            throw AiError.network("网页抓取失败：\(error.localizedDescription)")
+            throw AiError.network(String(localized: "error.recipeParse.fetchFailed \(error.localizedDescription)"))
         }
 
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard status == 200 else {
-            throw AiError.network("网页抓取失败 (\(status))")
+            throw AiError.network(String(localized: "error.recipeParse.fetchStatus \(status)"))
         }
 
         // `allowMalformed`-style lenient decode: UTF-8 first, then Latin-1 so a
@@ -142,7 +142,7 @@ enum RecipePageFetcher {
             ?? ""
         let text = extractRecipePageText(html)
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw AiError.parse("网页中没有可解析的食谱内容")
+            throw AiError.parse(String(localized: "error.recipeParse.noContent"))
         }
         return text
     }
@@ -155,19 +155,21 @@ enum RecipePageFetcher {
 func extractRecipePageText(_ html: String) -> String {
     var parts: [String] = []
 
+    // LLM prompt template segments (never rendered to the user) — kept Chinese to
+    // match the corpus/prompt language, not app UI text.
     if let title = decodeHtmlEntities(firstGroup(in: html, pattern: "<title[^>]*>([^<]+)")?.trimmed),
        !title.isEmpty {
-        parts.append("标题: \(title)")
+        parts.append("标题: \(title)") // i18n:ignore LLM prompt segment, not UI text
     }
 
     if let description = decodeHtmlEntities(
         firstGroup(in: html, pattern: #"name=["']description["']\s+content=["']([^"']*)["']"#)?.trimmed
     ), !description.isEmpty {
-        parts.append("摘要: \(description)")
+        parts.append("摘要: \(description)") // i18n:ignore LLM prompt segment, not UI text
     }
 
     if let cover = extractCoverImageUrl(html), !cover.isEmpty {
-        parts.append("封面图片: \(cover)")
+        parts.append("封面图片: \(cover)") // i18n:ignore LLM prompt segment, not UI text
     }
 
     var body = html
@@ -179,7 +181,7 @@ func extractRecipePageText(_ html: String) -> String {
         body = String(body.prefix(80_000))
     }
     if !body.isEmpty {
-        parts.append("正文: \(body)")
+        parts.append("正文: \(body)") // i18n:ignore LLM prompt segment, not UI text
     }
 
     return parts.joined(separator: "\n\n")

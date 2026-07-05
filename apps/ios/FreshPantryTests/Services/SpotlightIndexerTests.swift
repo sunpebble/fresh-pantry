@@ -60,7 +60,8 @@ struct SpotlightDescriptionTests {
     @Test func ingredientDescriptionJoinsCategoryQuantityAndExpiry() {
         let expiry = Calendar.current.date(from: DateComponents(year: 2026, month: 6, day: 15))!
         let item = makeIngredient(expiryDate: expiry)
-        #expect(SpotlightIndexer.ingredientDescription(item) == "乳制品 · 2盒 · 2026-06-15 到期")
+        let expiryText = String(localized: "spotlight.ingredient.expiresOn 2026-06-15")
+        #expect(SpotlightIndexer.ingredientDescription(item) == "乳制品 · 2盒 · \(expiryText)")
     }
 
     @Test func ingredientDescriptionOmitsMissingCategoryAndExpiry() {

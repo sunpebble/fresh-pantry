@@ -7,10 +7,10 @@ import Foundation
 /// the user reviews + saves as a custom recipe (one parser, one field contract).
 enum AiRecipeRewriter {
     static let systemPrompt =
-        "你是食谱改写助手。用户会给出一份现有食谱和改写要求，请在尽量保留这道菜风味与可操作性的前提下改写。"
-        + "只根据给定内容改写，不要编造无关菜品。只返回 JSON，不要前后文。如果无法改写，返回 {\"error\":\"...\"}。"
-        + "JSON 字段：name, category, cookingMinutes (int 分钟), difficulty (int 1-5), "
-        + "description, ingredients ([{name, amount}]), steps (string array)。"
+        "你是食谱改写助手。用户会给出一份现有食谱和改写要求，请在尽量保留这道菜风味与可操作性的前提下改写。" // i18n:ignore LLM prompt text, not UI text
+        + "只根据给定内容改写，不要编造无关菜品。只返回 JSON，不要前后文。如果无法改写，返回 {\"error\":\"...\"}。" // i18n:ignore LLM prompt text, not UI text
+        + "JSON 字段：name, category, cookingMinutes (int 分钟), difficulty (int 1-5), " // i18n:ignore LLM prompt text, not UI text
+        + "description, ingredients ([{name, amount}]), steps (string array)。" // i18n:ignore LLM prompt text, not UI text
         + AiRecipeParser.stepAtomizationRule
 
     /// Builds the user message: the source recipe (name/食材/步骤) + the rewrite
@@ -31,22 +31,22 @@ enum AiRecipeRewriter {
             .map { "\($0.offset + 1). \($0.element)" }
             .joined(separator: "\n")
 
-        var prompt = "现有食谱:\n名称:\(recipe.name)\n分类:\(recipe.category)\n食材:\(ingredients)\n步骤:\n\(steps)\n\n"
-        prompt += "改写要求:\(instruction.trimmingCharacters(in: .whitespacesAndNewlines))\n"
+        var prompt = "现有食谱:\n名称:\(recipe.name)\n分类:\(recipe.category)\n食材:\(ingredients)\n步骤:\n\(steps)\n\n" // i18n:ignore LLM prompt text, not UI text
+        prompt += "改写要求:\(instruction.trimmingCharacters(in: .whitespacesAndNewlines))\n" // i18n:ignore LLM prompt text, not UI text
 
         let inventory = inventoryNames
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         if !inventory.isEmpty {
-            prompt += "我现有的食材(改写时优先使用):\(inventory.joined(separator: "、"))\n"
+            prompt += "我现有的食材(改写时优先使用):\(inventory.joined(separator: "、"))\n" // i18n:ignore LLM prompt text, not UI text
         }
         let cleanExclusions = exclusions
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         if !cleanExclusions.isEmpty {
-            prompt += "忌口(请勿使用):\(cleanExclusions.joined(separator: "、"))\n"
+            prompt += "忌口(请勿使用):\(cleanExclusions.joined(separator: "、"))\n" // i18n:ignore LLM prompt text, not UI text
         }
-        prompt += "请输出改写后的完整食谱 JSON。"
+        prompt += "请输出改写后的完整食谱 JSON。" // i18n:ignore LLM prompt text, not UI text
         return prompt
     }
 
@@ -61,7 +61,7 @@ enum AiRecipeRewriter {
         chatFn: AiChatFn
     ) async throws -> RecipeDraft {
         guard !instruction.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw AiError.parse("请填写改写要求")
+            throw AiError.parse(String(localized: "error.recipeParse.emptyInstruction"))
         }
         let messages: [AiMessage] = [
             .text("system", systemPrompt),

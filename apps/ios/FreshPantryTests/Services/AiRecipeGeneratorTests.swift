@@ -43,7 +43,7 @@ struct AiRecipeGeneratorTests {
     @Test func emptyIngredientsThrowsParse() async {
         await #expect {
             _ = try await AiRecipeGenerator.fromIngredients(["", "   "], chatFn: { _ in "{}" })
-        } throws: { ($0 as? AiError) == .parse("食材清单为空") }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.emptyIngredientList")) }
     }
 
     // MARK: Reply maps through the shared parser
@@ -96,7 +96,7 @@ struct AiRecipeGeneratorTests {
                 ["白菜"],
                 chatFn: { _ in #"{"error":"食材太少"}"# }
             )
-        } throws: { ($0 as? AiError) == .parse("AI 报告：食材太少") }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.aiReported 食材太少")) }
     }
 
     @Test func nonJsonReplyThrowsParse() async {
@@ -105,6 +105,6 @@ struct AiRecipeGeneratorTests {
                 ["白菜"],
                 chatFn: { _ in "抱歉，我无法生成食谱。" }
             )
-        } throws: { ($0 as? AiError) == .parse("AI 返回不是合法 JSON") }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.recipeParse.invalidJson")) }
     }
 }

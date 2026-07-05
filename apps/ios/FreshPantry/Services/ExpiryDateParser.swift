@@ -86,9 +86,7 @@ enum ExpiryDateParser {
 
     /// CJK expiry markers (no word boundaries — OCR concatenation makes substring
     /// matching correct, and these never appear inside another word).
-    private static let cjkExpiryMarkers = [
-        "保质期至", "有效期至", "保质期到", "有效期到", "到期日", "到期",
-    ]
+    private static let cjkExpiryMarkers = ["保质期至", "有效期至", "保质期到", "有效期到", "到期日", "到期"] // i18n:ignore OCR pattern-matching data table, not UI text
 
     /// English expiry markers. Matched on WORD boundaries (not bare substring):
     /// the short "exp" would otherwise hijack tier 1 from inside EXPORT /
@@ -137,12 +135,12 @@ enum ExpiryDateParser {
 
     // MARK: 2. Production date + duration
 
-    private static let productionMarkers = ["生产日期", "生产", "制造日期", "制造", "production", "mfg", "mfd"]
+    private static let productionMarkers = ["生产日期", "生产", "制造日期", "制造", "production", "mfg", "mfd"] // i18n:ignore OCR pattern-matching data table, not UI text
 
     /// Markers that introduce a shelf-life DURATION ("保质期 6个月"). The duration is
     /// only read from the text FOLLOWING such a marker — this is what keeps a bare
     /// date's own "2026年" from being misread as a "2026 年" (2026-year) duration.
-    private static let durationMarkers = ["保质期", "有效期", "保存期", "shelf life", "best before within"]
+    private static let durationMarkers = ["保质期", "有效期", "保存期", "shelf life", "best before within"] // i18n:ignore OCR pattern-matching data table, not UI text
 
     /// If the label carries BOTH a production date and a "保质期 N 天/月/年" duration,
     /// returns production + duration. The production date is the first date after a
@@ -186,7 +184,7 @@ enum ExpiryDateParser {
 
         // number + unit, where unit is 天/日 (day), (个)月 (month), or 年 (year), or the
         // English equivalents. Requires the unit so a bare number can't match.
-        let pattern = #"(\d{1,4})\s*(天|日|个月|月|年|days?|months?|years?)"#
+        let pattern = #"(\d{1,4})\s*(天|日|个月|月|年|days?|months?|years?)"# // i18n:ignore regex pattern, not UI text
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
             return nil
         }
@@ -200,11 +198,11 @@ enum ExpiryDateParser {
         let unit = tail[unitRange].lowercased()
         var components = DateComponents()
         switch unit {
-        case "天", "日", "day", "days":
+        case "天", "日", "day", "days": // i18n:ignore OCR unit-matching case literals, not UI text
             components.day = amount
-        case "个月", "月", "month", "months":
+        case "个月", "月", "month", "months": // i18n:ignore OCR unit-matching case literals, not UI text
             components.month = amount
-        case "年", "year", "years":
+        case "年", "year", "years": // i18n:ignore OCR unit-matching case literals, not UI text
             components.year = amount
         default:
             return nil
@@ -239,7 +237,7 @@ enum ExpiryDateParser {
     private static func dateMatches(in text: String) -> [DateMatch] {
         // year-first only (the unambiguous packaging convention); separators are
         // -, /, ., or the CJK 年月日 already normalized to keep . here.
-        let separated = #"(\d{4})\s*[-/.年]\s*(\d{1,2})\s*[-/.月]\s*(\d{1,2})?\s*日?"#
+        let separated = #"(\d{4})\s*[-/.年]\s*(\d{1,2})\s*[-/.月]\s*(\d{1,2})?\s*日?"# // i18n:ignore regex pattern, not UI text
         let compact = #"(?<!\d)(\d{4})(\d{2})(\d{2})(?!\d)"#
 
         var matches: [DateMatch] = []
