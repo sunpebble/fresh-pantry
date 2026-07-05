@@ -55,17 +55,17 @@ struct RecipePhotoImportView: View {
                 }
             }
             .background(Color.fkSurface)
-            .navigationTitle("拍照导入食谱")
+            .navigationTitle(String(localized: "recipe.photoImport.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("取消") { dismiss() }
+                    Button(String(localized: "recipe.form.cancel")) { dismiss() }
                         .disabled(isProcessing)
                 }
             }
             .overlay {
                 if isProcessing {
-                    FkBusyOverlay(text: "识别整理中…")
+                    FkBusyOverlay(text: String(localized: "recipe.photoImport.processing"))
                 }
             }
             .sheet(item: $draftRoute, onDismiss: { dismiss() }) { route in
@@ -111,7 +111,7 @@ struct RecipePhotoImportView: View {
     private var picker: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: FkSpacing.lg) {
-                Text("选择一张纸质菜谱、手写菜谱或聊天截图，先离线识别文字，再由 AI 整理成食谱草稿供你核对。")
+                Text(String(localized: "recipe.photoImport.hint"))
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
 
@@ -138,7 +138,7 @@ struct RecipePhotoImportView: View {
     nonisolated private var pickerLabel: some View {
         HStack(spacing: FkSpacing.sm) {
             Image(systemName: "text.viewfinder")
-            Text("选择照片或截图")
+            Text(String(localized: "recipe.photoImport.pickPhoto"))
                 .font(.fkLabelLarge)
             Spacer(minLength: 0)
             Image(systemName: "chevron.right")
@@ -157,8 +157,8 @@ struct RecipePhotoImportView: View {
     private var notConfigured: some View {
         FkEmptyState(
             systemImage: "wand.and.stars",
-            title: "请先在设置中配置 AI",
-            message: "在 设置 › AI 助手 填写 Base URL / API Key / 模型 后，即可拍照导入纸质或截图菜谱。"
+            title: String(localized: "recipe.photoImport.notConfiguredTitle"),
+            message: String(localized: "recipe.photoImport.notConfiguredMessage")
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -176,11 +176,11 @@ struct RecipePhotoImportView: View {
         do {
             data = try await item.loadTransferable(type: Data.self)
         } catch {
-            errorMessage = "读取照片失败：\(error.localizedDescription)"
+            errorMessage = String(localized: "recipe.form.photoReadFailed \(error.localizedDescription)")
             return
         }
         guard let data, !data.isEmpty else {
-            errorMessage = "读取照片失败，请重试。"
+            errorMessage = String(localized: "recipe.form.photoReadFailedRetry")
             return
         }
 
@@ -190,7 +190,7 @@ struct RecipePhotoImportView: View {
             ImageDownscaler.jpegData(from: data, maxDimension: maxDimension)
         }.value
         guard let resized else {
-            errorMessage = "无法处理该照片，请换一张重试。"
+            errorMessage = String(localized: "recipe.form.photoProcessFailed")
             return
         }
 
@@ -205,7 +205,7 @@ struct RecipePhotoImportView: View {
         } catch let error as AiError {
             errorMessage = error.message
         } catch {
-            errorMessage = "导入失败：\(error.localizedDescription)"
+            errorMessage = String(localized: "recipe.photoImport.importFailed \(error.localizedDescription)")
         }
     }
 

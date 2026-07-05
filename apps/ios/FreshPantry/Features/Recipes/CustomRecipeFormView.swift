@@ -146,18 +146,18 @@ struct CustomRecipeFormView: View {
             }
             .overlay {
                 if isParsing {
-                    FkBusyOverlay(text: "AI 解析中…")
+                    FkBusyOverlay(text: String(localized: "recipe.form.aiParsing"))
                 }
             }
-            .navigationTitle(isEditing ? "编辑食谱" : "新建食谱")
+            .navigationTitle(isEditing ? String(localized: "recipe.form.editTitle") : String(localized: "recipe.form.newTitle"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("取消") { requestDismiss() }
+                    Button(String(localized: "recipe.form.cancel")) { requestDismiss() }
                         .disabled(isParsing)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(store.isSaving ? "保存中…" : "保存") { Task { await save() } }
+                    Button(store.isSaving ? String(localized: "recipe.form.saving") : String(localized: "recipe.form.save")) { Task { await save() } }
                         .font(.fkLabelLarge)
                         .disabled(store.isSaving || isParsing)
                 }
@@ -165,37 +165,39 @@ struct CustomRecipeFormView: View {
             .sheet(isPresented: $showCategoryPicker) { categoryPicker }
             .sheet(item: unitPickerBinding) { wrapper in unitPicker(forRowID: wrapper.id) }
             .sheet(isPresented: $showPaywall) { PaywallSheet(proStore: dependencies.proStore) }
-            .alert("自定义分类", isPresented: $showCustomCategory) {
-                TextField("例如：日料", text: $customCategory)
-                Button("取消", role: .cancel) {}
-                Button("确定") {
+            .alert(String(localized: "recipe.form.customCategory"), isPresented: $showCustomCategory) {
+                TextField(String(localized: "recipe.form.customCategoryPlaceholder"), text: $customCategory)
+                Button(String(localized: "recipe.form.cancel"), role: .cancel) {}
+                Button(String(localized: "recipe.form.confirm")) {
                     let value = customCategory.trimmed
                     if !value.isEmpty { setCategory(value) }
                 }
             }
-            .alert("丢弃更改", isPresented: $showDiscardConfirm) {
-                Button("继续编辑", role: .cancel) {}
-                Button("丢弃", role: .destructive) { discardDraft() }
+            .alert(String(localized: "recipe.form.discardChanges"), isPresented: $showDiscardConfirm) {
+                Button(String(localized: "recipe.form.continueEditing"), role: .cancel) {}
+                Button(String(localized: "recipe.form.discard"), role: .destructive) { discardDraft() }
             } message: {
-                Text(isEditing ? "确定要丢弃对「\(recipe?.name ?? "")」的修改吗？" : "确定要丢弃当前填写的食谱吗？")
+                Text(isEditing
+                    ? String(localized: "recipe.form.discardEditConfirm \(recipe?.name ?? "")")
+                    : String(localized: "recipe.form.discardNewConfirm"))
             }
-            .alert("保存失败", isPresented: $saveFailed) {
-                Button("重试") { Task { await save() } }
-                Button("取消", role: .cancel) {}
+            .alert(String(localized: "recipe.form.saveFailed"), isPresented: $saveFailed) {
+                Button(String(localized: "recipe.form.retry")) { Task { await save() } }
+                Button(String(localized: "recipe.form.cancel"), role: .cancel) {}
             } message: {
-                Text(store.errorMessage ?? "保存失败，请重试")
+                Text(store.errorMessage ?? String(localized: "recipe.form.saveFailedRetry"))
             }
-            .alert("覆盖已填内容", isPresented: Binding(
+            .alert(String(localized: "recipe.form.overwriteContent"), isPresented: Binding(
                 get: { pendingParsedDraft != nil },
                 set: { if !$0 { pendingParsedDraft = nil } }
             )) {
-                Button("取消", role: .cancel) { pendingParsedDraft = nil }
-                Button("覆盖", role: .destructive) {
+                Button(String(localized: "recipe.form.cancel"), role: .cancel) { pendingParsedDraft = nil }
+                Button(String(localized: "recipe.form.overwrite"), role: .destructive) {
                     if let parsed = pendingParsedDraft { applyParsed(parsed) }
                     pendingParsedDraft = nil
                 }
             } message: {
-                Text("解析成功。表单中已填写的内容将被解析结果替换。")
+                Text(String(localized: "recipe.form.parseSuccessOverwrite"))
             }
             .onChange(of: coverPickerItem) { _, item in
                 guard let item else { return }
@@ -221,7 +223,7 @@ struct CustomRecipeFormView: View {
                     HStack(spacing: FkSpacing.sm) {
                         Image(systemName: "wand.and.stars")
                             .foregroundStyle(Color.fkPrimary)
-                        Text("AI 导入")
+                        Text(String(localized: "recipe.form.aiImport"))
                             .font(.fkTitleSmall)
                             .foregroundStyle(Color.fkOnSurface)
                         Spacer(minLength: 0)
@@ -245,7 +247,7 @@ struct CustomRecipeFormView: View {
 
     private var aiImportEditor: some View {
         VStack(alignment: .leading, spacing: FkSpacing.sm) {
-            Text("粘贴 懒饭 / 下厨房 的食谱链接,AI 会自动填入表单供你核对。")
+            Text(String(localized: "recipe.form.aiImportHint"))
                 .font(.fkBodySmall)
                 .foregroundStyle(Color.fkOnSurfaceVariant)
 
@@ -267,7 +269,7 @@ struct CustomRecipeFormView: View {
                 }
                 .disabled(isParsing)
 
-                Button("解析") { Task { await parseURL() } }
+                Button(String(localized: "recipe.form.parse")) { Task { await parseURL() } }
                     .font(.fkLabelLarge)
                     .foregroundStyle(canParse ? Color.fkPrimary : Color.fkOutline)
                     .disabled(!canParse)
@@ -290,11 +292,11 @@ struct CustomRecipeFormView: View {
             Image(systemName: "doc.on.clipboard")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Color.fkPrimary)
-            Text("已从剪贴板检测到食谱链接")
+            Text(String(localized: "recipe.form.clipboardDetected"))
                 .font(.fkLabelSmall)
                 .foregroundStyle(Color.fkOnSurfaceVariant)
             Spacer(minLength: 0)
-            Button("忽略") { dismissClipboardSuggestion() }
+            Button(String(localized: "recipe.form.dismiss")) { dismissClipboardSuggestion() }
                 .font(.fkLabelSmall)
                 .foregroundStyle(Color.fkOutline)
         }
@@ -307,7 +309,7 @@ struct CustomRecipeFormView: View {
     }
 
     private var aiImportNotConfigured: some View {
-        Text("请先在 设置 › AI 助手 配置 Base URL / API Key / 模型,即可粘贴链接自动解析。")
+        Text(String(localized: "recipe.form.aiNotConfigured"))
             .font(.fkBodySmall)
             .foregroundStyle(Color.fkOnSurfaceVariant)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -340,7 +342,7 @@ struct CustomRecipeFormView: View {
     private var coverCard: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.md) {
-                FkSectionHeader(title: "封面图片")
+                FkSectionHeader(title: String(localized: "recipe.form.coverImage"))
 
                 if let urlString = draft.imageUrl, !urlString.isEmpty, let url = URL(string: urlString) {
                     coverPreview(url: url)
@@ -386,7 +388,7 @@ struct CustomRecipeFormView: View {
                 HStack(spacing: FkSpacing.xs) {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .font(.system(size: 12, weight: .bold))
-                    Text("更换")
+                    Text(String(localized: "recipe.form.coverReplace"))
                         .font(.fkLabelMedium)
                 }
                 .foregroundStyle(Color.fkPrimary)
@@ -399,13 +401,13 @@ struct CustomRecipeFormView: View {
                 HStack(spacing: FkSpacing.xs) {
                     Image(systemName: "trash")
                         .font(.system(size: 12, weight: .bold))
-                    Text("移除")
+                    Text(String(localized: "recipe.form.coverRemove"))
                         .font(.fkLabelMedium)
                 }
                 .foregroundStyle(Color.fkDanger)
             }
             .buttonStyle(.fkPressable)
-            .accessibilityLabel("移除封面")
+            .accessibilityLabel(String(localized: "recipe.form.coverRemoveLabel"))
 
             Spacer(minLength: 0)
         }
@@ -417,7 +419,7 @@ struct CustomRecipeFormView: View {
                 Image(systemName: "photo.badge.plus")
                     .font(.system(size: 30, weight: .semibold))
                     .foregroundStyle(Color.fkPrimary)
-                Text("添加封面")
+                Text(String(localized: "recipe.form.coverAdd"))
                     .font(.fkLabelLarge)
                     .foregroundStyle(Color.fkPrimary)
             }
@@ -440,27 +442,27 @@ struct CustomRecipeFormView: View {
     private var basicsCard: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.lg) {
-                FkSectionHeader(title: "基础信息")
+                FkSectionHeader(title: String(localized: "recipe.form.basics"))
 
-                FkFormField(label: "食谱名称 *") {
-                    FkTextFieldPill(text: $draft.name, placeholder: "例如：西红柿炒蛋") {}
+                FkFormField(label: String(localized: "recipe.form.nameLabel")) {
+                    FkTextFieldPill(text: $draft.name, placeholder: String(localized: "recipe.form.namePlaceholder")) {}
                         .onChange(of: draft.name) { _, _ in clearError(.name) }
                     fieldError(.name)
                 }
 
-                FkFormField(label: "分类 *") {
-                    FkValuePill(value: draft.category.trimmed.isEmpty ? "选择分类" : draft.category) {
+                FkFormField(label: String(localized: "recipe.form.categoryLabel")) {
+                    FkValuePill(value: draft.category.trimmed.isEmpty ? String(localized: "recipe.form.categoryPlaceholder") : draft.category) {
                         showCategoryPicker = true
                     }
                     fieldError(.category)
                 }
 
-                FkFormField(label: "烹饪时间 *") {
+                FkFormField(label: String(localized: "recipe.form.cookingTimeLabel")) {
                     cookingMinutesRow
                     fieldError(.cookingMinutes)
                 }
 
-                FkFormField(label: "难度 *") {
+                FkFormField(label: String(localized: "recipe.form.difficultyLabel")) {
                     DifficultyStars(value: draft.difficulty) { value in
                         draft.difficulty = value
                         clearError(.difficulty)
@@ -468,15 +470,15 @@ struct CustomRecipeFormView: View {
                     fieldError(.difficulty)
                 }
 
-                FkFormField(label: "简介") {
-                    multilineField(text: $draft.description, placeholder: "简单描述这道菜的特色…")
+                FkFormField(label: String(localized: "recipe.form.descriptionLabel")) {
+                    multilineField(text: $draft.description, placeholder: String(localized: "recipe.form.descriptionPlaceholder"))
                 }
 
-                FkFormField(label: "烹饪贴士") {
-                    multilineField(text: $draft.notes, placeholder: "做菜小窍门、易错点(可选)…")
+                FkFormField(label: String(localized: "recipe.form.tipsLabel")) {
+                    multilineField(text: $draft.notes, placeholder: String(localized: "recipe.form.tipsPlaceholder"))
                 }
 
-                FkFormField(label: "标签") {
+                FkFormField(label: String(localized: "recipe.form.tagsLabel")) {
                     IngredientTagsEditor(tags: $draft.tags)
                 }
             }
@@ -502,10 +504,10 @@ struct CustomRecipeFormView: View {
                 }
             }
             HStack(spacing: FkSpacing.sm) {
-                Text("或自定义")
+                Text(String(localized: "recipe.form.customMinutes"))
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
-                TextField("分钟", text: $draft.cookingMinutes)
+                TextField(String(localized: "recipe.form.minutesUnit"), text: $draft.cookingMinutes)
                     .font(.fkTitleMedium)
                     .keyboardType(.numberPad)
                     .frame(maxWidth: 80)
@@ -516,7 +518,7 @@ struct CustomRecipeFormView: View {
                             .fill(Color.fkSurfaceContainer)
                     )
                     .onChange(of: draft.cookingMinutes) { _, _ in clearError(.cookingMinutes) }
-                Text("分钟")
+                Text(String(localized: "recipe.form.minutesUnit"))
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             }
@@ -528,7 +530,7 @@ struct CustomRecipeFormView: View {
     private var ingredientsCard: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.md) {
-                FkSectionHeader(title: "食材", count: draft.ingredients.count)
+                FkSectionHeader(title: String(localized: "recipe.form.ingredients"), count: draft.ingredients.count)
                 fieldError(.ingredients)
 
                 ForEach($draft.ingredients) { $row in
@@ -538,7 +540,7 @@ struct CustomRecipeFormView: View {
                     }
                 }
 
-                addRowButton(title: "添加食材") {
+                addRowButton(title: String(localized: "recipe.form.addIngredient")) {
                     draft.ingredients.append(.init())
                     clearError(.ingredients)
                 }
@@ -549,12 +551,12 @@ struct CustomRecipeFormView: View {
 
     private func ingredientRow(_ row: Binding<CustomRecipeDraft.IngredientRow>) -> some View {
         HStack(spacing: FkSpacing.sm) {
-            TextField("食材名称", text: row.name)
+            TextField(String(localized: "recipe.form.ingredientNamePlaceholder"), text: row.name)
                 .font(.fkBodyMedium)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .onChange(of: row.wrappedValue.name) { _, _ in clearError(.ingredients) }
 
-            TextField("用量", text: row.quantity)
+            TextField(String(localized: "recipe.form.amountPlaceholder"), text: row.quantity)
                 .font(.fkBodyMedium)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
@@ -565,7 +567,7 @@ struct CustomRecipeFormView: View {
                 unitPickerRow = row.wrappedValue.id
             } label: {
                 HStack(spacing: 2) {
-                    Text(row.wrappedValue.unit.isEmpty ? "单位" : row.wrappedValue.unit)
+                    Text(row.wrappedValue.unit.isEmpty ? String(localized: "recipe.form.unitPlaceholder") : UnitLabels.displayLabel(for: row.wrappedValue.unit))
                         .font(.fkLabelMedium)
                         .foregroundStyle(Color.fkOnSurface)
                     Image(systemName: "chevron.down")
@@ -586,8 +588,8 @@ struct CustomRecipeFormView: View {
                 reorderButtons(
                     canMoveUp: (index ?? 0) > 0,
                     canMoveDown: index.map { $0 < draft.ingredients.count - 1 } ?? false,
-                    upLabel: "上移食材",
-                    downLabel: "下移食材"
+                    upLabel: String(localized: "recipe.form.moveIngredientUp"),
+                    downLabel: String(localized: "recipe.form.moveIngredientDown")
                 ) { offset in
                     if let index { draft.moveIngredient(from: index, by: offset); clearError(.ingredients) }
                 }
@@ -600,7 +602,7 @@ struct CustomRecipeFormView: View {
                         .foregroundStyle(Color.fkDanger)
                 }
                 .buttonStyle(.fkPressable)
-                .accessibilityLabel("移除食材")
+                .accessibilityLabel(String(localized: "recipe.form.removeIngredient"))
             }
         }
         .padding(.vertical, FkSpacing.xs)
@@ -641,14 +643,14 @@ struct CustomRecipeFormView: View {
     private var stepsCard: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.md) {
-                FkSectionHeader(title: "步骤", count: draft.steps.count)
+                FkSectionHeader(title: String(localized: "recipe.form.steps"), count: draft.steps.count)
                 fieldError(.steps)
 
                 ForEach(Array($draft.steps.enumerated()), id: \.element.id) { index, $step in
                     stepRow(number: index + 1, step: $step)
                 }
 
-                addRowButton(title: "添加步骤") {
+                addRowButton(title: String(localized: "recipe.form.addStep")) {
                     draft.steps.append(.init())
                     clearError(.steps)
                 }
@@ -665,7 +667,7 @@ struct CustomRecipeFormView: View {
                 .frame(width: 26, height: 26)
                 .background(Circle().fill(Color.fkPrimary))
 
-            multilineField(text: step.text, placeholder: "输入下一步…")
+            multilineField(text: step.text, placeholder: String(localized: "recipe.form.stepPlaceholder"))
                 .onChange(of: step.wrappedValue.text) { _, _ in clearError(.steps) }
 
             if draft.steps.count > 1 {
@@ -673,8 +675,8 @@ struct CustomRecipeFormView: View {
                 reorderButtons(
                     canMoveUp: (index ?? 0) > 0,
                     canMoveDown: index.map { $0 < draft.steps.count - 1 } ?? false,
-                    upLabel: "上移步骤",
-                    downLabel: "下移步骤"
+                    upLabel: String(localized: "recipe.form.moveStepUp"),
+                    downLabel: String(localized: "recipe.form.moveStepDown")
                 ) { offset in
                     if let index { draft.moveStep(from: index, by: offset); clearError(.steps) }
                 }
@@ -687,7 +689,7 @@ struct CustomRecipeFormView: View {
                         .foregroundStyle(Color.fkDanger)
                 }
                 .buttonStyle(.fkPressable)
-                .accessibilityLabel("移除步骤")
+                .accessibilityLabel(String(localized: "recipe.form.removeStep"))
             }
         }
         .padding(.vertical, FkSpacing.xs)
@@ -745,8 +747,8 @@ struct CustomRecipeFormView: View {
             options.insert(draft.category, at: 0)
         }
         return FkPickerSheet(
-            title: "选择分类",
-            options: options.map { FkPickerOption(value: $0, label: $0) } + [FkPickerOption(value: customSentinel, label: "+ 其他")],
+            title: String(localized: "recipe.form.selectCategory"),
+            options: options.map { FkPickerOption(value: $0, label: $0) } + [FkPickerOption(value: customSentinel, label: String(localized: "recipe.form.otherCategory"))],
             selected: draft.category
         ) { value in
             if value == customSentinel {
@@ -765,8 +767,8 @@ struct CustomRecipeFormView: View {
                 ? RecipePresets.units
                 : RecipePresets.units + [row.unit]
             FkPickerSheet(
-                title: "选择单位",
-                options: options.map { FkPickerOption(value: $0, label: $0) },
+                title: String(localized: "recipe.form.selectUnit"),
+                options: options.map { FkPickerOption(value: $0, label: UnitLabels.displayLabel(for: $0)) },
                 selected: row.unit
             ) { value in
                 if let index = draft.ingredients.firstIndex(where: { $0.id == rowID }) {
@@ -934,7 +936,7 @@ struct CustomRecipeFormView: View {
         } catch let error as AiError {
             importError = error.message
         } catch {
-            importError = "解析失败：\(error.localizedDescription)"
+            importError = String(localized: "recipe.form.parseFailed \(error.localizedDescription)")
         }
     }
 
@@ -965,18 +967,18 @@ struct CustomRecipeFormView: View {
         do {
             data = try await item.loadTransferable(type: Data.self)
         } catch {
-            coverError = "读取照片失败：\(error.localizedDescription)"
+            coverError = String(localized: "recipe.form.photoReadFailed \(error.localizedDescription)")
             return
         }
         guard let data, !data.isEmpty else {
-            coverError = "读取照片失败，请重试。"
+            coverError = String(localized: "recipe.form.photoReadFailedRetry")
             return
         }
 
         do {
             draft.imageUrl = try await RecipeCoverStore.save(data, recipeId: draftCoverId)
         } catch {
-            coverError = "无法处理该照片，请换一张重试。"
+            coverError = String(localized: "recipe.form.photoProcessFailed")
         }
     }
 
@@ -1034,7 +1036,13 @@ private struct DifficultyStars: View {
     let value: Int
     let onChanged: (Int) -> Void
 
-    private let labels = ["简单", "较易", "普通", "进阶", "专业"]
+    private let labelKeys = [
+        "recipe.form.difficulty.easy",
+        "recipe.form.difficulty.easier",
+        "recipe.form.difficulty.normal",
+        "recipe.form.difficulty.advanced",
+        "recipe.form.difficulty.expert",
+    ]
 
     var body: some View {
         HStack(spacing: FkSpacing.sm) {
@@ -1048,11 +1056,11 @@ private struct DifficultyStars: View {
                             .foregroundStyle(star <= value ? Color.fkWarn : Color.fkOutlineVariant)
                     }
                     .buttonStyle(.fkPressable)
-                    .accessibilityLabel("难度 \(star) 星")
+                    .accessibilityLabel(String(localized: "recipe.form.difficultyStars \(star)"))
                 }
             }
             if value >= 1 && value <= 5 {
-                Text(labels[value - 1])
+                Text(String(localized: String.LocalizationValue(labelKeys[value - 1])))
                     .font(.fkLabelMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             }
@@ -1063,7 +1071,7 @@ private struct DifficultyStars: View {
 /// Create mode with a懒饭/下厨房 link already on the clipboard (injected) and AI
 /// configured — exercises the clipboard auto-detect: the banner expands, the URL
 /// pre-fills, and the "已从剪贴板检测到食谱链接" hint shows.
-#Preview("剪贴板检测") {
+#Preview("剪贴板检测") { // i18n:ignore Xcode canvas preview title, not shipped UI text
     clipboardDetectPreview()
 }
 

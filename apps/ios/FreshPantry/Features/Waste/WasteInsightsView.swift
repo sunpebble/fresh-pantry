@@ -33,7 +33,7 @@ struct WasteInsightsView: View {
                     .background(Color.fkSurface)
             }
         }
-        .navigationTitle("减废统计")
+        .navigationTitle(String(localized: "waste.title"))
         .navigationBarTitleDisplayMode(.inline)
         // Rebuild the store whenever the active household changes (login "" → uuid,
         // switch, or leave) so the stats re-scope to the new household rather than
@@ -114,11 +114,11 @@ private struct WasteInsightsContent: View {
         if !options.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: FkSpacing.sm) {
-                    FkChip(label: "全部分类", isSelected: store.categoryFilter == nil) {
+                    FkChip(label: String(localized: "waste.allCategories"), isSelected: store.categoryFilter == nil) {
                         store.categoryFilter = nil
                     }
                     ForEach(options, id: \.self) { category in
-                        FkChip(label: category, isSelected: store.categoryFilter == category) {
+                        FkChip(label: FoodCategories.displayLabel(for: category), isSelected: store.categoryFilter == category) {
                             // Re-tap the active category to clear it (back to 全部分类).
                             store.categoryFilter = (store.categoryFilter == category) ? nil : category
                         }
@@ -137,7 +137,7 @@ private struct WasteInsightsContent: View {
         if !store.entries.isEmpty {
             FkCard {
                 VStack(alignment: .leading, spacing: FkSpacing.md) {
-                    Text("减废成就")
+                    Text(String(localized: "waste.achievements"))
                         .font(.fkTitleMedium)
                         .foregroundStyle(Color.fkOnSurface)
                     FlowLayout(spacing: FkSpacing.sm) {
@@ -164,7 +164,13 @@ private struct WasteInsightsContent: View {
         .background(Capsule().fill(badge.unlocked ? Color.fkPrimarySoft : Color.fkSurfaceContainer))
         .opacity(badge.unlocked ? 1 : 0.55)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(badge.title),\(badge.unlocked ? "已解锁" : "未解锁"),\(badge.detail)")
+        .accessibilityLabel(accessibilityLabel(for: badge))
+    }
+
+    private func accessibilityLabel(for badge: WasteAchievement) -> String {
+        let statusKey = badge.unlocked ? "waste.achievement.unlocked" : "waste.achievement.locked"
+        let status = String(localized: String.LocalizationValue(statusKey))
+        return String(localized: "waste.achievement.accessibility \(badge.title) \(status) \(badge.detail)")
     }
 
     /// In-window category buckets, with the active selection appended when it's no
@@ -185,8 +191,8 @@ private struct WasteInsightsContent: View {
         } else if stats.isEmpty {
             FkEmptyState(
                 systemImage: "leaf",
-                title: "还没有食材去向记录",
-                message: "做菜用掉、或清理食材时选「吃完 / 扔了」,这里就会统计你的减废成效"
+                title: String(localized: "waste.emptyTitle"),
+                message: String(localized: "waste.emptyMessage")
             )
             .padding(.top, FkSpacing.md)
         } else {
@@ -221,7 +227,7 @@ private struct WasteInsightsContent: View {
                     HStack(spacing: FkSpacing.sm) {
                         Image(systemName: "list.bullet.rectangle")
                             .foregroundStyle(Color.fkPrimary)
-                        Text("查看详细记录")
+                        Text(String(localized: "waste.viewHistory"))
                             .font(.fkBodyMedium)
                             .foregroundStyle(Color.fkOnSurface)
                         Spacer(minLength: 0)
@@ -246,7 +252,7 @@ private struct WasteInsightsContent: View {
     private func actionCard(stats: FoodLogStats) -> some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.md) {
-                FkSectionHeader(title: "下一步")
+                FkSectionHeader(title: String(localized: "waste.nextStep"))
                 if stats.rescued > 0 {
                     Button {
                         onNavigateAway()
@@ -255,7 +261,7 @@ private struct WasteInsightsContent: View {
                         HStack(spacing: FkSpacing.sm) {
                             Image(systemName: "leaf.arrow.circlepath")
                                 .foregroundStyle(Color.fkPrimary)
-                            Text("用临期食材做菜")
+                            Text(String(localized: "waste.cookWithExpiring"))
                                 .font(.fkBodyMedium)
                                 .foregroundStyle(Color.fkOnSurface)
                             Spacer(minLength: 0)
@@ -267,7 +273,7 @@ private struct WasteInsightsContent: View {
                     .buttonStyle(.fkPressable)
                 }
                 if stats.wasted > 0 {
-                    Text("点「最常浪费」分类可查看库存中同类食材，优先安排使用。")
+                    Text(String(localized: "waste.mostWastedHint"))
                         .font(.fkBodySmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                 }
@@ -307,7 +313,7 @@ private struct HeadlineCard: View {
     var body: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.sm) {
-                Text("\(window.label)用掉率")
+                Text(String(localized: "waste.useUpRate \(window.label)"))
                     .font(.fkTitleMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
 
@@ -320,7 +326,7 @@ private struct HeadlineCard: View {
                         .foregroundStyle(Color.fkPrimary)
                 }
 
-                Text("\(window.label)共处理 \(stats.total) 样食材")
+                Text(String(localized: "waste.processedTotal \(window.label) \(stats.total)"))
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             }
@@ -336,12 +342,12 @@ private struct MetricRow: View {
 
     var body: some View {
         HStack(spacing: FkSpacing.sm) {
-            MetricTile(label: "用掉", value: stats.consumed, tint: .fkPrimary, fill: .fkPrimarySoft)
-            MetricTile(label: "浪费", value: stats.wasted, tint: .fkDanger, fill: .fkDangerSoft)
-            MetricTile(label: "抢救临期", value: stats.rescued, tint: .fkWarnInk, fill: .fkWarnSoft)
+            MetricTile(label: String(localized: "waste.metric.consumed"), value: stats.consumed, tint: .fkPrimary, fill: .fkPrimarySoft)
+            MetricTile(label: String(localized: "waste.metric.wasted"), value: stats.wasted, tint: .fkDanger, fill: .fkDangerSoft)
+            MetricTile(label: String(localized: "waste.metric.rescued"), value: stats.rescued, tint: .fkWarnInk, fill: .fkWarnSoft)
             // 捐赠/堆肥 正向去向 — only when there are any, to keep the row tidy.
             if stats.saved > 0 {
-                MetricTile(label: "捐赠堆肥", value: stats.saved, tint: .fkSuccess, fill: .fkSuccess.opacity(0.15))
+                MetricTile(label: String(localized: "waste.metric.saved"), value: stats.saved, tint: .fkSuccess, fill: .fkSuccess.opacity(0.15))
             }
         }
     }
@@ -385,7 +391,7 @@ private struct MostWastedSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: FkSpacing.md) {
-            FkSectionHeader(title: "最常浪费")
+            FkSectionHeader(title: String(localized: "waste.mostWasted"))
             FkCard(padding: 0) {
                 VStack(spacing: 0) {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
@@ -393,11 +399,11 @@ private struct MostWastedSection: View {
                             onSelectCategory(row.category)
                         } label: {
                             HStack(spacing: FkSpacing.sm) {
-                                Text(row.category)
+                                Text(FoodCategories.displayLabel(for: row.category))
                                     .font(.fkBodyMedium)
                                     .foregroundStyle(Color.fkOnSurface)
                                 Spacer(minLength: 0)
-                                Text("\(row.count) 样")
+                                Text(String(localized: "waste.itemCount \(row.count)"))
                                     .font(.fkBodyMedium.weight(.semibold))
                                     .foregroundStyle(Color.fkDanger)
                                 Image(systemName: "chevron.right")
@@ -421,29 +427,38 @@ private struct MostWastedSection: View {
 private struct CategoryBreakdownSection: View {
     let breakdown: [WasteCategoryBreakdown]
 
+    /// Chart series/axis labels — VoiceOver + legend text, so localized (unlike
+    /// `FoodCategories`'s storage identity, these are pure display strings with
+    /// no persisted/matched counterpart).
+    private static let quantityAxisLabel = String(localized: "waste.chart.quantity")
+    private static let categoryAxisLabel = String(localized: "waste.chart.category")
+    private static let outcomeAxisLabel = String(localized: "waste.chart.outcome")
+    private static let consumedSeriesLabel = String(localized: "waste.metric.consumed")
+    private static let wastedSeriesLabel = String(localized: "waste.metric.wasted")
+
     var body: some View {
         VStack(alignment: .leading, spacing: FkSpacing.md) {
-            FkSectionHeader(title: "分类去向")
+            FkSectionHeader(title: String(localized: "waste.categoryBreakdown"))
 
             FkCard {
                 Chart {
                     ForEach(breakdown) { row in
                         BarMark(
-                            x: .value("数量", row.consumed),
-                            y: .value("分类", row.category)
+                            x: .value(Self.quantityAxisLabel, row.consumed),
+                            y: .value(Self.categoryAxisLabel, FoodCategories.displayLabel(for: row.category))
                         )
-                        .foregroundStyle(by: .value("去向", "用掉"))
-                        .position(by: .value("去向", "用掉"))
+                        .foregroundStyle(by: .value(Self.outcomeAxisLabel, Self.consumedSeriesLabel))
+                        .position(by: .value(Self.outcomeAxisLabel, Self.consumedSeriesLabel))
 
                         BarMark(
-                            x: .value("数量", row.wasted),
-                            y: .value("分类", row.category)
+                            x: .value(Self.quantityAxisLabel, row.wasted),
+                            y: .value(Self.categoryAxisLabel, FoodCategories.displayLabel(for: row.category))
                         )
-                        .foregroundStyle(by: .value("去向", "浪费"))
-                        .position(by: .value("去向", "浪费"))
+                        .foregroundStyle(by: .value(Self.outcomeAxisLabel, Self.wastedSeriesLabel))
+                        .position(by: .value(Self.outcomeAxisLabel, Self.wastedSeriesLabel))
                     }
                 }
-                .chartForegroundStyleScale(["用掉": Color.fkPrimary, "浪费": Color.fkDanger])
+                .chartForegroundStyleScale([Self.consumedSeriesLabel: Color.fkPrimary, Self.wastedSeriesLabel: Color.fkDanger])
                 .chartXAxis {
                     AxisMarks(values: .automatic(desiredCount: 4)) {
                         AxisGridLine()
@@ -478,8 +493,8 @@ private struct FoodLogHistoryView: View {
             if rows.isEmpty {
                 FkEmptyState(
                     systemImage: "list.bullet",
-                    title: "这个时段还没有记录",
-                    message: "切换上方时间范围，或先去用掉 / 清理一些食材"
+                    title: String(localized: "waste.history.emptyTitle"),
+                    message: String(localized: "waste.history.emptyMessage")
                 )
                 .padding(.top, FkSpacing.md)
             } else {
@@ -491,7 +506,7 @@ private struct FoodLogHistoryView: View {
                                     let ok = await store.correctOutcome(entryId: entry.id, to: outcome)
                                     if !ok {
                                         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-                                            toast = "修改失败，请重试"
+                                            toast = String(localized: "waste.history.correctFailed")
                                         }
                                     }
                                 }
@@ -512,7 +527,7 @@ private struct FoodLogHistoryView: View {
         }
         .background(Color.fkSurface)
         .overlay(alignment: .top) { toastBanner }
-        .navigationTitle("详细记录")
+        .navigationTitle(String(localized: "waste.history.title"))
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -552,7 +567,7 @@ private struct FoodLogHistoryRow: View {
                     Text(entry.name)
                         .font(.fkBodyMedium.weight(.semibold))
                         .foregroundStyle(Color.fkOnSurface)
-                    Text(FoodCategories.dropdownValue(entry.category))
+                    Text(FoodCategories.displayLabel(for: FoodCategories.dropdownValue(entry.category)))
                         .font(.fkBodySmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                 }
@@ -567,15 +582,15 @@ private struct FoodLogHistoryRow: View {
                 }
             }
             if entry.wasExpiring && entry.isConsumed {
-                Text("抢救临期")
+                Text(String(localized: "waste.metric.rescued"))
                     .font(.fkLabelSmall)
                     .foregroundStyle(Color.fkWarnInk)
             }
             HStack(spacing: FkSpacing.sm) {
-                Text("记错了？改成")
+                Text(String(localized: "waste.history.correctTo"))
                     .font(.fkBodySmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
-                Button(entry.isConsumed ? "浪费" : "用掉") {
+                Button(entry.isConsumed ? String(localized: "waste.metric.wasted") : String(localized: "waste.metric.consumed")) {
                     onCorrect(entry.isConsumed ? .wasted : .consumed)
                 }
                 .font(.fkBodySmall.weight(.semibold))
@@ -586,12 +601,12 @@ private struct FoodLogHistoryRow: View {
         .padding(.vertical, FkSpacing.md)
     }
 
-    private var outcomeLabel: String { entry.isConsumed ? "用掉" : "浪费" }
+    private var outcomeLabel: String { entry.isConsumed ? String(localized: "waste.metric.consumed") : String(localized: "waste.metric.wasted") }
     private var outcomeColor: Color { entry.isConsumed ? .fkPrimary : .fkDanger }
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.locale = .autoupdatingCurrent
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter

@@ -18,7 +18,7 @@ struct ShoppingCategoryOrderView: View {
                         HStack(spacing: FkSpacing.md) {
                             Image(systemName: "line.3.horizontal")
                                 .foregroundStyle(Color.fkOnSurfaceVariant)
-                            Text(category)
+                            Text(FoodCategories.displayLabel(for: category))
                                 .font(.fkBodyLarge)
                                 .foregroundStyle(Color.fkOnSurface)
                         }
@@ -27,18 +27,18 @@ struct ShoppingCategoryOrderView: View {
                         order.move(fromOffsets: source, toOffset: destination)
                     }
                 } footer: {
-                    Text("拖动调整顺序,购物清单将按此顺序分组——对齐你常逛超市的货架动线。")
+                    Text(String(localized: "shopping.categoryOrder.hint"))
                 }
             }
             .environment(\.editMode, .constant(.active))
-            .navigationTitle("分类排序")
+            .navigationTitle(String(localized: "shopping.categoryOrder.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button(String(localized: "shopping.cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") {
+                    Button(String(localized: "shopping.done")) {
                         ShoppingCategoryOrder.save(order)
                         onSaved()
                         dismiss()

@@ -115,7 +115,7 @@ struct RecipeDetailView: View {
                     Image(systemName: store.isFavorite(recipe) ? "heart.fill" : "heart")
                 }
                 .tint(store.isFavorite(recipe) ? .fkDanger : .fkOnSurfaceVariant)
-                .accessibilityLabel(store.isFavorite(recipe) ? "取消收藏" : "收藏")
+                .accessibilityLabel(store.isFavorite(recipe) ? String(localized: "recipe.detail.unfavorite") : String(localized: "recipe.detail.favorite"))
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -125,7 +125,7 @@ struct RecipeDetailView: View {
                 }
                 .tint(.fkOnSurfaceVariant)
                 .disabled(mealPlanStore == nil)
-                .accessibilityLabel("加入膳食计划")
+                .accessibilityLabel(String(localized: "recipe.detail.addToPlan"))
             }
             if customStore != nil {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -140,7 +140,7 @@ struct RecipeDetailView: View {
                     }
                     .tint(.fkPrimary)
                     .disabled(isRewriting)
-                    .accessibilityLabel("AI 改写菜谱")
+                    .accessibilityLabel(String(localized: "recipe.detail.aiRewrite"))
                 }
             }
             if isCustom, customStore != nil {
@@ -149,29 +149,29 @@ struct RecipeDetailView: View {
                         Button {
                             showEditForm = true
                         } label: {
-                            Label("编辑", systemImage: "pencil")
+                            Label(String(localized: "recipe.detail.edit"), systemImage: "pencil")
                         }
                         Button(role: .destructive) {
                             showDeleteConfirm = true
                         } label: {
-                            Label("删除", systemImage: "trash")
+                            Label(String(localized: "recipe.detail.delete"), systemImage: "trash")
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
-                    .accessibilityLabel("食谱操作")
+                    .accessibilityLabel(String(localized: "recipe.detail.recipeActions"))
                 }
             }
         }
-        .confirmationDialog("AI 改写菜谱", isPresented: $showRewriteOptions, titleVisibility: .visible) {
-            Button("改成素食版") { Task { await rewrite("改成素食版,把肉类换成合适的素食食材") } }
-            Button("低卡少油版") { Task { await rewrite("改成低卡少油版,减少油和高热量食材") } }
-            Button("用我现有的食材替换") { Task { await rewrite("尽量用我现有的食材替换缺少的材料") } }
+        .confirmationDialog(String(localized: "recipe.detail.aiRewrite"), isPresented: $showRewriteOptions, titleVisibility: .visible) {
+            Button(String(localized: "recipe.detail.rewriteVegetarian")) { Task { await rewrite("改成素食版,把肉类换成合适的素食食材") } } // i18n:ignore LLM prompt text, not UI text
+            Button(String(localized: "recipe.detail.rewriteLowCal")) { Task { await rewrite("改成低卡少油版,减少油和高热量食材") } } // i18n:ignore LLM prompt text, not UI text
+            Button(String(localized: "recipe.detail.rewriteSubstitute")) { Task { await rewrite("尽量用我现有的食材替换缺少的材料") } } // i18n:ignore LLM prompt text, not UI text
             // #16: re-atomize the steps without changing the dish.
-            Button("整理步骤(拆成单步)") { Task { await rewrite("保持食材和做法不变,只把步骤拆成单一动作的短句,一步只做一件事") } }
-            Button("取消", role: .cancel) {}
+            Button(String(localized: "recipe.detail.rewriteSplitSteps")) { Task { await rewrite("保持食材和做法不变,只把步骤拆成单一动作的短句,一步只做一件事") } } // i18n:ignore LLM prompt text, not UI text
+            Button(String(localized: "recipe.detail.cancel"), role: .cancel) {}
         } message: {
-            Text("AI 会生成一个改写版本供你审核保存,原菜谱不变。")
+            Text(String(localized: "recipe.detail.aiRewriteHint"))
         }
         .sheet(item: $rewriteRoute) { route in
             if let customStore {
@@ -198,20 +198,20 @@ struct RecipeDetailView: View {
             }
         }
         .confirmationDialog(
-            "删除食谱",
+            String(localized: "recipe.detail.deleteTitle"),
             isPresented: $showDeleteConfirm,
             titleVisibility: .visible
         ) {
-            Button("删除", role: .destructive) {
+            Button(String(localized: "recipe.detail.delete"), role: .destructive) {
                 Task {
                     if let customStore, await customStore.remove(recipe.id) {
                         dismiss()
                     }
                 }
             }
-            Button("取消", role: .cancel) {}
+            Button(String(localized: "recipe.detail.cancel"), role: .cancel) {}
         } message: {
-            Text("确定要删除「\(recipe.name)」吗？此操作无法撤销。")
+            Text(String(localized: "recipe.detail.deleteConfirm \(recipe.name)"))
         }
         .sheet(item: $cookSession, onDismiss: {
             // Raise the optional leftover prompt only AFTER the cook sheet fully
@@ -233,7 +233,7 @@ struct RecipeDetailView: View {
                     Task { try? await dependencies.cookHistoryRepository.recordCook(recipeId: cookedId) }
                     if outcome.affectedCount > 0 {
                         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-                            toast = "已扣减 \(outcome.affectedCount) 项库存"
+                            toast = String(localized: "recipe.detail.deductedItems \(outcome.affectedCount)")
                         }
                     }
                     Task { await refreshInventoryContext() }
@@ -241,19 +241,19 @@ struct RecipeDetailView: View {
             }
         }
         .confirmationDialog(
-            "把做好的菜存为剩菜？",
+            String(localized: "recipe.detail.saveAsLeftoverPrompt"),
             isPresented: $showLeftoverPrompt,
             titleVisibility: .visible
         ) {
-            Button("存为剩菜") { showLeftoverSheet = true }
-            Button("不用了", role: .cancel) {}
+            Button(String(localized: "recipe.detail.saveAsLeftover")) { showLeftoverSheet = true }
+            Button(String(localized: "recipe.detail.noThanks"), role: .cancel) {}
         } message: {
-            Text("按冷藏 3 天保质期预填,保存前可修改。")
+            Text(String(localized: "recipe.detail.leftoverPrefillHint"))
         }
         .sheet(isPresented: $showLeftoverSheet) {
             LeftoverIntakeSheet(recipe: recipe) { savedName in
                 withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-                    toast = "已把「\(savedName)」存入库存"
+                    toast = String(localized: "recipe.detail.savedToInventory \(savedName)")
                 }
                 // The leftover row just landed in inventory — re-sync the
                 // match pills + list ranking the same way a deduction does.
@@ -264,7 +264,7 @@ struct RecipeDetailView: View {
             NavigationStack {
                 WebVideoView(url: link.url)
                     .ignoresSafeArea(edges: .bottom)
-                    .navigationTitle("做法视频")
+                    .navigationTitle(String(localized: "recipe.detail.videoTitle"))
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
@@ -272,10 +272,10 @@ struct RecipeDetailView: View {
                             Link(destination: link.url) {
                                 Image(systemName: "safari")
                             }
-                            .accessibilityLabel("在浏览器中打开")
+                            .accessibilityLabel(String(localized: "recipe.detail.openInBrowser"))
                         }
                         ToolbarItem(placement: .topBarTrailing) {
-                            Button("完成") { videoLink = nil }
+                            Button(String(localized: "recipe.detail.done")) { videoLink = nil }
                         }
                     }
             }
@@ -304,14 +304,14 @@ struct RecipeDetailView: View {
             }
         }
         .confirmationDialog(
-            "做完了，要扣减库存吗？",
+            String(localized: "recipe.detail.cookDeductPrompt"),
             isPresented: $showCookDeductPrompt,
             titleVisibility: .visible
         ) {
-            Button("去扣减") { Task { await presentCook() } }
-            Button("暂不", role: .cancel) {}
+            Button(String(localized: "recipe.detail.goToDeduct")) { Task { await presentCook() } }
+            Button(String(localized: "recipe.detail.notNow"), role: .cancel) {}
         } message: {
-            Text("打开扣减审核,确认前可调整或跳过任意食材。")
+            Text(String(localized: "recipe.detail.cookDeductHint"))
         }
         .overlay(alignment: .top) { toastBanner }
         .task(id: dependencies.householdID) {
@@ -401,7 +401,7 @@ struct RecipeDetailView: View {
                     Image(systemName: "fork.knife")
                         .font(.system(size: 16, weight: .semibold))
                 }
-                Text(isPreparingCook ? "准备中…" : "做菜")
+                Text(isPreparingCook ? String(localized: "recipe.detail.preparing") : String(localized: "recipe.detail.cook"))
                     .font(.fkLabelLarge)
             }
             .foregroundStyle(Color.fkOnPrimary)
@@ -413,7 +413,7 @@ struct RecipeDetailView: View {
         .disabled(isPreparingCook || recipe.ingredients.isEmpty)
         .padding(.horizontal, FkSpacing.lg)
         .padding(.bottom, FkSpacing.sm)
-        .accessibilityLabel("做菜并扣减库存")
+        .accessibilityLabel(String(localized: "recipe.detail.cookAndDeduct"))
     }
 
     /// Loads inventory, builds deduction proposals against it, and triggers the
@@ -496,7 +496,7 @@ struct RecipeDetailView: View {
                         .lineLimit(1)
                 }
                 metaItem(systemImage: "flame", text: recipe.difficultyLabel)
-                metaItem(systemImage: "clock", text: "\(recipe.cookingMinutes) 分钟")
+                metaItem(systemImage: "clock", text: String(localized: "recipe.detail.minutes \(recipe.cookingMinutes)"))
             }
 
             // User tags (read-only) — so a recipe the user tagged「宴客」/「快手」
@@ -536,13 +536,13 @@ struct RecipeDetailView: View {
                 Button {
                     videoLink = VideoLink(url: url)
                 } label: {
-                    Label("观看视频", systemImage: "play.rectangle.fill")
+                    Label(String(localized: "recipe.detail.watchVideo"), systemImage: "play.rectangle.fill")
                         .font(.fkLabelLarge)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.fkPrimary)
                 .padding(.top, FkSpacing.xs)
-                .accessibilityLabel("观看「\(recipe.name)」的做法视频")
+                .accessibilityLabel(String(localized: "recipe.detail.watchVideoOf \(recipe.name)"))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -567,7 +567,7 @@ struct RecipeDetailView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Color.fkPrimary)
             VStack(alignment: .leading, spacing: 2) {
-                Text("小贴士")
+                Text(String(localized: "recipe.detail.tips"))
                     .font(.fkLabelMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
                 Text(text)
@@ -583,7 +583,7 @@ struct RecipeDetailView: View {
         )
         .padding(.top, FkSpacing.xs)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("小贴士:\(text)")
+        .accessibilityLabel(String(localized: "recipe.detail.tipsLabel \(text)"))
     }
 
     // MARK: Ingredients
@@ -621,9 +621,9 @@ struct RecipeDetailView: View {
                 HStack {
                     // FkSectionHeader already carries a trailing Spacer, so the
                     // count + "已有 N/M" sit at the edges without a second one.
-                    FkSectionHeader(title: "食材清单", count: recipe.ingredients.count)
+                    FkSectionHeader(title: String(localized: "recipe.detail.ingredientList"), count: recipe.ingredients.count)
                     if hasInventory {
-                        Text("已有 \(matched)/\(recipe.ingredients.count)")
+                        Text(String(localized: "recipe.detail.haveCount \(matched) \(recipe.ingredients.count)"))
                             .font(.fkLabelMedium)
                             .foregroundStyle(Color.fkOnSurfaceVariant)
                     }
@@ -655,7 +655,7 @@ struct RecipeDetailView: View {
     /// deduction. Mirrors the Dart `_ScaleSelector`.
     private var scaleSelector: some View {
         HStack(spacing: FkSpacing.sm) {
-            Text("备料")
+            Text(String(localized: "recipe.detail.prep"))
                 .font(.fkLabelMedium)
                 .foregroundStyle(Color.fkOnSurfaceVariant)
             ForEach(Self.scalePresets, id: \.self) { preset in
@@ -686,7 +686,7 @@ struct RecipeDetailView: View {
                     .foregroundStyle(available ? Color.fkSuccess : Color.fkDanger)
                     // The dashed icon now carries the missing cue for VoiceOver,
                     // replacing the removed "缺少" text pill.
-                    .accessibilityLabel(available ? "已有" : "缺少")
+                    .accessibilityLabel(available ? String(localized: "recipe.detail.available") : String(localized: "recipe.detail.missing"))
             }
             // Missing state reads from the dashed icon + soft row tint alone — the
             // name stays neutral so the ingredient itself isn't drowned in red.
@@ -719,7 +719,7 @@ struct RecipeDetailView: View {
             HStack(spacing: FkSpacing.xs) {
                 Image(systemName: "cart.badge.plus")
                     .font(.system(size: 13, weight: .semibold))
-                Text(isAddingMissing ? "加入中…" : "加购缺少的 \(missingCount) 件")
+                Text(isAddingMissing ? String(localized: "recipe.detail.adding") : String(localized: "recipe.detail.addMissingItems \(missingCount)"))
                     .font(.fkLabelMedium)
             }
             .foregroundStyle(Color.fkPrimaryContainer)
@@ -751,9 +751,9 @@ struct RecipeDetailView: View {
         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
             // A write failure must never read as「已在购物清单中」— nothing landed.
             if failed > 0 {
-                toast = added > 0 ? "已添加 \(added) 项，部分添加失败，请重试" : "添加失败，请重试"
+                toast = added > 0 ? String(localized: "recipe.detail.addedPartialFailed \(added)") : String(localized: "recipe.detail.addFailed")
             } else {
-                toast = added > 0 ? "已添加 \(added) 项到购物清单" : "缺少的食材已在购物清单中"
+                toast = added > 0 ? String(localized: "recipe.detail.addedToShopping \(added)") : String(localized: "recipe.detail.missingAlreadyInShopping")
             }
         }
     }
@@ -799,7 +799,7 @@ struct RecipeDetailView: View {
         } catch let error as AiError {
             toast = error.message
         } catch {
-            toast = "改写失败:\(error.localizedDescription)"
+            toast = String(localized: "recipe.detail.rewriteFailed \(error.localizedDescription)")
         }
     }
 
@@ -812,7 +812,9 @@ struct RecipeDetailView: View {
         let ok = await mealPlanStore.addDish(recipe: recipe, date: day)
         showPlanPicker = false
         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-            toast = ok ? "已加入 \(PlanDayPickerSheet.dayLabel(day)) 的膳食计划" : "加入计划失败,请重试"
+            toast = ok
+                ? String(localized: "recipe.detail.addedToPlan \(PlanDayPickerSheet.dayLabel(day))")
+                : String(localized: "recipe.detail.addToPlanFailed")
         }
     }
 
@@ -823,7 +825,7 @@ struct RecipeDetailView: View {
     @ViewBuilder
     private var nutritionSection: some View {
         if let nutrition = recipe.nutrition, nutrition.hasAny {
-            NutritionCard(nutrition: nutrition, caption: "每份 · 约")
+            NutritionCard(nutrition: nutrition, caption: String(localized: "recipe.detail.perServingApprox"))
                 .padding(.horizontal, FkSpacing.lg)
         }
     }
@@ -842,7 +844,7 @@ struct RecipeDetailView: View {
                     // FkSectionHeader's own trailing Spacer pushes the count +
                     // 烹饪模式 button to the edge; grouping them in one HStack keeps
                     // a stable gap so they no longer butt against each other.
-                    FkSectionHeader(title: "烹饪步骤", count: total)
+                    FkSectionHeader(title: String(localized: "recipe.detail.cookingSteps"), count: total)
                     HStack(spacing: FkSpacing.sm) {
                         Text("\(done)/\(total)")
                             .font(.fkLabelMedium)
@@ -882,7 +884,7 @@ struct RecipeDetailView: View {
             HStack(spacing: FkSpacing.xs) {
                 Image(systemName: "play.circle.fill")
                     .font(.system(size: 13, weight: .semibold))
-                Text("烹饪模式")
+                Text(String(localized: "recipe.detail.cookMode"))
                     .font(.fkLabelMedium)
             }
             .foregroundStyle(Color.fkPrimaryContainer)
@@ -891,7 +893,7 @@ struct RecipeDetailView: View {
             .background(Capsule().fill(Color.fkPrimarySoft))
         }
         .buttonStyle(.fkPressable)
-        .accessibilityLabel("进入烹饪模式")
+        .accessibilityLabel(String(localized: "recipe.detail.enterCookMode"))
     }
 
     private func stepRow(index: Int, number: Int, text: String) -> some View {
@@ -971,11 +973,11 @@ struct PlanDayPickerSheet: View {
                 .padding(FkSpacing.lg)
             }
             .background(Color.fkSurface)
-            .navigationTitle("加入计划")
+            .navigationTitle(String(localized: "recipe.detail.addToPlanTitle"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button(String(localized: "recipe.detail.cancel")) { dismiss() }
                 }
             }
             .tint(.fkPrimary)
@@ -1027,23 +1029,16 @@ struct PlanDayPickerSheet: View {
         let today = MealPlanEntry.dateOnly(Date())
         let offset = calendar.dateComponents([.day], from: today, to: MealPlanEntry.dateOnly(day)).day ?? 0
 
-        let dateFmt = DateFormatter()
-        dateFmt.calendar = calendar
-        dateFmt.locale = Locale(identifier: "zh_CN")
-        dateFmt.dateFormat = "M月d日"
-        let datePart = dateFmt.string(from: day)
+        let month = calendar.component(.month, from: day)
+        let date = calendar.component(.day, from: day)
+        let datePart = String(localized: "recipe.detail.dateFormat.monthDay \(month) \(date)")
 
         let prefix: String
         switch offset {
-        case 0: prefix = "今天"
-        case 1: prefix = "明天"
-        case 2: prefix = "后天"
-        default:
-            let weekdayFmt = DateFormatter()
-            weekdayFmt.calendar = calendar
-            weekdayFmt.locale = Locale(identifier: "zh_CN")
-            weekdayFmt.dateFormat = "EEEE"
-            prefix = weekdayFmt.string(from: day)
+        case 0: prefix = String(localized: "recipe.detail.today")
+        case 1: prefix = String(localized: "recipe.detail.tomorrow")
+        case 2: prefix = String(localized: "recipe.detail.dayAfterTomorrow")
+        default: prefix = MealPlanFormat.weekdayShort(day)
         }
         return "\(prefix) · \(datePart)"
     }

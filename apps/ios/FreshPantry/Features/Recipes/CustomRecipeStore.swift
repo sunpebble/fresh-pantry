@@ -133,7 +133,7 @@ final class CustomRecipeStore {
             try await repository.saveRecipes(householdID, next)
         } catch {
             recipes = snapshot // rollback
-            errorMessage = "保存失败，请重试"
+            errorMessage = String(localized: "recipe.form.saveFailedRetry")
             return false
         }
         recipes = next // reconcile to the canonical saved scope

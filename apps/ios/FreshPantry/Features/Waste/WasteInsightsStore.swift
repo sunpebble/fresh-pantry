@@ -10,9 +10,9 @@ enum WasteStatsWindow: String, CaseIterable, Sendable {
 
     var label: String {
         switch self {
-        case .thisMonth: return "本月"
-        case .last30Days: return "近 30 天"
-        case .last90Days: return "近 90 天"
+        case .thisMonth: return String(localized: "waste.window.thisMonth")
+        case .last30Days: return String(localized: "waste.window.last30Days")
+        case .last90Days: return String(localized: "waste.window.last90Days")
         }
     }
 

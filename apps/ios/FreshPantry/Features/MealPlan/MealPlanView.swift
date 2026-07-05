@@ -15,7 +15,7 @@ struct MealPlanView: View {
     var body: some View {
         Group {
             if !dependencies.proStore.isPro {
-                ProLockedView(featureName: "周派餐", proStore: dependencies.proStore)
+                ProLockedView(featureName: String(localized: "mealPlan.weeklyPlan"), proStore: dependencies.proStore)
             } else if let store {
                 MealPlanContent(store: store, dependencies: dependencies)
             } else {
@@ -24,7 +24,7 @@ struct MealPlanView: View {
                     .background(Color.fkSurface)
             }
         }
-        .navigationTitle("膳食计划")
+        .navigationTitle(String(localized: "mealPlan.title"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if dependencies.proStore.isPro, let store {
@@ -186,45 +186,45 @@ private struct MealPlanContent: View {
                         if await store.addDish(recipe: recipe, date: store.selectedDay) {
                             await reloadMatchContext()
                         } else {
-                            showToast("添加菜品失败,请重试")
+                            showToast(String(localized: "mealPlan.addDishFailed"))
                         }
                     }
                 }
             )
         }
-        .alert("添加便签", isPresented: $showNoteInput) {
-            TextField("如:周三吃外卖、聚餐", text: $noteText)
-            Button("取消", role: .cancel) {}
-            Button("添加") {
+        .alert(String(localized: "mealPlan.addNote"), isPresented: $showNoteInput) {
+            TextField(String(localized: "mealPlan.notePlaceholder"), text: $noteText)
+            Button(String(localized: "mealPlan.cancel"), role: .cancel) {}
+            Button(String(localized: "mealPlan.add")) {
                 Task {
                     if !(await store.addNote(title: noteText, date: store.selectedDay)) {
-                        showToast("便签内容不能为空")
+                        showToast(String(localized: "mealPlan.noteEmpty"))
                     }
                 }
             }
         } message: {
-            Text("记一条不绑定菜谱的安排(不进缺料、不扣库存)")
+            Text(String(localized: "mealPlan.noteHint"))
         }
         // Completing a dish whose recipe still resolves offers a skippable
         // cook-time deduction — the same factory + review the detail 「做菜」 CTA
         // uses — so cooking off the plan also lands in inventory + FoodLog.
         .confirmationDialog(
-            "顺便扣减库存？",
+            String(localized: "mealPlan.deductPrompt"),
             isPresented: $showDeductPrompt,
             titleVisibility: .visible,
             presenting: deductCandidate
         ) { candidate in
-            Button("扣减库存") { Task { await presentDeduction(candidate) } }
-            Button("跳过", role: .cancel) {}
+            Button(String(localized: "mealPlan.deductStock")) { Task { await presentDeduction(candidate) } }
+            Button(String(localized: "mealPlan.skip"), role: .cancel) {}
         } message: { candidate in
-            Text("按「\(candidate.recipe.name)」的食材清单生成扣减审核,可逐项调整或跳过。")
+            Text(String(localized: "mealPlan.deductHint \(candidate.recipe.name)"))
         }
         .sheet(item: $cookSession) { session in
             NavigationStack {
                 DeductionReviewView(proposals: session.proposals) { outcome in
                     // Apply landed → inventory changed; recompute the 缺料 card.
                     if outcome.affectedCount > 0 {
-                        showToast("已扣减 \(outcome.affectedCount) 项库存")
+                        showToast(String(localized: "mealPlan.deductedItems \(outcome.affectedCount)"))
                     }
                     Task { await reloadMatchContext() }
                 }
@@ -234,7 +234,7 @@ private struct MealPlanContent: View {
             MovePlanEntrySheet(entry: wrapper.entry) { newDate in
                 Task {
                     if !(await store.moveDish(wrapper.entry, to: newDate)) {
-                        showToast("移动失败,请重试")
+                        showToast(String(localized: "mealPlan.moveFailed"))
                     }
                 }
             }
@@ -259,7 +259,7 @@ private struct MealPlanContent: View {
                     Text(MealPlanMissing.cardTitle(count: missingNames.count, isCurrentWeek: store.isShowingWeek()))
                         .font(.fkTitleMedium)
                         .foregroundStyle(Color.fkOnSurface)
-                    Text(isAddingMissing ? "加入中…" : shoppingStore == nil ? "加载中…" : "一键加入购物清单")
+                    Text(isAddingMissing ? String(localized: "mealPlan.adding") : shoppingStore == nil ? String(localized: "mealPlan.loading") : String(localized: "mealPlan.addAllToShopping"))
                         .font(.fkBodySmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                 }
@@ -374,9 +374,13 @@ private struct MealPlanContent: View {
         }
         // A persist failure must never read as the affirmative「已在购物清单中」.
         if failed > 0 {
-            showToast(added > 0 ? "已加入 \(added) 样，\(failed) 样添加失败" : "添加失败,请重试")
+            showToast(added > 0
+                ? String(localized: "mealPlan.addedPartialFailed \(added) \(failed)")
+                : String(localized: "mealPlan.addFailed"))
         } else {
-            showToast(added > 0 ? "已加入 \(added) 样食材到购物清单" : "缺的食材都已在购物清单中")
+            showToast(added > 0
+                ? String(localized: "mealPlan.addedToShopping \(added)")
+                : String(localized: "mealPlan.missingAlreadyInShopping"))
         }
     }
 
@@ -386,7 +390,7 @@ private struct MealPlanContent: View {
     private func toggleDone(_ entry: MealPlanEntry) async {
         let completing = !entry.done
         guard await store.toggleDone(entry) else {
-            showToast("更新失败,请重试")
+            showToast(String(localized: "mealPlan.updateFailed"))
             return
         }
         if completing, let recipe = MealPlanStore.deductionCandidate(for: entry, recipesById: recipesById) {
@@ -434,19 +438,19 @@ private struct MealPlanContent: View {
                 Button {
                     showingPicker = true
                 } label: {
-                    Label("添加菜谱", systemImage: "fork.knife")
+                    Label(String(localized: "mealPlan.addRecipe"), systemImage: "fork.knife")
                 }
                 Button {
                     noteText = ""
                     showNoteInput = true
                 } label: {
-                    Label("添加便签", systemImage: "note.text")
+                    Label(String(localized: "mealPlan.addNote"), systemImage: "note.text")
                 }
             } label: {
                 HStack(spacing: FkSpacing.xs) {
                     Image(systemName: "plus")
                         .font(.system(size: 13, weight: .bold))
-                    Text("添加")
+                    Text(String(localized: "mealPlan.add"))
                         .font(.fkLabelMedium)
                 }
                 .foregroundStyle(Color.fkOnPrimary)
@@ -455,7 +459,7 @@ private struct MealPlanContent: View {
                 .background(Capsule().fill(Color.fkPrimary))
             }
             .buttonStyle(.fkPressable)
-            .accessibilityLabel("添加菜谱或便签")
+            .accessibilityLabel(String(localized: "mealPlan.addRecipeOrNote"))
         }
     }
 
@@ -470,8 +474,8 @@ private struct MealPlanContent: View {
         } else if dishes.isEmpty {
             FkEmptyState(
                 systemImage: "fork.knife",
-                title: "这天还没有计划",
-                message: "点「添加菜品」安排今天吃什么"
+                title: String(localized: "mealPlan.emptyDayTitle"),
+                message: String(localized: "mealPlan.emptyDayMessage")
             )
             .padding(.top, FkSpacing.md)
         } else {
@@ -495,16 +499,16 @@ private struct MealPlanContent: View {
                         Button {
                             reschedulingEntry = ReschedulingEntry(entry: entry)
                         } label: {
-                            Label("移到其他日期", systemImage: "calendar")
+                            Label(String(localized: "mealPlan.moveToOtherDate"), systemImage: "calendar")
                         }
                         Button(role: .destructive) {
                             Task {
                                 if !(await store.remove(entry)) {
-                                    showToast("删除失败,请重试")
+                                    showToast(String(localized: "mealPlan.deleteFailed"))
                                 }
                             }
                         } label: {
-                            Label("删除", systemImage: "trash")
+                            Label(String(localized: "mealPlan.delete"), systemImage: "trash")
                         }
                     }
                 }
@@ -542,7 +546,7 @@ private struct WeekStrip: View {
 
     private var header: some View {
         HStack(spacing: FkSpacing.sm) {
-            navButton(systemImage: "chevron.left", accessibility: "上一周") {
+            navButton(systemImage: "chevron.left", accessibility: String(localized: "mealPlan.previousWeek")) {
                 store.goToPreviousWeek()
             }
             Spacer(minLength: 0)
@@ -553,7 +557,7 @@ private struct WeekStrip: View {
             if !store.isShowingWeek() {
                 todayButton
             }
-            navButton(systemImage: "chevron.right", accessibility: "下一周") {
+            navButton(systemImage: "chevron.right", accessibility: String(localized: "mealPlan.nextWeek")) {
                 store.goToNextWeek()
             }
         }
@@ -565,7 +569,7 @@ private struct WeekStrip: View {
         Button {
             store.goToToday()
         } label: {
-            Text("今天")
+            Text(String(localized: "mealPlan.today"))
                 .font(.fkLabelMedium)
                 .foregroundStyle(Color.fkPrimary)
                 .padding(.horizontal, FkSpacing.md)
@@ -573,7 +577,7 @@ private struct WeekStrip: View {
                 .background(Capsule().fill(Color.fkPrimarySoft))
         }
         .buttonStyle(.fkPressable)
-        .accessibilityLabel("回到今天")
+        .accessibilityLabel(String(localized: "mealPlan.backToToday"))
     }
 
     private func navButton(systemImage: String, accessibility: String, action: @escaping () -> Void) -> some View {
@@ -679,11 +683,11 @@ private struct MealPlanDishRow: View {
                         if let mealType = entry.mealType, !mealType.isEmpty {
                             tag(mealType, color: .fkPrimary)
                         }
-                        if entry.isLeftover { tag("剩菜", color: .fkWarn) }
+                        if entry.isLeftover { tag(String(localized: "mealPlan.leftover"), color: .fkWarn) }
                         if entry.isNote {
-                            tag("便签", color: .fkOnSurfaceVariant)
+                            tag(String(localized: "mealPlan.note"), color: .fkOnSurfaceVariant)
                         } else {
-                            Text("\(entry.servings) 份")
+                            Text(String(localized: "mealPlan.servings \(entry.servings)"))
                                 .font(.fkLabelSmall)
                                 .foregroundStyle(Color.fkOnSurfaceVariant)
                         }
@@ -731,7 +735,7 @@ private struct MealPlanDishRow: View {
                 .foregroundStyle(entry.done ? Color.fkSuccess : Color.fkOutline)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(entry.done ? "标记为未完成" : "标记为已完成")
+        .accessibilityLabel(entry.done ? String(localized: "mealPlan.markUndone") : String(localized: "mealPlan.markDone"))
     }
 }
 
@@ -769,20 +773,20 @@ private struct MovePlanEntrySheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: FkSpacing.lg) {
-                DatePicker("移动到", selection: $selectedDate, displayedComponents: .date)
+                DatePicker(String(localized: "mealPlan.moveTo"), selection: $selectedDate, displayedComponents: .date)
                     .datePickerStyle(.graphical)
                     .padding(.horizontal, FkSpacing.lg)
                 Spacer(minLength: 0)
             }
             .padding(.top, FkSpacing.md)
-            .navigationTitle("移动「\(entry.recipeName)」")
+            .navigationTitle(String(localized: "mealPlan.moveDish \(entry.recipeName)"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("取消") { dismiss() }
+                    Button(String(localized: "mealPlan.cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("移动") {
+                    Button(String(localized: "mealPlan.move")) {
                         onMove(selectedDate)
                         dismiss()
                     }
@@ -826,11 +830,11 @@ private struct RecipePickerSheet: View {
                         .background(Color.fkSurface)
                 }
             }
-            .navigationTitle("选择菜品")
+            .navigationTitle(String(localized: "mealPlan.selectDish"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button(String(localized: "mealPlan.cancel")) { dismiss() }
                 }
             }
         }
@@ -862,7 +866,7 @@ private struct PickerList: View {
     var body: some View {
         ScrollView {
             VStack(spacing: FkSpacing.md) {
-                FkSearchField(text: $store.searchQuery, placeholder: "搜索菜谱或食材")
+                FkSearchField(text: $store.searchQuery, placeholder: String(localized: "recipe.list.searchPlaceholder"))
                     .padding(.horizontal, FkSpacing.lg)
 
                 listBody
@@ -882,8 +886,8 @@ private struct PickerList: View {
         } else if recipes.isEmpty {
             FkEmptyState(
                 systemImage: "magnifyingglass",
-                title: store.searchQuery.trimmed.isEmpty ? "暂无可选的菜谱" : "没有匹配的菜谱",
-                message: store.searchQuery.trimmed.isEmpty ? nil : "试试换个关键词"
+                title: store.searchQuery.trimmed.isEmpty ? String(localized: "mealPlan.noRecipesAvailable") : String(localized: "mealPlan.noMatchingRecipes"),
+                message: store.searchQuery.trimmed.isEmpty ? nil : String(localized: "recipe.list.tryAnotherKeyword")
             )
             .padding(.top, FkSpacing.huge)
         } else {
@@ -931,11 +935,18 @@ enum MealPlanFormat {
         sameDay(day, Date())
     }
 
+    /// Localization keys for the short weekday label (周一 … 周日), by
+    /// `Calendar.component(.weekday)` (1=Sun … 7=Sat).
+    private static let weekdayKeys = [
+        "mealPlan.weekday.sun", "mealPlan.weekday.mon", "mealPlan.weekday.tue",
+        "mealPlan.weekday.wed", "mealPlan.weekday.thu", "mealPlan.weekday.fri",
+        "mealPlan.weekday.sat",
+    ]
+
     /// Short weekday label (周一 … 周日).
     static func weekdayShort(_ day: Date) -> String {
         let weekday = calendar.component(.weekday, from: day) // 1=Sun … 7=Sat
-        let names = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"]
-        return names[(weekday - 1) % 7]
+        return String(localized: String.LocalizationValue(weekdayKeys[(weekday - 1) % 7]))
     }
 
     static func dayNumber(_ day: Date) -> String {
@@ -946,8 +957,8 @@ enum MealPlanFormat {
     static func dayTitle(_ day: Date) -> String {
         let month = calendar.component(.month, from: day)
         let date = calendar.component(.day, from: day)
-        let core = "\(month)月\(date)日 \(weekdayShort(day))"
-        return isToday(day) ? "今天 · \(core)" : core
+        let core = String(localized: "mealPlan.dateFormat.monthDayWeekday \(month) \(date) \(weekdayShort(day))")
+        return isToday(day) ? String(localized: "mealPlan.today.dated \(core)") : core
     }
 
     /// "M月d日 - M月d日" range across the visible week's first/last day.
@@ -957,17 +968,17 @@ enum MealPlanFormat {
         let fd = calendar.component(.day, from: first)
         let lm = calendar.component(.month, from: last)
         let ld = calendar.component(.day, from: last)
-        return "\(fm)月\(fd)日 - \(lm)月\(ld)日"
+        return String(localized: "mealPlan.dateFormat.range \(fm) \(fd) \(lm) \(ld)")
     }
 
     static func dishSummary(_ count: Int) -> String {
-        count > 0 ? "已计划 \(count) 道菜" : "暂无计划"
+        count > 0 ? String(localized: "mealPlan.dishesPlanned \(count)") : String(localized: "mealPlan.noPlan")
     }
 
     static func cellAccessibility(_ day: Date, dishCount: Int, isToday: Bool) -> String {
-        let base = "\(weekdayShort(day)) \(dayNumber(day))日"
-        let todayTag = isToday ? "，今天" : ""
-        let dishes = dishCount > 0 ? "，\(dishCount) 道菜" : ""
+        let base = String(localized: "mealPlan.dateFormat.weekdayDay \(weekdayShort(day)) \(dayNumber(day))")
+        let todayTag = isToday ? String(localized: "mealPlan.todayTag") : ""
+        let dishes = dishCount > 0 ? String(localized: "mealPlan.dishesTag \(dishCount)") : ""
         return base + todayTag + dishes
     }
 }

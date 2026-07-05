@@ -64,7 +64,7 @@ struct CustomRecipeDraft: Equatable {
 
     init(
         name: String = "",
-        category: String = "家常",
+        category: String = "家常", // i18n:ignore data identity (recipe category default), not UI text
         cookingMinutes: String = "",
         difficulty: Int = 3,
         description: String = "",
@@ -109,7 +109,7 @@ struct CustomRecipeDraft: Equatable {
         let steps = recipe.steps.map { StepRow(text: $0) }
         self.init(
             name: recipe.name,
-            category: recipe.category.trimmed.isEmpty ? "家常" : recipe.category,
+            category: recipe.category.trimmed.isEmpty ? "家常" : recipe.category, // i18n:ignore data identity, not UI text
             cookingMinutes: String(recipe.cookingMinutes),
             difficulty: recipe.difficulty < 1 || recipe.difficulty > 5 ? 3 : recipe.difficulty,
             description: recipe.description,
@@ -138,7 +138,7 @@ struct CustomRecipeDraft: Equatable {
         let parsedImageUrl = draft.imageUrl.value?.trimmed
         self.init(
             name: draft.name.value,
-            category: draft.category.value.trimmed.isEmpty ? "家常" : draft.category.value,
+            category: draft.category.value.trimmed.isEmpty ? "家常" : draft.category.value, // i18n:ignore data identity, not UI text
             cookingMinutes: String(draft.cookingMinutes.value),
             difficulty: draft.difficulty.value < 1 || draft.difficulty.value > 5 ? 3 : draft.difficulty.value,
             description: draft.description.value,
@@ -269,24 +269,24 @@ struct CustomRecipeDraft: Equatable {
         var errors: [Field: String] = [:]
 
         if name.trimmed.isEmpty {
-            errors[.name] = "请填入食谱名称"
+            errors[.name] = String(localized: "recipe.form.error.nameRequired")
         }
         if category.trimmed.isEmpty {
-            errors[.category] = "请选择分类"
+            errors[.category] = String(localized: "recipe.form.error.categoryRequired")
         }
         if let minutes = Int(cookingMinutes.trimmed), minutes > 0 {
             // valid
         } else {
-            errors[.cookingMinutes] = "请输入大于 0 的分钟数"
+            errors[.cookingMinutes] = String(localized: "recipe.form.error.minutesInvalid")
         }
         if difficulty < 1 || difficulty > 5 {
-            errors[.difficulty] = "请选择 1-5 颗星"
+            errors[.difficulty] = String(localized: "recipe.form.error.difficultyInvalid")
         }
         if let message = ingredientsError() {
             errors[.ingredients] = message
         }
         if trimmedSteps.isEmpty {
-            errors[.steps] = "至少添加一个步骤"
+            errors[.steps] = String(localized: "recipe.form.error.stepsRequired")
         }
 
         return errors
@@ -319,9 +319,9 @@ struct CustomRecipeDraft: Equatable {
         }
 
         var parts: [String] = []
-        if !hasComplete && !hasAnyText { parts.append("至少一种食材") }
-        if missingName { parts.append("食材名称") }
-        if missingAmount { parts.append("食材用量") }
+        if !hasComplete && !hasAnyText { parts.append(String(localized: "recipe.form.error.atLeastOneIngredient")) }
+        if missingName { parts.append(String(localized: "recipe.form.ingredientName")) }
+        if missingAmount { parts.append(String(localized: "recipe.form.ingredientAmount")) }
         return parts.isEmpty ? nil : parts.joined(separator: "、")
     }
 

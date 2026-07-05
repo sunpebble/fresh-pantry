@@ -8,7 +8,7 @@ import SwiftUI
 /// `IntakeReviewView`, launched from the recipe detail "做菜" CTA.
 struct DeductionReviewView: View {
     let proposals: [DeductionProposal]
-    var title: String = "审核扣库存"
+    var title: String = String(localized: "recipe.deduction.title")
     /// Called after a successful apply (so the presenter can refresh + dismiss).
     var onApplied: (DeductionController.ApplyOutcome) -> Void = { _ in }
 
@@ -54,8 +54,8 @@ struct DeductionReviewView: View {
             if store.proposals.isEmpty {
                 FkEmptyState(
                     systemImage: "tray",
-                    title: "没有待扣减的食材",
-                    message: "这道菜还没有可对照的食材清单。"
+                    title: String(localized: "recipe.deduction.emptyTitle"),
+                    message: String(localized: "recipe.deduction.emptyMessage")
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -106,7 +106,7 @@ struct DeductionReviewView: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 22))
                     .foregroundStyle(Color.fkWarnInk)
-                Text("这道菜的食材都不在库存里,没有可扣减的项。")
+                Text(String(localized: "recipe.deduction.noneDeductible"))
                     .font(.fkBodySmall)
                     .foregroundStyle(Color.fkWarnInk)
                 Spacer(minLength: 0)
@@ -120,7 +120,7 @@ struct DeductionReviewView: View {
                 store.toggleSelectAll()
             } label: {
                 Label(
-                    store.allSelected ? "取消全选" : "全选",
+                    store.allSelected ? String(localized: "recipe.deduction.deselectAll") : String(localized: "recipe.deduction.selectAll"),
                     systemImage: store.allSelected ? "checklist.unchecked" : "checklist.checked"
                 )
                 .font(.fkLabelMedium)
@@ -134,7 +134,7 @@ struct DeductionReviewView: View {
             Button {
                 Task { await confirm(store) }
             } label: {
-                Text(isConfirming ? "扣减中…" : "确认扣减 (\(store.selectedCount))")
+                Text(isConfirming ? String(localized: "recipe.deduction.deducting") : String(localized: "recipe.deduction.confirmDeduct \(store.selectedCount)"))
                     .font(.fkLabelLarge)
                     .foregroundStyle(Color.fkOnPrimary)
                     .padding(.horizontal, FkSpacing.xl)
@@ -163,7 +163,7 @@ struct DeductionReviewView: View {
         } else {
             // `DeductionController` contract: a failed apply mutated nothing —
             // surface it and keep the sheet open so 确认 can be retried.
-            applyError = "扣减失败，请重试。"
+            applyError = String(localized: "recipe.deduction.applyFailed")
         }
     }
 }
@@ -206,7 +206,7 @@ private struct DeductionProposalRow: View {
         )
         .sheet(isPresented: $showSourcePicker) {
             FkPickerSheet(
-                title: "扣减来源批次",
+                title: String(localized: "recipe.deduction.sourceBatch"),
                 options: proposal.candidates.map {
                     FkPickerOption(value: $0.inventoryRowIndex, label: $0.displayLabel)
                 },
@@ -226,12 +226,12 @@ private struct DeductionProposalRow: View {
             .disabled(!DeductionReviewStore.isDeductible(proposal))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(proposal.recipeIngredientName.isEmpty ? "(无名)" : proposal.recipeIngredientName)
+                Text(proposal.recipeIngredientName.isEmpty ? String(localized: "recipe.deduction.unnamed") : proposal.recipeIngredientName)
                     .font(.fkTitleMedium)
                     .foregroundStyle(Color.fkOnSurface)
                     .lineLimit(1)
                 if !proposal.requiredQty.trimmed.isEmpty {
-                    Text("菜谱需要 \(proposal.requiredQty)")
+                    Text(String(localized: "recipe.deduction.recipeNeeds \(proposal.requiredQty)"))
                         .font(.fkLabelSmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                 }
@@ -254,7 +254,7 @@ private struct DeductionProposalRow: View {
                 Image(systemName: "shippingbox")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Color.fkOnSurfaceVariant)
-                Text(chosen?.displayLabel ?? "无可用批次")
+                Text(chosen?.displayLabel ?? String(localized: "recipe.deduction.noBatchAvailable"))
                     .font(.fkLabelMedium)
                     .foregroundStyle(Color.fkOnSurface)
                     .lineLimit(1)
@@ -277,7 +277,7 @@ private struct DeductionProposalRow: View {
 
     private var amountRow: some View {
         HStack(spacing: FkSpacing.sm) {
-            Text("扣减")
+            Text(String(localized: "recipe.deduction.deduct"))
                 .font(.fkLabelMedium)
                 .foregroundStyle(Color.fkOnSurfaceVariant)
             FkInlineStepper(
@@ -295,7 +295,7 @@ private struct DeductionProposalRow: View {
             Image(systemName: "xmark.circle")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Color.fkOutline)
-            Text("库存中没有匹配项,这条将被跳过。")
+            Text(String(localized: "recipe.deduction.noMatchSkipped"))
                 .font(.fkLabelMedium)
                 .foregroundStyle(Color.fkOnSurfaceVariant)
             Spacer(minLength: 0)
@@ -313,7 +313,7 @@ private struct DeductionActionChip: View {
     var body: some View {
         Button(action: onToggle) {
             HStack(spacing: FkSpacing.xs) {
-                Text(action == .deduct ? "扣库存" : "跳过")
+                Text(action == .deduct ? String(localized: "recipe.deduction.deductStock") : String(localized: "recipe.deduction.skip"))
                     .lineLimit(1)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 9, weight: .bold))

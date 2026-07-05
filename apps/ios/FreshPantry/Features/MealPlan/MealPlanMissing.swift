@@ -33,6 +33,8 @@ enum MealPlanMissing {
     /// 缺料 card title. 「本周」 only when the visible week is the actual current
     /// week — the count always reflects the visible week, so the copy follows it.
     static func cardTitle(count: Int, isCurrentWeek: Bool) -> String {
-        isCurrentWeek ? "本周还缺 \(count) 样食材" : "这一周还缺 \(count) 样食材"
+        isCurrentWeek
+            ? String(localized: "mealPlan.missing.thisWeek \(count)")
+            : String(localized: "mealPlan.missing.thatWeek \(count)")
     }
 }

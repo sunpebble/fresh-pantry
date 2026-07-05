@@ -36,11 +36,11 @@ struct GlobalSearchView: View {
                         .background(Color.fkSurface)
                 }
             }
-            .navigationTitle("搜索")
+            .navigationTitle(String(localized: "search.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("完成") { dismiss() }
+                    Button(String(localized: "search.done")) { dismiss() }
                 }
             }
             .navigationDestination(item: $selectedIngredient) { ingredient in
@@ -113,7 +113,7 @@ struct GlobalSearchView: View {
     private func content(_ store: GlobalSearchStore) -> some View {
         @Bindable var store = store
         VStack(spacing: 0) {
-            FkSearchField(text: $store.query, placeholder: "搜索库存、购物、食谱…")
+            FkSearchField(text: $store.query, placeholder: String(localized: "search.placeholder"))
                 .padding(.horizontal, FkSpacing.lg)
                 .padding(.vertical, FkSpacing.sm)
 
@@ -123,8 +123,8 @@ struct GlobalSearchView: View {
                 } else {
                     FkEmptyState(
                         systemImage: "magnifyingglass",
-                        title: "没有匹配「\(store.trimmedQuery)」的结果",
-                        message: "试试换个关键词"
+                        title: String(localized: "search.noResults \(store.trimmedQuery)"),
+                        message: String(localized: "recipe.list.tryAnotherKeyword")
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -153,7 +153,7 @@ struct GlobalSearchView: View {
                         .listRowBackground(Color.fkSurfaceContainerLowest)
                     }
                 } header: {
-                    Text("库存 · \(store.filteredInventory.count)")
+                    Text(String(localized: "search.inventoryCount \(store.filteredInventory.count)"))
                 }
             }
             if !store.filteredShopping.isEmpty {
@@ -170,7 +170,7 @@ struct GlobalSearchView: View {
                         .listRowBackground(Color.fkSurfaceContainerLowest)
                     }
                 } header: {
-                    Text("购物清单 · \(store.filteredShopping.count)")
+                    Text(String(localized: "search.shoppingCount \(store.filteredShopping.count)"))
                 }
             }
             if !store.filteredRecipes.isEmpty {
@@ -186,7 +186,7 @@ struct GlobalSearchView: View {
                         .listRowBackground(Color.fkSurfaceContainerLowest)
                     }
                 } header: {
-                    Text("食谱 · \(store.filteredRecipes.count)")
+                    Text(String(localized: "search.recipesCount \(store.filteredRecipes.count)"))
                 }
             }
         }
@@ -221,7 +221,7 @@ struct GlobalSearchView: View {
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurface)
                 if !item.category.trimmed.isEmpty {
-                    Text(item.category)
+                    Text(FoodCategories.displayLabel(for: item.category))
                         .font(.fkLabelSmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                 }
@@ -244,8 +244,8 @@ struct GlobalSearchView: View {
         if history.entries.isEmpty {
             FkEmptyState(
                 systemImage: "magnifyingglass",
-                title: "搜索库存、购物与食谱",
-                message: "输入食材、分类或菜名即可"
+                title: String(localized: "search.emptyTitle"),
+                message: String(localized: "search.emptyMessage")
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
@@ -269,15 +269,15 @@ struct GlobalSearchView: View {
                         .listRowBackground(Color.fkSurfaceContainerLowest)
                         .swipeActions {
                             Button(role: .destructive) { history.remove(entry) } label: {
-                                Label("删除", systemImage: "trash")
+                                Label(String(localized: "search.delete"), systemImage: "trash")
                             }
                         }
                     }
                 } header: {
                     HStack {
-                        Text("最近搜索")
+                        Text(String(localized: "search.recentSearches"))
                         Spacer()
-                        Button("清除") { history.clear() }
+                        Button(String(localized: "search.clear")) { history.clear() }
                             .font(.fkLabelSmall)
                             .foregroundStyle(Color.fkPrimary)
                             .textCase(nil)

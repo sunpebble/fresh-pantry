@@ -35,7 +35,7 @@ struct ShoppingView: View {
                         .background(Color.fkSurface)
                 }
             }
-            .navigationTitle("购物清单")
+            .navigationTitle(String(localized: "shopping.title"))
         }
         // Rebuild the store whenever the active household changes (login "" → uuid,
         // switch, or leave) so the visible list re-scopes to the new household
@@ -153,7 +153,7 @@ private struct ShoppingContent: View {
                 } label: {
                     Image(systemName: "arrow.up.arrow.down")
                 }
-                .accessibilityLabel("分类排序")
+                .accessibilityLabel(String(localized: "shopping.categoryOrder.title"))
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -161,7 +161,7 @@ private struct ShoppingContent: View {
                 } label: {
                     Image(systemName: "plus")
                 }
-                .accessibilityLabel("添加食材")
+                .accessibilityLabel(String(localized: "shopping.addIngredient"))
             }
         }
         .sheet(isPresented: $isAddingItem) {
@@ -174,13 +174,13 @@ private struct ShoppingContent: View {
             ShoppingDetailEditSheet(store: store, item: route.item)
         }
         .navigationDestination(item: $reviewRoute) { route in
-            IntakeReviewView(proposals: route.proposals, title: "已购买项入库") { outcome in
+            IntakeReviewView(proposals: route.proposals, title: String(localized: "shopping.intake.title")) { outcome in
                 let applied = ShoppingIntake.appliedSourceItems(reviewSource, appliedIds: outcome.appliedIds)
                 Task {
                     _ = await store.deleteAll(applied)
                     // 已入库的行不给撤销——恢复它们会和刚进库存的批次重复。
                     if !outcome.appliedIds.isEmpty {
-                        toast = "已入库 \(outcome.appliedIds.count) 项"
+                        toast = String(localized: "shopping.intake.applied \(outcome.appliedIds.count)")
                     }
                 }
             }
@@ -189,14 +189,14 @@ private struct ShoppingContent: View {
         .overlay(alignment: .bottom) { undoBanner }
         .overlay(alignment: .top) { toastBanner }
         .confirmationDialog(
-            "清理已购项目",
+            String(localized: "shopping.clearChecked.title"),
             isPresented: $showClearConfirm,
             titleVisibility: .visible
         ) {
-            Button("清理", role: .destructive) { Task { await clearChecked() } }
-            Button("取消", role: .cancel) {}
+            Button(String(localized: "shopping.clear"), role: .destructive) { Task { await clearChecked() } }
+            Button(String(localized: "shopping.cancel"), role: .cancel) {}
         } message: {
-            Text("确定要移除所有已勾选的购物项吗？")
+            Text(String(localized: "shopping.clearChecked.confirm"))
         }
         // Cross-tab intent (全局搜索 → 高亮购物行). `.task(id:)` runs for the current
         // value on appearance AND on change, so an intent set in the same transaction
@@ -242,7 +242,7 @@ private struct ShoppingContent: View {
 
             if store.displaySections.isEmpty {
                 Section {
-                    Text(store.filter == .todo ? "没有待购项目" : "没有已购项目")
+                    Text(store.filter == .todo ? String(localized: "shopping.noTodoItems") : String(localized: "shopping.noDoneItems"))
                         .font(.fkBodyMedium)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -269,7 +269,7 @@ private struct ShoppingContent: View {
                                     Button {
                                         openIntake(for: [item])
                                     } label: {
-                                        Label("加入库存", systemImage: "tray.and.arrow.down")
+                                        Label(String(localized: "shopping.addToInventory"), systemImage: "tray.and.arrow.down")
                                     }
                                     .tint(Color.fkPrimary)
                                 }
@@ -278,12 +278,12 @@ private struct ShoppingContent: View {
                                     Button(role: .destructive) {
                                         Task { await deleteWithUndo(item) }
                                     } label: {
-                                        Label("删除", systemImage: "trash")
+                                        Label(String(localized: "shopping.delete"), systemImage: "trash")
                                     }
                                     Button {
                                         editRoute = ShoppingDetailEditRoute(item: item)
                                     } label: {
-                                        Label("编辑", systemImage: "pencil")
+                                        Label(String(localized: "shopping.edit"), systemImage: "pencil")
                                     }
                                     .tint(Color.fkPrimaryDeep)
                                 }
@@ -291,7 +291,7 @@ private struct ShoppingContent: View {
                                     Button {
                                         editRoute = ShoppingDetailEditRoute(item: item)
                                     } label: {
-                                        Label("编辑数量", systemImage: "pencil")
+                                        Label(String(localized: "shopping.editQuantity"), systemImage: "pencil")
                                     }
                                 }
                             }
@@ -339,7 +339,7 @@ private struct ShoppingContent: View {
             Button {
                 openIntake(for: store.items.filter(\.isChecked))
             } label: {
-                Text("已购买的 \(store.checkedCount) 项一键入库")
+                Text(String(localized: "shopping.intake.oneClick \(store.checkedCount)"))
                     .font(.fkLabelLarge)
                     .foregroundStyle(Color.fkOnPrimary)
                     .frame(maxWidth: .infinity)
@@ -361,12 +361,12 @@ private struct ShoppingContent: View {
                 Image(systemName: "trash")
                     .foregroundStyle(Color.fkDanger)
                 Text(undo.items.count == 1
-                    ? "「\(undo.items[0].name)」已删除"
-                    : "已清理 \(undo.items.count) 项")
+                    ? String(localized: "shopping.undo.itemDeleted \(undo.items[0].name)")
+                    : String(localized: "shopping.undo.itemsCleared \(undo.items.count)"))
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurface)
                 Spacer(minLength: FkSpacing.sm)
-                Button("撤销") {
+                Button(String(localized: "shopping.undo.action")) {
                     Task {
                         // Count REAL failures only — `.duplicate` (the row is
                         // already back, e.g. a remote merge re-added it) means
@@ -378,7 +378,7 @@ private struct ShoppingContent: View {
                         guard failures == 0 else {
                             // Keep the banner so 撤销 can be retried (rows that
                             // did restore re-report `.duplicate`, staying benign).
-                            toast = "恢复失败，请重试"
+                            toast = String(localized: "shopping.undo.restoreFailed")
                             return
                         }
                         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { pendingUndo = nil }
@@ -439,7 +439,7 @@ private struct ShoppingContent: View {
         Button {
             showClearConfirm = true
         } label: {
-            Text("清空已完成 (\(store.checkedCount))")
+            Text(String(localized: "shopping.clearDone \(store.checkedCount)"))
                 .font(.fkLabelMedium)
                 .foregroundStyle(Color.fkOnSurfaceVariant)
                 .frame(maxWidth: .infinity)
@@ -465,7 +465,7 @@ private struct ShoppingContent: View {
             } catch {
                 // 合并判定全靠库存现状——读不到时进审核会把该合并的全误判成
                 // 新建批次（落库后要手动清理重复行），宁可不进并提示重试。
-                toast = "读取库存失败，请重试"
+                toast = String(localized: "shopping.readInventoryFailed")
                 return
             }
             let proposals = ShoppingIntake.buildProposals(items, inventory: inventory)
@@ -490,7 +490,7 @@ private struct ShoppingContent: View {
     /// result stays silent (the rows were already gone — a benign no-op).
     private func clearChecked() async {
         guard let removed = await store.deleteAll(store.items.filter(\.isChecked)) else {
-            toast = "清理失败，请重试"
+            toast = String(localized: "shopping.clearFailed")
             return
         }
         guard !removed.isEmpty else { return }
@@ -512,8 +512,8 @@ private struct ShoppingContent: View {
     private var emptyState: some View {
         FkEmptyState(
             systemImage: "cart",
-            title: "购物清单为空",
-            message: "点右上角 + 添加需要购买的食材"
+            title: String(localized: "shopping.emptyTitle"),
+            message: String(localized: "shopping.emptyMessage")
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -539,7 +539,7 @@ private struct ShoppingProgressCard: View {
         return VStack(alignment: .leading, spacing: FkSpacing.md) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                    Text("本次采购进度")
+                    Text(String(localized: "shopping.progress.title"))
                         .font(.fkLabelSmall)
                         .foregroundStyle(Color.fkOnPrimary.opacity(0.75))
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -547,7 +547,7 @@ private struct ShoppingProgressCard: View {
                             // .largeTitle (34pt base) so the stat scales with Dynamic Type.
                             .font(.system(.largeTitle, design: .rounded, weight: .heavy))
                             .foregroundStyle(Color.fkOnPrimary)
-                        Text("/ \(total) 项")
+                        Text(String(localized: "shopping.progress.ofTotal \(total)"))
                             .font(.fkBodyMedium)
                             .foregroundStyle(Color.fkOnPrimary.opacity(0.75))
                     }
@@ -595,7 +595,7 @@ private struct CategoryHeader: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(Color.fkOnSurfaceVariant)
                     .rotationEffect(.degrees(collapsed ? -90 : 0))
-                Text(category)
+                Text(FoodCategories.displayLabel(for: category))
                     .font(.fkLabelMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
                 Spacer(minLength: 0)
@@ -607,8 +607,8 @@ private struct CategoryHeader: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(category)，\(count) 件")
-        .accessibilityHint(collapsed ? "点按展开分类" : "点按折叠分类")
+        .accessibilityLabel(String(localized: "shopping.category.itemCount \(FoodCategories.displayLabel(for: category)) \(count)"))
+        .accessibilityHint(collapsed ? String(localized: "shopping.category.expandHint") : String(localized: "shopping.category.collapseHint"))
         .accessibilityAddTraits(.isButton)
     }
 }
@@ -619,9 +619,9 @@ private struct ShoppingFilterChips: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: FkSpacing.sm) {
-                chip("全部", .all, store.total)
-                chip("待购买", .todo, store.uncheckedCount)
-                chip("已购", .done, store.checkedCount)
+                chip(String(localized: "shopping.filter.all"), .all, store.total)
+                chip(String(localized: "shopping.filter.todo"), .todo, store.uncheckedCount)
+                chip(String(localized: "shopping.filter.done"), .done, store.checkedCount)
             }
             // No internal horizontal padding: the row sits inside the section margin
             // (FkSpacing.lg), so the first chip already starts at 16pt — flush with the
@@ -652,7 +652,7 @@ private struct ShoppingRow: View {
                     .foregroundStyle(item.isChecked ? Color.fkPrimary : Color.fkOutline)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(item.isChecked ? "取消勾选 \(item.name)" : "勾选 \(item.name)")
+            .accessibilityLabel(item.isChecked ? String(localized: "shopping.uncheck \(item.name)") : String(localized: "shopping.check \(item.name)"))
 
             FkCategoryAvatar(
                 imageUrl: item.imageUrl ?? "",
@@ -708,14 +708,14 @@ private struct ShoppingAddSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("食材") {
-                    TextField("名称（必填）", text: $name)
+                Section(String(localized: "shopping.form.section")) {
+                    TextField(String(localized: "shopping.form.namePlaceholder"), text: $name)
                         .onChange(of: name) { _, newValue in
                             guard !categoryEdited else { return }
                             category = FoodKnowledge.categoryFor(newValue)
                             addError = nil
                         }
-                    TextField("数量 / 备注（选填，如 2 盒）", text: $detail)
+                    TextField(String(localized: "shopping.form.detailPlaceholder"), text: $detail)
                 }
                 if let addError {
                     Section {
@@ -724,10 +724,10 @@ private struct ShoppingAddSheet: View {
                             .foregroundStyle(Color.fkDanger)
                     }
                 }
-                Section("分类") {
-                    Picker("分类", selection: $category) {
+                Section(String(localized: "shopping.form.categorySection")) {
+                    Picker(String(localized: "shopping.form.categoryPicker"), selection: $category) {
                         ForEach(FoodCategories.values, id: \.self) { value in
-                            Text(value).tag(value)
+                            Text(FoodCategories.displayLabel(for: value)).tag(value)
                         }
                     }
                     .onChange(of: category) { _, _ in categoryEdited = true }
@@ -735,14 +735,14 @@ private struct ShoppingAddSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(Color.fkSurface)
-            .navigationTitle("添加食材")
+            .navigationTitle(String(localized: "shopping.addIngredient"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button(String(localized: "shopping.cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("添加") { save() }
+                    Button(String(localized: "shopping.add")) { save() }
                         .disabled(!canSave)
                 }
             }
@@ -761,11 +761,11 @@ private struct ShoppingAddSheet: View {
                 // Rejected as a duplicate — keep the sheet open and say so rather
                 // than closing as if it worked. (A same-unit duplicate would have
                 // merged its quantity into the existing row and reported `.added`.)
-                addError = "「\(trimmedName)」已在购物清单中"
+                addError = String(localized: "shopping.form.duplicate \(trimmedName)")
             case .failed:
                 // Read/persist error — nothing was written; never claim the item
                 // is already on the list. Keep the sheet open for a retry.
-                addError = "添加失败，请重试"
+                addError = String(localized: "shopping.form.addFailed")
             }
         }
     }
@@ -810,16 +810,16 @@ private struct ShoppingDetailEditSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("食材") {
+                Section(String(localized: "shopping.form.section")) {
                     Text(item.name)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                 }
-                Section("数量") {
-                    TextField("数量，如：2 个", text: $detail)
+                Section(String(localized: "shopping.editQuantitySection")) {
+                    TextField(String(localized: "shopping.quantityPlaceholder"), text: $detail)
                         .onChange(of: detail) { _, _ in saveError = nil }
                     if let parsed = parsedDetail {
                         HStack {
-                            Text("快速调整")
+                            Text(String(localized: "shopping.quickAdjust"))
                                 .font(.fkBodySmall)
                                 .foregroundStyle(Color.fkOnSurfaceVariant)
                             Spacer(minLength: FkSpacing.sm)
@@ -842,14 +842,14 @@ private struct ShoppingDetailEditSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(Color.fkSurface)
-            .navigationTitle("编辑数量")
+            .navigationTitle(String(localized: "shopping.editQuantity"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button(String(localized: "shopping.cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") { save() }
+                    Button(String(localized: "shopping.save")) { save() }
                         .disabled(isSaving)
                 }
             }
@@ -868,7 +868,7 @@ private struct ShoppingDetailEditSheet: View {
                 // Keep the sheet open and say so rather than closing as if it
                 // worked (the row may have been deleted by another member while
                 // this sheet was open, or the persist failed).
-                saveError = "保存失败，该食材可能已被移除"
+                saveError = String(localized: "shopping.saveFailedRemoved")
             }
         }
     }

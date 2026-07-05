@@ -28,7 +28,9 @@ struct CookModeProgress: Equatable, Sendable {
     func isLast(_ index: Int) -> Bool { clamped(index) >= stepCount - 1 }
 
     /// "第 x / n 步" (1-based, clamped).
-    func label(_ index: Int) -> String { "第 \(clamped(index) + 1) / \(stepCount) 步" }
+    func label(_ index: Int) -> String {
+        String(localized: "recipe.cookMode.stepLabel \(clamped(index) + 1) \(stepCount)")
+    }
 
     /// Completed fraction including the current page (drives the progress bar).
     func fraction(_ index: Int) -> Double {
@@ -107,7 +109,7 @@ struct CookModeView: View {
                     HStack(spacing: FkSpacing.xs) {
                         Image(systemName: "list.bullet")
                             .font(.system(size: 13, weight: .semibold))
-                        Text("食材")
+                        Text(String(localized: "recipe.cookMode.ingredients"))
                             .font(.fkLabelMedium)
                     }
                     .foregroundStyle(Color.fkPrimaryContainer)
@@ -116,7 +118,7 @@ struct CookModeView: View {
                     .background(Capsule().fill(Color.fkPrimarySoft))
                 }
                 .buttonStyle(.fkPressable)
-                .accessibilityLabel("查看食材清单")
+                .accessibilityLabel(String(localized: "recipe.cookMode.viewIngredients"))
             }
             Button {
                 dismiss()
@@ -128,7 +130,7 @@ struct CookModeView: View {
                     .background(Circle().fill(Color.fkSurfaceContainer))
             }
             .buttonStyle(.fkPressable)
-            .accessibilityLabel("退出烹饪模式")
+            .accessibilityLabel(String(localized: "recipe.cookMode.exit"))
         }
     }
 
@@ -210,7 +212,7 @@ struct CookModeView: View {
                 HStack(spacing: FkSpacing.xs) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 14, weight: .semibold))
-                    Text("上一步")
+                    Text(String(localized: "recipe.cookMode.previous"))
                         .font(.fkLabelLarge)
                 }
                 .foregroundStyle(progress.isFirst(stepIndex) ? Color.fkOnSurfaceVariant : Color.fkOnSurface)
@@ -220,7 +222,7 @@ struct CookModeView: View {
             }
             .buttonStyle(.fkPressable)
             .disabled(progress.isFirst(stepIndex))
-            .accessibilityLabel("上一步")
+            .accessibilityLabel(String(localized: "recipe.cookMode.previous"))
 
             if progress.isLast(stepIndex) {
                 Button {
@@ -230,7 +232,7 @@ struct CookModeView: View {
                     HStack(spacing: FkSpacing.xs) {
                         Image(systemName: "checkmark")
                             .font(.system(size: 14, weight: .semibold))
-                        Text("完成")
+                        Text(String(localized: "recipe.cookMode.finish"))
                             .font(.fkLabelLarge)
                     }
                     .foregroundStyle(Color.fkOnPrimary)
@@ -239,7 +241,7 @@ struct CookModeView: View {
                     .background(Capsule().fill(Color.fkPrimary))
                 }
                 .buttonStyle(.fkPressable)
-                .accessibilityLabel("完成并退出烹饪模式")
+                .accessibilityLabel(String(localized: "recipe.cookMode.finishAndExit"))
             } else {
                 Button {
                     withAnimation(FkMotion.animation(FkMotion.emphasized, reduceMotion: reduceMotion)) {
@@ -247,7 +249,7 @@ struct CookModeView: View {
                     }
                 } label: {
                     HStack(spacing: FkSpacing.xs) {
-                        Text("下一步")
+                        Text(String(localized: "recipe.cookMode.next"))
                             .font(.fkLabelLarge)
                         Image(systemName: "chevron.right")
                             .font(.system(size: 14, weight: .semibold))
@@ -258,7 +260,7 @@ struct CookModeView: View {
                     .background(Capsule().fill(Color.fkPrimary))
                 }
                 .buttonStyle(.fkPressable)
-                .accessibilityLabel("下一步")
+                .accessibilityLabel(String(localized: "recipe.cookMode.next"))
             }
         }
     }
@@ -294,11 +296,11 @@ struct CookModeView: View {
                 .padding(FkSpacing.lg)
             }
             .background(Color.fkSurface)
-            .navigationTitle("食材速查")
+            .navigationTitle(String(localized: "recipe.cookMode.ingredientsQuickCheck"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("关闭") { showIngredients = false }
+                    Button(String(localized: "recipe.cookMode.close")) { showIngredients = false }
                 }
             }
             .tint(.fkPrimary)
@@ -334,14 +336,14 @@ private struct StepCountdownButton: View {
         .onReceive(ticker) { _ in tick() }
         .accessibilityLabel(
             running
-                ? "暂停计时,剩余 \(CookStepTimer.countdown(remaining: remaining ?? 0))"
-                : "开始计时 \(CookStepTimer.label(seconds: totalSeconds))"
+                ? String(localized: "recipe.cookMode.timerPaused \(CookStepTimer.countdown(remaining: remaining ?? 0))")
+                : String(localized: "recipe.cookMode.timerStart \(CookStepTimer.label(seconds: totalSeconds))")
         )
     }
 
     private var label: String {
         if let remaining { return CookStepTimer.countdown(remaining: remaining) }
-        return "计时 · " + CookStepTimer.label(seconds: totalSeconds)
+        return String(localized: "recipe.cookMode.timerLabel \(CookStepTimer.label(seconds: totalSeconds))")
     }
 
     private func toggle() {

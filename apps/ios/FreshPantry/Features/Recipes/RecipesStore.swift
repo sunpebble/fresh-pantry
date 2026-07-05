@@ -23,10 +23,10 @@ final class RecipesStore {
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .explore: "探索"
-            case .available: "现有"
-            case .expiring: "用临期"
-            case .mine: "我的"
+            case .explore: String(localized: "recipe.tab.explore")
+            case .available: String(localized: "recipe.tab.available")
+            case .expiring: String(localized: "recipe.tab.expiring")
+            case .mine: String(localized: "recipe.tab.mine")
             }
         }
     }
@@ -46,9 +46,9 @@ final class RecipesStore {
         }
         var label: String {
             switch self {
-            case .all: "不限时间"
-            case .fast15: "15 分钟内"
-            case .fast30: "30 分钟内"
+            case .all: String(localized: "recipe.timeFilter.all")
+            case .fast15: String(localized: "recipe.timeFilter.within15")
+            case .fast30: String(localized: "recipe.timeFilter.within30")
             }
         }
     }

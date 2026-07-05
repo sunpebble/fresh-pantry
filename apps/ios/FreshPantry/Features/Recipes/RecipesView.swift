@@ -71,7 +71,7 @@ struct RecipesView: View {
                         .background(Color.fkSurface)
                 }
             }
-            .navigationTitle("食谱")
+            .navigationTitle(String(localized: "recipe.tabTitle"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) { dietaryToolbarButton }
                 ToolbarItem(placement: .topBarTrailing) { createToolbarButton }
@@ -222,7 +222,7 @@ struct RecipesView: View {
         pendingRecipeID = nil
         guard let match = store.recipes.first(where: { $0.id == id }) else {
             withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-                toast = "该食谱已删除"
+                toast = String(localized: "recipe.list.alreadyDeleted")
             }
             return
         }
@@ -274,7 +274,7 @@ struct RecipesView: View {
         }
         .disabled(store == nil)
         .tint(active ? .fkDanger : .fkOnSurfaceVariant)
-        .accessibilityLabel("忌口设置")
+        .accessibilityLabel(String(localized: "recipe.list.dietarySettings"))
     }
 
     /// "+" toolbar entry — a menu offering manual authoring or 拍照导入 (OCR + AI
@@ -284,18 +284,18 @@ struct RecipesView: View {
             Button {
                 showCreateForm = true
             } label: {
-                Label("手动新建", systemImage: "square.and.pencil")
+                Label(String(localized: "recipe.list.createManual"), systemImage: "square.and.pencil")
             }
             Button {
                 showPhotoImport = true
             } label: {
-                Label("拍照导入食谱", systemImage: "text.viewfinder")
+                Label(String(localized: "recipe.photoImport.title"), systemImage: "text.viewfinder")
             }
         } label: {
             Image(systemName: "plus")
         }
         .disabled(customStore == nil)
-        .accessibilityLabel("新建食谱")
+        .accessibilityLabel(String(localized: "recipe.list.createNew"))
     }
 
     /// Reloads both the merged browse list and the custom-recipe set (after an
@@ -373,7 +373,7 @@ private struct RecipesContent: View {
     var body: some View {
         ScrollView {
             VStack(spacing: FkSpacing.md) {
-                FkSearchField(text: $store.searchQuery, placeholder: "搜索菜谱或食材")
+                FkSearchField(text: $store.searchQuery, placeholder: String(localized: "recipe.list.searchPlaceholder"))
                     .padding(.horizontal, FkSpacing.lg)
 
                 tabPicker
@@ -454,17 +454,17 @@ private struct RecipesContent: View {
             )
         }
         .confirmationDialog(
-            "删除食谱",
+            String(localized: "recipe.detail.deleteTitle"),
             isPresented: Binding(get: { deleteRoute != nil }, set: { if !$0 { deleteRoute = nil } }),
             titleVisibility: .visible,
             presenting: deleteRoute
         ) { route in
-            Button("删除", role: .destructive) {
+            Button(String(localized: "recipe.detail.delete"), role: .destructive) {
                 Task { await deleteCustom(route.recipe) }
             }
-            Button("取消", role: .cancel) {}
+            Button(String(localized: "recipe.detail.cancel"), role: .cancel) {}
         } message: { route in
-            Text("确定要删除「\(route.recipe.name)」吗？此操作无法撤销。")
+            Text(String(localized: "recipe.detail.deleteConfirm \(route.recipe.name)"))
         }
         .overlay(alignment: .top) { actionToastBanner }
     }
@@ -480,14 +480,14 @@ private struct RecipesContent: View {
             store.toggleFavorite(recipe)
         } label: {
             Label(
-                store.isFavorite(recipe) ? "取消收藏" : "收藏",
+                store.isFavorite(recipe) ? String(localized: "recipe.detail.unfavorite") : String(localized: "recipe.detail.favorite"),
                 systemImage: store.isFavorite(recipe) ? "heart.slash" : "heart"
             )
         }
         Button {
             planRoute = RecipeActionRoute(recipe: recipe)
         } label: {
-            Label("加入膳食计划", systemImage: "calendar.badge.plus")
+            Label(String(localized: "recipe.detail.addToPlan"), systemImage: "calendar.badge.plus")
         }
         .disabled(mealPlanStore == nil)
         // 加购缺料 — only when an inventory context exists AND something is missing,
@@ -498,7 +498,7 @@ private struct RecipesContent: View {
                 Button {
                     Task { await addMissingToShopping(recipe) }
                 } label: {
-                    Label("加购缺少的 \(missing) 件", systemImage: "cart.badge.plus")
+                    Label(String(localized: "recipe.detail.addMissingItems \(missing)"), systemImage: "cart.badge.plus")
                 }
                 .disabled(shoppingStore == nil)
             }
@@ -509,12 +509,12 @@ private struct RecipesContent: View {
             Button {
                 editRoute = RecipeActionRoute(recipe: recipe)
             } label: {
-                Label("编辑", systemImage: "pencil")
+                Label(String(localized: "recipe.detail.edit"), systemImage: "pencil")
             }
             Button(role: .destructive) {
                 deleteRoute = RecipeActionRoute(recipe: recipe)
             } label: {
-                Label("删除", systemImage: "trash")
+                Label(String(localized: "recipe.detail.delete"), systemImage: "trash")
             }
         }
     }
@@ -537,9 +537,9 @@ private struct RecipesContent: View {
             }
         }
         if failed > 0 {
-            setActionToast(added > 0 ? "已添加 \(added) 项，部分添加失败，请重试" : "添加失败，请重试")
+            setActionToast(added > 0 ? String(localized: "recipe.detail.addedPartialFailed \(added)") : String(localized: "recipe.detail.addFailed"))
         } else {
-            setActionToast(added > 0 ? "已添加 \(added) 项到购物清单" : "缺少的食材已在购物清单中")
+            setActionToast(added > 0 ? String(localized: "recipe.detail.addedToShopping \(added)") : String(localized: "recipe.detail.missingAlreadyInShopping"))
         }
     }
 
@@ -549,17 +549,19 @@ private struct RecipesContent: View {
         guard let mealPlanStore else { return }
         let ok = await mealPlanStore.addDish(recipe: recipe, date: day)
         planRoute = nil
-        setActionToast(ok ? "已加入 \(PlanDayPickerSheet.dayLabel(day)) 的膳食计划" : "加入计划失败,请重试")
+        setActionToast(ok
+            ? String(localized: "recipe.detail.addedToPlan \(PlanDayPickerSheet.dayLabel(day))")
+            : String(localized: "recipe.detail.addToPlanFailed"))
     }
 
     /// Deletes a custom recipe, then refreshes the merged browse list + toasts.
     private func deleteCustom(_ recipe: Recipe) async {
         guard await customStore.remove(recipe.id) else {
-            setActionToast("删除失败,请重试")
+            setActionToast(String(localized: "recipe.list.deleteFailed"))
             return
         }
         await store.load()
-        setActionToast("已删除「\(recipe.name)」")
+        setActionToast(String(localized: "recipe.list.deleted \(recipe.name)"))
     }
 
     private func setActionToast(_ message: String) {
@@ -598,7 +600,7 @@ private struct RecipesContent: View {
     /// Primary list selector — the four parity tabs. A segmented control (vs the
     /// chip rows below, which are secondary narrowing filters).
     private var tabPicker: some View {
-        Picker("浏览方式", selection: $store.tab) {
+        Picker(String(localized: "recipe.list.browseMode"), selection: $store.tab) {
             ForEach(RecipesStore.Tab.allCases) { tab in
                 Text(tab.label).tag(tab)
             }
@@ -636,7 +638,7 @@ private struct RecipesContent: View {
                     // time / favorites / search at once (the tab stays put). Never
                     // "selected" (it's an action, not a toggle). Plain state set, like
                     // the sibling category/time chips.
-                    FkChip(label: "清除筛选", isSelected: false) {
+                    FkChip(label: String(localized: "recipe.list.clearFilters"), isSelected: false) {
                         store.clearFilters()
                     }
                 }
@@ -647,15 +649,15 @@ private struct RecipesContent: View {
                 ) { store.favoritesOnly.toggle() }
 
                 // #7 做过次数 sort — re-tap to turn off (back to source order).
-                FkChip(label: "最常做", isSelected: store.cookSort == .mostCooked) {
+                FkChip(label: String(localized: "recipe.list.mostCooked"), isSelected: store.cookSort == .mostCooked) {
                     store.cookSort = store.cookSort == .mostCooked ? .none : .mostCooked
                 }
-                FkChip(label: "好久没做", isSelected: store.cookSort == .leastRecent) {
+                FkChip(label: String(localized: "recipe.list.leastRecent"), isSelected: store.cookSort == .leastRecent) {
                     store.cookSort = store.cookSort == .leastRecent ? .none : .leastRecent
                 }
 
                 FkChip(
-                    label: "全部",
+                    label: String(localized: "recipe.list.allCategories"),
                     isSelected: store.effectiveCategory == nil
                 ) { store.categoryFilter = nil }
 
@@ -684,7 +686,7 @@ private struct RecipesContent: View {
         if !options.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: FkSpacing.sm) {
-                    FkChip(label: "全部标签", isSelected: store.selectedTag == nil) {
+                    FkChip(label: String(localized: "recipe.list.allTags"), isSelected: store.selectedTag == nil) {
                         store.selectedTag = nil
                     }
                     ForEach(options, id: \.self) { tag in
@@ -718,7 +720,7 @@ private struct RecipesContent: View {
             Image(systemName: "flame.fill")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Color.fkDanger)
-            Text("优先使用 \(store.expiringItemCount) 件临期食材")
+            Text(String(localized: "recipe.list.prioritizeExpiring \(store.expiringItemCount)"))
                 .font(.fkLabelLarge)
                 .foregroundStyle(Color.fkOnSurface)
             Spacer(minLength: 0)
@@ -746,7 +748,7 @@ private struct RecipesContent: View {
                         Image(systemName: "leaf.fill")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Color.fkPrimary)
-                        Text("\(store.currentSolarTermName()) · 时令推荐")
+                        Text(String(localized: "recipe.list.seasonalRecommendation \(store.currentSolarTermName())"))
                             .font(.fkTitleSmall)
                             .foregroundStyle(Color.fkOnSurface)
                     }
@@ -784,7 +786,7 @@ private struct RecipesContent: View {
         .frame(width: 130, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous).fill(Color.fkPrimarySoft))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("时令推荐 \(recipe.name)")
+        .accessibilityLabel(String(localized: "recipe.list.seasonalPick \(recipe.name)"))
     }
 
     @ViewBuilder
@@ -831,37 +833,37 @@ private struct RecipesContent: View {
         let message: String?
         var icon = "book"
         if searching {
-            title = "没有匹配「\(store.searchQuery.trimmed)」的菜谱"
-            message = "试试换个关键词"
+            title = String(localized: "recipe.list.emptySearch \(store.searchQuery.trimmed)")
+            message = String(localized: "recipe.list.tryAnotherKeyword")
             icon = "magnifyingglass"
         } else if store.favoritesOnly {
-            title = "还没有收藏的菜谱"
-            message = "点 ♥ 收藏几道喜欢的吧"
+            title = String(localized: "recipe.list.emptyFavorites")
+            message = String(localized: "recipe.list.emptyFavoritesHint")
             icon = "heart"
         } else if store.timeFilter != .all {
-            title = "没有「\(store.timeFilter.label)」的菜谱"
-            message = "放宽时间或换个分类试试"
+            title = String(localized: "recipe.list.emptyTimeFilter \(store.timeFilter.label)")
+            message = String(localized: "recipe.list.emptyTimeFilterHint")
             icon = "clock"
         } else if store.effectiveCategory != nil {
-            title = "该分类下暂无菜谱"
-            message = "换个分类试试"
+            title = String(localized: "recipe.list.emptyCategory")
+            message = String(localized: "recipe.list.emptyCategoryHint")
         } else {
             // Tab-specific empties (no query active) — match the Flutter copy.
             switch store.tab {
             case .available:
-                title = store.hasInventoryContext ? "现有食材还做不了整道菜" : "先去添加些库存食材"
-                message = store.hasInventoryContext ? "去采购缺少的食材,或看看「探索」" : "有了库存才能推荐能做的菜"
+                title = store.hasInventoryContext ? String(localized: "recipe.list.emptyAvailable") : String(localized: "recipe.list.emptyNoInventory")
+                message = store.hasInventoryContext ? String(localized: "recipe.list.emptyAvailableHint") : String(localized: "recipe.list.emptyNoInventoryHint")
                 icon = "refrigerator"
             case .expiring:
-                title = "暂无可用临期食材的菜谱"
-                message = "没有临期食材,或它们暂时配不出整道菜"
+                title = String(localized: "recipe.list.emptyExpiring")
+                message = String(localized: "recipe.list.emptyExpiringHint")
                 icon = "flame"
             case .mine:
-                title = "还没有自建食谱"
-                message = "点右上角「+」创建,或用 AI 从链接导入"
+                title = String(localized: "recipe.list.emptyMine")
+                message = String(localized: "recipe.list.emptyMineHint")
                 icon = "square.and.pencil"
             case .explore:
-                title = "暂无可探索的菜谱"
+                title = String(localized: "recipe.list.emptyExplore")
                 message = nil
             }
         }
@@ -883,17 +885,17 @@ private struct DietaryExclusionsSheet: View {
                 Section {
                     DietaryExclusionEditor(store: store)
                 } footer: {
-                    Text("含这些关键字的食材会在所有菜谱列表中被隐藏。")
+                    Text(String(localized: "recipe.list.dietaryHint"))
                 }
                 .listRowBackground(Color.fkSurfaceContainerLowest)
             }
             .scrollContentBackground(.hidden)
             .background(Color.fkSurface)
-            .navigationTitle("忌口")
+            .navigationTitle(String(localized: "recipe.list.dietary"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
+                    Button(String(localized: "recipe.detail.done")) { dismiss() }
                 }
             }
             .tint(.fkPrimary)
@@ -931,7 +933,7 @@ private struct FavoritesChip: View {
     }
 
     private var label: String {
-        count > 0 ? "收藏 · \(count)" : "收藏"
+        count > 0 ? String(localized: "recipe.list.favoritesCount \(count)") : String(localized: "recipe.detail.favorite")
     }
 }
 

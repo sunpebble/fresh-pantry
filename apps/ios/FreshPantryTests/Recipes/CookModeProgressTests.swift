@@ -56,9 +56,9 @@ struct CookModeProgressTests {
 
     @Test func labelIsOneBasedAndClamped() {
         let progress = CookModeProgress(stepCount: 3)
-        #expect(progress.label(0) == "第 1 / 3 步")
-        #expect(progress.label(2) == "第 3 / 3 步")
-        #expect(progress.label(99) == "第 3 / 3 步")
+        #expect(progress.label(0) == String(localized: "recipe.cookMode.stepLabel \(1) \(3)"))
+        #expect(progress.label(2) == String(localized: "recipe.cookMode.stepLabel \(3) \(3)"))
+        #expect(progress.label(99) == String(localized: "recipe.cookMode.stepLabel \(3) \(3)"))
     }
 
     @Test func fractionIncludesCurrentPage() {

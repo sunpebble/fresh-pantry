@@ -13,18 +13,18 @@ enum FoodLogSeeder {
     /// headline use-up rate is a realistic ~75% with a visible 抢救临期 count and a
     /// category breakdown that has both consumed + wasted rows.
     private static let specs: [(name: String, category: String, outcome: FoodLogOutcome, daysAgo: Int, wasExpiring: Bool)] = [
-        ("牛奶", FoodCategories.dairyAndEggs, .consumed, 1, true),
-        ("鸡蛋", FoodCategories.dairyAndEggs, .consumed, 2, false),
-        ("菠菜", FoodCategories.freshProduce, .wasted, 3, true),
-        ("苹果", FoodCategories.freshProduce, .consumed, 4, false),
-        ("西兰花", FoodCategories.freshProduce, .consumed, 6, true),
-        ("鸡胸肉", FoodCategories.meatAndSeafood, .consumed, 8, true),
-        ("三文鱼", FoodCategories.meatAndSeafood, .wasted, 11, true),
-        ("酸奶", FoodCategories.dairyAndEggs, .consumed, 13, false),
-        ("香菜", FoodCategories.herbsAndSpices, .wasted, 16, true),
-        ("番茄", FoodCategories.freshProduce, .consumed, 19, false),
-        ("豆腐", FoodCategories.other, .consumed, 23, false),
-        ("生菜", FoodCategories.freshProduce, .wasted, 27, true),
+        ("牛奶", FoodCategories.dairyAndEggs, .consumed, 1, true), // i18n:ignore DEBUG-only sample data, not UI text
+        ("鸡蛋", FoodCategories.dairyAndEggs, .consumed, 2, false), // i18n:ignore DEBUG-only sample data, not UI text
+        ("菠菜", FoodCategories.freshProduce, .wasted, 3, true), // i18n:ignore DEBUG-only sample data, not UI text
+        ("苹果", FoodCategories.freshProduce, .consumed, 4, false), // i18n:ignore DEBUG-only sample data, not UI text
+        ("西兰花", FoodCategories.freshProduce, .consumed, 6, true), // i18n:ignore DEBUG-only sample data, not UI text
+        ("鸡胸肉", FoodCategories.meatAndSeafood, .consumed, 8, true), // i18n:ignore DEBUG-only sample data, not UI text
+        ("三文鱼", FoodCategories.meatAndSeafood, .wasted, 11, true), // i18n:ignore DEBUG-only sample data, not UI text
+        ("酸奶", FoodCategories.dairyAndEggs, .consumed, 13, false), // i18n:ignore DEBUG-only sample data, not UI text
+        ("香菜", FoodCategories.herbsAndSpices, .wasted, 16, true), // i18n:ignore DEBUG-only sample data, not UI text
+        ("番茄", FoodCategories.freshProduce, .consumed, 19, false), // i18n:ignore DEBUG-only sample data, not UI text
+        ("豆腐", FoodCategories.other, .consumed, 23, false), // i18n:ignore DEBUG-only sample data, not UI text
+        ("生菜", FoodCategories.freshProduce, .wasted, 27, true), // i18n:ignore DEBUG-only sample data, not UI text
     ]
 
     /// Seeds samples if needed. Safe to call on every launch. `now` is injectable

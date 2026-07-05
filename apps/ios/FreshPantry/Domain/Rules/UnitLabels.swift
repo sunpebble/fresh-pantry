@@ -21,6 +21,12 @@ enum UnitLabels {
         "罐": "inventory.unit.guan", // i18n:ignore data identity, not UI text
         "包": "inventory.unit.bao", // i18n:ignore data identity, not UI text
         "份": "inventory.unit.fen", // i18n:ignore data identity, not UI text
+        "根": "inventory.unit.gen", // i18n:ignore data identity, not UI text
+        "颗": "inventory.unit.ke", // i18n:ignore data identity, not UI text
+        "片": "inventory.unit.pian", // i18n:ignore data identity, not UI text
+        "杯": "inventory.unit.bei", // i18n:ignore data identity, not UI text
+        "勺": "inventory.unit.shao", // i18n:ignore data identity, not UI text
+        "适量": "inventory.unit.shiliang", // i18n:ignore data identity, not UI text
     ]
 
     /// Localized display text for a unit. Falls back to the raw value for

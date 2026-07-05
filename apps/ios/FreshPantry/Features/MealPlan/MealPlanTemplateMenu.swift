@@ -17,30 +17,30 @@ struct MealPlanTemplateMenu: View {
                 templateName = ""
                 showSavePrompt = true
             } label: {
-                Label("本周存为模板", systemImage: "square.and.arrow.down")
+                Label(String(localized: "mealPlan.template.saveThisWeek"), systemImage: "square.and.arrow.down")
             }
             .disabled(store.entriesInVisibleWeek.allSatisfy { $0.recipeId.isEmpty })
 
             Button {
                 showApplySheet = true
             } label: {
-                Label("应用模板", systemImage: "square.and.arrow.up")
+                Label(String(localized: "mealPlan.template.apply"), systemImage: "square.and.arrow.up")
             }
             .disabled(store.templates().isEmpty)
         } label: {
             Image(systemName: "doc.on.doc")
         }
-        .accessibilityLabel("膳食模板")
-        .alert("存为模板", isPresented: $showSavePrompt) {
-            TextField("模板名称(如:工作日)", text: $templateName)
-            Button("取消", role: .cancel) {}
-            Button("保存") {
+        .accessibilityLabel(String(localized: "mealPlan.template.title"))
+        .alert(String(localized: "mealPlan.template.saveAs"), isPresented: $showSavePrompt) {
+            TextField(String(localized: "mealPlan.template.namePlaceholder"), text: $templateName)
+            Button(String(localized: "mealPlan.cancel"), role: .cancel) {}
+            Button(String(localized: "mealPlan.save")) {
                 if store.saveCurrentWeekAsTemplate(name: templateName) != nil {
-                    savedToast = "已存为模板"
+                    savedToast = String(localized: "mealPlan.template.saved")
                 }
             }
         } message: {
-            Text("把本周的菜谱保存成可复用的模板")
+            Text(String(localized: "mealPlan.template.saveHint"))
         }
         .sheet(isPresented: $showApplySheet) {
             MealPlanApplyTemplateSheet(store: store)
@@ -59,7 +59,7 @@ private struct MealPlanApplyTemplateSheet: View {
         NavigationStack {
             List {
                 if templates.isEmpty {
-                    Text("还没有保存的模板")
+                    Text(String(localized: "mealPlan.template.empty"))
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                 } else {
                     ForEach(templates) { template in
@@ -74,7 +74,7 @@ private struct MealPlanApplyTemplateSheet: View {
                                     Text(template.name)
                                         .font(.fkBodyLarge)
                                         .foregroundStyle(Color.fkOnSurface)
-                                    Text("\(template.items.count) 道菜")
+                                    Text(String(localized: "mealPlan.template.dishCount \(template.items.count)"))
                                         .font(.fkLabelSmall)
                                         .foregroundStyle(Color.fkOnSurfaceVariant)
                                 }
@@ -90,11 +90,11 @@ private struct MealPlanApplyTemplateSheet: View {
                     }
                 }
             }
-            .navigationTitle("应用模板")
+            .navigationTitle(String(localized: "mealPlan.template.apply"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("完成") { dismiss() }
+                    Button(String(localized: "mealPlan.done")) { dismiss() }
                 }
             }
             .onAppear { templates = store.templates() }

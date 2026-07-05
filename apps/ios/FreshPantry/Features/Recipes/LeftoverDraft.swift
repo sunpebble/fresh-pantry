@@ -9,7 +9,7 @@ struct LeftoverDraft: Equatable, Sendable {
     /// refrigerated leftovers at 3–4 days, so the prefill takes the cautious 3.
     static let defaultShelfLifeDays = 3
     /// Leftovers are tracked in servings — one cooked dish defaults to 1 份.
-    static let unit = "份"
+    static let unit = "份" // i18n:ignore data identity (stored unit value), not UI text
 
     /// User-editable dish name, prefilled from the recipe.
     var name: String

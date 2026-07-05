@@ -29,21 +29,21 @@ struct LeftoverIntakeSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("剩菜") {
-                    TextField("名称（必填）", text: $draft.name)
+                Section(String(localized: "recipe.leftover.section")) {
+                    TextField(String(localized: "recipe.leftover.namePlaceholder"), text: $draft.name)
                         .onChange(of: draft.name) { _, _ in saveError = nil }
                     Stepper(value: $draft.servings, in: 1...99) {
-                        labeledValue("份数", "\(draft.servings) 份")
+                        labeledValue(String(localized: "recipe.leftover.servings"), String(localized: "recipe.leftover.servingsValue \(draft.servings)"))
                     }
                 }
                 Section {
                     Stepper(value: $draft.days, in: 1...14) {
-                        labeledValue("保质期", "\(draft.days) 天")
+                        labeledValue(String(localized: "recipe.leftover.shelfLife"), String(localized: "recipe.leftover.daysValue \(draft.days)"))
                     }
                 } header: {
-                    Text("冷藏保质期")
+                    Text(String(localized: "recipe.leftover.fridgeShelfLife"))
                 } footer: {
-                    Text("将存入冷藏，分类「其他」。熟食冷藏建议 3 天内吃完。")
+                    Text(String(localized: "recipe.leftover.fridgeFooter"))
                 }
                 if let saveError {
                     Section {
@@ -55,14 +55,14 @@ struct LeftoverIntakeSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(Color.fkSurface)
-            .navigationTitle("存为剩菜")
+            .navigationTitle(String(localized: "recipe.leftover.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button(String(localized: "recipe.leftover.cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isSaving ? "保存中…" : "保存") { Task { await save() } }
+                    Button(isSaving ? String(localized: "recipe.leftover.saving") : String(localized: "recipe.leftover.save")) { Task { await save() } }
                         .font(.fkLabelLarge)
                         .disabled(!draft.canSave || isSaving)
                 }
@@ -97,12 +97,12 @@ struct LeftoverIntakeSheet: View {
         )
         let outcome = await controller.apply([draft.proposal()])
         if outcome.limitReached {
-            saveError = "免费版最多记录 \(FreeTier.inventoryLimit) 条库存"
+            saveError = String(localized: "recipe.leftover.freeTierLimit \(FreeTier.inventoryLimit)")
         } else if outcome.persisted {
             onSaved(draft.name.trimmed)
             dismiss()
         } else {
-            saveError = "保存失败，请重试。"
+            saveError = String(localized: "recipe.leftover.saveFailed")
         }
     }
 }

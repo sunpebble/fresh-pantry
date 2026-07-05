@@ -78,8 +78,8 @@ struct MealPlanClosedLoopTests {
     // MARK: 缺料卡标题
 
     @Test func cardTitleSaysThisWeekOnlyOnTheCurrentWeek() {
-        #expect(MealPlanMissing.cardTitle(count: 3, isCurrentWeek: true) == "本周还缺 3 样食材")
-        #expect(MealPlanMissing.cardTitle(count: 1, isCurrentWeek: false) == "这一周还缺 1 样食材")
+        #expect(MealPlanMissing.cardTitle(count: 3, isCurrentWeek: true) == String(localized: "mealPlan.missing.thisWeek \(3)"))
+        #expect(MealPlanMissing.cardTitle(count: 1, isCurrentWeek: false) == String(localized: "mealPlan.missing.thatWeek \(1)"))
     }
 
     // MARK: 「今天」入口显隐
