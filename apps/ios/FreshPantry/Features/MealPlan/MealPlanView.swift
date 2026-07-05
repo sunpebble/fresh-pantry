@@ -319,7 +319,10 @@ private struct MealPlanContent: View {
     /// EVERY assignment.
     private func reloadMatchContext() async {
         let scope = dependencies.householdID
-        let bundled = await dependencies.localRecipeRepository.loadAll()
+        let bundled = RecipeLocalizer.apply(
+            RecipeLocalizer.load(),
+            to: await dependencies.localRecipeRepository.loadAll()
+        )
         let custom = (try? await dependencies.customRecipeRepository.loadAllFor(scope)) ?? []
         guard scope == dependencies.householdID, !Task.isCancelled else { return }
         var byId: [String: Recipe] = [:]

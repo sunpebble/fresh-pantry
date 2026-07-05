@@ -163,10 +163,10 @@ struct EntityRoundTripTests {
             Recipe(id: "x", name: "n", category: "", difficulty: d,
                    cookingMinutes: 30, description: "", ingredients: [], steps: [])
         }
-        #expect(recipe(0).difficultyLabel == "难度未设置")
-        #expect(recipe(-1).difficultyLabel == "难度未设置")
-        #expect(recipe(3).difficultyLabel == "难度 3/5")
-        #expect(recipe(9).difficultyLabel == "难度 5/5") // clamp to 5
+        #expect(recipe(0).difficultyLabel == String(localized: "recipe.difficulty.unset"))
+        #expect(recipe(-1).difficultyLabel == String(localized: "recipe.difficulty.unset"))
+        #expect(recipe(3).difficultyLabel == String(localized: "recipe.difficulty.level \(3)"))
+        #expect(recipe(9).difficultyLabel == String(localized: "recipe.difficulty.level \(5)")) // clamp to 5
     }
 
     // MARK: Backward-compatible decode (LOSSLESS) — the highest-risk path.

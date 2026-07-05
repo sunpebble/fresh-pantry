@@ -42,7 +42,8 @@ struct RecipesStoreTests {
             localRepository: StubBundle.repository(bundled),
             customRepository: customRepo,
             favoritesStore: FavoritesStore(defaults: isolatedDefaults()),
-            householdID: household
+            householdID: household,
+            recipeOverlay: nil
         )
         await store.load()
         return store
@@ -300,7 +301,8 @@ struct RecipesStoreTests {
             favoritesStore: FavoritesStore(defaults: isolatedDefaults()),
             householdID: household,
             inventoryRepository: inventoryRepo,
-            dietaryStore: dietary
+            dietaryStore: dietary,
+            recipeOverlay: nil
         )
         await store.load()
         return store

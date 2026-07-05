@@ -748,7 +748,8 @@ struct CustomRecipeFormView: View {
         }
         return FkPickerSheet(
             title: String(localized: "recipe.form.selectCategory"),
-            options: options.map { FkPickerOption(value: $0, label: $0) } + [FkPickerOption(value: customSentinel, label: String(localized: "recipe.form.otherCategory"))],
+            options: options.map { FkPickerOption(value: $0, label: RecipePresets.categoryDisplayLabel(for: $0)) }
+                + [FkPickerOption(value: customSentinel, label: String(localized: "recipe.form.otherCategory"))],
             selected: draft.category
         ) { value in
             if value == customSentinel {

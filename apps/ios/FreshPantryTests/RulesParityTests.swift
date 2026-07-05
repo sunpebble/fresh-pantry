@@ -95,10 +95,10 @@ struct RulesParityTests {
             let expiry = now.addingTimeInterval(TimeInterval(offsetDays * 86400))
             return ExpiryCalculator.expiryLabelFor(expiry, now: now)
         }
-        #expect(label(-3) == "已过期3天")
-        #expect(label(0) == "今天过期")
-        #expect(label(1) == "明天过期")
-        #expect(label(5) == "5天后过期")
+        #expect(label(-3) == String(localized: "expiry.expiredDays \(3)"))
+        #expect(label(0) == String(localized: "expiry.today"))
+        #expect(label(1) == String(localized: "expiry.tomorrow"))
+        #expect(label(5) == String(localized: "expiry.inDays \(5)"))
     }
 
     @Test func freshnessStateTiers() {

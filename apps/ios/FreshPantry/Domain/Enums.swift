@@ -37,12 +37,12 @@ enum IconType: String, Codable, Sendable, CaseIterable {
         }
     }
 
-    /// Human-readable Chinese label — single source of truth for chips/providers.
+    /// Human-readable label — single source of truth for chips/providers.
     var storageAreaLabel: String {
         switch self {
-        case .fridge: return "冰箱"
-        case .freezer: return "冷冻室"
-        case .pantry: return "食品柜"
+        case .fridge: return String(localized: "storage.fridge")
+        case .freezer: return String(localized: "storage.freezer")
+        case .pantry: return String(localized: "storage.pantry")
         }
     }
 }

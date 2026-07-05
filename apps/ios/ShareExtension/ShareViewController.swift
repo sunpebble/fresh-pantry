@@ -40,13 +40,13 @@ final class ShareViewController: UIViewController {
     /// cannot toast, and closing silently is indistinguishable from success).
     private func showUnsupportedNotice(foundURL: Bool) {
         let alert = UIAlertController(
-            title: "无法导入",
+            title: String(localized: "share.unsupported.title"),
             message: foundURL
-                ? "目前仅支持「懒饭」和「下厨房」的菜谱链接。"
-                : "分享内容里没有找到链接，目前仅支持「懒饭」和「下厨房」的菜谱链接。",
+                ? String(localized: "share.unsupported.message.unsupportedURL")
+                : String(localized: "share.unsupported.message.noURL"),
             preferredStyle: .alert
         )
-        alert.addAction(UIAlertAction(title: "知道了", style: .default) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: String(localized: "share.unsupported.action"), style: .default) { [weak self] _ in
             self?.complete()
         })
         present(alert, animated: true)

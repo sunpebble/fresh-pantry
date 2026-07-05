@@ -93,7 +93,7 @@ final class AuthService {
         guard let backend else { return }
         let trimmed = email.trimmed
         guard isValidEmail(trimmed) else {
-            errorMessage = "请输入有效的邮箱地址"
+            errorMessage = String(localized: "auth.error.invalidEmail")
             return
         }
         await run {
@@ -111,7 +111,7 @@ final class AuthService {
         guard let backend, case let .codeSent(email) = state else { return }
         let trimmed = code.trimmed
         guard !trimmed.isEmpty else {
-            errorMessage = "请输入验证码"
+            errorMessage = String(localized: "auth.error.emptyCode")
             return
         }
         await run {

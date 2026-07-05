@@ -17,6 +17,7 @@ final class GlobalSearchStore {
     private let localRecipeRepository: LocalRecipeRepository
     private let customRecipeRepository: CustomRecipeRepository
     private let householdID: String
+    private let recipeOverlay: [String: RecipeOverlayEntry]?
 
     var query: String = ""
     private(set) var inventory: [Ingredient] = []
@@ -28,13 +29,15 @@ final class GlobalSearchStore {
         shoppingRepository: ShoppingRepository,
         localRecipeRepository: LocalRecipeRepository,
         customRecipeRepository: CustomRecipeRepository,
-        householdID: String
+        householdID: String,
+        recipeOverlay: [String: RecipeOverlayEntry]? = RecipeLocalizer.load()
     ) {
         self.inventoryRepository = inventoryRepository
         self.shoppingRepository = shoppingRepository
         self.localRecipeRepository = localRecipeRepository
         self.customRecipeRepository = customRecipeRepository
         self.householdID = householdID
+        self.recipeOverlay = recipeOverlay
     }
 
     /// Snapshots inventory, shopping, and the merged recipe corpus. Best-effort:
@@ -46,7 +49,7 @@ final class GlobalSearchStore {
         async let customLoad = (try? await customRecipeRepository.loadAllFor(householdID)) ?? []
         inventory = await inventoryLoad
         shopping = await shoppingLoad
-        let bundled = await bundledLoad
+        let bundled = RecipeLocalizer.apply(recipeOverlay, to: await bundledLoad)
         let custom = await customLoad
         recipes = RecipesStore.merge(bundled: bundled, custom: custom)
     }

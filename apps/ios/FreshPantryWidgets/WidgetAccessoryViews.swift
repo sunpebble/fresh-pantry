@@ -46,22 +46,22 @@ struct AccessoryRectangularView: View {
         VStack(alignment: .leading, spacing: 2) {
             switch entry.content {
             case .expiring:
-                Label("临期 \(entry.bundle.expiring.needsAttentionCount) 件", systemImage: "exclamationmark.triangle")
+                Label(String(localized: "widget.accessory.expiring \(entry.bundle.expiring.needsAttentionCount)"), systemImage: "exclamationmark.triangle")
                 if let first = entry.bundle.expiring.items.first {
                     Text(first.name).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                 }
             case .mealPlan:
-                Label("今日 \(entry.bundle.mealPlan.items.count) 顿", systemImage: "fork.knife")
+                Label(String(localized: "widget.accessory.mealPlan \(entry.bundle.mealPlan.items.count)"), systemImage: "fork.knife")
                 if let first = entry.bundle.mealPlan.items.first {
                     Text(first.title).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                 }
             case .shopping:
-                Label("待买 \(entry.bundle.shopping.uncheckedCount) 项", systemImage: "cart")
+                Label(String(localized: "widget.accessory.shopping \(entry.bundle.shopping.uncheckedCount)"), systemImage: "cart")
                 if let first = entry.bundle.shopping.items.first(where: { !$0.isChecked }) {
                     Text(first.name).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                 }
             case .waste:
-                Label("用掉率 \(entry.bundle.waste.useUpPercent)%", systemImage: "leaf")
+                Label(String(localized: "widget.accessory.waste \(entry.bundle.waste.useUpPercent)"), systemImage: "leaf")
             }
         }
         .widgetURL(URL(string: contentDeepLink(entry.content)))
@@ -77,10 +77,10 @@ struct AccessoryInlineView: View {
     }
     private var inlineText: String {
         switch entry.content {
-        case .expiring: return "临期 \(entry.bundle.expiring.needsAttentionCount) 件"
-        case .mealPlan: return "今日 \(entry.bundle.mealPlan.items.count) 顿"
-        case .shopping: return "待买 \(entry.bundle.shopping.uncheckedCount) 项"
-        case .waste: return "用掉率 \(entry.bundle.waste.useUpPercent)%"
+        case .expiring: return String(localized: "widget.accessory.expiring \(entry.bundle.expiring.needsAttentionCount)")
+        case .mealPlan: return String(localized: "widget.accessory.mealPlan \(entry.bundle.mealPlan.items.count)")
+        case .shopping: return String(localized: "widget.accessory.shopping \(entry.bundle.shopping.uncheckedCount)")
+        case .waste: return String(localized: "widget.accessory.waste \(entry.bundle.waste.useUpPercent)")
         }
     }
 }

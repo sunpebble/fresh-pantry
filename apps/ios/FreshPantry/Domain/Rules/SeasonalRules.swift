@@ -12,32 +12,32 @@ enum SeasonalRules {
     }
 
     enum Season: String, Sendable, CaseIterable {
-        case spring = "春", summer = "夏", autumn = "秋", winter = "冬"
+        case spring = "春", summer = "夏", autumn = "秋", winter = "冬" // i18n:ignore domain matching data, not UI text
     }
 
     /// The 24 terms in calendar order (小寒 ~Jan 5 … 冬至 ~Dec 22).
     static let terms: [SolarTerm] = [
-        .init(name: "小寒", month: 1, day: 5), .init(name: "大寒", month: 1, day: 20),
-        .init(name: "立春", month: 2, day: 4), .init(name: "雨水", month: 2, day: 19),
-        .init(name: "惊蛰", month: 3, day: 5), .init(name: "春分", month: 3, day: 20),
-        .init(name: "清明", month: 4, day: 4), .init(name: "谷雨", month: 4, day: 20),
-        .init(name: "立夏", month: 5, day: 5), .init(name: "小满", month: 5, day: 21),
-        .init(name: "芒种", month: 6, day: 5), .init(name: "夏至", month: 6, day: 21),
-        .init(name: "小暑", month: 7, day: 7), .init(name: "大暑", month: 7, day: 22),
-        .init(name: "立秋", month: 8, day: 7), .init(name: "处暑", month: 8, day: 23),
-        .init(name: "白露", month: 9, day: 7), .init(name: "秋分", month: 9, day: 23),
-        .init(name: "寒露", month: 10, day: 8), .init(name: "霜降", month: 10, day: 23),
-        .init(name: "立冬", month: 11, day: 7), .init(name: "小雪", month: 11, day: 22),
-        .init(name: "大雪", month: 12, day: 7), .init(name: "冬至", month: 12, day: 22),
+        .init(name: "小寒", month: 1, day: 5), .init(name: "大寒", month: 1, day: 20), // i18n:ignore domain matching data, not UI text
+        .init(name: "立春", month: 2, day: 4), .init(name: "雨水", month: 2, day: 19), // i18n:ignore domain matching data, not UI text
+        .init(name: "惊蛰", month: 3, day: 5), .init(name: "春分", month: 3, day: 20), // i18n:ignore domain matching data, not UI text
+        .init(name: "清明", month: 4, day: 4), .init(name: "谷雨", month: 4, day: 20), // i18n:ignore domain matching data, not UI text
+        .init(name: "立夏", month: 5, day: 5), .init(name: "小满", month: 5, day: 21), // i18n:ignore domain matching data, not UI text
+        .init(name: "芒种", month: 6, day: 5), .init(name: "夏至", month: 6, day: 21), // i18n:ignore domain matching data, not UI text
+        .init(name: "小暑", month: 7, day: 7), .init(name: "大暑", month: 7, day: 22), // i18n:ignore domain matching data, not UI text
+        .init(name: "立秋", month: 8, day: 7), .init(name: "处暑", month: 8, day: 23), // i18n:ignore domain matching data, not UI text
+        .init(name: "白露", month: 9, day: 7), .init(name: "秋分", month: 9, day: 23), // i18n:ignore domain matching data, not UI text
+        .init(name: "寒露", month: 10, day: 8), .init(name: "霜降", month: 10, day: 23), // i18n:ignore domain matching data, not UI text
+        .init(name: "立冬", month: 11, day: 7), .init(name: "小雪", month: 11, day: 22), // i18n:ignore domain matching data, not UI text
+        .init(name: "大雪", month: 12, day: 7), .init(name: "冬至", month: 12, day: 22), // i18n:ignore domain matching data, not UI text
     ]
 
     /// In-season ingredient keywords per season (substring matched against recipe
     /// ingredient names / title / tags).
     static let seasonalIngredients: [Season: [String]] = [
-        .spring: ["春笋", "韭菜", "菠菜", "豌豆", "荠菜", "香椿", "草莓", "芦笋", "蚕豆", "莴笋"],
-        .summer: ["黄瓜", "西瓜", "冬瓜", "丝瓜", "苦瓜", "茄子", "番茄", "绿豆", "豆角", "毛豆"],
-        .autumn: ["莲藕", "南瓜", "板栗", "山药", "柚子", "梨", "螃蟹", "芋头", "菱角", "红薯"],
-        .winter: ["白萝卜", "大白菜", "羊肉", "冬笋", "橘子", "白菜", "萝卜", "山楂", "韭黄", "菜花"],
+        .spring: ["春笋", "韭菜", "菠菜", "豌豆", "荠菜", "香椿", "草莓", "芦笋", "蚕豆", "莴笋"], // i18n:ignore domain matching data, not UI text
+        .summer: ["黄瓜", "西瓜", "冬瓜", "丝瓜", "苦瓜", "茄子", "番茄", "绿豆", "豆角", "毛豆"], // i18n:ignore domain matching data, not UI text
+        .autumn: ["莲藕", "南瓜", "板栗", "山药", "柚子", "梨", "螃蟹", "芋头", "菱角", "红薯"], // i18n:ignore domain matching data, not UI text
+        .winter: ["白萝卜", "大白菜", "羊肉", "冬笋", "橘子", "白菜", "萝卜", "山楂", "韭黄", "菜花"], // i18n:ignore domain matching data, not UI text
     ]
 
     /// The solar term in effect on `date` — the last term whose start ≤ date

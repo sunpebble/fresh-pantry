@@ -107,11 +107,11 @@ enum IntakeProposalFactory {
 
     private static func parseDetail(_ detail: String) -> (qty: String, unit: String) {
         let trimmed = detail.trimmed
-        if trimmed.isEmpty { return ("1", "份") }
+        if trimmed.isEmpty { return ("1", "份") } // i18n:ignore data identity, not UI text
         guard let parsed = QuantityText.parseLeadingQuantity(trimmed) else {
             return ("1", trimmed)
         }
-        return (parsed.magnitude, parsed.remainder.isEmpty ? "份" : parsed.remainder)
+        return (parsed.magnitude, parsed.remainder.isEmpty ? "份" : parsed.remainder) // i18n:ignore data identity, not UI text
     }
 
     /// Storage of the first inventory row matching name+unit, else `.fridge`.

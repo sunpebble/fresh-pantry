@@ -16,13 +16,13 @@ struct PendingSyncBadge: View {
         Image(systemName: "arrow.up.circle")
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(Color.fkOnSurfaceVariant)
-            .accessibilityLabel("待同步")
+            .accessibilityLabel(String(localized: "sync.pending.accessibility"))
     }
 }
 
 #Preview {
     HStack(spacing: 12) {
-        Text("番茄")
+        Text("Tomato")
         PendingSyncBadge()
     }
     .padding()

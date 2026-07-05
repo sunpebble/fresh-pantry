@@ -1,0 +1,62 @@
+{
+  "sourceLanguage": "zh-Hans",
+  "strings": {
+    "CFBundleDisplayName": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fresh Pantry"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fresh Pantry"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fresh Pantry"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fresh Pantry"
+          }
+        }
+      }
+    },
+    "CFBundleName": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FreshPantryWidgets"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FreshPantryWidgets"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FreshPantryWidgets"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FreshPantryWidgets"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

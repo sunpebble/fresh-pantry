@@ -343,14 +343,14 @@ struct DeadLetterDisplayItem: Sendable, Hashable, Identifiable {
 
     static func label(for type: SyncEntityType) -> String {
         switch type {
-        case .inventoryItem: "库存"
-        case .shoppingItem: "购物"
-        case .customRecipe: "食谱"
-        case .mealPlanEntry: "膳食计划"
-        case .foodLogEntry: "食材去向"
-        case .favoriteRecipe: "收藏"
-        case .dietaryPreference: "忌口"
-        case .householdConfig: "家庭设置"
+        case .inventoryItem: String(localized: "sync.entity.inventoryItem")
+        case .shoppingItem: String(localized: "sync.entity.shoppingItem")
+        case .customRecipe: String(localized: "sync.entity.customRecipe")
+        case .mealPlanEntry: String(localized: "sync.entity.mealPlanEntry")
+        case .foodLogEntry: String(localized: "sync.entity.foodLogEntry")
+        case .favoriteRecipe: String(localized: "sync.entity.favoriteRecipe")
+        case .dietaryPreference: String(localized: "sync.entity.dietaryPreference")
+        case .householdConfig: String(localized: "sync.entity.householdConfig")
         }
     }
 }

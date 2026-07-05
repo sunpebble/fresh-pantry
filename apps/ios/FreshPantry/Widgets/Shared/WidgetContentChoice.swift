@@ -10,23 +10,23 @@ import AppIntents
 public enum WidgetContentChoice: String, AppEnum {
     case expiring, mealPlan, shopping, waste
 
-    public static var typeDisplayRepresentation: TypeDisplayRepresentation { "组件内容" }
+    public static var typeDisplayRepresentation: TypeDisplayRepresentation { "widget.content.type" }
     public static var caseDisplayRepresentations: [WidgetContentChoice: DisplayRepresentation] {
         [
-            .expiring: "临期食材",
-            .mealPlan: "今日膳食",
-            .shopping: "购物清单",
-            .waste: "减废成效",
+            .expiring: "widgetContent.expiring",
+            .mealPlan: "widgetContent.mealPlan",
+            .shopping: "widgetContent.shopping",
+            .waste: "widgetContent.waste",
         ]
     }
 }
 
 /// widget 配置 intent:选择展示哪类内容(默认临期)。
 public struct SelectWidgetContentIntent: WidgetConfigurationIntent {
-    public static var title: LocalizedStringResource { "选择内容" }
-    public static var description: IntentDescription { "选择小组件展示的内容" }
+    public static var title: LocalizedStringResource { "widget.select.title" }
+    public static var description: IntentDescription { "widget.select.description" }
 
-    @Parameter(title: "内容", default: .expiring)
+    @Parameter(title: "widget.select.parameter.content", default: .expiring)
     public var content: WidgetContentChoice
 
     public init() {}

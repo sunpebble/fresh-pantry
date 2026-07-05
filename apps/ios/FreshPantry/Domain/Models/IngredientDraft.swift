@@ -57,7 +57,7 @@ struct IngredientDraft {
                 expiryDate: expiry,
                 now: now
             ),
-            expiryLabel: expiry == nil ? "新鲜" : ExpiryCalculator.expiryLabelFor(expiry!, now: now),
+            expiryLabel: expiry == nil ? String(localized: "expiry.fresh") : ExpiryCalculator.expiryLabelFor(expiry!, now: now),
             category: category.value,
             storage: storage.value ?? .fridge,
             expiryDate: expiry,

@@ -15,6 +15,17 @@ export interface CloudflareEnricherOptions {
   log?: (msg: string) => void;
 }
 
+export interface CfChatOptions {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  maxTokens?: number;
+  maxRetries?: number;
+  fetchImpl?: typeof fetch;
+  sleep?: (ms: number) => Promise<void>;
+  log?: (msg: string) => void;
+}
+
 /** EnrichmentSchema → JSON Schema(模块加载时算一次)。strict 留给 v.parse 兜底。 */
 export const ENRICHMENT_JSON_SCHEMA = toJsonSchema(EnrichmentSchema, { errorMode: 'ignore' });
 
@@ -46,7 +57,12 @@ function classify(status: number, body: unknown): Classified {
   return { ok: false, retryable, message };
 }
 
-export function createCloudflareEnricher(opts: CloudflareEnricherOptions): RecipeEnricher {
+/** 通用 chat-completions 调用(json_schema 响应),含容量/限流/5xx 重试。 */
+export function createCfChat(opts: CfChatOptions): (
+  messages: { role: string; content: string }[],
+  schemaName: string,
+  jsonSchema: unknown,
+) => Promise<string> {
   if (!opts.apiKey) {
     throw new Error('CLOUDFLARE_AI_API_KEY 未设置,无法使用 CloudflareEnricher');
   }
@@ -61,7 +77,11 @@ export function createCloudflareEnricher(opts: CloudflareEnricherOptions): Recip
     await sleep(base + base * 0.25 * Math.random()); // 抖动避免雪崩
   }
 
-  async function call(messages: { role: string; content: string }[]): Promise<string> {
+  return async function call(
+    messages: { role: string; content: string }[],
+    schemaName: string,
+    jsonSchema: unknown,
+  ): Promise<string> {
     let lastMsg = '';
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       let status = 0;
@@ -73,7 +93,7 @@ export function createCloudflareEnricher(opts: CloudflareEnricherOptions): Recip
           body: JSON.stringify({
             model: opts.model,
             messages,
-            response_format: { type: 'json_schema', json_schema: { name: 'enrichment', schema: ENRICHMENT_JSON_SCHEMA } },
+            response_format: { type: 'json_schema', json_schema: { name: schemaName, schema: jsonSchema } },
             max_tokens: maxTokens,
           }),
         });
@@ -92,7 +112,12 @@ export function createCloudflareEnricher(opts: CloudflareEnricherOptions): Recip
     }
     // 理论上不可达:循环内每条路径(成功 return / 不可重试 throw / 耗尽 throw)都已终止;仅为类型收敛。
     throw new Error(`Cloudflare 重试耗尽: ${lastMsg}`);
-  }
+  };
+}
+
+export function createCloudflareEnricher(opts: CloudflareEnricherOptions): RecipeEnricher {
+  const call = createCfChat(opts);
+  const log = opts.log ?? (() => {});
 
   async function parseOrThrow(content: string): Promise<Enrichment> {
     return v.parse(EnrichmentSchema, JSON.parse(extractJson(content)));
@@ -104,7 +129,7 @@ export function createCloudflareEnricher(opts: CloudflareEnricherOptions): Recip
         { role: 'system', content: RECIPE_CLEANER_INSTRUCTIONS },
         { role: 'user', content: buildEnrichPrompt(raw) },
       ];
-      const first = await call(messages);
+      const first = await call(messages, 'enrichment', ENRICHMENT_JSON_SCHEMA);
       try {
         return await parseOrThrow(first);
       } catch (e) {
@@ -113,7 +138,7 @@ export function createCloudflareEnricher(opts: CloudflareEnricherOptions): Recip
           ...messages,
           { role: 'assistant', content: first },
           { role: 'user', content: '只返回符合要求的 JSON 对象,不要任何解释或 markdown 代码块。' },
-        ]);
+        ], 'enrichment', ENRICHMENT_JSON_SCHEMA);
         return await parseOrThrow(retried);
       }
     },

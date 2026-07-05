@@ -11,6 +11,7 @@
     "recipes:test": "cd apps/recipe-pipeline && npm test",
     "recipes:build": "cd apps/recipe-pipeline && npm run build:recipes",
     "recipes:build:dry": "cd apps/recipe-pipeline && npm run build:recipes:dry",
+    "recipes:i18n": "cd apps/recipe-pipeline && npm run i18n:recipes",
     "check": "npm run api:test && npm run recipes:test"
   }
 }

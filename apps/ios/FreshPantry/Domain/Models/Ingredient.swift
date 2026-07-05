@@ -120,7 +120,7 @@ struct Ingredient: Equatable, Hashable, Sendable, Codable {
         id = c.decodeLenientIfPresent(String.self, forKey: .id) ?? ""
         name = c.decodeLenientIfPresent(String.self, forKey: .name) ?? ""
         quantity = c.decodeLenientIfPresent(String.self, forKey: .quantity) ?? "1"
-        unit = c.decodeLenientIfPresent(String.self, forKey: .unit) ?? "份"
+        unit = c.decodeLenientIfPresent(String.self, forKey: .unit) ?? "份" // i18n:ignore data identity, not UI text
         imageUrl = c.decodeLenientIfPresent(String.self, forKey: .imageUrl) ?? ""
         freshnessPercent = c.decodeDoubleIfPresent(forKey: .freshnessPercent) ?? 1.0
         state = FreshnessState.fromName(c.decodeLenientIfPresent(String.self, forKey: .state))

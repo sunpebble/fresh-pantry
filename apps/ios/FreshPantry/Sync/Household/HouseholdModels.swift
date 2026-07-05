@@ -109,7 +109,7 @@ struct HouseholdMember: Equatable, Sendable, Codable {
         if !nickname.isEmpty { return nickname }
         if !displayName.isEmpty { return displayName }
         if !email.isEmpty { return email }
-        return "成员"
+        return String(localized: "household.member.fallback")
     }
 }
 

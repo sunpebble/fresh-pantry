@@ -11,10 +11,10 @@ struct ExpiringWidgetView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 4) {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                Text("临期 \(snapshot.needsAttentionCount) 件").font(.headline)
+                Text(String(localized: "widget.expiring.title \(snapshot.needsAttentionCount)")).font(.headline)
             }
             if snapshot.expiredCount > 0 {
-                Text("已过期 \(snapshot.expiredCount)").font(.caption).foregroundStyle(.red)
+                Text(String(localized: "widget.expiring.expired \(snapshot.expiredCount)")).font(.caption).foregroundStyle(.red)
             }
             if family != .systemSmall {
                 ForEach(Array(snapshot.items.prefix(rowLimit).enumerated()), id: \.offset) { _, item in
@@ -26,7 +26,7 @@ struct ExpiringWidgetView: View {
                 }
             }
             if snapshot.needsAttentionCount == 0 {
-                Text("都很新鲜 🎉").font(.caption).foregroundStyle(.secondary)
+                Text("widget.expiring.allFresh").font(.caption).foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -35,10 +35,10 @@ struct ExpiringWidgetView: View {
 
     private var rowLimit: Int { family == .systemLarge ? 8 : 3 }
     private func daysLabel(_ days: Int?) -> String {
-        guard let days else { return "无到期" }
-        if days < 0 { return "已过期" }
-        if days == 0 { return "今天到期" }
-        return "还剩 \(days) 天"
+        guard let days else { return String(localized: "widget.expiring.noExpiry") }
+        if days < 0 { return String(localized: "widget.expiring.expiredShort") }
+        if days == 0 { return String(localized: "widget.expiring.today") }
+        return String(localized: "widget.expiring.remainingDays \(days)")
     }
 }
 
@@ -52,12 +52,12 @@ struct MealPlanWidgetView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 4) {
                 Image(systemName: "fork.knife").foregroundStyle(.green)
-                Text("今日膳食").font(.headline)
+                Text("widget.mealPlan.title").font(.headline)
             }
             if snapshot.items.isEmpty {
-                Text("今天还没排菜").font(.caption).foregroundStyle(.secondary)
+                Text("widget.mealPlan.empty").font(.caption).foregroundStyle(.secondary)
             } else if family == .systemSmall {
-                Text("\(snapshot.items.count) 顿待做").font(.subheadline)
+                Text(String(localized: "widget.mealPlan.pending \(snapshot.items.count)")).font(.subheadline)
             } else {
                 ForEach(Array(snapshot.items.prefix(rowLimit).enumerated()), id: \.offset) { _, item in
                     HStack {
@@ -101,7 +101,7 @@ struct ShoppingWidgetView: View {
                 }
             }
             if snapshot.items.isEmpty {
-                Text("清单是空的").font(.caption).foregroundStyle(.secondary)
+                Text("widget.shopping.empty").font(.caption).foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -113,7 +113,7 @@ struct ShoppingWidgetView: View {
     private var header: some View {
         HStack(spacing: 4) {
             Image(systemName: "cart.fill").foregroundStyle(.blue)
-            Text("购物 \(snapshot.uncheckedCount) 项待买").font(.headline)
+            Text(String(localized: "widget.shopping.title \(snapshot.uncheckedCount)")).font(.headline)
         }
     }
 
@@ -149,15 +149,15 @@ struct WasteWidgetView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 4) {
                 Image(systemName: "leaf.fill").foregroundStyle(.green)
-                Text("减废成效").font(.headline)
+                Text("widget.waste.title").font(.headline)
             }
             if snapshot.isEmpty {
-                Text("还没有记录").font(.caption).foregroundStyle(.secondary)
+                Text("widget.waste.empty").font(.caption).foregroundStyle(.secondary)
             } else {
                 Text("\(snapshot.useUpPercent)%").font(.system(size: family == .systemSmall ? 34 : 28, weight: .bold))
-                Text("用掉率").font(.caption).foregroundStyle(.secondary)
+                Text("widget.waste.useUpRate").font(.caption).foregroundStyle(.secondary)
                 if family != .systemSmall {
-                    Text("抢救临期 \(snapshot.rescuedCount) 件 · 浪费 \(snapshot.wastedCount) 件")
+                    Text(String(localized: "widget.waste.summary \(snapshot.rescuedCount) \(snapshot.wastedCount)"))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }

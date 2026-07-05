@@ -14,8 +14,8 @@ struct ExpiringWidget: Widget {
         StaticConfiguration(kind: "FreshPantryExpiring", provider: SnapshotProvider(content: .expiring)) { entry in
             WidgetRootView(entry: entry).containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("临期食材")
-        .description("临期 / 过期食材一览")
+        .configurationDisplayName("widget.config.expiring.name")
+        .description("widget.config.expiring.description")
         .supportedFamilies(allFamilies)
     }
 }
@@ -25,8 +25,8 @@ struct MealPlanWidget: Widget {
         StaticConfiguration(kind: "FreshPantryMealPlan", provider: SnapshotProvider(content: .mealPlan)) { entry in
             WidgetRootView(entry: entry).containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("今日膳食")
-        .description("今天要做的菜")
+        .configurationDisplayName("widget.config.mealPlan.name")
+        .description("widget.config.mealPlan.description")
         .supportedFamilies(allFamilies)
     }
 }
@@ -36,8 +36,8 @@ struct ShoppingWidget: Widget {
         StaticConfiguration(kind: "FreshPantryShopping", provider: SnapshotProvider(content: .shopping)) { entry in
             WidgetRootView(entry: entry).containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("购物清单")
-        .description("待买清单,可直接勾选")
+        .configurationDisplayName("widget.config.shopping.name")
+        .description("widget.config.shopping.description")
         .supportedFamilies(allFamilies)
     }
 }
@@ -47,8 +47,8 @@ struct WasteWidget: Widget {
         StaticConfiguration(kind: "FreshPantryWaste", provider: SnapshotProvider(content: .waste)) { entry in
             WidgetRootView(entry: entry).containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("减废成效")
-        .description("用掉率与减废统计")
+        .configurationDisplayName("widget.config.waste.name")
+        .description("widget.config.waste.description")
         .supportedFamilies(allFamilies)
     }
 }
@@ -64,8 +64,8 @@ struct ConfigurableWidget: Widget {
         ) { entry in
             WidgetRootView(entry: entry).containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Fresh Pantry(可配置)")
-        .description("一个组件切换 临期 / 今日膳食 / 购物 / 减废")
+        .configurationDisplayName("widget.config.configurable.name")
+        .description("widget.config.configurable.description")
         .supportedFamilies(allFamilies)
     }
 }

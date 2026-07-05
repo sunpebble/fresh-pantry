@@ -15,11 +15,11 @@ enum IngredientFactory {
         return Ingredient(
             name: item.name,
             quantity: "1",
-            unit: "份",
+            unit: "份", // i18n:ignore data identity, not UI text
             imageUrl: item.imageUrl ?? "",
             freshnessPercent: expiryDate == nil ? 0.85 : 1.0,
             state: .fresh,
-            expiryLabel: expiryDate == nil ? "新鲜" : "\(shelfLifeDays!)天后过期",
+            expiryLabel: expiryDate == nil ? String(localized: "expiry.fresh") : String(localized: "expiry.inDays \(shelfLifeDays!)"),
             category: FoodKnowledge.categoryFor(item.name),
             storage: defaults?.storage ?? .fridge,
             expiryDate: expiryDate,

@@ -118,7 +118,7 @@ actor InventoryRepository {
                 rememberedCategory ?? FoodKnowledge.lookup(name)?.category
             )
             let storage = IconType.fromName(entry.storage.isEmpty ? "fridge" : entry.storage)
-            let unit = entry.unit.isEmpty ? "个" : entry.unit
+            let unit = entry.unit.isEmpty ? "个" : entry.unit // i18n:ignore data identity, not UI text
             return FrequentItem(
                 name: name,
                 category: category,

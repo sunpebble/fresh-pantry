@@ -38,5 +38,5 @@ struct AuthFailure: Error, Equatable {
     let message: String
 
     /// The generic fallback when no more specific message is available.
-    static let generic = AuthFailure(message: "操作失败,请稍后重试")
+    static let generic = AuthFailure(message: String(localized: "auth.error.generic"))
 }

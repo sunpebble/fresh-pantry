@@ -12,7 +12,7 @@ import AppIntents
 /// ToggleShoppingItemIntent in com.sunpebble.freshpantry"。app 模块 `FreshPantry.*` 与 widget
 /// 模块 `FreshPantryWidgets.*` mangled 名不同但**不失配**(匹配按 identifier,各 bundle 自洽)。
 public struct ToggleShoppingItemIntent: AppIntent {
-    public static var title: LocalizedStringResource { "勾选购物项" }
+    public static var title: LocalizedStringResource { "widget.toggleShopping.title" }
 
     @Parameter(title: "itemID")
     public var itemID: String

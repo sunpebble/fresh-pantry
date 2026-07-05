@@ -26,7 +26,7 @@ struct HouseholdView: View {
                     .background(Color.fkSurface)
             }
         }
-        .navigationTitle("家庭共享")
+        .navigationTitle("household.title")
         .navigationBarTitleDisplayMode(.inline)
         .background(Color.fkSurface)
         .tint(.fkPrimary)
@@ -100,8 +100,8 @@ private struct HouseholdContent: View {
     private var localOnlyState: some View {
         FkEmptyState(
             systemImage: "wifi.slash",
-            title: "本地模式",
-            message: "此版本未配置 Supabase 后端,家庭共享不可用。库存、采购与食谱仍可在本机正常使用。"
+            title: String(localized: "household.local.title"),
+            message: String(localized: "household.local.message")
         )
     }
 
@@ -111,13 +111,13 @@ private struct HouseholdContent: View {
         VStack(spacing: FkSpacing.lg) {
             FkEmptyState(
                 systemImage: "person.crop.circle.badge.exclamationmark",
-                title: "请先登录",
-                message: "登录后即可创建或加入家庭,在成员间同步库存、采购与食谱。"
+                title: String(localized: "household.signIn.title"),
+                message: String(localized: "household.signIn.message")
             )
             NavigationLink {
                 LoginView(auth: auth)
             } label: {
-                Label("前往登录", systemImage: "arrow.right.circle")
+                Label(String(localized: "household.action.goSignIn"), systemImage: "arrow.right.circle")
                     .font(.fkLabelLarge)
                     .foregroundStyle(Color.fkOnPrimary)
                     .frame(maxWidth: .infinity)
@@ -179,9 +179,9 @@ private struct OnboardHouseholdSection: View {
             createCard
             joinCard
         }
-        .alert("加入后个人数据将不可见", isPresented: $showPersonalDataAlert) {
-            Button("取消", role: .cancel) { pendingJoin = nil }
-            Button("仍要加入", role: .destructive) {
+        .alert("household.personal.alert.title", isPresented: $showPersonalDataAlert) {
+            Button("household.action.cancel", role: .cancel) { pendingJoin = nil }
+            Button("household.action.stillJoin", role: .destructive) {
                 Task {
                     guard dependencies.proStore.isPro else {
                         showPaywall = true
@@ -194,7 +194,7 @@ private struct OnboardHouseholdSection: View {
             }
         } message: {
             if let snapshot = personalSnapshot {
-                Text("本机还有 \(snapshot.summaryText)。加入家庭后，这些数据会留在个人 scope，暂时不可见。如需保留并共享，请先「创建家庭」。")
+                Text(String(localized: "household.personal.alert.messageWithCreate \(snapshot.summaryText)"))
             }
         }
         .sheet(isPresented: $showPaywall) {
@@ -230,14 +230,14 @@ private struct OnboardHouseholdSection: View {
     private var createCard: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.lg) {
-                FkSectionHeader(title: "创建家庭")
-                Text("创建后,本机现有的库存、采购、食谱、膳食计划与食材去向记录会成为这个家庭的初始数据。")
+                FkSectionHeader(title: String(localized: "household.create.title"))
+                Text("household.create.description")
                     .font(.fkBodySmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
-                FkFormField(label: "家庭名称") {
-                    FkTextFieldPill(text: $newName, placeholder: "例如:我的家")
+                FkFormField(label: String(localized: "household.create.nameLabel")) {
+                    FkTextFieldPill(text: $newName, placeholder: String(localized: "household.create.namePlaceholder"))
                 }
-                primaryButton(title: "创建", busyTitle: "创建中…", systemImage: "house") {
+                primaryButton(title: String(localized: "household.action.create"), busyTitle: String(localized: "household.action.creating"), systemImage: "house") {
                     guard dependencies.proStore.isPro else {
                         showPaywall = true
                         return
@@ -255,22 +255,22 @@ private struct OnboardHouseholdSection: View {
     private var joinCard: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.lg) {
-                FkSectionHeader(title: "加入家庭")
-                Text("粘贴邀请链接或邀请码,确认信息后即可加入。")
+                FkSectionHeader(title: String(localized: "household.join.title"))
+                Text("household.join.description")
                     .font(.fkBodySmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
-                FkFormField(label: "邀请链接 / 邀请码") {
-                    FkTextFieldPill(text: $inviteInput, placeholder: "粘贴邀请链接或邀请码")
+                FkFormField(label: String(localized: "household.join.inputLabel")) {
+                    FkTextFieldPill(text: $inviteInput, placeholder: String(localized: "household.join.inputPlaceholder"))
                 }
                 HStack(spacing: FkSpacing.md) {
-                    secondaryButton(title: "预览", systemImage: "eye") {
+                    secondaryButton(title: String(localized: "household.action.preview"), systemImage: "eye") {
                         Task { await store.previewInvite(input: inviteInput) }
                     }
                     .disabled(store.isSubmitting || inviteInput.trimmed.isEmpty)
                 }
                 if let preview = store.invitePreview {
                     InvitePreviewCard(preview: preview, signedInEmail: auth.signedInEmail)
-                    primaryButton(title: "接受邀请", busyTitle: "加入中…", systemImage: "person.badge.plus") {
+                    primaryButton(title: String(localized: "household.action.acceptInvite"), busyTitle: String(localized: "household.action.joining"), systemImage: "person.badge.plus") {
                         Task { await requestJoin(.input(inviteInput)) }
                     }
                     .disabled(store.isSubmitting || joinEmailMismatch(preview))
@@ -359,41 +359,41 @@ private struct ActiveHouseholdSection: View {
             }
             dangerCard
         }
-        .alert("移除成员", isPresented: removeMemberBinding, presenting: memberToRemove) { member in
-            Button("移除", role: .destructive) {
+        .alert("household.dialog.removeMember.title", isPresented: removeMemberBinding, presenting: memberToRemove) { member in
+            Button("household.action.remove", role: .destructive) {
                 Task { await store.removeMember(member.userId) }
             }
-            Button("取消", role: .cancel) {}
+            Button("household.action.cancel", role: .cancel) {}
         } message: { member in
-            Text("确定将 \(member.email.isEmpty ? "该成员" : member.email) 从家庭中移除吗?")
+            Text(String(localized: "household.dialog.removeMember.message \(member.email.isEmpty ? String(localized: "household.member.thatMember") : member.email)"))
         }
-        .confirmationDialog("解散家庭", isPresented: $showDissolveConfirm, titleVisibility: .visible) {
-            Button("解散家庭", role: .destructive) {
+        .confirmationDialog("household.dialog.dissolve.title", isPresented: $showDissolveConfirm, titleVisibility: .visible) {
+            Button("household.action.dissolve", role: .destructive) {
                 Task { await store.dissolveHousehold() }
             }
-            Button("取消", role: .cancel) {}
+            Button("household.action.cancel", role: .cancel) {}
         } message: {
-            Text("解散后,该家庭的所有共享数据将被删除,且无法恢复。")
+            Text("household.dialog.dissolve.message")
         }
-        .confirmationDialog("离开家庭", isPresented: $showLeaveConfirm, titleVisibility: .visible) {
-            Button("离开家庭", role: .destructive) {
+        .confirmationDialog("household.dialog.leave.title", isPresented: $showLeaveConfirm, titleVisibility: .visible) {
+            Button("household.action.leave", role: .destructive) {
                 Task { await store.leaveHousehold() }
             }
-            Button("取消", role: .cancel) {}
+            Button("household.action.cancel", role: .cancel) {}
         } message: {
-            Text("离开后,你将不再看到该家庭的共享数据。")
+            Text("household.dialog.leave.message")
         }
-        .confirmationDialog("撤销邀请", isPresented: revokeInviteBinding, presenting: inviteToRevoke) { invite in
-            Button("撤销邀请", role: .destructive) {
+        .confirmationDialog("household.dialog.revokeInvite.title", isPresented: revokeInviteBinding, presenting: inviteToRevoke) { invite in
+            Button("household.action.revokeInvite", role: .destructive) {
                 Task { await store.revokeInvite(householdId: store.selectedHouseholdId, inviteId: invite.id) }
             }
-            Button("取消", role: .cancel) {}
+            Button("household.action.cancel", role: .cancel) {}
         } message: { invite in
-            Text("确定撤销发给 \(invite.email.isEmpty ? "该邮箱" : invite.email) 的邀请吗?")
+            Text(String(localized: "household.dialog.revokeInvite.message \(invite.email.isEmpty ? String(localized: "household.invite.thatEmail") : invite.email)"))
         }
-        .alert("加入后个人数据将不可见", isPresented: $showPersonalDataAlert) {
-            Button("取消", role: .cancel) { pendingJoinId = nil }
-            Button("仍要加入", role: .destructive) {
+        .alert("household.personal.alert.title", isPresented: $showPersonalDataAlert) {
+            Button("household.action.cancel", role: .cancel) { pendingJoinId = nil }
+            Button("household.action.stillJoin", role: .destructive) {
                 Task {
                     guard dependencies.proStore.isPro else {
                         showPaywall = true
@@ -406,7 +406,7 @@ private struct ActiveHouseholdSection: View {
             }
         } message: {
             if let snapshot = personalSnapshot {
-                Text("本机还有 \(snapshot.summaryText)。加入家庭后，这些数据会留在个人 scope，暂时不可见。")
+                Text(String(localized: "household.personal.alert.message \(snapshot.summaryText)"))
             }
         }
         .sheet(isPresented: $showPaywall) {
@@ -436,16 +436,16 @@ private struct ActiveHouseholdSection: View {
     private var ownerPendingInvitesCard: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.md) {
-                FkSectionHeader(title: "待处理邀请", count: store.ownerPendingInvites.count)
+                FkSectionHeader(title: String(localized: "household.section.ownerPendingInvites"), count: store.ownerPendingInvites.count)
                 ForEach(store.ownerPendingInvites, id: \.id) { invite in
                     HStack(spacing: FkSpacing.md) {
                         Image(systemName: "envelope.badge.clock")
                             .foregroundStyle(Color.fkPrimary)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(invite.email.isEmpty ? "开放邀请" : invite.email)
+                            Text(invite.email.isEmpty ? String(localized: "household.invite.open") : invite.email)
                                 .font(.fkBodyMedium)
                                 .foregroundStyle(Color.fkOnSurface)
-                            Text("待接受")
+                            Text("household.invite.pendingStatus")
                                 .font(.fkLabelSmall)
                                 .foregroundStyle(Color.fkOnSurfaceVariant)
                         }
@@ -458,7 +458,7 @@ private struct ActiveHouseholdSection: View {
                         }
                         .buttonStyle(.fkPressable)
                         .disabled(store.isSubmitting)
-                        .accessibilityLabel("撤销邀请")
+                        .accessibilityLabel(String(localized: "household.action.revokeInvite"))
                     }
                 }
             }
@@ -470,13 +470,13 @@ private struct ActiveHouseholdSection: View {
     private var householdCard: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.md) {
-                Text("当前家庭")
+                Text("household.active.current")
                     .font(.fkLabelSmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
                 if isRenaming {
-                    FkTextFieldPill(text: $renameText, placeholder: "家庭名称")
+                    FkTextFieldPill(text: $renameText, placeholder: String(localized: "household.create.nameLabel"))
                     HStack(spacing: FkSpacing.md) {
-                        Button("保存") {
+                        Button("household.action.save") {
                             Task {
                                 await store.updateHouseholdName(renameText)
                                 if store.errorMessage == nil { isRenaming = false }
@@ -486,7 +486,7 @@ private struct ActiveHouseholdSection: View {
                         .foregroundStyle(Color.fkPrimary)
                         .buttonStyle(.fkPressable)
                         .disabled(store.isSubmitting || renameText.trimmed.isEmpty)
-                        Button("取消") { isRenaming = false }
+                        Button("household.action.cancel") { isRenaming = false }
                             .font(.fkLabelLarge)
                             .foregroundStyle(Color.fkOnSurfaceVariant)
                             .buttonStyle(.fkPressable)
@@ -504,7 +504,7 @@ private struct ActiveHouseholdSection: View {
                                 renameText = store.selectedHousehold?.name ?? ""
                                 isRenaming = true
                             } label: {
-                                Label("重命名", systemImage: "pencil")
+                                Label(String(localized: "household.action.rename"), systemImage: "pencil")
                                     .font(.fkLabelMedium)
                                     .foregroundStyle(Color.fkPrimary)
                             }
@@ -521,7 +521,7 @@ private struct ActiveHouseholdSection: View {
     private var switcherCard: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.md) {
-                FkSectionHeader(title: "切换家庭")
+                FkSectionHeader(title: String(localized: "household.section.switch"))
                 ForEach(store.households, id: \.id) { household in
                     Button {
                         Task { await store.switchHousehold(household.id) }
@@ -550,9 +550,9 @@ private struct ActiveHouseholdSection: View {
     private var membersCard: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.md) {
-                FkSectionHeader(title: "成员", count: store.members.count)
+                FkSectionHeader(title: String(localized: "household.section.members"), count: store.members.count)
                 if store.members.isEmpty {
-                    Text("暂无成员信息")
+                    Text("household.member.empty")
                         .font(.fkBodySmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                 } else {
@@ -571,7 +571,7 @@ private struct ActiveHouseholdSection: View {
                 Text(member.resolvedName)
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurface)
-                Text(member.role == "owner" ? "所有者" : "成员")
+                Text(member.role == "owner" ? String(localized: "household.role.owner") : String(localized: "household.role.member"))
                     .font(.fkLabelSmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             }
@@ -584,7 +584,7 @@ private struct ActiveHouseholdSection: View {
                         .foregroundStyle(Color.fkDanger)
                 }
                 .buttonStyle(.fkPressable)
-                .accessibilityLabel("移除成员 \(member.resolvedName)")
+                .accessibilityLabel(String(localized: "household.member.removeAccessibility \(member.resolvedName)"))
                 .disabled(store.isSubmitting)
             }
         }
@@ -620,11 +620,11 @@ private struct ActiveHouseholdSection: View {
     private var inviteCard: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.md) {
-                FkSectionHeader(title: "邀请成员")
-                Text("可选填邀请对象的邮箱;留空则生成一个开放邀请链接。")
+                FkSectionHeader(title: String(localized: "household.inviteCard.title"))
+                Text("household.inviteCard.description")
                     .font(.fkBodySmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
-                FkTextFieldPill(text: $inviteEmail, placeholder: "对方邮箱(可选)", keyboard: .emailAddress)
+                FkTextFieldPill(text: $inviteEmail, placeholder: String(localized: "household.invite.emailPlaceholder"), keyboard: .emailAddress)
                 Button {
                     Task { shareURL = await store.createInvite(email: inviteEmail) }
                 } label: {
@@ -634,7 +634,7 @@ private struct ActiveHouseholdSection: View {
                         } else {
                             Image(systemName: "envelope.badge")
                         }
-                        Text(store.isSubmitting ? "生成中…" : "生成邀请链接")
+                        Text(store.isSubmitting ? String(localized: "household.action.generating") : String(localized: "household.action.generateInvite"))
                     }
                     .font(.fkLabelLarge)
                     .foregroundStyle(Color.fkOnPrimary)
@@ -672,7 +672,7 @@ private struct ActiveHouseholdSection: View {
                             .stroke(Color.fkOutlineVariant)
                     )
             }
-            Text("邀请链接")
+            Text("household.invite.linkLabel")
                 .font(.fkLabelSmall)
                 .foregroundStyle(Color.fkOnSurfaceVariant)
             Text(url)
@@ -684,13 +684,13 @@ private struct ActiveHouseholdSection: View {
                 Button {
                     UIPasteboard.general.string = url
                 } label: {
-                    Label("复制链接", systemImage: "doc.on.doc")
+                    Label(String(localized: "household.action.copyLink"), systemImage: "doc.on.doc")
                         .font(.fkLabelMedium)
                         .foregroundStyle(Color.fkPrimary)
                 }
                 .buttonStyle(.fkPressable)
                 ShareLink(item: url) {
-                    Label("分享链接", systemImage: "square.and.arrow.up")
+                    Label(String(localized: "household.action.shareLink"), systemImage: "square.and.arrow.up")
                         .font(.fkLabelMedium)
                         .foregroundStyle(Color.fkPrimary)
                 }
@@ -698,9 +698,9 @@ private struct ActiveHouseholdSection: View {
                 if let qr {
                     ShareLink(
                         item: InviteQRImage(image: qr),
-                        preview: SharePreview("家庭邀请二维码", image: Image(uiImage: qr))
+                        preview: SharePreview(String(localized: "household.invite.qrPreview"), image: Image(uiImage: qr))
                     ) {
-                        Label("分享二维码", systemImage: "qrcode")
+                        Label(String(localized: "household.action.shareQR"), systemImage: "qrcode")
                             .font(.fkLabelMedium)
                             .foregroundStyle(Color.fkPrimary)
                     }
@@ -721,9 +721,9 @@ private struct ActiveHouseholdSection: View {
     private var dangerCard: some View {
         VStack(spacing: FkSpacing.md) {
             if isOwner {
-                dangerButton(title: "解散家庭", systemImage: "trash") { showDissolveConfirm = true }
+                dangerButton(title: String(localized: "household.action.dissolve"), systemImage: "trash") { showDissolveConfirm = true }
             } else {
-                dangerButton(title: "离开家庭", systemImage: "rectangle.portrait.and.arrow.right") {
+                dangerButton(title: String(localized: "household.action.leave"), systemImage: "rectangle.portrait.and.arrow.right") {
                     showLeaveConfirm = true
                 }
             }
@@ -772,31 +772,31 @@ private struct InvitePreviewCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: FkSpacing.sm) {
-            Text(preview.householdName.isEmpty ? "家庭" : preview.householdName)
+            Text(preview.householdName.isEmpty ? String(localized: "household.preview.defaultName") : preview.householdName)
                 .font(.fkTitleSmall)
                 .foregroundStyle(Color.fkOnSurface)
             if !preview.ownerEmail.isEmpty {
-                Text("所有者:\(preview.ownerEmail)")
+                Text(String(localized: "household.invite.ownerLabel \(preview.ownerEmail)"))
                     .font(.fkBodySmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             }
             // Directed invites carry the invited email — surface it so the user can
             // confirm the invite was meant for them (Flutter parity).
             if !preview.invitedEmail.isEmpty {
-                Text("邀请邮箱:\(preview.invitedEmail)")
+                Text(String(localized: "household.invite.emailLabel \(preview.invitedEmail)"))
                     .font(.fkBodySmall)
                     .foregroundStyle(emailMismatch ? Color.fkDanger : Color.fkOnSurfaceVariant)
             }
             if emailMismatch, let signedInEmail {
-                Text("此邀请发给 \(preview.invitedEmail)，你当前登录的是 \(signedInEmail)。")
+                Text(String(localized: "household.invite.emailMismatch \(preview.invitedEmail) \(signedInEmail)"))
                     .font(.fkBodySmall)
                     .foregroundStyle(Color.fkDanger)
             }
             HStack(spacing: FkSpacing.lg) {
-                stat(count: preview.memberCount, label: "成员")
-                stat(count: preview.inventoryCount, label: "库存")
-                stat(count: preview.shoppingCount, label: "采购")
-                stat(count: preview.customRecipeCount, label: "食谱")
+                stat(count: preview.memberCount, label: String(localized: "household.stat.members"))
+                stat(count: preview.inventoryCount, label: String(localized: "household.stat.inventory"))
+                stat(count: preview.shoppingCount, label: String(localized: "household.stat.shopping"))
+                stat(count: preview.customRecipeCount, label: String(localized: "household.stat.recipes"))
             }
         }
         .padding(FkSpacing.md)
@@ -858,19 +858,19 @@ struct InvitePreviewSheet: View {
                 .padding(FkSpacing.lg)
             }
             .background(Color.fkSurface)
-            .navigationTitle("家庭邀请")
+            .navigationTitle("household.sheet.inviteTitle")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("稍后处理") { dismiss() }
+                    Button("household.action.later") { dismiss() }
                 }
             }
             .tint(.fkPrimary)
         }
         .presentationDetents([.medium, .large])
-        .alert("加入后个人数据将不可见", isPresented: $showPersonalDataAlert) {
-            Button("取消", role: .cancel) {}
-            Button("仍要加入", role: .destructive) {
+        .alert("household.personal.alert.title", isPresented: $showPersonalDataAlert) {
+            Button("household.action.cancel", role: .cancel) {}
+            Button("household.action.stillJoin", role: .destructive) {
                 Task {
                     guard let store else { return }
                     guard dependencies.proStore.isPro else {
@@ -886,7 +886,7 @@ struct InvitePreviewSheet: View {
             }
         } message: {
             if let snapshot = personalSnapshot {
-                Text("本机还有 \(snapshot.summaryText)。加入家庭后，这些数据会留在个人 scope，暂时不可见。如需保留并共享，请先「创建家庭」。")
+                Text(String(localized: "household.personal.alert.messageWithCreate \(snapshot.summaryText)"))
             }
         }
         .sheet(isPresented: $showPaywall) {
@@ -925,7 +925,7 @@ struct InvitePreviewSheet: View {
                     } else {
                         Image(systemName: "person.badge.plus")
                     }
-                    Text(store.isSubmitting ? "加入中…" : "接受邀请")
+                    Text(store.isSubmitting ? String(localized: "household.action.joining") : String(localized: "household.action.acceptInvite"))
                 }
                 .font(.fkLabelLarge)
                 .foregroundStyle(Color.fkOnPrimary)
@@ -988,7 +988,7 @@ private struct IncomingInvitesCard: View {
     var body: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.md) {
-                FkSectionHeader(title: "收到的邀请", count: store.pendingInvitePreviews.count)
+                FkSectionHeader(title: String(localized: "household.section.incomingInvites"), count: store.pendingInvitePreviews.count)
                 ForEach(store.pendingInvitePreviews, id: \.inviteId) { preview in
                     VStack(alignment: .leading, spacing: FkSpacing.sm) {
                         InvitePreviewCard(preview: preview, signedInEmail: auth.signedInEmail)
@@ -1001,7 +1001,7 @@ private struct IncomingInvitesCard: View {
                                 } else {
                                     Image(systemName: "person.badge.plus")
                                 }
-                                Text(store.isSubmitting ? "加入中…" : "接受邀请")
+                                Text(store.isSubmitting ? String(localized: "household.action.joining") : String(localized: "household.action.acceptInvite"))
                             }
                             .font(.fkLabelLarge)
                             .foregroundStyle(Color.fkOnPrimary)

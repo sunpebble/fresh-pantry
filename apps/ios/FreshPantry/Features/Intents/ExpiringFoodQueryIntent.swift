@@ -9,9 +9,9 @@ import Foundation
 /// the names expiring within the default window. No mutation, no sync, no
 /// household scoping required.
 struct ExpiringFoodQueryIntent: AppIntent {
-    static let title: LocalizedStringResource = "查临期食材"
+    static let title: LocalizedStringResource = "intent.expiring.title"
 
-    static let description = IntentDescription("查看接下来几天内即将过期的食材。")
+    static let description = IntentDescription("intent.expiring.description")
 
     /// Pure read — answer in place without foregrounding the app.
     static let openAppWhenRun: Bool = false
@@ -29,8 +29,8 @@ struct ExpiringFoodQueryIntent: AppIntent {
 
         let window = ExpiringFoodSelector.defaultWithinDays
         guard !names.isEmpty else {
-            return .result(dialog: IntentDialog("暂无临期食材"))
+            return .result(dialog: IntentDialog("intent.expiring.empty"))
         }
-        return .result(dialog: IntentDialog("\(window)天内到期:\(names.joined(separator: "、"))"))
+        return .result(dialog: IntentDialog(stringLiteral: String(localized: "intent.expiring.result \(window) \(names.joined(separator: String(localized: "household.personal.separator")))")))
     }
 }

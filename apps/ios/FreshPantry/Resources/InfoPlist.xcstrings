@@ -1,0 +1,118 @@
+{
+  "sourceLanguage": "zh-Hans",
+  "strings": {
+    "NSCameraUsageDescription": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用于拍摄食谱封面图片。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Used to take recipe cover photos."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "レシピのカバー写真を撮影するために使用します。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilisé pour prendre des photos de couverture de recette."
+          }
+        }
+      }
+    },
+    "NSMicrophoneUsageDescription": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用于语音录入食材清单。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Used to enter pantry items by voice."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音声で食材リストを入力するために使用します。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilisé pour saisir la liste d'ingrédients à la voix."
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryUsageDescription": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用于从相册选择食谱封面图片。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Used to choose recipe cover photos from your library."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "写真ライブラリからレシピのカバー画像を選ぶために使用します。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilisé pour choisir des photos de couverture de recette depuis la photothèque."
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用于把你口述的食材转成文字,自动整理入库。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Used to turn spoken ingredients into text and organize them automatically."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "話した食材をテキストに変換し、自動で整理するために使用します。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilisé pour transformer les ingrédients dictés en texte et les organiser automatiquement."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

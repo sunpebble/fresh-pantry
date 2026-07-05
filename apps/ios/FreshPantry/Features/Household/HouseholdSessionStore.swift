@@ -130,10 +130,10 @@ final class HouseholdSessionStore {
 
         var summaryText: String {
             var parts: [String] = []
-            if inventoryCount > 0 { parts.append("\(inventoryCount) 项库存") }
-            if shoppingCount > 0 { parts.append("\(shoppingCount) 项采购") }
-            if customRecipeCount > 0 { parts.append("\(customRecipeCount) 个自建食谱") }
-            return parts.joined(separator: "、")
+            if inventoryCount > 0 { parts.append(String(localized: "household.personal.inventory \(inventoryCount)")) }
+            if shoppingCount > 0 { parts.append(String(localized: "household.personal.shopping \(shoppingCount)")) }
+            if customRecipeCount > 0 { parts.append(String(localized: "household.personal.recipes \(customRecipeCount)")) }
+            return parts.joined(separator: String(localized: "household.personal.separator"))
         }
     }
 
@@ -203,7 +203,7 @@ final class HouseholdSessionStore {
         guard let remote else { return }
         let trimmed = name.trimmed
         guard !trimmed.isEmpty else {
-            errorMessage = "家庭名称不能为空"
+            errorMessage = String(localized: "household.error.nameRequired")
             return
         }
         isSubmitting = true
@@ -309,7 +309,7 @@ final class HouseholdSessionStore {
         guard let remote else { return }
         guard let token = InviteToken.fromInput(input) else {
             invitePreview = nil
-            errorMessage = "邀请链接或邀请码无效"
+            errorMessage = String(localized: "household.error.invalidInvite")
             return
         }
         isSubmitting = true
@@ -331,7 +331,7 @@ final class HouseholdSessionStore {
     func acceptInvite(input: String) async {
         guard let remote else { return }
         guard let token = InviteToken.fromInput(input) else {
-            errorMessage = "邀请链接或邀请码无效"
+            errorMessage = String(localized: "household.error.invalidInvite")
             return
         }
         isSubmitting = true
@@ -417,7 +417,7 @@ final class HouseholdSessionStore {
     func acceptInviteById(_ inviteId: String) async {
         guard let remote else { return }
         let trimmed = inviteId.trimmed
-        guard !trimmed.isEmpty else { errorMessage = "邀请不存在"; return }
+        guard !trimmed.isEmpty else { errorMessage = String(localized: "household.error.inviteMissing"); return }
         isSubmitting = true
         errorMessage = nil
         let preferredId = pendingInvitePreviews.first { $0.inviteId == trimmed }?.householdId
@@ -474,7 +474,7 @@ final class HouseholdSessionStore {
         guard let remote else { return nil }
         let householdId = session.selectedHouseholdId
         guard !householdId.isEmpty else {
-            errorMessage = "请先选择一个家庭"
+            errorMessage = String(localized: "household.error.noHouseholdSelected")
             return nil
         }
         let trimmed = email?.trimmed
@@ -543,7 +543,7 @@ final class HouseholdSessionStore {
         guard let remote else { return false }
         let householdId = session.selectedHouseholdId
         guard !householdId.isEmpty else {
-            errorMessage = "家庭不存在"
+            errorMessage = String(localized: "household.error.notFound")
             return false
         }
         isSubmitting = true
@@ -609,7 +609,7 @@ final class HouseholdSessionStore {
         guard !householdId.isEmpty else { return }
         let trimmed = name.trimmed
         guard !trimmed.isEmpty else {
-            errorMessage = "家庭名称不能为空"
+            errorMessage = String(localized: "household.error.nameRequired")
             return
         }
         isSubmitting = true
@@ -750,11 +750,11 @@ final class HouseholdSessionStore {
     private static func message(_ error: Error) -> String {
         switch error {
         case RemotePantryError.notSignedIn:
-            return "请先登录"
+            return String(localized: "household.error.notSignedIn")
         case let RemotePantryError.invalidArgument(_, reason):
             return reason
         case RemotePantryError.previewUnavailable:
-            return "邀请不存在或已过期"
+            return String(localized: "household.error.previewUnavailable")
         default:
             return error.localizedDescription
         }

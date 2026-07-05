@@ -5,18 +5,18 @@ import Testing
 /// Cook Mode 步骤时长的人类可读标签 + 倒计时 mm:ss 格式化(纯函数)。
 struct CookStepTimerTests {
     @Test func labelUsesSecondsUnderAMinute() {
-        #expect(CookStepTimer.label(seconds: 30) == "30 秒")
-        #expect(CookStepTimer.label(seconds: 1) == "1 秒")
+        #expect(CookStepTimer.label(seconds: 30) == String(localized: "cookStep.label.seconds \(30)"))
+        #expect(CookStepTimer.label(seconds: 1) == String(localized: "cookStep.label.seconds \(1)"))
     }
 
     @Test func labelUsesWholeMinutes() {
-        #expect(CookStepTimer.label(seconds: 180) == "3 分钟")
-        #expect(CookStepTimer.label(seconds: 60) == "1 分钟")
+        #expect(CookStepTimer.label(seconds: 180) == String(localized: "cookStep.label.minutes \(3)"))
+        #expect(CookStepTimer.label(seconds: 60) == String(localized: "cookStep.label.minutes \(1)"))
     }
 
     @Test func labelMixesMinutesAndSeconds() {
-        #expect(CookStepTimer.label(seconds: 90) == "1 分 30 秒")
-        #expect(CookStepTimer.label(seconds: 125) == "2 分 5 秒")
+        #expect(CookStepTimer.label(seconds: 90) == String(localized: "cookStep.label.minutesSeconds \(1) \(30)"))
+        #expect(CookStepTimer.label(seconds: 125) == String(localized: "cookStep.label.minutesSeconds \(2) \(5)"))
     }
 
     @Test func countdownFormatsMinutesAndSeconds() {

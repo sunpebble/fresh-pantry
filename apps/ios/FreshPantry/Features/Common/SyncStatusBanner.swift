@@ -64,7 +64,7 @@ struct SyncStatusBanner: View {
                         .font(.system(size: 11, weight: .semibold))
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("忽略")
+                .accessibilityLabel(String(localized: "sync.banner.dismiss"))
             } else if isFailed {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 11, weight: .semibold))
@@ -108,18 +108,18 @@ struct SyncStatusBanner: View {
         droppedCount: Int = 0
     ) -> String {
         if droppedCount > 0 {
-            return "\(droppedCount) 项更改未能保存,请重试"
+            return String(localized: "sync.banner.dropped \(droppedCount)")
         }
         if !isOnline {
-            return pendingCount > 0 ? "离线 · \(pendingCount) 条待同步" : "离线"
+            return pendingCount > 0 ? String(localized: "sync.banner.offlinePending \(pendingCount)") : String(localized: "sync.banner.offline")
         }
         if failedCount > 0 {
             let syncing = max(pendingCount - failedCount, 0)
             return syncing > 0
-                ? "\(failedCount) 条同步失败 · \(syncing) 条待同步"
-                : "\(failedCount) 条同步失败"
+                ? String(localized: "sync.banner.failedPending \(failedCount) \(syncing)")
+                : String(localized: "sync.banner.failed \(failedCount)")
         }
-        return "同步中 · \(pendingCount) 条待同步"
+        return String(localized: "sync.banner.syncing \(pendingCount)")
     }
 
     private var foreground: Color {

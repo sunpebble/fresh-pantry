@@ -12,7 +12,7 @@ struct WidgetRootView: View {
         if entry.needsAppLaunch {
             VStack(spacing: 4) {
                 Image(systemName: "arrow.down.circle")
-                Text("打开 Fresh Pantry").font(.caption)
+                Text("widget.launch.openApp").font(.caption)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {

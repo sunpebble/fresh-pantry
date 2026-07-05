@@ -1,0 +1,62 @@
+{
+  "sourceLanguage": "zh-Hans",
+  "strings": {
+    "CFBundleDisplayName": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "食材管家"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fresh Pantry"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fresh Pantry"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fresh Pantry"
+          }
+        }
+      }
+    },
+    "CFBundleName": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享到食材管家"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share to Fresh Pantry"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fresh Pantryに共有"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partager vers Fresh Pantry"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

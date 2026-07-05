@@ -20,10 +20,10 @@ enum PinyinMatcher {
     /// reading a cook would type. ADDITIVE — ICU's reading is still kept, so e.g.
     /// 薄片 ("baopian") and 薄荷 ("bohe") both match. Extend as the corpus needs.
     static let polyphoneOverrides: [Character: String] = [
-        "茄": "qie", // 番茄 / 茄子 — ICU reads 雪茄's "jia"
-        "蛤": "ge", // 蛤蜊 — ICU reads "ha"
-        "薄": "bo", // 薄荷 — ICU reads "bao"
-        "长": "chang", // 长豆角 / 长豇豆 — ICU reads "zhang"
+        "茄": "qie", // 番茄 / 茄子 — ICU reads 雪茄's "jia" // i18n:ignore domain matching data, not UI text
+        "蛤": "ge", // 蛤蜊 — ICU reads "ha" // i18n:ignore domain matching data, not UI text
+        "薄": "bo", // 薄荷 — ICU reads "bao" // i18n:ignore domain matching data, not UI text
+        "长": "chang", // 长豆角 / 长豇豆 — ICU reads "zhang" // i18n:ignore domain matching data, not UI text
     ]
 
     /// True when `text` matches `query` by raw substring, full pinyin, or pinyin

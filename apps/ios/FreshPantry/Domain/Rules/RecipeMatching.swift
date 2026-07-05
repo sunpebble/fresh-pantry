@@ -128,13 +128,13 @@ enum RecipeMatching {
     /// 低脂/低碳水 are the weakest signals — the corpus has no nutrition data, so
     /// they key only off category synonyms.
     static let preferenceSignals: [String: PreferenceSignal] = [
-        "高蛋白": PreferenceSignal(ingredientKeywords: ["鸡蛋", "鸡胸", "鸡肉", "牛肉", "猪肉", "羊肉", "虾", "鱼", "豆腐", "牛奶", "豆"]),
-        "低脂": PreferenceSignal(categories: ["素菜", "汤羹"]),
-        "素食": PreferenceSignal(categories: ["素菜"]),
-        "家常菜": PreferenceSignal(categories: ["荤菜", "素菜", "主食"]),
-        "快手菜": PreferenceSignal(maxMinutes: 15),
-        "儿童餐": PreferenceSignal(categories: ["甜品", "主食"], ingredientKeywords: ["鸡蛋", "牛奶", "番茄"]),
-        "低碳水": PreferenceSignal(categories: ["荤菜", "水产"]),
+        "高蛋白": PreferenceSignal(ingredientKeywords: ["鸡蛋", "鸡胸", "鸡肉", "牛肉", "猪肉", "羊肉", "虾", "鱼", "豆腐", "牛奶", "豆"]), // i18n:ignore domain matching data, not UI text
+        "低脂": PreferenceSignal(categories: ["素菜", "汤羹"]), // i18n:ignore domain matching data, not UI text
+        "素食": PreferenceSignal(categories: ["素菜"]), // i18n:ignore domain matching data, not UI text
+        "家常菜": PreferenceSignal(categories: ["荤菜", "素菜", "主食"]), // i18n:ignore domain matching data, not UI text
+        "快手菜": PreferenceSignal(maxMinutes: 15), // i18n:ignore domain matching data, not UI text
+        "儿童餐": PreferenceSignal(categories: ["甜品", "主食"], ingredientKeywords: ["鸡蛋", "牛奶", "番茄"]), // i18n:ignore domain matching data, not UI text
+        "低碳水": PreferenceSignal(categories: ["荤菜", "水产"]), // i18n:ignore domain matching data, not UI text
     ]
 
     /// Additive 饮食偏好 boost for a recipe: +0.15 per selected pref the recipe

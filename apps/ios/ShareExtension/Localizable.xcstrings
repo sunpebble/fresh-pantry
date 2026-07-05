@@ -1,0 +1,118 @@
+{
+  "sourceLanguage": "zh-Hans",
+  "strings": {
+    "share.unsupported.action": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "知道了"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "share.unsupported.message.noURL": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享内容里没有找到链接，目前仅支持「懒饭」和「下厨房」的菜谱链接。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No link was found in the shared content. Fresh Pantry currently supports recipe links from Lanfan and Xiachufang only."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共有内容にリンクが見つかりませんでした。現在は懒饭と下厨房のレシピリンクのみ対応しています。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun lien n'a été trouvé dans le contenu partagé. Fresh Pantry prend actuellement en charge uniquement les liens de recettes de Lanfan et Xiachufang."
+          }
+        }
+      }
+    },
+    "share.unsupported.message.unsupportedURL": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前仅支持「懒饭」和「下厨房」的菜谱链接。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fresh Pantry currently supports recipe links from Lanfan and Xiachufang only."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在は懒饭と下厨房のレシピリンクのみ対応しています。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fresh Pantry prend actuellement en charge uniquement les liens de recettes de Lanfan et Xiachufang."
+          }
+        }
+      }
+    },
+    "share.unsupported.title": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法导入"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cannot import"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "インポートできません"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importation impossible"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

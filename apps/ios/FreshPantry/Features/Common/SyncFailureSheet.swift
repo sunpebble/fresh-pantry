@@ -17,8 +17,8 @@ struct SyncFailureSheet: View {
                 if items.isEmpty {
                     FkEmptyState(
                         systemImage: "checkmark.circle",
-                        title: "没有同步失败项",
-                        message: "所有待同步内容已恢复正常。"
+                        title: String(localized: "sync.failure.empty.title"),
+                        message: String(localized: "sync.failure.empty.message")
                     )
                 } else {
                     List {
@@ -35,9 +35,9 @@ struct SyncFailureSheet: View {
                                 .listRowBackground(Color.fkSurfaceContainerLowest)
                             }
                         } header: {
-                            Text("同步失败的项目")
+                            Text("sync.failure.header")
                         } footer: {
-                            Text("这些写入多次同步失败，已暂时停止重试。可重试一次，或清除失败记录（会丢弃这些未同步的更改）。")
+                            Text("sync.failure.footer")
                         }
 
                         Section {
@@ -45,14 +45,14 @@ struct SyncFailureSheet: View {
                                 onRetry()
                                 dismiss()
                             } label: {
-                                Label("立即重试", systemImage: "arrow.clockwise")
+                                Label(String(localized: "sync.action.retryNow"), systemImage: "arrow.clockwise")
                             }
                             .listRowBackground(Color.fkSurfaceContainerLowest)
 
                             Button(role: .destructive) {
                                 showClearConfirm = true
                             } label: {
-                                Label("清除失败记录", systemImage: "trash")
+                                Label(String(localized: "sync.action.clearFailures"), systemImage: "trash")
                             }
                             .listRowBackground(Color.fkSurfaceContainerLowest)
                         }
@@ -62,25 +62,25 @@ struct SyncFailureSheet: View {
                 }
             }
             .background(Color.fkSurface)
-            .navigationTitle("同步失败")
+            .navigationTitle("sync.failure.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("完成") { dismiss() }
+                    Button("sync.action.done") { dismiss() }
                 }
             }
             .confirmationDialog(
-                "清除失败记录？",
+                "sync.failure.clearConfirm.title",
                 isPresented: $showClearConfirm,
                 titleVisibility: .visible
             ) {
-                Button("清除", role: .destructive) {
+                Button("sync.action.clear", role: .destructive) {
                     onClear()
                     dismiss()
                 }
-                Button("取消", role: .cancel) {}
+                Button("household.action.cancel", role: .cancel) {}
             } message: {
-                Text("将丢弃 \(items.count) 个项目的未同步更改，此操作不可撤销。")
+                Text(String(localized: "sync.failure.clearConfirm.message \(items.count)"))
             }
         }
         .tint(.fkPrimary)

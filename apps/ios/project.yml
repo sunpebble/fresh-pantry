@@ -4,6 +4,11 @@ options:
   deploymentTarget:
     iOS: "26.0"
   developmentLanguage: zh-Hans
+  knownRegions:
+    - zh-Hans
+    - en
+    - ja
+    - fr
   createIntermediateGroups: true
   groupSortPosition: top
   generateEmptyDirectories: true

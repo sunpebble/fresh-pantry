@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit",
     "build:recipes": "flue run build-recipes --target node --payload '{}'",
     "build:recipes:dry": "flue run build-recipes --target node --payload '{\"dryRun\":true}'",
+    "i18n:recipes": "npx tsx src/db/translate-recipes.ts",
     "videos:acquire": "npx tsx src/db/acquire-videos.ts",
     "images:apply": "npx tsx src/db/apply-web-images.ts",
     "images:upload": "npx tsx src/db/upload-images.ts",

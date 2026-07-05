@@ -65,8 +65,6 @@ struct TodayRecipeSelectorTests {
             expiringUseCount: 2, matchedCount: 2
         )
         let dialog = TodayRecipeSelector.dialog(for: pick)
-        #expect(dialog.contains("番茄炒蛋"))
-        #expect(dialog.contains("2"))
-        #expect(dialog.contains("临期"))
+        #expect(dialog == String(localized: "intent.today.result.expiring \("番茄炒蛋") \(2)"))
     }
 }

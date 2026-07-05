@@ -16,22 +16,22 @@ import Foundation
 /// correct household scoping + outbox enqueue + sync. The Siri/Shortcuts/Spotlight
 /// entry point is still delivered — the only cost is a brief app foreground.
 struct AddToShoppingListIntent: AppIntent {
-    static let title: LocalizedStringResource = "加到购物清单"
+    static let title: LocalizedStringResource = "intent.shopping.add.title"
 
-    static let description = IntentDescription("把一件商品加入购物清单。")
+    static let description = IntentDescription("intent.shopping.add.description")
 
     /// Open the app so the add runs through the live store (see type doc).
     static let openAppWhenRun: Bool = true
 
     @Parameter(
-        title: "商品",
-        description: "要加入购物清单的商品名称",
-        requestValueDialog: IntentDialog("要加什么?")
+        title: "intent.shopping.add.parameter.title",
+        description: "intent.shopping.add.parameter.description",
+        requestValueDialog: IntentDialog("intent.shopping.add.request")
     )
     var itemName: String
 
     static var parameterSummary: some ParameterSummary {
-        Summary("把 \(\.$itemName) 加进购物清单")
+        Summary("intent.shopping.add.summary")
     }
 
     @MainActor
@@ -46,7 +46,7 @@ struct AddToShoppingListIntent: AppIntent {
         // drains alone can miss when `.active` fires before this enqueue or the
         // app was already active. See `Notification.Name.intentDidEnqueueShoppingAdd`.
         NotificationCenter.default.post(name: .intentDidEnqueueShoppingAdd, object: nil)
-        return .result(dialog: IntentDialog("已把\(name)加进购物清单"))
+        return .result(dialog: IntentDialog(stringLiteral: String(localized: "intent.shopping.add.dialog \(name)")))
     }
 }
 
@@ -59,9 +59,9 @@ enum IntentError: Swift.Error, CustomLocalizedStringResourceConvertible {
     var localizedStringResource: LocalizedStringResource {
         switch self {
         case .emptyItemName:
-            return "没听清要加什么,请再说一次商品名称。"
+            return "intent.error.emptyItemName"
         case .noInventory:
-            return "暂时读不到库存,请打开 App 后再试。"
+            return "intent.error.noInventory"
         }
     }
 }

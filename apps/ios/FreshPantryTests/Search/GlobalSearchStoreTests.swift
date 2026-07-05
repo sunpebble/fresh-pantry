@@ -22,7 +22,8 @@ struct GlobalSearchStoreTests {
             shoppingRepository: shopRepo,
             localRecipeRepository: LocalRecipeRepository(payload: Data("[]".utf8)),
             customRecipeRepository: CustomRecipeRepository(modelContainer: container),
-            householdID: household
+            householdID: household,
+            recipeOverlay: nil
         )
         await store.load()
         return store

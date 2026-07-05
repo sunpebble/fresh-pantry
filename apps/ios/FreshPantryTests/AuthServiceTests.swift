@@ -88,7 +88,7 @@ struct AuthServiceTests {
         await service.sendCode(email: "not-an-email")
         #expect(service.state == .signedOut)
         #expect(backend.sentEmails.isEmpty)
-        #expect(service.errorMessage == "请输入有效的邮箱地址")
+        #expect(service.errorMessage == String(localized: "auth.error.invalidEmail"))
     }
 
     @Test func sendCodeFailureSurfacesErrorAndStaysSignedOut() async {
@@ -137,7 +137,7 @@ struct AuthServiceTests {
         await service.verify(code: "   ")
         #expect(service.state == .codeSent(email: "user@example.com"))
         #expect(backend.verifiedCodes.isEmpty)
-        #expect(service.errorMessage == "请输入验证码")
+        #expect(service.errorMessage == String(localized: "auth.error.emptyCode"))
     }
 
     @Test func verifyIsNoOpBeforeCodeSent() async {

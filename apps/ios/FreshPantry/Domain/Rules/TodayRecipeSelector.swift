@@ -40,11 +40,11 @@ enum TodayRecipeSelector {
     static func dialog(for pick: Pick) -> String {
         let name = pick.recipe.name
         if pick.expiringUseCount > 0 {
-            return "今天做「\(name)」,能用掉 \(pick.expiringUseCount) 件临期食材"
+            return String(localized: "intent.today.result.expiring \(name) \(pick.expiringUseCount)")
         }
         if pick.matchedCount > 0 {
-            return "今天做「\(name)」,你已有 \(pick.matchedCount)/\(pick.recipe.ingredients.count) 种食材"
+            return String(localized: "intent.today.result.matched \(name) \(pick.matchedCount) \(pick.recipe.ingredients.count)")
         }
-        return "今天做「\(name)」吧"
+        return String(localized: "intent.today.result.default \(name)")
     }
 }

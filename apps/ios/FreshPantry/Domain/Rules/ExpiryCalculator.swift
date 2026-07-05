@@ -51,12 +51,12 @@ enum ExpiryCalculator {
         return freshness > 0.5 ? .fresh : .expiringSoon
     }
 
-    /// Localized Chinese label: 已过期N天 / 今天过期 / 明天过期 / N天后过期.
+    /// Localized label for expired / today / tomorrow / future expiry states.
     static func expiryLabelFor(_ expiryDate: Date, now: Date = Date()) -> String {
         let days = daysUntilExpiry(expiryDate, now: now)
-        if days < 0 { return "已过期\(-days)天" }
-        if days == 0 { return "今天过期" }
-        if days == 1 { return "明天过期" }
-        return "\(days)天后过期"
+        if days < 0 { return String(localized: "expiry.expiredDays \(-days)") }
+        if days == 0 { return String(localized: "expiry.today") }
+        if days == 1 { return String(localized: "expiry.tomorrow") }
+        return String(localized: "expiry.inDays \(days)")
     }
 }

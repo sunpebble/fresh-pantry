@@ -70,33 +70,36 @@ enum WasteAchievements {
         let ratePct = rate.map { "\(Int(($0 * 100).rounded()))%" }
         return [
             WasteAchievement(
-                id: "firstLog", title: "减废起步",
-                detail: live.isEmpty ? "记录第一笔吃完或扔掉" : "已开始记录减废",
+                id: "firstLog", title: String(localized: "waste.achievement.title.firstLog"),
+                detail: live.isEmpty
+                    ? String(localized: "waste.achievement.detail.firstLocked")
+                    : String(localized: "waste.achievement.detail.firstUnlocked"),
                 icon: "leaf.fill", unlocked: !live.isEmpty
             ),
             WasteAchievement(
-                id: "streak3", title: "零浪费 3 天",
-                detail: "当前连续 \(streak) 天零浪费", icon: "flame",
+                id: "streak3", title: String(localized: "waste.achievement.title.streak3"),
+                detail: String(localized: "waste.achievement.detail.streak \(streak)"), icon: "flame",
                 unlocked: streak >= 3
             ),
             WasteAchievement(
-                id: "streak7", title: "零浪费一周",
-                detail: "当前连续 \(streak) 天零浪费", icon: "flame.fill",
+                id: "streak7", title: String(localized: "waste.achievement.title.streak7"),
+                detail: String(localized: "waste.achievement.detail.streak \(streak)"), icon: "flame.fill",
                 unlocked: streak >= 7
             ),
             WasteAchievement(
-                id: "rescue5", title: "临期救星 ×5",
-                detail: "已救回 \(rescued) 件临期食材", icon: "hand.raised",
+                id: "rescue5", title: String(localized: "waste.achievement.title.rescue5"),
+                detail: String(localized: "waste.achievement.detail.rescued \(rescued)"), icon: "hand.raised",
                 unlocked: rescued >= 5
             ),
             WasteAchievement(
-                id: "rescue20", title: "临期救星 ×20",
-                detail: "已救回 \(rescued) 件临期食材", icon: "hand.raised.fill",
+                id: "rescue20", title: String(localized: "waste.achievement.title.rescue20"),
+                detail: String(localized: "waste.achievement.detail.rescued \(rescued)"), icon: "hand.raised.fill",
                 unlocked: rescued >= 20
             ),
             WasteAchievement(
-                id: "useUp80", title: "八成用掉",
-                detail: ratePct.map { "用掉率 \($0)" } ?? "暂无足够记录",
+                id: "useUp80", title: String(localized: "waste.achievement.title.useUp80"),
+                detail: ratePct.map { String(localized: "waste.achievement.detail.useUpRate \($0)") }
+                    ?? String(localized: "waste.achievement.detail.noEnoughRecords"),
                 icon: "chart.pie.fill",
                 unlocked: (rate ?? 0) >= 0.8 && departures >= useUpMinSample
             ),

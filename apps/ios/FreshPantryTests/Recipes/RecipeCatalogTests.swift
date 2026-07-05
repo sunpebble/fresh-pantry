@@ -50,7 +50,8 @@ struct RecipeCatalogTests {
             favoritesStore: FavoritesStore(defaults: isolatedDefaults()),
             householdID: "home",
             remoteCatalog: remote,
-            catalogCache: cache
+            catalogCache: cache,
+            recipeOverlay: nil
         )
     }
 

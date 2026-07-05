@@ -69,7 +69,7 @@ struct SupabaseAuthBackend: AuthBackend {
             return AuthFailure(message: localizedMessage(for: authError))
         }
         if (error as? URLError) != nil {
-            return AuthFailure(message: "网络连接失败,请检查网络后重试")
+            return AuthFailure(message: String(localized: "auth.error.network"))
         }
         return .generic
     }
@@ -80,13 +80,13 @@ struct SupabaseAuthBackend: AuthBackend {
     private func localizedMessage(for error: AuthError) -> String {
         let code = error.errorCode
         if code == .otpExpired {
-            return "验证码已失效,请重新获取"
+            return String(localized: "auth.error.otpExpired")
         }
         if code == .overRequestRateLimit || code == .overEmailSendRateLimit {
-            return "请求过于频繁,请稍后再试"
+            return String(localized: "auth.error.rateLimit")
         }
         if code == .validationFailed {
-            return "验证码不正确,请重新输入"
+            return String(localized: "auth.error.invalidOtp")
         }
         return error.message
     }

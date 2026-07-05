@@ -211,8 +211,8 @@ extension RemoteRowCodec {
     /// Defaults a null/absent freshness to 1.0, leaving an existing value as-is.
     fileprivate static func orOne(_ v: JSONValue?) -> JSONValue { isNull(v) ? .double(1.0) : v! }
 
-    /// Defaults a null/absent category to "其他".
-    fileprivate static func orOther(_ v: JSONValue?) -> JSONValue { isNull(v) ? .string("其他") : v! }
+    /// Defaults a null/absent category to the canonical "other" storage identity.
+    fileprivate static func orOther(_ v: JSONValue?) -> JSONValue { isNull(v) ? .string(FoodCategories.other) : v! }
 
     /// Defaults a null/absent checked flag to false.
     fileprivate static func orFalse(_ v: JSONValue?) -> JSONValue { isNull(v) ? .bool(false) : v! }

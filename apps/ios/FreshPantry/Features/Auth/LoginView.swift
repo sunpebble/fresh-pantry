@@ -26,7 +26,7 @@ struct LoginView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color.fkSurface)
-        .navigationTitle("账号")
+        .navigationTitle("auth.account.title")
         .navigationBarTitleDisplayMode(.inline)
         .tint(.fkPrimary)
         .task { await auth.restore() }
@@ -65,18 +65,18 @@ struct LoginView: View {
 
     private var headerTitle: String {
         switch auth.state {
-        case .localOnly: "本地模式"
-        case .signedIn: "已登录"
-        default: "登录 Fresh Pantry"
+        case .localOnly: String(localized: "auth.header.local.title")
+        case .signedIn: String(localized: "auth.header.signedIn.title")
+        default: String(localized: "auth.header.login.title")
         }
     }
 
     private var headerSubtitle: String {
         switch auth.state {
-        case .localOnly: "未配置后端,当前为本地模式。数据仅保存在本机。"
-        case .signedIn: "登录后即可在家庭成员间同步库存与采购。"
-        case .codeSent: "我们已向你的邮箱发送了 6 位验证码。"
-        default: "输入邮箱获取验证码,无需密码。"
+        case .localOnly: String(localized: "auth.header.local.subtitle")
+        case .signedIn: String(localized: "auth.header.signedIn.subtitle")
+        case .codeSent: String(localized: "auth.header.codeSent.subtitle")
+        default: String(localized: "auth.header.login.subtitle")
         }
     }
 
@@ -104,10 +104,10 @@ struct LoginView: View {
     private var localOnlyCard: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.sm) {
-                Label("登录已禁用", systemImage: "lock")
+                Label(String(localized: "auth.local.card.title"), systemImage: "lock")
                     .font(.fkTitleSmall)
                     .foregroundStyle(Color.fkOnSurface)
-                Text("此版本未配置 Supabase 后端,无法登录。库存、采购与食谱仍可在本机正常使用。")
+                Text("auth.local.card.message")
                     .font(.fkBodySmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             }
@@ -119,7 +119,7 @@ struct LoginView: View {
 
     private var emailEntry: some View {
         VStack(spacing: FkSpacing.lg) {
-            FkFormField(label: "邮箱") {
+            FkFormField(label: String(localized: "auth.email.label")) {
                 TextField("you@example.com", text: $email)
                     .font(.fkTitleMedium)
                     .keyboardType(.emailAddress)
@@ -136,7 +136,7 @@ struct LoginView: View {
                             .fill(Color.fkSurfaceContainer)
                     )
             }
-            primaryButton(title: "发送验证码", busyTitle: "发送中…", systemImage: "paperplane", action: send)
+            primaryButton(title: String(localized: "auth.button.sendCode"), busyTitle: String(localized: "auth.button.sending"), systemImage: "paperplane", action: send)
         }
     }
 
@@ -149,13 +149,13 @@ struct LoginView: View {
                 HStack(spacing: FkSpacing.sm) {
                     Image(systemName: "envelope.open")
                         .foregroundStyle(Color.fkPrimary)
-                    Text("验证码已发送至 \(email)")
+                    Text(String(localized: "auth.code.sent \(email)"))
                         .font(.fkBodySmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                     Spacer(minLength: 0)
                 }
-                FkFormField(label: "验证码") {
-                    TextField("6 位数字", text: $code)
+                FkFormField(label: String(localized: "auth.code.label")) {
+                    TextField(String(localized: "auth.code.placeholder"), text: $code)
                         .font(.fkTitleMedium)
                         .keyboardType(.numberPad)
                         .textContentType(.oneTimeCode)
@@ -170,11 +170,11 @@ struct LoginView: View {
                             code = String(newValue.filter(\.isNumber).prefix(6))
                         }
                 }
-                primaryButton(title: "验证登录", busyTitle: "验证中…", systemImage: "checkmark", action: verify)
+                primaryButton(title: String(localized: "auth.button.verify"), busyTitle: String(localized: "auth.button.verifying"), systemImage: "checkmark", action: verify)
                 Button {
                     resend(email: email)
                 } label: {
-                    Text(resendCooldown > 0 ? "\(resendCooldown) 秒后可重新发送" : "重新发送验证码")
+                    Text(resendCooldown > 0 ? String(localized: "auth.code.resendAfter \(resendCooldown)") : String(localized: "auth.code.resend"))
                         .font(.fkLabelLarge)
                         .foregroundStyle(resendCooldown > 0 ? Color.fkOnSurfaceVariant : Color.fkPrimary)
                 }
@@ -199,7 +199,7 @@ struct LoginView: View {
                             .foregroundStyle(Color.fkOnPrimary)
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("当前账号")
+                        Text("auth.currentAccount")
                             .font(.fkLabelSmall)
                             .foregroundStyle(Color.fkOnSurfaceVariant)
                         Text(email)
@@ -213,7 +213,7 @@ struct LoginView: View {
             Button {
                 Task { await auth.signOut() }
             } label: {
-                Text(auth.isBusy ? "退出中…" : "退出登录")
+                Text(auth.isBusy ? String(localized: "auth.button.signingOut") : String(localized: "auth.button.signOut"))
                     .font(.fkLabelLarge)
                     .foregroundStyle(Color.fkDanger)
                     .frame(maxWidth: .infinity)

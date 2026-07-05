@@ -18,6 +18,6 @@ struct HouseholdMemberTests {
         #expect(HouseholdMember(email: "a@b.com", displayName: "小明", nickname: "明明").resolvedName == "明明")
         #expect(HouseholdMember(email: "a@b.com", displayName: "小明").resolvedName == "小明")
         #expect(HouseholdMember(email: "a@b.com").resolvedName == "a@b.com")
-        #expect(HouseholdMember().resolvedName == "成员")
+        #expect(HouseholdMember().resolvedName == String(localized: "household.member.fallback"))
     }
 }

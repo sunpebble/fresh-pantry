@@ -439,7 +439,7 @@ struct InventoryStoreTests {
 
         let row = try #require(store.items.first { $0.id == "a" })
         #expect(row.state == .urgent)
-        #expect(row.expiryLabel == "明天过期") // label refreshed too
+        #expect(row.expiryLabel == String(localized: "expiry.tomorrow")) // label refreshed too
     }
 
     @Test func updateRenameStillResolvesById() async throws {

@@ -9,16 +9,19 @@ import Foundation
 /// mutation、无 sync。用 bundled 菜谱(`LocalRecipeRepository`)而非 custom——后台
 /// 进程拿不到 household,custom 菜谱本就不可达,bundled 已足够给随手推荐。
 struct TodayRecipeIntent: AppIntent {
-    static let title: LocalizedStringResource = "今天做什么"
+    static let title: LocalizedStringResource = "intent.today.title"
 
-    static let description = IntentDescription("根据库存(优先临期食材)推荐今天可以做的一道菜。")
+    static let description = IntentDescription("intent.today.description")
 
     /// 纯读 — 就地作答,不前台唤起 app。
     static let openAppWhenRun: Bool = false
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let recipes = await LocalRecipeRepository().loadAll()
+        let recipes = RecipeLocalizer.apply(
+            RecipeLocalizer.load(),
+            to: await LocalRecipeRepository().loadAll()
+        )
         // 读库存(尽力而为:容器打不开 / 读失败都退化为空库存 → selector 仍给得出
         // 一道菜谱库推荐,而不是报错——「今天做什么」永远该答得出来)。
         var inventory: [Ingredient] = []
@@ -26,7 +29,7 @@ struct TodayRecipeIntent: AppIntent {
             inventory = (try? await IntentInventoryReader(modelContainer: container).loadAllLive()) ?? []
         }
         guard let pick = TodayRecipeSelector.pick(recipes: recipes, inventory: inventory) else {
-            return .result(dialog: "菜谱库是空的,先添加一些菜谱吧")
+            return .result(dialog: "intent.today.empty")
         }
         return .result(dialog: IntentDialog(stringLiteral: TodayRecipeSelector.dialog(for: pick)))
     }

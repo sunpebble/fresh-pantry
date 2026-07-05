@@ -267,11 +267,11 @@ struct Recipe: Hashable, Sendable, Codable {
     var clientUpdatedAt: Date?
     var deletedAt: Date?
 
-    /// `'难度未设置'` when difficulty <= 0, else `'难度 N/5'` with N clamped 1...5.
+    /// Localized difficulty label, with N clamped 1...5 when set.
     var difficultyLabel: String {
-        if difficulty <= 0 { return "难度未设置" }
+        if difficulty <= 0 { return String(localized: "recipe.difficulty.unset") }
         let level = min(max(difficulty, 1), 5)
-        return "难度 \(level)/5"
+        return String(localized: "recipe.difficulty.level \(level)")
     }
 
     init(

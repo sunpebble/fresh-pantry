@@ -76,6 +76,8 @@ final class RecipesStore {
     private let remoteCatalog: (any RecipeCatalogFetching)?
     /// On-disk cache for the DB catalog (the offline copy). nil disables caching.
     private let catalogCache: RecipeCatalogCache?
+    /// In-memory recipe i18n overlay. nil means use the Chinese source corpus.
+    private let recipeOverlay: [String: RecipeOverlayEntry]?
     /// Guards against overlapping background refreshes from rapid `load()` calls.
     private var isRefreshingCatalog = false
     /// Optional inventory source for the ingredient-match progress + 临期 banner.
@@ -122,7 +124,8 @@ final class RecipesStore {
         dietPreferenceStore: DietPreferenceStore? = nil,
         remoteCatalog: (any RecipeCatalogFetching)? = nil,
         catalogCache: RecipeCatalogCache? = nil,
-        cookHistoryRepository: CookHistoryRepository? = nil
+        cookHistoryRepository: CookHistoryRepository? = nil,
+        recipeOverlay: [String: RecipeOverlayEntry]? = RecipeLocalizer.load()
     ) {
         self.localRepository = localRepository
         self.customRepository = customRepository
@@ -133,6 +136,7 @@ final class RecipesStore {
         self.dietPreferenceStore = dietPreferenceStore
         self.remoteCatalog = remoteCatalog
         self.catalogCache = catalogCache
+        self.recipeOverlay = recipeOverlay
         self.cookHistoryRepository = cookHistoryRepository
     }
 
@@ -151,9 +155,13 @@ final class RecipesStore {
             let cached = await Task.detached(priority: .userInitiated) {
                 catalogCache.read()
             }.value
-            if let cached, !cached.isEmpty { return cached }
+            if let cached, !cached.isEmpty { return localized(cached) }
         }
-        return await localRepository.loadAll()
+        return localized(await localRepository.loadAll())
+    }
+
+    private func localized(_ recipes: [Recipe]) -> [Recipe] {
+        RecipeLocalizer.apply(recipeOverlay, to: recipes)
     }
 
     // MARK: Loading
@@ -200,7 +208,7 @@ final class RecipesStore {
             catalogCache.write(fresh)
         }.value
         let custom = (try? await customRepository.loadAllFor(householdID)) ?? []
-        recipes = Self.merge(bundled: fresh, custom: custom)
+        recipes = Self.merge(bundled: localized(fresh), custom: custom)
         customIDs = Set(custom.map(\.id))
     }
 

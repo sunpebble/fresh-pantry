@@ -353,7 +353,7 @@ struct ProposalParityTests {
         #expect(ingredient.shelfLifeDays != nil)
         #expect(ingredient.expiryDate != nil)
         #expect(ingredient.freshnessPercent == 1.0)
-        #expect(ingredient.expiryLabel == "\(ingredient.shelfLifeDays!)天后过期")
+        #expect(ingredient.expiryLabel == String(localized: "expiry.inDays \(ingredient.shelfLifeDays!)"))
         #expect(ingredient.category == FoodKnowledge.categoryFor("牛奶"))
     }
 
@@ -364,7 +364,7 @@ struct ProposalParityTests {
         #expect(ingredient.shelfLifeDays == nil)
         #expect(ingredient.expiryDate == nil)
         #expect(ingredient.freshnessPercent == 0.85)
-        #expect(ingredient.expiryLabel == "新鲜")
+        #expect(ingredient.expiryLabel == String(localized: "expiry.fresh"))
         #expect(ingredient.storage == .fridge) // default when no knowledge
     }
 

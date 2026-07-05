@@ -12,41 +12,41 @@ struct SyncStateGateTests {
     @Test func offlineMessageKeepsPlainQueueDepth() {
         // Offline ops aren't failures — the failed count must not leak in.
         #expect(SyncStatusBanner.message(isOnline: false, pendingCount: 3, failedCount: 2)
-            == "离线 · 3 条待同步")
+            == String(localized: "sync.banner.offlinePending \(3)"))
         #expect(SyncStatusBanner.message(isOnline: false, pendingCount: 0, failedCount: 0)
-            == "离线")
+            == String(localized: "sync.banner.offline"))
     }
 
     @Test func onlineWithoutFailuresSaysSyncing() {
         #expect(SyncStatusBanner.message(isOnline: true, pendingCount: 2, failedCount: 0)
-            == "同步中 · 2 条待同步")
+            == String(localized: "sync.banner.syncing \(2)"))
     }
 
     @Test func onlineFailedOnlyDropsTheEternalSyncing() {
         // The whole queue is dead-lettered: no 「同步中」 lie.
         #expect(SyncStatusBanner.message(isOnline: true, pendingCount: 2, failedCount: 2)
-            == "2 条同步失败")
+            == String(localized: "sync.banner.failed \(2)"))
     }
 
     @Test func onlineFailedPlusLiveSplitsTheCounts() {
         #expect(SyncStatusBanner.message(isOnline: true, pendingCount: 5, failedCount: 2)
-            == "2 条同步失败 · 3 条待同步")
+            == String(localized: "sync.banner.failedPending \(2) \(3)"))
     }
 
     @Test func failedCountAboveQueueDepthClampsAtZeroSyncing() {
         // A stale failed count (queue shrank between refreshes) must not render
         // a negative remainder.
         #expect(SyncStatusBanner.message(isOnline: true, pendingCount: 1, failedCount: 3)
-            == "3 条同步失败")
+            == String(localized: "sync.banner.failed \(3)"))
     }
 
     @Test func droppedWriteWinsOverEveryOtherState() {
         // A dropped local write is a LOCAL storage failure — it outranks offline,
         // pending, and dead-letter, and shows regardless of connectivity.
         #expect(SyncStatusBanner.message(isOnline: false, pendingCount: 5, failedCount: 2, droppedCount: 1)
-            == "1 项更改未能保存,请重试")
+            == String(localized: "sync.banner.dropped \(1)"))
         #expect(SyncStatusBanner.message(isOnline: true, pendingCount: 0, failedCount: 0, droppedCount: 3)
-            == "3 项更改未能保存,请重试")
+            == String(localized: "sync.banner.dropped \(3)"))
     }
 
     // MARK: - InviteRouter.gateOutcome
