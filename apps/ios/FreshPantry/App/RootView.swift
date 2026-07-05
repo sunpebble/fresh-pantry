@@ -257,7 +257,7 @@ struct RootView: View {
 
     private var tabs: some View {
         TabView(selection: $selection) {
-            Tab("首页", systemImage: "house", value: Section.home) {
+            Tab("tab.home", systemImage: "house", value: Section.home) {
                 DashboardView(
                     onSelectShopping: { selection = .shopping },
                     onSelectCategory: { category in
@@ -271,22 +271,22 @@ struct RootView: View {
                     }
                 )
             }
-            Tab("库存", systemImage: "tray.full", value: Section.inventory) {
+            Tab("tab.inventory", systemImage: "tray.full", value: Section.inventory) {
                 InventoryView(
                     pendingCategory: $pendingCategory,
                     pendingIngredientID: $pendingIngredientID
                 )
             }
-            Tab("食谱", systemImage: "book", value: Section.recipes) {
+            Tab("tab.recipes", systemImage: "book", value: Section.recipes) {
                 RecipesView(
                     pendingRecipeID: $pendingRecipeID,
                     pendingRecipesTab: $pendingRecipesTab
                 )
             }
-            Tab("购物", systemImage: "cart", value: Section.shopping) {
+            Tab("tab.shopping", systemImage: "cart", value: Section.shopping) {
                 ShoppingView(pendingItemID: $pendingShoppingItemID)
             }
-            Tab("设置", systemImage: "gearshape", value: Section.settings) {
+            Tab("tab.settings", systemImage: "gearshape", value: Section.settings) {
                 SettingsView(
                     onSelectCategory: { category in
                         pendingCategory = category

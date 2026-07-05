@@ -1,0 +1,46 @@
+{
+  "sourceLanguage" : "zh-Hans",
+  "strings" : {
+    "tab.home" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "首页" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Home" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ホーム" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Accueil" } }
+      }
+    },
+    "tab.inventory" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "库存" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pantry" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "在庫" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Stock" } }
+      }
+    },
+    "tab.recipes" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "食谱" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recipes" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "レシピ" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Recettes" } }
+      }
+    },
+    "tab.shopping" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "购物" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Shopping" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "買い物" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Courses" } }
+      }
+    },
+    "tab.settings" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "设置" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "設定" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réglages" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}
