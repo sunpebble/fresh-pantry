@@ -41,7 +41,8 @@ describe("POST /ai/v1/chat/completions", () => {
   it("缺 token 返回 401（经完整路由）", async () => {
     const res = await worker.fetch(post({ messages: [] }), env);
     expect(res.status).toBe(401);
-    const json = (await res.json()) as { error: { message: string } };
+    const json = (await res.json()) as { error: { code: string; message: string } };
+    expect(json.error.code).toBe("auth_missing");
     expect(json.error.message).toBe("缺少登录凭证");
   });
 
@@ -56,7 +57,8 @@ describe("POST /ai/v1/chat/completions", () => {
     });
     const res = await handleAiChat(post({ messages: [] }, "bad-token"), env, fetcher);
     expect(res.status).toBe(401);
-    const json = (await res.json()) as { error: { message: string } };
+    const json = (await res.json()) as { error: { code: string; message: string } };
+    expect(json.error.code).toBe("auth_expired");
     expect(json.error.message).toBe("登录已过期，请重新登录");
   });
 
@@ -94,7 +96,8 @@ describe("POST /ai/v1/chat/completions", () => {
     });
     const res = await handleAiChat(req, env, fetcher);
     expect(res.status).toBe(400);
-    const json = (await res.json()) as { error: { message: string } };
+    const json = (await res.json()) as { error: { code: string; message: string } };
+    expect(json.error.code).toBe("bad_json");
     expect(json.error.message).toBe("请求不是合法 JSON");
     expect(calls.length).toBe(0); // 未打 Supabase 也未打 DeepSeek
     expect(await env.AI_RATE.get(`ai:user-1:${today}`)).toBeNull(); // 配额未消耗
@@ -105,7 +108,8 @@ describe("POST /ai/v1/chat/completions", () => {
     const { fetcher, calls } = stubFetch({ [env.SUPABASE_URL]: supabaseOk });
     const res = await handleAiChat(post({ messages: [] }, "good-token"), env, fetcher);
     expect(res.status).toBe(429);
-    const json = (await res.json()) as { error: { message: string } };
+    const json = (await res.json()) as { error: { code: string; message: string } };
+    expect(json.error.code).toBe("quota_exhausted");
     expect(json.error.message).toContain("今天的 AI 次数用完了");
     expect(calls.some((r) => r.url.startsWith("https://api.deepseek.com"))).toBe(false);
   });

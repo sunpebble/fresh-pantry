@@ -9,8 +9,8 @@ export interface Env {
   SUPABASE_ANON_KEY: string;
 }
 
-function aiError(status: number, message: string): Response {
-  return new Response(JSON.stringify({ error: { message } }), {
+function aiError(status: number, code: string, message: string): Response {
+  return new Response(JSON.stringify({ error: { code, message } }), {
     status,
     headers: { "content-type": "application/json; charset=utf-8" },
   });
@@ -28,14 +28,14 @@ export async function handleAiChat(
 
   const auth = request.headers.get("authorization") ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  if (!token) return aiError(401, "缺少登录凭证");
+  if (!token) return aiError(401, "auth_missing", "缺少登录凭证");
 
   // 体校验放在鉴权/计数之前：坏请求既不打 Supabase 也不消耗当日配额。
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;
   } catch {
-    return aiError(400, "请求不是合法 JSON");
+    return aiError(400, "bad_json", "请求不是合法 JSON");
   }
   body.model = MODEL; // 服务端固定模型，不信任客户端
 
@@ -46,15 +46,15 @@ export async function handleAiChat(
   const userRes = await fetcher(`${env.SUPABASE_URL}/auth/v1/user`, {
     headers: { apikey: env.SUPABASE_ANON_KEY, authorization: `Bearer ${token}` },
   });
-  if (!userRes.ok) return aiError(401, "登录已过期，请重新登录");
+  if (!userRes.ok) return aiError(401, "auth_expired", "登录已过期，请重新登录");
   const user = (await userRes.json()) as { id?: string };
-  if (!user.id) return aiError(401, "登录已过期，请重新登录");
+  if (!user.id) return aiError(401, "auth_expired", "登录已过期，请重新登录");
 
   // ponytail: KV 日计数最终一致，突发并发可能略超限——可接受；真滥用再换 Durable Object。
   const day = new Date().toISOString().slice(0, 10).replaceAll("-", "");
   const key = `ai:${user.id}:${day}`;
   const used = Number((await env.AI_RATE.get(key)) ?? "0");
-  if (used >= DAY_LIMIT) return aiError(429, "今天的 AI 次数用完了，明天再来");
+  if (used >= DAY_LIMIT) return aiError(429, "quota_exhausted", "今天的 AI 次数用完了，明天再来");
   await env.AI_RATE.put(key, String(used + 1), { expirationTtl: 172800 });
 
   const upstream = await fetcher(DEEPSEEK_URL, {
