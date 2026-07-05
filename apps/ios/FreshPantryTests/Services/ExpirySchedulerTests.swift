@@ -153,8 +153,8 @@ struct ExpirySchedulerTests {
         #expect(comps.hour == 9)
         #expect(comps.minute == 0)
         #expect(slot.kind == .expiry)
-        #expect(slot.title == "3 天后过期")
-        #expect(slot.body == "牛奶 2盒 还剩 3 天")
+        #expect(slot.title == String(localized: "notification.expiry.title \(3)"))
+        #expect(slot.body == String(localized: "notification.expiry.body \("牛奶") \("2盒") \(3)"))
     }
 
     // MARK: daily summary

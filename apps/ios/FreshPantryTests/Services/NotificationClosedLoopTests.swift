@@ -33,7 +33,7 @@ struct DailySummaryLowStockBodyTests {
             lowStockCount: 3, calendar: cal
         )
         let summary = try! #require(out.first { $0.kind == .dailySummary })
-        #expect(summary.body == "查看今天到期 / 已过期食材 · 库存不足 3 项")
+        #expect(summary.body == String(localized: "notification.dailySummary.bodyWithLowStock \(3)"))
     }
 
     @Test func bodyOmitsLowStockWhenZero() {
@@ -43,7 +43,7 @@ struct DailySummaryLowStockBodyTests {
             lowStockCount: 0, calendar: cal
         )
         let summary = try! #require(out.first { $0.kind == .dailySummary })
-        #expect(summary.body == "查看今天到期 / 已过期食材")
+        #expect(summary.body == String(localized: "notification.dailySummary.body"))
     }
 
     @Test func lowStockCountDefaultsToZeroForExistingCallSites() {
@@ -52,7 +52,7 @@ struct DailySummaryLowStockBodyTests {
             inventory: [], settings: dailyOnlySettings(), now: now(cal), calendar: cal
         )
         let summary = try! #require(out.first { $0.kind == .dailySummary })
-        #expect(summary.body == "查看今天到期 / 已过期食材")
+        #expect(summary.body == String(localized: "notification.dailySummary.body"))
     }
 }
 

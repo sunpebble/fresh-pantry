@@ -105,6 +105,58 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Statut inattendu (%1$lld)%2$@" } }
       }
     },
+    "notification.dailySummary.body" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "查看今天到期 / 已过期食材" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "See what expires or has expired today" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "今日期限・期限切れの食材を確認" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Voir les aliments qui expirent ou ont expiré aujourd'hui" } }
+      }
+    },
+    "notification.dailySummary.bodyWithLowStock %lld" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "查看今天到期 / 已过期食材 · 库存不足 %lld 项" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "See today's expiring items · %lld running low" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "今日期限の食材を確認 · 在庫不足 %lld 件" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aliments du jour · %lld en stock faible" } }
+      }
+    },
+    "notification.dailySummary.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "每日临期提醒" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Daily expiry check" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "毎日の期限チェック" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rappel quotidien des péremptions" } }
+      }
+    },
+    "notification.expiry.body %@ %@ %lld" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ %2$@ 还剩 %3$lld 天" } },
+        "en" : { "variations" : { "plural" : {
+          "one" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ (%2$@) — %3$lld day left" } },
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ (%2$@) — %3$lld days left" } }
+        } } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ %2$@ あと%3$lld日" } },
+        "fr" : { "variations" : { "plural" : {
+          "one" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ (%2$@) — %3$lld jour restant" } },
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "%1$@ (%2$@) — %3$lld jours restants" } }
+        } } }
+      }
+    },
+    "notification.expiry.title %lld" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%lld 天后过期" } },
+        "en" : { "variations" : { "plural" : {
+          "one" : { "stringUnit" : { "state" : "translated", "value" : "Expires in %lld day" } },
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "Expires in %lld days" } }
+        } } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "%lld日後に期限切れ" } },
+        "fr" : { "variations" : { "plural" : {
+          "one" : { "stringUnit" : { "state" : "translated", "value" : "Expire dans %lld jour" } },
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "Expire dans %lld jours" } }
+        } } }
+      }
+    },
     "tab.home" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "首页" } },

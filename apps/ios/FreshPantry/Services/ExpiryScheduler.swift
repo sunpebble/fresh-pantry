@@ -114,8 +114,8 @@ enum ExpiryScheduler {
 
                 out.append(ScheduledNotification(
                     id: idFor(ing, offset: offset),
-                    title: "\(offset) 天后过期",
-                    body: "\(ing.name) \(ing.quantity)\(ing.unit) 还剩 \(offset) 天",
+                    title: String(localized: "notification.expiry.title \(offset)"),
+                    body: String(localized: "notification.expiry.body \(ing.name) \("\(ing.quantity)\(ing.unit)") \(offset)"),
                     scheduledAt: scheduledDate,
                     kind: .expiry
                 ))
@@ -137,10 +137,10 @@ enum ExpiryScheduler {
                 let scheduled = shiftedOutOfQuietHours(base, settings: settings, calendar: calendar)
                 out.append(ScheduledNotification(
                     id: dailySummaryId,
-                    title: "每日临期提醒",
+                    title: String(localized: "notification.dailySummary.title"),
                     body: lowStockCount > 0
-                        ? "查看今天到期 / 已过期食材 · 库存不足 \(lowStockCount) 项"
-                        : "查看今天到期 / 已过期食材",
+                        ? String(localized: "notification.dailySummary.bodyWithLowStock \(lowStockCount)")
+                        : String(localized: "notification.dailySummary.body"),
                     scheduledAt: scheduled,
                     kind: .dailySummary
                 ))
