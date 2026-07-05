@@ -366,12 +366,15 @@ private struct SettingsContent: View {
                 )
             }
             NavigationLink {
-                AiSettingsView(store: aiStore)
+                AiSettingsView(store: aiStore, isPro: dependencies.proStore.isPro)
             } label: {
                 SettingsLinkLabel(
                     systemImage: "sparkles",
                     title: "AI 助手",
-                    subtitle: aiStore.isConfigured ? "已配置 · \(aiStore.settings.model)" : "配置模型与连接"
+                    // Pro 未配置 BYOK 时走内置通道，开箱可用——不能再引导去"配置"。
+                    subtitle: aiStore.isConfigured
+                        ? "已配置 · \(aiStore.settings.model)"
+                        : dependencies.proStore.isPro ? "已内置 · 无需配置" : "配置模型与连接"
                 )
             }
         } header: {

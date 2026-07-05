@@ -12,6 +12,8 @@ import SwiftUI
 /// or the mapped error.
 struct AiSettingsView: View {
     let store: AiSettingsStore
+    /// Pro 已解锁时未配置 BYOK 也在用内置 AI——状态行据此措辞，避免"尚未配置"误导。
+    let isPro: Bool
 
     @Environment(\.dismiss) private var dismiss
 
@@ -31,8 +33,9 @@ struct AiSettingsView: View {
         case failure(String)
     }
 
-    init(store: AiSettingsStore) {
+    init(store: AiSettingsStore, isPro: Bool) {
         self.store = store
+        self.isPro = isPro
         let s = store.settings
         _baseUrl = State(initialValue: s.baseUrl)
         _apiKey = State(initialValue: s.apiKey)
@@ -108,10 +111,16 @@ struct AiSettingsView: View {
     }
 
     private var statusRow: some View {
-        HStack(spacing: FkSpacing.sm) {
-            Image(systemName: store.isConfigured ? "checkmark.seal.fill" : "exclamationmark.circle")
-                .foregroundStyle(store.isConfigured ? Color.fkSuccess : Color.fkOutline)
-            Text(store.isConfigured ? "已配置" : "尚未配置")
+        // BYOK 已配置优先（保存后覆盖内置通道）；Pro 未配置时内置 AI 已在工作，
+        // 这页只是可选的自定义接入，不能显示成"尚未配置"的警示。
+        let (icon, color, text): (String, Color, String) =
+            store.isConfigured ? ("checkmark.seal.fill", .fkSuccess, "已配置")
+            : isPro ? ("checkmark.seal.fill", .fkSuccess, "正在使用内置 AI，无需配置")
+            : ("exclamationmark.circle", .fkOutline, "尚未配置")
+        return HStack(spacing: FkSpacing.sm) {
+            Image(systemName: icon)
+                .foregroundStyle(color)
+            Text(text)
                 .font(.fkBodyMedium)
                 .foregroundStyle(Color.fkOnSurface)
             Spacer()
