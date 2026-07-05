@@ -17,6 +17,7 @@ struct SentryConfig: Sendable, Equatable {
     let replaySessionSampleRate: Double
     let replayOnErrorSampleRate: Double
     let environment: String
+    let failedRequestTarget: String
 
     static let defaultDSN =
         "https://21d545f97f6b73ed79a31c666318ba7f@o848334.ingest.us.sentry.io/4511468203147264"
@@ -114,7 +115,8 @@ struct AppConfig: Sendable, Equatable {
             // ships; add the key only to override per build.
             replaySessionSampleRate: try sampleRate("SENTRY_REPLAY_SESSION_SAMPLE_RATE", default: 0.0),
             replayOnErrorSampleRate: try sampleRate("SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE", default: 1.0),
-            environment: string("SENTRY_ENVIRONMENT")
+            environment: string("SENTRY_ENVIRONMENT"),
+            failedRequestTarget: backend.supabaseURL.host ?? ""
         )
 
         return AppConfig(backend: backend, sentry: sentry)

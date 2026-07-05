@@ -61,4 +61,4 @@ com.sunpebble.freshpantry://signin-callback/
 
 Set the Supabase project's Auth Site URL to that deep link and keep the same URL in the redirect allow list before testing magic-link sign-in on devices.
 
-The checked-in Auth resend interval is tuned for development login testing. Supabase's default SMTP still has a very low hourly email cap; configure a custom SMTP provider before relying on email auth outside personal testing.
+The checked-in Auth resend cooldown is 60 seconds. Supabase's default SMTP has a low hourly email cap; configure a custom SMTP provider before relying on email auth in production.

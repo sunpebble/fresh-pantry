@@ -70,6 +70,17 @@ struct AuthServiceTests {
         #expect(!service.isBusy)
     }
 
+    @Test func sendCodeSuccessStartsResendCooldown() async {
+        let now = Date(timeIntervalSince1970: 100)
+        let service = AuthService(backend: FakeBackend(), now: { now })
+
+        await service.sendCode(email: "user@example.com")
+
+        #expect(service.resendCooldownRemaining(at: now) == 60)
+        #expect(service.resendCooldownRemaining(at: now.addingTimeInterval(6.2)) == 54)
+        #expect(service.resendCooldownRemaining(at: now.addingTimeInterval(60)) == 0)
+    }
+
     @Test func sendCodeRejectsInvalidEmailWithoutCallingBackend() async {
         let backend = FakeBackend()
         let service = AuthService(backend: backend)

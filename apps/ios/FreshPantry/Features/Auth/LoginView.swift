@@ -143,39 +143,44 @@ struct LoginView: View {
     // MARK: Code entry
 
     private func codeEntry(email: String) -> some View {
-        VStack(spacing: FkSpacing.lg) {
-            HStack(spacing: FkSpacing.sm) {
-                Image(systemName: "envelope.open")
-                    .foregroundStyle(Color.fkPrimary)
-                Text("验证码已发送至 \(email)")
-                    .font(.fkBodySmall)
-                    .foregroundStyle(Color.fkOnSurfaceVariant)
-                Spacer(minLength: 0)
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let resendCooldown = auth.resendCooldownRemaining(at: context.date)
+            VStack(spacing: FkSpacing.lg) {
+                HStack(spacing: FkSpacing.sm) {
+                    Image(systemName: "envelope.open")
+                        .foregroundStyle(Color.fkPrimary)
+                    Text("验证码已发送至 \(email)")
+                        .font(.fkBodySmall)
+                        .foregroundStyle(Color.fkOnSurfaceVariant)
+                    Spacer(minLength: 0)
+                }
+                FkFormField(label: "验证码") {
+                    TextField("6 位数字", text: $code)
+                        .font(.fkTitleMedium)
+                        .keyboardType(.numberPad)
+                        .textContentType(.oneTimeCode)
+                        .focused($focusedField, equals: .code)
+                        .padding(.horizontal, FkSpacing.md)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: FkRadius.chip, style: .continuous)
+                                .fill(Color.fkSurfaceContainer)
+                        )
+                        .onChange(of: code) { _, newValue in
+                            code = String(newValue.filter(\.isNumber).prefix(6))
+                        }
+                }
+                primaryButton(title: "验证登录", busyTitle: "验证中…", systemImage: "checkmark", action: verify)
+                Button {
+                    resend(email: email)
+                } label: {
+                    Text(resendCooldown > 0 ? "\(resendCooldown) 秒后可重新发送" : "重新发送验证码")
+                        .font(.fkLabelLarge)
+                        .foregroundStyle(resendCooldown > 0 ? Color.fkOnSurfaceVariant : Color.fkPrimary)
+                }
+                .buttonStyle(.fkPressable)
+                .disabled(auth.isBusy || resendCooldown > 0)
             }
-            FkFormField(label: "验证码") {
-                TextField("6 位数字", text: $code)
-                    .font(.fkTitleMedium)
-                    .keyboardType(.numberPad)
-                    .textContentType(.oneTimeCode)
-                    .focused($focusedField, equals: .code)
-                    .padding(.horizontal, FkSpacing.md)
-                    .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: FkRadius.chip, style: .continuous)
-                            .fill(Color.fkSurfaceContainer)
-                    )
-                    .onChange(of: code) { _, newValue in
-                        code = String(newValue.filter(\.isNumber).prefix(6))
-                    }
-            }
-            primaryButton(title: "验证登录", busyTitle: "验证中…", systemImage: "checkmark", action: verify)
-            Button(action: send) {
-                Text("重新发送验证码")
-                    .font(.fkLabelLarge)
-                    .foregroundStyle(Color.fkPrimary)
-            }
-            .buttonStyle(.fkPressable)
-            .disabled(auth.isBusy)
         }
     }
 
@@ -271,6 +276,12 @@ struct LoginView: View {
 
     private func send() {
         focusedField = nil
+        Task { await auth.sendCode(email: email) }
+    }
+
+    private func resend(email: String) {
+        focusedField = nil
+        code = ""
         Task { await auth.sendCode(email: email) }
     }
 

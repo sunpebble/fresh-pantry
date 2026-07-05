@@ -32,6 +32,7 @@ struct AppConfigTests {
         #expect(config.sentry.replaySessionSampleRate == 0.0)
         #expect(config.sentry.replayOnErrorSampleRate == 1.0)
         #expect(config.sentry.environment.isEmpty)
+        #expect(config.sentry.failedRequestTarget == "ref.supabase.co")
     }
 
     @Test func rejectsNonHTTPSupabaseURL() {

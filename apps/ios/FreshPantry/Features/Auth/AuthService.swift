@@ -40,14 +40,20 @@ final class AuthService {
     private(set) var isBusy = false
     /// The last user-facing error, cleared at the start of each new attempt.
     private(set) var errorMessage: String?
+    /// Wall-clock time when another OTP request is allowed.
+    private(set) var resendAvailableAt: Date?
 
+    // Keep in sync with supabase/config.toml [auth.email].max_frequency.
+    private static let resendCooldown: TimeInterval = 60
     private let backend: AuthBackend?
+    private let now: () -> Date
 
     /// Injects the backend seam. Pass `nil` for local-only mode (no config).
     /// Session restore runs in `restore()` (call it once after construction in a
     /// `.task`) so init stays synchronous and the initial state is deterministic.
-    init(backend: AuthBackend?) {
+    init(backend: AuthBackend?, now: @escaping () -> Date = Date.init) {
         self.backend = backend
+        self.now = now
         self.state = backend == nil ? .localOnly : .signedOut
         // Local-only has no persisted session to restore — resolved at birth.
         self.hasResolvedSession = backend == nil
@@ -60,6 +66,11 @@ final class AuthService {
     var signedInEmail: String? {
         if case let .signedIn(email) = state { return email }
         return nil
+    }
+
+    func resendCooldownRemaining(at date: Date) -> Int {
+        guard let resendAvailableAt else { return 0 }
+        return max(0, Int(ceil(resendAvailableAt.timeIntervalSince(date))))
     }
 
     // MARK: Session restore
@@ -87,6 +98,7 @@ final class AuthService {
         }
         await run {
             try await backend.sendCode(email: trimmed)
+            self.resendAvailableAt = self.now().addingTimeInterval(Self.resendCooldown)
             self.state = .codeSent(email: trimmed)
         }
     }
@@ -104,6 +116,7 @@ final class AuthService {
         }
         await run {
             let userEmail = try await backend.verify(email: email, code: trimmed)
+            self.resendAvailableAt = nil
             self.state = .signedIn(userEmail: userEmail)
         }
     }
@@ -130,6 +143,7 @@ final class AuthService {
         isBusy = true
         errorMessage = nil
         await backend.signOut()
+        resendAvailableAt = nil
         state = .signedOut
         isBusy = false
     }

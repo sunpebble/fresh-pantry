@@ -28,13 +28,13 @@ enum SentryBootstrap {
             options.sessionReplay.onErrorSampleRate = Float(config.replayOnErrorSampleRate)
             options.sessionReplay.maskAllText = true
             options.sessionReplay.maskAllImages = true
-            // Only report failed HTTP requests to our own backend (Supabase, incl.
-            // Storage covers — same host). Third-party services like
+            // Only report failed HTTP requests to our configured backend
+            // (Supabase, incl. Storage covers — same host). Third-party services like
             // world.openfoodfacts.org return transient 5xx we already handle
             // gracefully → reporting them is pure Sentry noise (FRESH_PANTRY-12).
             // failedRequestTargets is [Any]; a String element is matched as a URL
             // substring. Default is the regex ".*" (every host).
-            options.failedRequestTargets = ["nkugeupizmphbeicykpj.supabase.co"]
+            options.failedRequestTargets = config.failedRequestTarget.isEmpty ? [] : [config.failedRequestTarget]
             // App Hang Tracking. On iOS, sentry-cocoa 9.17.1 already uses the V2 ANR
             // tracker (SentryANRTrackerV2) unconditionally — there is NO
             // `enableAppHangTrackingV2` flag (do not add one; it won't compile).
