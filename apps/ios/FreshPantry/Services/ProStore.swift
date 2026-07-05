@@ -11,6 +11,8 @@ final class ProStore {
     private(set) var isPro = false
     private(set) var product: Product?
     private(set) var purchaseError: String?
+    /// 非错误的中性提示（如 Ask to Buy 待批准），PaywallSheet 就地展示。
+    private(set) var purchaseNotice: String?
     /// 预览/UI 测试注入：非 nil 时锁死 isPro，start() 不再改写。
     private let isProOverride: Bool?
     private var updatesTask: Task<Void, Never>?
@@ -49,6 +51,7 @@ final class ProStore {
 
     func purchase() async {
         purchaseError = nil
+        purchaseNotice = nil
         guard let product else {
             purchaseError = "商品信息还没加载好，稍后再试"
             return
@@ -61,7 +64,9 @@ final class ProStore {
                     await tx.finish()
                     await refreshEntitlement()
                 }
-            case .userCancelled, .pending:
+            case .pending:
+                purchaseNotice = "购买请求已提交，批准后自动解锁"
+            case .userCancelled:
                 break
             @unknown default:
                 break
@@ -73,6 +78,7 @@ final class ProStore {
 
     func restore() async {
         purchaseError = nil
+        purchaseNotice = nil
         try? await AppStore.sync()
         await refreshEntitlement()
         if !isPro { purchaseError = "没有找到可恢复的购买" }

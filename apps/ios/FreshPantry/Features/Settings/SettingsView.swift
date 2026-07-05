@@ -58,6 +58,8 @@ private struct SettingsContent: View {
     @State private var householdStore: HouseholdSessionStore?
     /// Drives the 清除常买记忆 destructive-action confirmation alert.
     @State private var showClearHistoryConfirm = false
+    /// Drives the Pro 购买 sheet from the Fresh Pantry Pro row.
+    @State private var showPaywall = false
 
     var body: some View {
         Form {
@@ -86,6 +88,9 @@ private struct SettingsContent: View {
         }
         .onChange(of: dependencies.syncSession.dataRevision) {
             Task { await loadStats() }
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallSheet(proStore: dependencies.proStore)
         }
         .alert("清除常买记忆", isPresented: $showClearHistoryConfirm) {
             Button("取消", role: .cancel) {}
@@ -351,6 +356,15 @@ private struct SettingsContent: View {
 
     private var assistantSection: some View {
         Section {
+            Button {
+                showPaywall = true
+            } label: {
+                SettingsLinkLabel(
+                    systemImage: "crown",
+                    title: "Fresh Pantry Pro",
+                    subtitle: dependencies.proStore.isPro ? "已解锁" : "解锁 AI、家庭共享与周派餐"
+                )
+            }
             NavigationLink {
                 AiSettingsView(store: aiStore)
             } label: {
