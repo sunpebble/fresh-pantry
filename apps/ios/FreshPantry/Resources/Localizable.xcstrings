@@ -1,6 +1,110 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "error.ai.authExpired" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "登录已过期，请重新登录" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your session has expired. Please sign in again." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ログインの有効期限が切れました。再度ログインしてください" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Session expirée, veuillez vous reconnecter" } }
+      }
+    },
+    "error.ai.authFailed %lld" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "认证失败 (%lld)" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign-in failed (%lld)" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "認証に失敗しました (%lld)" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l'authentification (%lld)" } }
+      }
+    },
+    "error.ai.busy" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "服务繁忙 (429)" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Service is busy (429)" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "サービスが混み合っています (429)" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Service occupé (429)" } }
+      }
+    },
+    "error.ai.cancelled" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已取消" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancelled" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "キャンセルしました" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annulé" } }
+      }
+    },
+    "error.ai.emptyResponse" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "响应中无 content" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The response contains no content" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "レスポンスに content がありません" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "La réponse ne contient aucun contenu" } }
+      }
+    },
+    "error.ai.network %@" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "网络错误：%@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Network error: %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ネットワークエラー：%@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Erreur réseau : %@" } }
+      }
+    },
+    "error.ai.notConfigured" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "AI 服务未配置" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI service not set up" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "AIサービスが未設定です" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Service IA non configuré" } }
+      }
+    },
+    "error.ai.notFound" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "接口不存在 (404)。Base URL 应填写到 /v1，例如 https://example.com/v1，不要包含 /chat/completions" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Endpoint not found (404). The base URL should end at /v1, e.g. https://example.com/v1 — do not include /chat/completions" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "エンドポイントが見つかりません (404)。Base URL は /v1 まで入力してください（例：https://example.com/v1）。/chat/completions は含めないでください" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Point d'accès introuvable (404). L'URL de base doit s'arrêter à /v1, p. ex. https://example.com/v1, sans /chat/completions" } }
+      }
+    },
+    "error.ai.parse %@" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "解析响应失败: %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Failed to parse the response: %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "レスポンスの解析に失敗しました: %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l'analyse de la réponse : %@" } }
+      }
+    },
+    "error.ai.quotaExhausted" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今天的 AI 次数用完了，明天再来" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You've used up today's AI quota. Come back tomorrow!" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "本日のAI利用回数を使い切りました。また明日どうぞ" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Quota IA du jour épuisé, revenez demain" } }
+      }
+    },
+    "error.ai.serverError %lld" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "服务错误 (%lld)" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Server error (%lld)" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "サーバーエラー (%lld)" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Erreur du serveur (%lld)" } }
+      }
+    },
+    "error.ai.timeout" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请求超时" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Request timed out" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "リクエストがタイムアウトしました" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Délai de la requête dépassé" } }
+      }
+    },
+    "error.ai.unexpectedStatus %lld %@" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "意外状态 (%1$lld)%2$@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unexpected status (%1$lld)%2$@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "予期しないステータス (%1$lld)%2$@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Statut inattendu (%1$lld)%2$@" } }
+      }
+    },
     "tab.home" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "首页" } },

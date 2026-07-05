@@ -1,8 +1,9 @@
 import Foundation
 
-/// AI error hierarchy mirroring the Dart `AiException` sealed class. The Chinese
-/// `message` text is keyed off by the UI, so it is preserved VERBATIM (services
-/// invariant #1). Ported from `lib/services/ai_client.dart`.
+/// AI error hierarchy mirroring the Dart `AiException` sealed class. Ported
+/// from `lib/services/ai_client.dart`. The associated `String` on
+/// `.network`/`.auth`/`.parse` is already the fully localized message (built
+/// at the throw site via `String(localized:)`), so `message` just returns it.
 enum AiError: Error, Equatable {
     case notConfigured
     case network(String)
@@ -10,14 +11,14 @@ enum AiError: Error, Equatable {
     case parse(String)
     case cancelled
 
-    /// Chinese user-facing message (parity with the Dart exceptions).
+    /// User-facing message in the current UI language.
     var message: String {
         switch self {
-        case .notConfigured: return "AI 服务未配置"
+        case .notConfigured: return String(localized: "error.ai.notConfigured")
         case let .network(text): return text
         case let .auth(text): return text
         case let .parse(text): return text
-        case .cancelled: return "已取消"
+        case .cancelled: return String(localized: "error.ai.cancelled")
         }
     }
 }
@@ -88,8 +89,9 @@ struct AiMessage: Encodable, Sendable, Equatable {
 }
 
 /// OpenAI-compatible chat-completions client. Stateless `enum` namespace (the
-/// Dart `AiClient` is all-static). Maps every HTTP status branch to an `AiError`
-/// with the exact Chinese message the Dart client produces.
+/// Dart `AiClient` is all-static). Maps every HTTP status branch to an
+/// `AiError` carrying a localized message (`error.ai.*` keys in
+/// `Localizable.xcstrings`).
 enum AiClient {
     /// POSTs a chat-completions request and returns `choices[0].message.content`.
     /// `session` is injectable so tests can drive a stubbed `URLProtocol`.
@@ -114,13 +116,13 @@ enum AiClient {
         do {
             (data, response) = try await session.data(for: request)
         } catch let error as URLError where error.code == .timedOut {
-            throw AiError.network("请求超时")
+            throw AiError.network(String(localized: "error.ai.timeout"))
         } catch is CancellationError {
             throw AiError.cancelled
         } catch let error as URLError where error.code == .cancelled {
             throw AiError.cancelled
         } catch {
-            throw AiError.network("网络错误：\(error.localizedDescription)")
+            throw AiError.network(String(localized: "error.ai.network \(error.localizedDescription)"))
         }
 
         try Task.checkCancellation()
@@ -185,22 +187,21 @@ enum AiClient {
         case 200:
             return
         case 401, 403:
-            throw AiError.auth("认证失败 (\(status))")
-        case 429:
-            // 内置 worker 的日限额会带中文 error.message（如"今天的 AI 次数用完了，明天再来"），
-            // 优先透传；无 body 时保留原文案。
-            if let root = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
-               let err = root["error"] as? [String: Any],
-               let message = err["message"] as? String, !message.isEmpty {
-                throw AiError.network(message)
+            switch serverErrorCode(body) {
+            case "auth_expired": throw AiError.auth(String(localized: "error.ai.authExpired"))
+            default: throw AiError.auth(String(localized: "error.ai.authFailed \(status)"))
             }
-            throw AiError.network("服务繁忙 (429)")
+        case 429:
+            // 内置 worker 的日限额用稳定 code 标识（Task 3），按 code 映射本地化文案，
+            // 不再透传服务端 message（服务端语言与客户端 UI 语言可能不一致）。
+            switch serverErrorCode(body) {
+            case "quota_exhausted": throw AiError.network(String(localized: "error.ai.quotaExhausted"))
+            default: throw AiError.network(String(localized: "error.ai.busy"))
+            }
         case 404:
-            throw AiError.network(
-                "接口不存在 (404)。Base URL 应填写到 /v1，例如 https://example.com/v1，不要包含 /chat/completions"
-            )
+            throw AiError.network(String(localized: "error.ai.notFound"))
         case 500...:
-            throw AiError.network("服务错误 (\(status))")
+            throw AiError.network(String(localized: "error.ai.serverError \(status)"))
         default:
             let detail = (String(data: body, encoding: .utf8) ?? "")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -212,8 +213,16 @@ enum AiClient {
             } else {
                 suffix = "：\(detail)"
             }
-            throw AiError.network("意外状态 (\(status))\(suffix)")
+            throw AiError.network(String(localized: "error.ai.unexpectedStatus \(status) \(suffix)"))
         }
+    }
+
+    /// Extracts the stable `error.code` from a JSON error body (Task 3's
+    /// `{ error: { code, message } }` shape), if present.
+    private static func serverErrorCode(_ body: Data) -> String? {
+        guard let root = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+              let err = root["error"] as? [String: Any] else { return nil }
+        return err["code"] as? String
     }
 
     // MARK: - Response decode
@@ -223,19 +232,21 @@ enum AiClient {
         do {
             json = try JSONSerialization.jsonObject(with: data)
         } catch {
-            throw AiError.parse("解析响应失败: \(error.localizedDescription)")
+            throw AiError.parse(String(localized: "error.ai.parse \(error.localizedDescription)"))
         }
         guard let root = json as? [String: Any] else {
-            throw AiError.parse("解析响应失败: 响应不是 JSON 对象")
+            // ponytail: "not a JSON object" is a diagnostic detail, not user copy;
+            // left untranslated like `error.localizedDescription` above.
+            throw AiError.parse(String(localized: "error.ai.parse \("not a JSON object")"))
         }
         guard let choices = root["choices"] as? [Any], !choices.isEmpty else {
-            throw AiError.parse("响应中无 choices")
+            throw AiError.parse(String(localized: "error.ai.parse \("no choices")"))
         }
         guard let first = choices.first as? [String: Any],
               let message = first["message"] as? [String: Any],
               let content = message["content"] as? String
         else {
-            throw AiError.parse("响应中无 content")
+            throw AiError.parse(String(localized: "error.ai.emptyResponse"))
         }
         return content
     }

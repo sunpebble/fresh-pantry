@@ -5,7 +5,9 @@ import Testing
 /// Error-mapping parity tests for `AiClient.chat`, driven by a stubbed
 /// `URLProtocol` on an ephemeral `URLSession` (no live key / network). Each case
 /// returns a crafted status + body and asserts the thrown `AiError` case AND its
-/// Chinese message — the UI keys off both, so they must match the Dart client.
+/// localized message, built via the same `String(localized:)` API as the
+/// implementation — the test host's language is whatever the run environment
+/// picks, so expectations are format-equivalence, not a hardcoded language.
 @MainActor
 @Suite(.serialized)
 struct AiClientTests {
@@ -88,14 +90,14 @@ struct AiClientTests {
         respond(status: 200, body: #"{"choices":[]}"#)
         await #expect {
             try await chat()
-        } throws: { ($0 as? AiError) == .parse("响应中无 choices") }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.ai.parse \("no choices")")) }
     }
 
     @Test func successWithNonStringContentThrowsParse() async {
         respond(status: 200, body: #"{"choices":[{"message":{"content":123}}]}"#)
         await #expect {
             try await chat()
-        } throws: { ($0 as? AiError) == .parse("响应中无 content") }
+        } throws: { ($0 as? AiError) == .parse(String(localized: "error.ai.emptyResponse")) }
     }
 
     // MARK: Auth / rate / server / 404 / unexpected
@@ -104,35 +106,42 @@ struct AiClientTests {
         respond(status: 401, body: "nope")
         await #expect {
             try await chat()
-        } throws: { ($0 as? AiError) == .auth("认证失败 (401)") }
+        } throws: { ($0 as? AiError) == .auth(String(localized: "error.ai.authFailed \(401)")) }
     }
 
     @Test func status403MapsToAuth() async {
         respond(status: 403, body: "forbidden")
         await #expect {
             try await chat()
-        } throws: { ($0 as? AiError) == .auth("认证失败 (403)") }
+        } throws: { ($0 as? AiError) == .auth(String(localized: "error.ai.authFailed \(403)")) }
+    }
+
+    @Test func status401WithAuthExpiredCodeMapsToLocalizedMessage() async {
+        respond(status: 401, body: #"{"error":{"code":"auth_expired","message":"token expired"}}"#)
+        await #expect {
+            try await chat()
+        } throws: { ($0 as? AiError) == .auth(String(localized: "error.ai.authExpired")) }
     }
 
     @Test func status429MapsToBusyNetwork() async {
         respond(status: 429, body: "slow down")
         await #expect {
             try await chat()
-        } throws: { ($0 as? AiError) == .network("服务繁忙 (429)") }
+        } throws: { ($0 as? AiError) == .network(String(localized: "error.ai.busy")) }
     }
 
-    @Test func status429PassesThroughServerErrorMessage() async {
-        respond(status: 429, body: #"{"error":{"message":"今天的 AI 次数用完了，明天再来"}}"#)
+    @Test func testQuotaExhaustedCodeMapsToLocalizedMessage() async {
+        respond(status: 429, body: #"{"error":{"code":"quota_exhausted","message":"今天的 AI 次数用完了，明天再来"}}"#)
         await #expect {
             try await chat()
-        } throws: { ($0 as? AiError) == .network("今天的 AI 次数用完了，明天再来") }
+        } throws: { ($0 as? AiError) == .network(String(localized: "error.ai.quotaExhausted")) }
     }
 
     @Test func status500MapsToServerError() async {
         respond(status: 500, body: "boom")
         await #expect {
             try await chat()
-        } throws: { ($0 as? AiError) == .network("服务错误 (500)") }
+        } throws: { ($0 as? AiError) == .network(String(localized: "error.ai.serverError \(500)")) }
     }
 
     @Test func status404MapsToBaseUrlHint() async {
@@ -140,9 +149,7 @@ struct AiClientTests {
         await #expect {
             try await chat()
         } throws: {
-            ($0 as? AiError) == .network(
-                "接口不存在 (404)。Base URL 应填写到 /v1，例如 https://example.com/v1，不要包含 /chat/completions"
-            )
+            ($0 as? AiError) == .network(String(localized: "error.ai.notFound"))
         }
     }
 
@@ -150,7 +157,9 @@ struct AiClientTests {
         respond(status: 418, body: "  teapot detail  ")
         await #expect {
             try await chat()
-        } throws: { ($0 as? AiError) == .network("意外状态 (418)：teapot detail") }
+        } throws: {
+            ($0 as? AiError) == .network(String(localized: "error.ai.unexpectedStatus \(418) \("：teapot detail")"))
+        }
     }
 
     @Test func unexpectedStatusTruncatesLongBodyTo120Chars() async {
@@ -159,7 +168,8 @@ struct AiClientTests {
         await #expect {
             try await chat()
         } throws: {
-            ($0 as? AiError) == .network("意外状态 (418)：\(String(repeating: "x", count: 120))…")
+            let suffix = "：\(String(repeating: "x", count: 120))…"
+            return ($0 as? AiError) == .network(String(localized: "error.ai.unexpectedStatus \(418) \(suffix)"))
         }
     }
 }
