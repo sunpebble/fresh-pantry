@@ -32,6 +32,7 @@ struct AddIngredientView: View {
     @State private var showPasteImport = false
     @State private var showImageImport = false
     @State private var showReceiptImport = false
+    @State private var showPaywall = false
     @State private var showScanner = false
     @State private var showScannerUnavailable = false
     @State private var isLookingUpBarcode = false
@@ -61,7 +62,8 @@ struct AddIngredientView: View {
         IntakeController(
             repository: dependencies.inventoryRepository,
             householdID: dependencies.householdID,
-            syncWriter: dependencies.syncWriter
+            syncWriter: dependencies.syncWriter,
+            isPro: { dependencies.proStore.isPro }
         )
     }
 
@@ -153,6 +155,9 @@ struct AddIngredientView: View {
                     onApplied()
                     dismiss()
                 }
+            }
+            .sheet(isPresented: $showPaywall) {
+                PaywallSheet(proStore: dependencies.proStore)
             }
             .fullScreenCover(isPresented: $showScanner) {
                 BarcodeScannerScreen { code in
@@ -666,7 +671,10 @@ struct AddIngredientView: View {
         }
 
         let outcome = await controller.apply([proposal])
-        if outcome.persisted {
+        if outcome.limitReached {
+            submitError = Self.inventoryLimitMessage
+            showPaywall = true
+        } else if outcome.persisted {
             await learnScannedBarcode()
             onApplied()
             await dependencies.notificationCoordinator.reschedule(householdID: dependencies.householdID)
@@ -676,6 +684,10 @@ struct AddIngredientView: View {
             // the sheet open with an inline retry notice, never a silent no-op.
             submitError = AddSubmitFeedback.applyFailureMessage(for: outcome)
         }
+    }
+
+    private static var inventoryLimitMessage: String {
+        "免费版最多记录 \(FreeTier.inventoryLimit) 条库存"
     }
 }
 
@@ -692,7 +704,7 @@ enum AddSubmitFeedback {
     /// The apply didn't persist (the save threw; nothing was written). Same copy
     /// as the review screen so the retry hint reads identically on both paths.
     static func applyFailureMessage(for outcome: IntakeController.ApplyOutcome) -> String? {
-        outcome.persisted ? nil : "入库失败，请重试"
+        outcome.persisted || outcome.limitReached ? nil : "入库失败，请重试"
     }
 }
 
