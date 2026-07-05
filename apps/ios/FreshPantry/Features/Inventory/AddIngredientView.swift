@@ -95,20 +95,20 @@ struct AddIngredientView: View {
             }
             .background(Color.fkSurface)
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("添加食材")
+            .navigationTitle(String(localized: "inventory.addIngredient.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("取消") { dismiss() }
+                    Button(String(localized: "inventory.action.cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(isSubmitting ? "添加中…" : "添加") { Task { await submit() } }
+                    Button(isSubmitting ? String(localized: "inventory.addIngredient.adding") : String(localized: "inventory.addIngredient.add")) { Task { await submit() } }
                         .font(.fkLabelLarge)
                         .disabled(!form.canSubmit || isSubmitting)
                 }
             }
             .navigationDestination(item: $reviewRoute) { route in
-                IntakeReviewView(proposals: route.proposals, title: "确认入库") { _ in
+                IntakeReviewView(proposals: route.proposals, title: String(localized: "inventory.intakeReview.confirmTitle")) { _ in
                     // The merge path also confirmed a save → learn the barcode
                     // before tearing down (the form still holds it). Fire-and-
                     // forget so dismissal isn't gated on the convenience write.
@@ -119,21 +119,21 @@ struct AddIngredientView: View {
             }
             .sheet(isPresented: $showUnitPicker) {
                 FkPickerSheet(
-                    title: "选择单位",
+                    title: String(localized: "inventory.picker.unit"),
                     options: form.unitOptions.map { FkPickerOption(value: $0, label: $0) },
                     selected: form.unit
                 ) { form.setUnit($0) }
             }
             .sheet(isPresented: $showCategoryPicker) {
                 FkPickerSheet(
-                    title: "选择分类",
-                    options: FoodCategories.values.map { FkPickerOption(value: $0, label: $0) },
+                    title: String(localized: "inventory.picker.category"),
+                    options: FoodCategories.values.map { FkPickerOption(value: $0, label: FoodCategories.displayLabel(for: $0)) },
                     selected: FoodCategories.dropdownValue(form.category)
                 ) { form.setCategory($0) }
             }
             .sheet(isPresented: $showStoragePicker) {
                 FkPickerSheet(
-                    title: "存放位置",
+                    title: String(localized: "inventory.picker.storage"),
                     options: IconType.allCases.map { FkPickerOption(value: $0, label: $0.storageAreaLabel) },
                     selected: form.storage
                 ) { form.setStorage($0) }
@@ -164,14 +164,14 @@ struct AddIngredientView: View {
                     Task { await handleScannedBarcode(code) }
                 }
             }
-            .alert("无法扫码", isPresented: $showScannerUnavailable) {
-                Button("好", role: .cancel) {}
+            .alert(String(localized: "inventory.scan.unavailableTitle"), isPresented: $showScannerUnavailable) {
+                Button(String(localized: "inventory.action.ok"), role: .cancel) {}
             } message: {
-                Text("此设备不支持扫码，请在真机上使用，或手动填写。")
+                Text(String(localized: "inventory.scan.unavailableMessage"))
             }
             .overlay {
                 if isLookingUpBarcode {
-                    FkBusyOverlay(text: "查询条码中…")
+                    FkBusyOverlay(text: String(localized: "inventory.scan.lookingUpBarcode"))
                 }
             }
         }
@@ -189,7 +189,7 @@ struct AddIngredientView: View {
     @ViewBuilder
     private var frequentItemsSection: some View {
         if !frequentItems.isEmpty {
-            FkFormField(label: "常购食材") {
+            FkFormField(label: String(localized: "inventory.frequentItems.label")) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: FkSpacing.sm) {
                         ForEach(frequentItems, id: \.name) { item in
@@ -224,7 +224,7 @@ struct AddIngredientView: View {
                                         }
                                     }
                                 } label: {
-                                    Label("忘记此项", systemImage: "trash")
+                                    Label(String(localized: "inventory.frequentItems.forget"), systemImage: "trash")
                                 }
                             }
                         }
@@ -246,7 +246,7 @@ struct AddIngredientView: View {
         } label: {
             HStack(spacing: FkSpacing.sm) {
                 Image(systemName: "wand.and.stars")
-                Text("AI 解析文本")
+                Text(String(localized: "inventory.import.pasteText"))
                     .font(.fkLabelLarge)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
@@ -274,7 +274,7 @@ struct AddIngredientView: View {
         } label: {
             HStack(spacing: FkSpacing.sm) {
                 Image(systemName: "camera.viewfinder")
-                Text("拍照/相册识别")
+                Text(String(localized: "inventory.import.photoRecognize"))
                     .font(.fkLabelLarge)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
@@ -303,7 +303,7 @@ struct AddIngredientView: View {
         } label: {
             HStack(spacing: FkSpacing.sm) {
                 Image(systemName: "doc.text.viewfinder")
-                Text("扫小票入库")
+                Text(String(localized: "inventory.import.receipt"))
                     .font(.fkLabelLarge)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
@@ -337,10 +337,10 @@ struct AddIngredientView: View {
         } label: {
             HStack(spacing: FkSpacing.sm) {
                 Image(systemName: "barcode.viewfinder")
-                Text("扫码添加")
+                Text(String(localized: "inventory.import.scanBarcode"))
                     .font(.fkLabelLarge)
                 if !BarcodeScannerView.isScanningAvailable {
-                    Text("需真机")
+                    Text(String(localized: "inventory.scan.requiresDevice"))
                         .font(.fkLabelSmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                 }
@@ -361,10 +361,10 @@ struct AddIngredientView: View {
     }
 
     private var nameField: some View {
-        FkFormField(label: "名称") {
+        FkFormField(label: String(localized: "inventory.field.name")) {
             FkTextFieldPill(
                 text: $form.name,
-                placeholder: "如:牛奶、鸡蛋",
+                placeholder: String(localized: "inventory.field.namePlaceholder"),
                 submitLabel: .next,
                 onCommit: { form.applySmartDefaults() }
             )
@@ -378,14 +378,14 @@ struct AddIngredientView: View {
 
     private var quantityRow: some View {
         HStack(alignment: .bottom, spacing: FkSpacing.md) {
-            FkFormField(label: "数量") {
+            FkFormField(label: String(localized: "inventory.field.quantity")) {
                 FkTextFieldPill(
                     text: $form.quantity,
                     placeholder: "1",
                     keyboard: .decimalPad
                 )
             }
-            FkFormField(label: "单位") {
+            FkFormField(label: String(localized: "inventory.field.unit")) {
                 FkValuePill(value: form.unit) { showUnitPicker = true }
             }
             .frame(maxWidth: 140)
@@ -393,15 +393,15 @@ struct AddIngredientView: View {
     }
 
     private var categoryField: some View {
-        FkFormField(label: "分类") {
-            FkValuePill(value: FoodCategories.dropdownValue(form.category)) {
+        FkFormField(label: String(localized: "inventory.field.category")) {
+            FkValuePill(value: FoodCategories.displayLabel(for: FoodCategories.dropdownValue(form.category))) {
                 showCategoryPicker = true
             }
         }
     }
 
     private var storageField: some View {
-        FkFormField(label: "存放位置") {
+        FkFormField(label: String(localized: "inventory.field.storage")) {
             FkValuePill(value: form.storage.storageAreaLabel, systemImage: form.storage.sfSymbolOutline) {
                 showStoragePicker = true
             }
@@ -409,13 +409,13 @@ struct AddIngredientView: View {
     }
 
     private var shelfLifeField: some View {
-        FkFormField(label: "保质期") {
+        FkFormField(label: String(localized: "inventory.field.shelfLife")) {
             VStack(alignment: .leading, spacing: FkSpacing.sm) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: FkSpacing.sm) {
                         ForEach(form.shelfLifePresets, id: \.self) { days in
                             FkChip(
-                                label: "\(days)天",
+                                label: String(localized: "inventory.shelfLife.days \(days)"),
                                 isSelected: form.shelfLifeDays == days
                             ) {
                                 customShelfLife = ""
@@ -423,7 +423,7 @@ struct AddIngredientView: View {
                                 form.setShelfLife(days)
                             }
                         }
-                        FkChip(label: "不过期", isSelected: form.shelfLifeDays == nil && customShelfLife.isEmpty) {
+                        FkChip(label: String(localized: "inventory.shelfLife.never"), isSelected: form.shelfLifeDays == nil && customShelfLife.isEmpty) {
                             customShelfLife = ""
                             expiryScanNotice = nil
                             form.setShelfLife(nil)
@@ -431,10 +431,10 @@ struct AddIngredientView: View {
                     }
                 }
                 HStack(spacing: FkSpacing.sm) {
-                    Text("自定义")
+                    Text(String(localized: "inventory.shelfLife.custom"))
                         .font(.fkBodyMedium)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
-                    TextField("天数", text: $customShelfLife)
+                    TextField(String(localized: "inventory.shelfLife.dayCount"), text: $customShelfLife)
                         .font(.fkTitleMedium)
                         .keyboardType(.numberPad)
                         .frame(maxWidth: 80)
@@ -450,7 +450,7 @@ struct AddIngredientView: View {
                                 form.setShelfLife(days)
                             }
                         }
-                    Text("天")
+                    Text(String(localized: "inventory.shelfLife.unitDay"))
                         .font(.fkBodyMedium)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                 }
@@ -483,7 +483,7 @@ struct AddIngredientView: View {
                     Image(systemName: "text.viewfinder")
                         .font(.system(size: 13, weight: .semibold))
                 }
-                Text(recognizing ? "识别中…" : "拍照识别保质期")
+                Text(recognizing ? String(localized: "inventory.expiryScan.recognizing") : String(localized: "inventory.expiryScan.action"))
                     .font(.fkLabelMedium)
             }
             .foregroundStyle(Color.fkPrimary)
@@ -500,7 +500,7 @@ struct AddIngredientView: View {
     }
 
     private var tagsField: some View {
-        FkFormField(label: "标签") {
+        FkFormField(label: String(localized: "inventory.field.tags")) {
             IngredientTagsEditor(tags: $form.tags)
         }
     }
@@ -538,13 +538,13 @@ struct AddIngredientView: View {
         switch BarcodeScanResolution.decide(barcode: barcode, localMemory: localMemory, offDetails: offDetails) {
         case let .localMemory(name, category):
             form.prefill(fromLocalName: name, category: category, barcode: barcode)
-            barcodeNotice = "已套用上次录入的信息，可直接保存或修改。"
+            barcodeNotice = String(localized: "inventory.barcode.localMemoryApplied")
         case let .openFoodFacts(details):
             form.prefill(from: details, barcode: barcode)
             barcodeNotice = nil
         case .manualFallback:
             form.prefill(from: nil, barcode: barcode)
-            barcodeNotice = "未找到该条码的产品信息，请手动补充。"
+            barcodeNotice = String(localized: "inventory.barcode.notFound")
         case .invalid:
             break
         }
@@ -595,11 +595,11 @@ struct AddIngredientView: View {
         do {
             data = try await item.loadTransferable(type: Data.self)
         } catch {
-            expiryScanNotice = .failure("读取照片失败：\(error.localizedDescription)")
+            expiryScanNotice = .failure(String(localized: "inventory.photo.loadFailed \(error.localizedDescription)"))
             return
         }
         guard let data, !data.isEmpty else {
-            expiryScanNotice = .failure("读取照片失败，请重试。")
+            expiryScanNotice = .failure(String(localized: "inventory.photo.loadFailedRetry"))
             return
         }
 
@@ -618,7 +618,7 @@ struct AddIngredientView: View {
             expiryScanNotice = .failure(error == .noText ? Self.noDateMessage : error.message)
             return
         } catch {
-            expiryScanNotice = .failure("识别失败：\(error.localizedDescription)")
+            expiryScanNotice = .failure(String(localized: "inventory.expiryScan.recognizeFailed \(error.localizedDescription)"))
             return
         }
 
@@ -630,16 +630,16 @@ struct AddIngredientView: View {
         guard let days = form.prefillExpiry(date: expiry) else {
             // Parsed a date, but it's today / already past — a stale label. Tell the
             // user rather than silently setting a 0/negative shelf life.
-            expiryScanNotice = .failure("识别到的日期已过期，请确认或手动填写。")
+            expiryScanNotice = .failure(String(localized: "inventory.expiryScan.pastDate"))
             return
         }
         customShelfLife = ""
-        expiryScanNotice = .success("已识别到期日，约 \(days) 天后过期，可直接保存或修改。")
+        expiryScanNotice = .success(String(localized: "inventory.expiryScan.recognized \(days)"))
     }
 
     /// Shared "no date found" copy — keeps the OCR-no-text and parser-no-date paths
     /// pointing the user at manual entry with one consistent message.
-    private static let noDateMessage = "未识别到日期，请手动填写。"
+    private static let noDateMessage = String(localized: "inventory.expiryScan.noDate")
 
     // MARK: Submit
 
@@ -687,7 +687,7 @@ struct AddIngredientView: View {
     }
 
     private static var inventoryLimitMessage: String {
-        "免费版最多记录 \(FreeTier.inventoryLimit) 条库存"
+        String(localized: "inventory.freeTierLimit \(FreeTier.inventoryLimit)")
     }
 }
 
@@ -699,12 +699,12 @@ enum AddSubmitFeedback {
     /// The live-inventory load threw BEFORE the proposal was built. Degrading to
     /// an empty inventory would force `.newRow` and silently bypass the merge
     /// review, so the submit fails loudly instead of guessing.
-    static let loadFailureMessage = "读取库存失败，请重试。"
+    static let loadFailureMessage = String(localized: "inventory.load.failedRetry")
 
     /// The apply didn't persist (the save threw; nothing was written). Same copy
     /// as the review screen so the retry hint reads identically on both paths.
     static func applyFailureMessage(for outcome: IntakeController.ApplyOutcome) -> String? {
-        outcome.persisted || outcome.limitReached ? nil : "入库失败，请重试"
+        outcome.persisted || outcome.limitReached ? nil : String(localized: "inventory.intake.failedRetry")
     }
 }
 

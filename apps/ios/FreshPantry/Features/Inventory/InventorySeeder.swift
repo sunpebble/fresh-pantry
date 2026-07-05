@@ -31,15 +31,17 @@ enum InventorySeeder {
     /// Specs: (name, quantity, unit, days-until-expiry). The category / storage /
     /// shelf life come from `FoodKnowledge`, and freshness/state from
     /// `ExpiryCalculator`, so the data is realistic and self-consistent.
+    /// DEBUG-only demo content (never compiled into release) — i18n:ignore below,
+    /// not shipped UI text.
     private static let specs: [(name: String, quantity: String, unit: String, daysUntilExpiry: Int)] = [
-        ("牛奶", "2", "盒", 5),
-        ("菠菜", "1", "袋", -1), // 已过期
-        ("鸡胸肉", "500", "g", 1), // 紧急
-        ("鸡蛋", "10", "个", 20),
-        ("苹果", "6", "个", 9),
-        ("酱油", "1", "瓶", 300),
-        ("三文鱼", "1", "盒", 2), // 紧急
-        ("酸奶", "4", "杯", 11),
+        ("牛奶", "2", "盒", 5), // i18n:ignore DEBUG-only sample data, not UI text
+        ("菠菜", "1", "袋", -1), // i18n:ignore DEBUG-only sample data, not UI text — 已过期
+        ("鸡胸肉", "500", "g", 1), // i18n:ignore DEBUG-only sample data, not UI text — 紧急
+        ("鸡蛋", "10", "个", 20), // i18n:ignore DEBUG-only sample data, not UI text
+        ("苹果", "6", "个", 9), // i18n:ignore DEBUG-only sample data, not UI text
+        ("酱油", "1", "瓶", 300), // i18n:ignore DEBUG-only sample data, not UI text
+        ("三文鱼", "1", "盒", 2), // i18n:ignore DEBUG-only sample data, not UI text — 紧急
+        ("酸奶", "4", "杯", 11), // i18n:ignore DEBUG-only sample data, not UI text
     ]
 
     static func sampleIngredients(now: Date = Date()) -> [Ingredient] {

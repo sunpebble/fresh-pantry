@@ -12,7 +12,7 @@ import Testing
 @MainActor
 struct AddSubmitFeedbackTests {
     @Test func applyFailureMessageOnlyForNonPersistedOutcome() {
-        #expect(AddSubmitFeedback.applyFailureMessage(for: .failed) == "入库失败，请重试")
+        #expect(AddSubmitFeedback.applyFailureMessage(for: .failed) == String(localized: "inventory.intake.failedRetry"))
         #expect(AddSubmitFeedback.applyFailureMessage(
             for: IntakeController.ApplyOutcome(appliedIds: ["p1"], addedItems: [], persisted: true)
         ) == nil)
@@ -24,7 +24,7 @@ struct AddSubmitFeedbackTests {
     }
 
     @Test func loadFailureCopyIsDistinctFromApplyFailure() {
-        #expect(AddSubmitFeedback.loadFailureMessage == "读取库存失败，请重试。")
+        #expect(AddSubmitFeedback.loadFailureMessage == String(localized: "inventory.load.failedRetry"))
         // Distinct copy so the user can tell "nothing was even attempted"
         // (load threw, form untouched) from "the save itself failed".
         #expect(

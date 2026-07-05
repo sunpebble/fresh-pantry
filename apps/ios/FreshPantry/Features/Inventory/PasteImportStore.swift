@@ -48,7 +48,7 @@ final class PasteImportStore {
     /// "no items" note) and leaves `proposals` nil.
     func parse() async {
         guard canParse else { return }
-        await run(emptyMessage: "未能从文本中解析出食材，请调整后重试。") {
+        await run(emptyMessage: String(localized: "inventory.pasteImport.textEmptyResult")) {
             try await AiIngredientParser.fromText(self.text, chatFn: self.chatFn)
         }
     }
@@ -58,7 +58,7 @@ final class PasteImportStore {
     /// On success sets `proposals`; on failure sets `errorMessage`.
     func parseImage(_ data: Data) async {
         guard !isParsing else { return }
-        await run(emptyMessage: "未能从图片中识别出食材，请换一张更清晰的照片重试。") {
+        await run(emptyMessage: String(localized: "inventory.pasteImport.imageEmptyResult")) {
             try await AiIngredientParser.fromImage(data, chatFn: self.chatFn)
         }
     }
@@ -83,7 +83,7 @@ final class PasteImportStore {
             errorMessage = error.message
             return
         } catch {
-            errorMessage = "解析失败：\(error.localizedDescription)"
+            errorMessage = String(localized: "inventory.pasteImport.parseFailed \(error.localizedDescription)")
             return
         }
 
@@ -96,7 +96,7 @@ final class PasteImportStore {
         do {
             inventory = try await inventoryRepository.loadAllFor(householdID)
         } catch {
-            errorMessage = "库存读取失败，请重试"
+            errorMessage = String(localized: "inventory.load.failedShort")
             return
         }
         proposals = IntakeProposalFactory.fromDrafts(drafts, inventory)

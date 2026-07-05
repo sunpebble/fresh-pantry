@@ -26,13 +26,13 @@ struct FkStatusStyle: Sendable {
         case .fresh:
             // Green, not primary: with the sun-gold primary, a gold "新鲜" chip
             // would read as a caution next to the amber "即将过期" one.
-            return FkStatusStyle(background: .fkSuccessSoft, foreground: .fkOnSuccessContainer, label: "新鲜")
+            return FkStatusStyle(background: .fkSuccessSoft, foreground: .fkOnSuccessContainer, label: String(localized: "component.status.fresh"))
         case .soon:
-            return FkStatusStyle(background: .fkWarnSoft, foreground: .fkOnWarnContainer, label: "即将过期")
+            return FkStatusStyle(background: .fkWarnSoft, foreground: .fkOnWarnContainer, label: String(localized: "component.status.soon"))
         case .urgent:
-            return FkStatusStyle(background: .fkDangerSoft, foreground: .fkOnDangerContainer, label: "快过期")
+            return FkStatusStyle(background: .fkDangerSoft, foreground: .fkOnDangerContainer, label: String(localized: "component.status.urgent"))
         case .expired:
-            return FkStatusStyle(background: .fkDanger, foreground: .fkOnDanger, label: "已过期")
+            return FkStatusStyle(background: .fkDanger, foreground: .fkOnDanger, label: String(localized: "component.status.expired"))
         }
     }
 }

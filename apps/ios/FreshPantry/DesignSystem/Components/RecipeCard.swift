@@ -76,7 +76,7 @@ struct RecipeCard: View {
         .buttonStyle(.plain)
         // Wins the gesture so the card's own tap doesn't fire (parity with the
         // Flutter inner GestureDetector).
-        .accessibilityLabel(isFavorite ? "取消收藏" : "收藏")
+        .accessibilityLabel(isFavorite ? String(localized: "component.recipeCard.unfavorite") : String(localized: "component.recipeCard.favorite"))
     }
 
     // MARK: Content
@@ -90,7 +90,7 @@ struct RecipeCard: View {
                 .multilineTextAlignment(.leading)
 
             if !recipe.category.trimmed.isEmpty {
-                Text(recipe.category)
+                Text(FoodCategories.displayLabel(for: recipe.category))
                     .font(.fkLabelSmall)
                     .foregroundStyle(palette.ink)
                     .padding(.horizontal, FkSpacing.sm)
@@ -100,9 +100,9 @@ struct RecipeCard: View {
 
             HStack(spacing: FkSpacing.md) {
                 metaItem(systemImage: "flame", text: recipe.difficultyLabel)
-                metaItem(systemImage: "clock", text: "\(recipe.cookingMinutes) 分钟")
+                metaItem(systemImage: "clock", text: String(localized: "component.recipeCard.minutes \(recipe.cookingMinutes)"))
                 if expiringUse > 0 {
-                    Text("临期 · \(expiringUse)")
+                    Text(String(localized: "component.recipeCard.expiringUse \(expiringUse)"))
                         .font(.fkLabelSmall)
                         .foregroundStyle(Color.fkDanger)
                         .padding(.horizontal, FkSpacing.sm)
@@ -110,7 +110,7 @@ struct RecipeCard: View {
                         .background(Capsule().fill(Color.fkWarnSoft))
                 }
                 if cookCount > 0 {
-                    Text("做过 \(cookCount) 次")
+                    Text(String(localized: "component.recipeCard.cookCount \(cookCount)"))
                         .font(.fkLabelSmall)
                         .foregroundStyle(Color.fkPrimary)
                         .padding(.horizontal, FkSpacing.sm)
@@ -143,7 +143,7 @@ struct RecipeCard: View {
                 // Decorative: the line below states the same match count in words,
                 // so the bar is a redundant empty VoiceOver stop.
                 .accessibilityHidden(true)
-                Text(missing == 0 ? "食材齐全" : "已有 \(matched)/\(total) · 缺 \(missing) 件")
+                Text(missing == 0 ? String(localized: "component.recipeCard.allMatched") : String(localized: "component.recipeCard.matchProgress \(matched) \(total) \(missing)"))
                     .font(.fkLabelSmall)
                     .foregroundStyle(missing == 0 ? Color.fkSuccess : Color.fkOnSurfaceVariant)
             }

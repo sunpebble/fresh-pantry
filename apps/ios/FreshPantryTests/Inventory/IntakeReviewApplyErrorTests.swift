@@ -11,7 +11,7 @@ import Testing
 @MainActor
 struct IntakeReviewApplyErrorTests {
     @Test func applyErrorMessageOnlyForNonPersistedOutcome() {
-        #expect(IntakeReviewStore.applyErrorMessage(for: .failed) == "入库失败，请重试")
+        #expect(IntakeReviewStore.applyErrorMessage(for: .failed) == String(localized: "inventory.intake.failedRetry"))
         #expect(IntakeReviewStore.applyErrorMessage(
             for: IntakeController.ApplyOutcome(appliedIds: ["p1"], addedItems: [], persisted: true)
         ) == nil)

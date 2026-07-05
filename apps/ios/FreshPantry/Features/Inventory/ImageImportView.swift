@@ -45,21 +45,21 @@ struct ImageImportView: View {
                 }
             }
             .background(Color.fkSurface)
-            .navigationTitle("拍照/相册识别")
+            .navigationTitle(String(localized: "inventory.import.photoRecognize"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("取消") { dismiss() }
+                    Button(String(localized: "inventory.action.cancel")) { dismiss() }
                         .disabled(store?.isParsing == true)
                 }
             }
             .overlay {
                 if store?.isParsing == true {
-                    FkBusyOverlay(text: "AI 识别中…")
+                    FkBusyOverlay(text: String(localized: "inventory.import.aiRecognizing"))
                 }
             }
             .navigationDestination(item: $reviewRoute) { route in
-                IntakeReviewView(proposals: route.proposals, title: "确认入库") { _ in
+                IntakeReviewView(proposals: route.proposals, title: String(localized: "inventory.intakeReview.confirmTitle")) { _ in
                     onApplied()
                     dismiss()
                 }
@@ -104,7 +104,7 @@ struct ImageImportView: View {
         if let store {
             ScrollView {
                 VStack(alignment: .leading, spacing: FkSpacing.lg) {
-                    Text("从相册选择一张食材或冰箱照片,AI 会识别出可入库的食材供你审核。")
+                    Text(String(localized: "inventory.imageImport.subtitle"))
                         .font(.fkBodyMedium)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
 
@@ -132,7 +132,7 @@ struct ImageImportView: View {
     nonisolated private var pickerLabel: some View {
         HStack(spacing: FkSpacing.sm) {
             Image(systemName: "photo.on.rectangle.angled")
-            Text("选择照片")
+            Text(String(localized: "inventory.imageImport.choosePhoto"))
                 .font(.fkLabelLarge)
             Spacer(minLength: 0)
             Image(systemName: "chevron.right")
@@ -151,8 +151,8 @@ struct ImageImportView: View {
     private var notConfigured: some View {
         FkEmptyState(
             systemImage: "wand.and.stars",
-            title: "请先在设置中配置 AI",
-            message: "在 设置 › AI 助手 填写 Base URL / API Key / 模型 后,即可拍照或选图自动识别食材。"
+            title: String(localized: "inventory.ai.notConfiguredTitle"),
+            message: String(localized: "inventory.imageImport.notConfiguredMessage")
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -172,11 +172,11 @@ struct ImageImportView: View {
         do {
             data = try await item.loadTransferable(type: Data.self)
         } catch {
-            loadError = "读取照片失败:\(error.localizedDescription)"
+            loadError = String(localized: "inventory.photo.loadFailed \(error.localizedDescription)")
             return
         }
         guard let data, !data.isEmpty else {
-            loadError = "读取照片失败,请重试。"
+            loadError = String(localized: "inventory.photo.loadFailedRetry")
             return
         }
 
@@ -186,7 +186,7 @@ struct ImageImportView: View {
             ImageDownscaler.jpegData(from: data, maxDimension: maxDimension)
         }.value
         guard let jpeg else {
-            loadError = "无法处理该照片,请换一张重试。"
+            loadError = String(localized: "inventory.photo.processFailed")
             return
         }
 

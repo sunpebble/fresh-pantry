@@ -8,12 +8,12 @@ import SwiftUI
 struct NutritionCard: View {
     let nutrition: NutritionFacts
     /// 副标题语义:库存食材是「每 100g」(OFF 默认),菜谱是「每份 · 约」(估算)。
-    var caption: String = "每 100g"
+    var caption: String = String(localized: "inventory.nutrition.per100g")
 
     var body: some View {
         FkCard {
             VStack(alignment: .leading, spacing: FkSpacing.md) {
-                Text("营养成分 · \(caption)")
+                Text(String(localized: "inventory.nutrition.header \(caption)"))
                     .font(.fkTitleMedium)
                     .foregroundStyle(Color.fkOnSurface)
                 if nutrition.hasGrades {
@@ -48,13 +48,13 @@ struct NutritionCard: View {
             result.append(Badge(text: "Nutri-Score \(score.uppercased())", color: Self.gradeColor(score)))
         }
         if let nova = nutrition.novaGroup {
-            result.append(Badge(text: "加工度 NOVA \(nova)", color: Self.novaColor(nova)))
+            result.append(Badge(text: String(localized: "inventory.nutrition.nova \(nova)"), color: Self.novaColor(nova)))
         }
         if let eco = nutrition.ecoScore {
-            result.append(Badge(text: "环保 \(eco.uppercased())", color: Self.gradeColor(eco)))
+            result.append(Badge(text: String(localized: "inventory.nutrition.eco \(eco.uppercased())"), color: Self.gradeColor(eco)))
         }
         if let count = nutrition.additivesCount {
-            result.append(Badge(text: "\(count) 种添加剂", color: count > 0 ? Color.fkWarn : Color.fkSuccess))
+            result.append(Badge(text: String(localized: "inventory.nutrition.additives \(count)"), color: count > 0 ? Color.fkWarn : Color.fkSuccess))
         }
         return result
     }
@@ -97,16 +97,16 @@ struct NutritionCard: View {
     private var columns: [Column] {
         var result: [Column] = []
         if let energyKcal = nutrition.energyKcal {
-            result.append(Column(label: "热量", value: Self.format(energyKcal), unit: "kcal"))
+            result.append(Column(label: String(localized: "inventory.nutrition.energy"), value: Self.format(energyKcal), unit: "kcal"))
         }
         if let protein = nutrition.protein {
-            result.append(Column(label: "蛋白质", value: Self.format(protein), unit: "g"))
+            result.append(Column(label: String(localized: "inventory.nutrition.protein"), value: Self.format(protein), unit: "g"))
         }
         if let carbs = nutrition.carbs {
-            result.append(Column(label: "碳水", value: Self.format(carbs), unit: "g"))
+            result.append(Column(label: String(localized: "inventory.nutrition.carbs"), value: Self.format(carbs), unit: "g"))
         }
         if let fat = nutrition.fat {
-            result.append(Column(label: "脂肪", value: Self.format(fat), unit: "g"))
+            result.append(Column(label: String(localized: "inventory.nutrition.fat"), value: Self.format(fat), unit: "g"))
         }
         return result
     }

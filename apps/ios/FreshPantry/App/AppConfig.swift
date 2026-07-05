@@ -39,16 +39,19 @@ struct AppConfig: Sendable, Equatable {
         case invalidURL(key: String, value: String)
         case invalidSampleRate(key: String, value: Double)
 
+        // Dev/ops-only diagnostics — never surfaced in the UI. `AppConfig.load()`
+        // is called via `try?` at launch (FreshPantryApp.init); a failure just
+        // yields nil config (local-only mode). i18n:ignore below, not UI text.
         var description: String {
             switch self {
             case .missingSecretsFile:
-                return "Secrets.plist 未找到 — 从 Secrets.example.plist 复制并填入 Supabase 配置"
+                return "Secrets.plist 未找到 — 从 Secrets.example.plist 复制并填入 Supabase 配置" // i18n:ignore dev-only config diagnostic, not UI text
             case let .missing(key):
-                return "\(key) 必填但缺失"
+                return "\(key) 必填但缺失" // i18n:ignore dev-only config diagnostic, not UI text
             case let .invalidURL(key, value):
-                return "\(key) 不是合法 http(s) URL: \(value)"
+                return "\(key) 不是合法 http(s) URL: \(value)" // i18n:ignore dev-only config diagnostic, not UI text
             case let .invalidSampleRate(key, value):
-                return "\(key) 必须在 0...1: \(value)"
+                return "\(key) 必须在 0...1: \(value)" // i18n:ignore dev-only config diagnostic, not UI text
             }
         }
     }

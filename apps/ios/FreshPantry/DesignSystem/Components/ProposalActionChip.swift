@@ -38,10 +38,10 @@ struct ProposalActionChip: View {
     private var label: String {
         switch action {
         case .newRow:
-            return "新建 Batch"
+            return String(localized: "component.intakeAction.newBatch")
         case .mergeInto:
-            guard let mergeTargetLabel, !mergeTargetLabel.isEmpty else { return "合并" }
-            return "合并 → \(mergeTargetLabel)"
+            guard let mergeTargetLabel, !mergeTargetLabel.isEmpty else { return String(localized: "component.intakeAction.merge") }
+            return String(localized: "component.intakeAction.mergeInto \(mergeTargetLabel)")
         }
     }
 

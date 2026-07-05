@@ -128,7 +128,7 @@ struct BarcodeScannerScreen: View {
     private var scanHint: some View {
         VStack {
             Spacer()
-            Text("将条形码对准取景框")
+            Text(String(localized: "inventory.scan.hint"))
                 .font(.fkLabelLarge)
                 .foregroundStyle(.white)
                 .padding(.horizontal, FkSpacing.lg)
@@ -143,10 +143,10 @@ struct BarcodeScannerScreen: View {
             Image(systemName: "barcode.viewfinder")
                 .font(.system(size: 44, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.8))
-            Text("此设备不支持扫码")
+            Text(String(localized: "inventory.scan.deviceUnsupported"))
                 .font(.fkTitleMedium)
                 .foregroundStyle(.white)
-            Text("请在真机上使用，或返回手动填写。")
+            Text(String(localized: "inventory.scan.useRealDevice"))
                 .font(.fkBodyMedium)
                 .foregroundStyle(.white.opacity(0.8))
                 .multilineTextAlignment(.center)
@@ -158,7 +158,7 @@ struct BarcodeScannerScreen: View {
         VStack {
             HStack {
                 Spacer()
-                Button("取消") { dismiss() }
+                Button(String(localized: "inventory.action.cancel")) { dismiss() }
                     .font(.fkLabelLarge)
                     .foregroundStyle(.white)
                     .padding(.horizontal, FkSpacing.md)

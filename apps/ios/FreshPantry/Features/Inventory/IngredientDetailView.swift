@@ -69,7 +69,7 @@ struct IngredientDetailView: View {
                 } label: {
                     Image(systemName: "pencil")
                 }
-                .accessibilityLabel("编辑")
+                .accessibilityLabel(String(localized: "inventory.action.edit"))
                 .disabled(isDeleting)
 
                 Button(role: .destructive) {
@@ -77,7 +77,7 @@ struct IngredientDetailView: View {
                 } label: {
                     Image(systemName: "trash")
                 }
-                .accessibilityLabel("删除")
+                .accessibilityLabel(String(localized: "inventory.action.delete"))
                 .tint(.fkDanger)
                 .disabled(isDeleting)
             }
@@ -101,18 +101,18 @@ struct IngredientDetailView: View {
             }
         }
         .confirmationDialog(
-            "「\(ingredient.name)」要移除",
+            String(localized: "inventory.removeOutcome.title \(ingredient.name)"),
             isPresented: $showOutcomePrompt,
             titleVisibility: .visible
         ) {
-            Button("吃完 / 用掉了") { Task { await performRemove(outcome: .consumed) } }
-            Button("捐了") { Task { await performRemove(outcome: .donated) } }
-            Button("堆肥了") { Task { await performRemove(outcome: .composted) } }
-            Button("没吃完,扔了") { Task { await performRemove(outcome: .wasted) } }
-            Button("仅移除") { Task { await performDelete() } }
-            Button("取消", role: .cancel) {}
+            Button(String(localized: "inventory.removeOutcome.consumed")) { Task { await performRemove(outcome: .consumed) } }
+            Button(String(localized: "inventory.removeOutcome.donated")) { Task { await performRemove(outcome: .donated) } }
+            Button(String(localized: "inventory.removeOutcome.composted")) { Task { await performRemove(outcome: .composted) } }
+            Button(String(localized: "inventory.removeOutcome.wasted")) { Task { await performRemove(outcome: .wasted) } }
+            Button(String(localized: "inventory.removeOutcome.removeOnly")) { Task { await performDelete() } }
+            Button(String(localized: "inventory.action.cancel"), role: .cancel) {}
         } message: {
-            Text("它怎么了?用于统计你的减废成效。")
+            Text(String(localized: "inventory.removeOutcome.message"))
         }
     }
 
@@ -127,11 +127,11 @@ struct IngredientDetailView: View {
             HStack(spacing: FkSpacing.md) {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Color.fkSuccess)
-                Text("已记录「\(undo.ingredient.name)」")
+                Text(String(localized: "inventory.removeOutcome.recorded \(undo.ingredient.name)"))
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurface)
                 Spacer(minLength: FkSpacing.sm)
-                Button("撤销") { Task { await performUndo(undo) } }
+                Button(String(localized: "dashboard.expiring.undo")) { Task { await performUndo(undo) } }
                     .font(.fkLabelLarge)
                     .foregroundStyle(Color.fkPrimary)
             }
@@ -176,7 +176,7 @@ struct IngredientDetailView: View {
                 HStack(spacing: FkSpacing.sm) {
                     Image(systemName: "minus.circle")
                         .font(.system(size: FkSize.iconSm, weight: .semibold))
-                    Text("用了一部分")
+                    Text(String(localized: "inventory.consume.partial"))
                         .font(.fkLabelLarge)
                 }
                 .foregroundStyle(Color.fkOnSurface)
@@ -204,7 +204,7 @@ struct IngredientDetailView: View {
             HStack(spacing: FkSpacing.sm) {
                 Image(systemName: "cart.badge.plus")
                     .font(.system(size: FkSize.iconSm, weight: .semibold))
-                Text("加入购物清单")
+                Text(String(localized: "dashboard.expiring.addToShopping"))
                     .font(.fkLabelLarge)
             }
             .foregroundStyle(Color.fkPrimaryContainer)
@@ -261,7 +261,9 @@ struct IngredientDetailView: View {
         guard let shoppingStore else { return }
         let added = await shoppingStore.add(name: ingredient.name, category: ingredient.category)
         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-            toast = added ? "已将「\(ingredient.name)」加入购物清单" : "「\(ingredient.name)」已在购物清单中"
+            toast = added
+                ? String(localized: "dashboard.shopping.added \(ingredient.name)")
+                : String(localized: "dashboard.shopping.duplicate \(ingredient.name)")
         }
     }
 
@@ -286,7 +288,7 @@ struct IngredientDetailView: View {
                         UrgencyBadge(state: ingredient.state)
                     }
                 }
-                Text("\(FoodCategories.dropdownValue(ingredient.category)) · \(ingredient.storage.storageAreaLabel)")
+                Text("\(FoodCategories.displayLabel(for: FoodCategories.dropdownValue(ingredient.category))) · \(ingredient.storage.storageAreaLabel)")
                     .font(.fkLabelMedium)
                     .foregroundStyle(palette.ink)
             }
@@ -310,7 +312,7 @@ struct IngredientDetailView: View {
         return FkCard {
             HStack(alignment: .top, spacing: 0) {
                 statColumn(
-                    label: "当前数量",
+                    label: String(localized: "inventory.detail.currentQuantity"),
                     value: ingredient.quantity,
                     unit: ingredient.unit,
                     valueColor: .fkOnSurface
@@ -319,7 +321,7 @@ struct IngredientDetailView: View {
                     .fill(Color.fkHair)
                     .frame(width: 0.5)
                 statColumn(
-                    label: "新鲜度",
+                    label: String(localized: "inventory.detail.freshness"),
                     value: "\(Int((min(max(ingredient.freshnessPercent, 0), 1) * 100).rounded()))",
                     unit: "%",
                     hint: ingredient.expiryLabel,
@@ -407,7 +409,7 @@ struct IngredientDetailView: View {
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Text("数据来源：Open Food Facts")
+                Text(String(localized: "inventory.detail.dataSource"))
                     .font(.fkLabelSmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             }
@@ -419,16 +421,16 @@ struct IngredientDetailView: View {
     private var infoList: some View {
         FkCard(padding: 0) {
             VStack(spacing: 0) {
-                infoRow("分类", FoodCategories.dropdownValue(ingredient.category))
+                infoRow(String(localized: "inventory.field.category"), FoodCategories.displayLabel(for: FoodCategories.dropdownValue(ingredient.category)))
                 divider
-                infoRow("存放位置", ingredient.storage.storageAreaLabel)
+                infoRow(String(localized: "inventory.field.storage"), ingredient.storage.storageAreaLabel)
                 if let shelfLife = ingredient.shelfLifeDays, shelfLife > 0 {
                     divider
-                    infoRow("保质期建议", "\(shelfLife)天")
+                    infoRow(String(localized: "inventory.detail.shelfLifeSuggestion"), String(localized: "inventory.shelfLife.days \(shelfLife)"))
                 }
                 if let expiry = ingredient.expiryDate {
                     divider
-                    infoRow("到期日", Self.dateFormatter.string(from: expiry))
+                    infoRow(String(localized: "inventory.detail.expiryDate"), Self.dateFormatter.string(from: expiry))
                 }
             }
         }
@@ -482,7 +484,7 @@ struct IngredientDetailView: View {
         if removed {
             dismiss()
         } else {
-            toast = "移除「\(ingredient.name)」失败，请重试"
+            toast = String(localized: "inventory.remove.failed \(ingredient.name)")
         }
     }
 
@@ -508,7 +510,7 @@ struct IngredientDetailView: View {
             withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { pendingUndo = undo }
         case .invalid, .failed:
             withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-                toast = "操作失败，请重试"
+                toast = String(localized: "dashboard.expiring.actionFailed")
             }
         }
     }
@@ -535,12 +537,12 @@ private struct PartialConsumeSheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: FkSpacing.lg) {
-                Text("剩余 \(QuantityText.formatQuantity(available)) \(unit)")
+                Text(String(localized: "inventory.consume.remaining \(QuantityText.formatQuantity(available)) \(unit)"))
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
 
                 HStack(spacing: FkSpacing.sm) {
-                    TextField("用了多少", text: $amountText)
+                    TextField(String(localized: "inventory.consume.amountPlaceholder"), text: $amountText)
                         .keyboardType(.decimalPad)
                         .font(.fkTitleMedium)
                         .focused($fieldFocused)
@@ -554,25 +556,25 @@ private struct PartialConsumeSheet: View {
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                 }
 
-                Button("全部用完") {
+                Button(String(localized: "inventory.consume.all")) {
                     onConfirm(available)
                     dismiss()
                 }
                 .font(.fkLabelLarge)
                 .foregroundStyle(Color.fkPrimary)
-                .accessibilityLabel("全部用完「\(itemName)」")
+                .accessibilityLabel(String(localized: "inventory.consume.allAccessibility \(itemName)"))
 
                 Spacer(minLength: 0)
             }
             .padding(FkSpacing.lg)
-            .navigationTitle("用了一部分")
+            .navigationTitle(String(localized: "inventory.consume.partial"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("取消") { dismiss() }
+                    Button(String(localized: "inventory.action.cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("确认") {
+                    Button(String(localized: "inventory.action.confirm")) {
                         guard let amount else { return }
                         onConfirm(amount)
                         dismiss()

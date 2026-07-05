@@ -97,7 +97,7 @@ struct PasteImportStoreTests {
 
         await store.parse()
         #expect(store.proposals == nil)
-        #expect(store.errorMessage == "未能从文本中解析出食材，请调整后重试。")
+        #expect(store.errorMessage == String(localized: "inventory.pasteImport.textEmptyResult"))
     }
 
     // MARK: consumeProposals clears the one-shot route

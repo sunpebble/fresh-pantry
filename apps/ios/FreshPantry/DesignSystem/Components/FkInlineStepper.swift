@@ -55,7 +55,9 @@ struct FkInlineStepper: View {
 
     private func stepButton(systemImage: String, enabled: Bool, action: @escaping () -> Void) -> some View {
         let suffixLabel = suffix.map { " \($0)" } ?? ""
-        let label = systemImage == "minus" ? "减少\(suffixLabel)" : "增加\(suffixLabel)"
+        let label = systemImage == "minus"
+            ? String(localized: "component.stepper.decrease \(suffixLabel)")
+            : String(localized: "component.stepper.increase \(suffixLabel)")
         return Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: 12, weight: .bold))

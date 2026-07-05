@@ -56,8 +56,8 @@ struct IntakeReviewView: View {
             if store.proposals.isEmpty {
                 FkEmptyState(
                     systemImage: "tray",
-                    title: "没有待审核的项目",
-                    message: "回到上一屏添加食材后再来。"
+                    title: String(localized: "inventory.intakeReview.emptyTitle"),
+                    message: String(localized: "inventory.intakeReview.emptyMessage")
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -106,7 +106,7 @@ struct IntakeReviewView: View {
                 store.toggleSelectAll()
             } label: {
                 Label(
-                    store.allSelected ? "取消全选" : "全选",
+                    store.allSelected ? String(localized: "inventory.intakeReview.deselectAll") : String(localized: "inventory.intakeReview.selectAll"),
                     systemImage: store.allSelected ? "checklist.unchecked" : "checklist.checked"
                 )
                 .font(.fkLabelMedium)
@@ -138,8 +138,8 @@ struct IntakeReviewView: View {
     }
 
     private func confirmLabel(_ store: IntakeReviewStore) -> String {
-        if isConfirming { return "入库中…" }
-        return "入库 (\(store.selectedCount))"
+        if isConfirming { return String(localized: "inventory.intakeReview.confirming") }
+        return String(localized: "inventory.intakeReview.confirm \(store.selectedCount)")
     }
 
     private func confirm(_ store: IntakeReviewStore) async {
@@ -157,7 +157,7 @@ struct IntakeReviewView: View {
     }
 
     private static var inventoryLimitMessage: String {
-        "免费版最多记录 \(FreeTier.inventoryLimit) 条库存"
+        String(localized: "inventory.freeTierLimit \(FreeTier.inventoryLimit)")
     }
 }
 
@@ -179,7 +179,7 @@ private struct IntakeProposalRow: View {
     @State private var nameDraft = ""
     @FocusState private var nameFocused: Bool
 
-    private let unitOptions = ["个", "只", "把", "盒", "袋", "瓶", "罐", "kg", "g", "L", "ml", "份"]
+    private let unitOptions = ["个", "只", "把", "盒", "袋", "瓶", "罐", "kg", "g", "L", "ml", "份"] // i18n:ignore domain unit-default identity, not UI text
 
     var body: some View {
         FkCard(background: proposal.selected ? .fkSurfaceContainerLowest : .fkSurfaceContainerLow) {
@@ -198,21 +198,21 @@ private struct IntakeProposalRow: View {
         )
         .sheet(isPresented: $showUnitPicker) {
             FkPickerSheet(
-                title: "选择单位",
+                title: String(localized: "inventory.picker.unit"),
                 options: unitOptions.map { FkPickerOption(value: $0, label: $0) },
                 selected: proposal.unit
             ) { onChanged(proposal.copyWith(unit: $0, userEdited: true)) }
         }
         .sheet(isPresented: $showCategoryPicker) {
             FkPickerSheet(
-                title: "选择分类",
-                options: FoodCategories.values.map { FkPickerOption(value: $0, label: $0) },
+                title: String(localized: "inventory.picker.category"),
+                options: FoodCategories.values.map { FkPickerOption(value: $0, label: FoodCategories.displayLabel(for: $0)) },
                 selected: FoodCategories.dropdownValue(proposal.category)
             ) { onChanged(proposal.copyWith(category: $0, userEdited: true)) }
         }
         .sheet(isPresented: $showStoragePicker) {
             FkPickerSheet(
-                title: "存放位置",
+                title: String(localized: "inventory.picker.storage"),
                 options: IconType.allCases.map { FkPickerOption(value: $0, label: $0.storageAreaLabel) },
                 selected: proposal.storage
             ) { onChanged(proposal.copyWith(storage: $0, userEdited: true)) }
@@ -227,7 +227,7 @@ private struct IntakeProposalRow: View {
     @ViewBuilder
     private var nameField: some View {
         if editingName {
-            TextField("食材名称", text: $nameDraft)
+            TextField(String(localized: "inventory.intakeReview.namePlaceholder"), text: $nameDraft)
                 .font(.fkTitleMedium)
                 .foregroundStyle(Color.fkOnSurface)
                 .textFieldStyle(.plain)
@@ -242,7 +242,7 @@ private struct IntakeProposalRow: View {
                 editingName = true
                 nameFocused = true
             } label: {
-                Text(proposal.name.isEmpty ? "(无名)" : proposal.name)
+                Text(proposal.name.isEmpty ? String(localized: "inventory.intakeReview.unnamed") : proposal.name)
                     .font(.fkTitleMedium)
                     .foregroundStyle(Color.fkOnSurface)
                     .lineLimit(1)
@@ -311,18 +311,18 @@ private struct IntakeProposalRow: View {
     }
 
     private var provenanceLabel: String {
-        if proposal.userEdited { return "手改" }
+        if proposal.userEdited { return String(localized: "inventory.provenance.userEdited") }
         switch proposal.origin {
-        case .ai: return "AI 推断"
-        case .system: return "系统"
-        case .user: return "手填"
+        case .ai: return String(localized: "inventory.provenance.ai")
+        case .system: return String(localized: "inventory.provenance.system")
+        case .user: return String(localized: "inventory.provenance.user")
         }
     }
 
     private var metaRow: some View {
         HStack(spacing: FkSpacing.lg) {
             HStack(spacing: FkSpacing.sm) {
-                Text("数量")
+                Text(String(localized: "inventory.field.quantity"))
                     .font(.fkLabelMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
                 FkInlineStepper(value: proposal.quantity, min: 1) {
@@ -344,8 +344,8 @@ private struct IntakeProposalRow: View {
 
     private var pickerRow: some View {
         HStack(spacing: FkSpacing.sm) {
-            chip("分类:\(FoodCategories.dropdownValue(proposal.category))") { showCategoryPicker = true }
-            chip("存:\(proposal.storage.storageAreaLabel)") { showStoragePicker = true }
+            chip(String(localized: "inventory.chip.category \(FoodCategories.displayLabel(for: FoodCategories.dropdownValue(proposal.category)))")) { showCategoryPicker = true }
+            chip(String(localized: "inventory.chip.storage \(proposal.storage.storageAreaLabel)")) { showStoragePicker = true }
             shelfLifeChip
             Spacer(minLength: 0)
         }
@@ -353,7 +353,9 @@ private struct IntakeProposalRow: View {
 
     private var shelfLifeChip: some View {
         let days = proposal.shelfLifeDays ?? 0
-        let label = days > 0 ? "保质期:\(days)天" : "保质期:未设置"
+        let label = days > 0
+            ? String(localized: "inventory.chip.shelfLifeDays \(days)")
+            : String(localized: "inventory.chip.shelfLifeUnset")
         return Button {
             // Tap toggles a sensible default on when unset; otherwise opens nothing
             // destructive — re-tapping cycles 7→14→30→nil for quick adjustment.

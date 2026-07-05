@@ -14,7 +14,7 @@ import Foundation
 final class AddIngredientForm {
     var name: String = ""
     var quantity: String = "1"
-    var unit: String = "个"
+    var unit: String = "个" // i18n:ignore domain unit-default identity, not UI text
     var category: String = FoodCategories.other
     var storage: IconType = .fridge
     /// nil = no expiry (留空表示不过期).
@@ -41,7 +41,7 @@ final class AddIngredientForm {
     /// the picker blueprint lists), de-duplicated, current unit appended so a
     /// custom value still shows as selected.
     var unitOptions: [String] {
-        var options = ["个", "只", "把", "盒", "袋", "瓶", "罐", "份"]
+        var options = ["个", "只", "把", "盒", "袋", "瓶", "罐", "份"] // i18n:ignore domain unit-default identity, not UI text
         for unit in FoodKnowledge.units where !options.contains(unit) {
             options.append(unit)
         }
@@ -173,7 +173,7 @@ final class AddIngredientForm {
             id: "manual_\(Int(Date().timeIntervalSince1970 * 1000))",
             name: .user(name.trimmed),
             quantity: .user(quantity.trimmed.isEmpty ? "1" : quantity.trimmed),
-            unit: .user(unit.trimmed.isEmpty ? "个" : unit.trimmed),
+            unit: .user(unit.trimmed.isEmpty ? "个" : unit.trimmed), // i18n:ignore domain unit-default identity, not UI text
             category: .user(FoodCategories.dropdownValue(category)),
             storage: .user(storage),
             shelfLifeDays: .user(shelfLifeDays)

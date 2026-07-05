@@ -40,7 +40,7 @@ struct ExpiringView: View {
                     .background(Color.fkSurface)
             }
         }
-        .navigationTitle("临期提醒")
+        .navigationTitle(String(localized: "dashboard.expiring.title"))
         .navigationBarTitleDisplayMode(.inline)
         // Rebuild the stores whenever the active household changes (login "" → uuid,
         // switch, or leave) so the lists re-scope to the new household.
@@ -112,7 +112,9 @@ struct ExpiringView: View {
     private func addToShopping(_ item: Ingredient) async -> String {
         guard let shoppingStore else { return "" }
         let added = await shoppingStore.add(name: item.name, category: item.category)
-        return added ? "已将「\(item.name)」加入购物清单" : "「\(item.name)」已在购物清单中"
+        return added
+            ? String(localized: "dashboard.shopping.added \(item.name)")
+            : String(localized: "dashboard.shopping.duplicate \(item.name)")
     }
 }
 
@@ -166,8 +168,8 @@ private struct ExpiringContent: View {
                 } else if store.tiers.isEmpty {
                     FkEmptyState(
                         systemImage: "checkmark.circle",
-                        title: "暂无临期食材",
-                        message: "冰箱状态健康，继续保持！"
+                        title: String(localized: "dashboard.expiring.emptyTitle"),
+                        message: String(localized: "dashboard.expiring.emptyMessage")
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -251,16 +253,16 @@ private struct ExpiringContent: View {
                     Image(systemName: "wand.and.stars")
                         .font(.system(size: FkSize.iconSm, weight: .semibold))
                         .foregroundStyle(Color.fkPrimary)
-                    Text("AI 清冰箱食谱")
+                    Text(String(localized: "dashboard.clearFridge.title"))
                         .font(.fkTitleSmall)
                         .foregroundStyle(Color.fkOnSurface)
                     Spacer(minLength: 0)
                 }
-                Text("用现有临期食材现场生成一道家常菜，省得到处翻菜谱。")
+                Text(String(localized: "dashboard.clearFridge.subtitle"))
                     .font(.fkBodySmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
 
-                TextField("可选要求:清淡 / 15分钟 / 晚餐 / 不要香菜…", text: $generateConstraint)
+                TextField(String(localized: "dashboard.clearFridge.constraintPlaceholder"), text: $generateConstraint)
                     .font(.fkBodyMedium)
                     .textFieldStyle(.plain)
                     .padding(.horizontal, FkSpacing.sm)
@@ -281,7 +283,7 @@ private struct ExpiringContent: View {
                             Image(systemName: "sparkles")
                                 .font(.system(size: 13, weight: .semibold))
                         }
-                        Text(isGenerating ? "生成中…" : "AI 生成清冰箱食谱")
+                        Text(isGenerating ? String(localized: "dashboard.clearFridge.generating") : String(localized: "dashboard.clearFridge.generate"))
                             .font(.fkLabelLarge)
                     }
                     .foregroundStyle(Color.fkOnPrimary)
@@ -342,7 +344,7 @@ private struct ExpiringContent: View {
 
         let names = expiringNames
         guard !names.isEmpty else {
-            generateError = "暂无临期食材可用于生成。"
+            generateError = String(localized: "dashboard.clearFridge.emptyError")
             return
         }
 
@@ -359,14 +361,14 @@ private struct ExpiringContent: View {
         } catch let error as AiError {
             generateError = error.message
         } catch {
-            generateError = "生成失败：\(error.localizedDescription)"
+            generateError = String(localized: "dashboard.clearFridge.generateFailed \(error.localizedDescription)")
         }
     }
 
     /// Per-item quick actions: 用了 (consumed removal) + 加购 (shopping add).
     private func actionRow(_ item: Ingredient) -> some View {
         HStack(spacing: FkSpacing.sm) {
-            actionButton("用了", systemImage: "fork.knife", tint: Color.fkPrimary) {
+            actionButton(String(localized: "dashboard.expiring.consumed"), systemImage: "fork.knife", tint: Color.fkPrimary) {
                 Task {
                     switch await onConsume(item) {
                     case let .removed(undo):
@@ -379,11 +381,11 @@ private struct ExpiringContent: View {
                         // The persist threw: the row is still here and no
                         // departure was logged — silence would read as a dead
                         // tap, so say so (mirrors MealPlan's toggle failure).
-                        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { toast = "操作失败，请重试" }
+                        withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { toast = String(localized: "dashboard.expiring.actionFailed") }
                     }
                 }
             }
-            actionButton("加购", systemImage: "cart.badge.plus", tint: Color.fkOnSurfaceVariant) {
+            actionButton(String(localized: "dashboard.expiring.addToShopping"), systemImage: "cart.badge.plus", tint: Color.fkOnSurfaceVariant) {
                 Task {
                     let message = await onAddToShopping(item)
                     if !message.isEmpty {
@@ -392,7 +394,7 @@ private struct ExpiringContent: View {
                 }
             }
             // #18: jump to 食谱 tab filtered to dishes using this expiring item.
-            actionButton("做这道菜", systemImage: "frying.pan", tint: Color.fkPrimary) {
+            actionButton(String(localized: "dashboard.expiring.cookThis"), systemImage: "frying.pan", tint: Color.fkPrimary) {
                 recipeFilterRouter.capture(ingredient: item.name)
             }
         }
@@ -455,11 +457,11 @@ private struct ExpiringContent: View {
             HStack(spacing: FkSpacing.md) {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Color.fkSuccess)
-                Text("已用掉「\(undo.ingredient.name)」")
+                Text(String(localized: "dashboard.expiring.consumedUndo \(undo.ingredient.name)"))
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurface)
                 Spacer(minLength: FkSpacing.sm)
-                Button("撤销") { Task { await performUndo(undo) } }
+                Button(String(localized: "dashboard.expiring.undo")) { Task { await performUndo(undo) } }
                     .font(.fkLabelLarge)
                     .foregroundStyle(Color.fkPrimary)
             }
@@ -501,7 +503,7 @@ private struct ExpiringContent: View {
             Text(tier.state.expiringSectionTitle)
                 .font(.fkTitleMedium)
                 .foregroundStyle(Color.fkOnSurface)
-            Text("\(tier.items.count) 件")
+            Text(String(localized: "dashboard.expiring.itemCount \(tier.items.count)"))
                 .font(.fkBodySmall)
                 .foregroundStyle(Color.fkOnSurfaceVariant)
         }
@@ -535,7 +537,7 @@ private struct RemindStatusCard: View {
                         .foregroundStyle(Color.fkPrimaryContainer)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(granted ? "提醒已开启" : "通知未开启")
+                    Text(granted ? String(localized: "dashboard.reminder.granted") : String(localized: "dashboard.reminder.ungranted"))
                         .font(.fkLabelLarge)
                         .foregroundStyle(Color.fkPrimaryContainer)
                     Text(subtitle)
@@ -550,20 +552,21 @@ private struct RemindStatusCard: View {
     /// Honest reminder summary from the live settings (parity improvement over
     /// Flutter's static literal).
     private var subtitle: String {
-        guard granted else { return "去「设置 › 临期提醒」开启系统通知后送达" }
+        guard granted else { return String(localized: "dashboard.reminder.enableInSettings") }
         var parts: [String] = []
         let offsets = settings.enabledOffsetDays
         if !offsets.isEmpty {
-            parts.append("提前 " + offsets.map(String.init).joined(separator: "·") + " 天")
+            let days = offsets.map(String.init).joined(separator: "·")
+            parts.append(String(localized: "dashboard.reminder.offsetDays \(days)"))
         }
         // Gate on `dailySummaryEnabled` (the scheduler's truth source: summaryOnly
         // forces it on even with remindDaily off) and use the configured time —
         // never the old hardcoded 9:00 — so the card never claims "未设置提醒时机"
         // while a summary actually fires.
         if settings.dailySummaryEnabled {
-            parts.append("每日 \(settings.reminderTimeLabel) 汇总")
+            parts.append(String(localized: "dashboard.reminder.dailySummary \(settings.reminderTimeLabel)"))
         }
-        return parts.isEmpty ? "未设置提醒时机" : parts.joined(separator: " · ")
+        return parts.isEmpty ? String(localized: "dashboard.reminder.notSet") : parts.joined(separator: " · ")
     }
 }
 

@@ -136,14 +136,14 @@ struct RootView: View {
                     // so the two never stack with contradictory copy.
                     inviteNotice = nil
                 case .promptSignIn:
-                    inviteNotice = "收到家庭邀请,请先在「设置 → 家庭共享」登录,登录后会自动继续处理。"
+                    inviteNotice = String(localized: "app.invite.promptSignIn")
                 case .unsupported:
-                    inviteNotice = "此版本未配置后端,无法打开家庭邀请。"
+                    inviteNotice = String(localized: "app.invite.unsupported")
                     inviteRouter.clear()
                 }
             }
-            .alert("家庭邀请", isPresented: inviteNoticeBinding) {
-                Button("知道了", role: .cancel) {}
+            .alert(String(localized: "app.invite.title"), isPresented: inviteNoticeBinding) {
+                Button(String(localized: "app.invite.acknowledge"), role: .cancel) {}
             } message: {
                 Text(inviteNotice ?? "")
             }

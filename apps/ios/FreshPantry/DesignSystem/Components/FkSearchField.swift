@@ -5,7 +5,7 @@ import SwiftUI
 /// button when non-empty.
 struct FkSearchField: View {
     @Binding var text: String
-    var placeholder: String = "搜索食材"
+    var placeholder: String = String(localized: "component.search.placeholder")
 
     var body: some View {
         HStack(spacing: FkSpacing.sm) {
@@ -13,8 +13,8 @@ struct FkSearchField: View {
                 .font(.system(size: FkSize.iconSm, weight: .semibold))
                 .foregroundStyle(Color.fkOnSurfaceVariant)
                 // Decorative: the adjacent TextField carries the search semantics.
-                // Hiding it avoids VoiceOver reading the system's English
-                // "Magnifying glass" label inside this Chinese-only UI.
+                // Hiding it avoids VoiceOver reading the system's generic
+                // "Magnifying glass" label alongside the localized placeholder.
                 .accessibilityHidden(true)
             TextField(placeholder, text: $text)
                 .font(.fkBodyMedium)
@@ -31,7 +31,7 @@ struct FkSearchField: View {
                         .foregroundStyle(Color.fkOutline)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("清空搜索")
+                .accessibilityLabel(String(localized: "component.search.clear"))
             }
         }
         .padding(.horizontal, FkSpacing.md)

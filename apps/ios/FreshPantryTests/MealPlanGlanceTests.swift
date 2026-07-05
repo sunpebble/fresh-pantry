@@ -78,18 +78,18 @@ struct MealPlanGlanceTests {
         // The glance span is [today, today+7) — a ROLLING window that crosses
         // into next week on any day but Monday — so 本周 would mislabel it.
         let glance = MealPlanGlance(upcoming: 3, today: 0, missing: 0)
-        #expect(glance.subtitle == "未来 7 天已排 3 顿")
-        #expect(!glance.subtitle.contains("本周"))
+        #expect(glance.subtitle == String(localized: "dashboard.mealPlan.upcoming \(3)"))
+        #expect(!glance.subtitle.contains("本周")) // i18n:ignore negative-match probe against the zh copy, not UI text
     }
 
     @Test func subtitleAppendsTodayCountWhenPresent() {
         let glance = MealPlanGlance(upcoming: 3, today: 1, missing: 0)
-        #expect(glance.subtitle == "未来 7 天已排 3 顿 · 今天 1 顿")
+        #expect(glance.subtitle == String(localized: "dashboard.mealPlan.upcomingWithToday \(3) \(1)"))
     }
 
     @Test func subtitleFallsBackToInviteWhenNothingPlanned() {
         let glance = MealPlanGlance(upcoming: 0, today: 0, missing: 0)
-        #expect(glance.subtitle == "规划这一周吃什么")
+        #expect(glance.subtitle == String(localized: "dashboard.mealPlan.empty"))
     }
 
     // MARK: 还缺 badge口径 — windowed entries feed MealPlanMissing

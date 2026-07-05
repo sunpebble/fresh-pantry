@@ -53,35 +53,35 @@ struct EditIngredientView: View {
             }
             .background(Color.fkSurface)
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("编辑食材")
+            .navigationTitle(String(localized: "inventory.editIngredient.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("取消") { dismiss() }
+                    Button(String(localized: "inventory.action.cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(isSaving ? "保存中…" : "保存") { Task { await submit() } }
+                    Button(isSaving ? String(localized: "inventory.editIngredient.saving") : String(localized: "inventory.editIngredient.save")) { Task { await submit() } }
                         .font(.fkLabelLarge)
                         .disabled(!form.canSubmit || isSaving)
                 }
             }
             .sheet(isPresented: $showUnitPicker) {
                 FkPickerSheet(
-                    title: "选择单位",
+                    title: String(localized: "inventory.picker.unit"),
                     options: form.unitOptions.map { FkPickerOption(value: $0, label: $0) },
                     selected: form.unit
                 ) { form.setUnit($0) }
             }
             .sheet(isPresented: $showCategoryPicker) {
                 FkPickerSheet(
-                    title: "选择分类",
-                    options: FoodCategories.values.map { FkPickerOption(value: $0, label: $0) },
+                    title: String(localized: "inventory.picker.category"),
+                    options: FoodCategories.values.map { FkPickerOption(value: $0, label: FoodCategories.displayLabel(for: $0)) },
                     selected: FoodCategories.dropdownValue(form.category)
                 ) { form.setCategory($0) }
             }
             .sheet(isPresented: $showStoragePicker) {
                 FkPickerSheet(
-                    title: "存放位置",
+                    title: String(localized: "inventory.picker.storage"),
                     options: IconType.allCases.map { FkPickerOption(value: $0, label: $0.storageAreaLabel) },
                     selected: form.storage
                 ) { form.setStorage($0) }
@@ -92,10 +92,10 @@ struct EditIngredientView: View {
     // MARK: Fields
 
     private var nameField: some View {
-        FkFormField(label: "名称") {
+        FkFormField(label: String(localized: "inventory.field.name")) {
             FkTextFieldPill(
                 text: $form.name,
-                placeholder: "如:牛奶、鸡蛋",
+                placeholder: String(localized: "inventory.field.namePlaceholder"),
                 submitLabel: .next
             )
             .focused($nameFocused)
@@ -104,14 +104,14 @@ struct EditIngredientView: View {
 
     private var quantityRow: some View {
         HStack(alignment: .bottom, spacing: FkSpacing.md) {
-            FkFormField(label: "数量") {
+            FkFormField(label: String(localized: "inventory.field.quantity")) {
                 FkTextFieldPill(
                     text: $form.quantity,
                     placeholder: "1",
                     keyboard: .decimalPad
                 )
             }
-            FkFormField(label: "单位") {
+            FkFormField(label: String(localized: "inventory.field.unit")) {
                 FkValuePill(value: form.unit) { showUnitPicker = true }
             }
             .frame(maxWidth: 140)
@@ -119,15 +119,15 @@ struct EditIngredientView: View {
     }
 
     private var categoryField: some View {
-        FkFormField(label: "分类") {
-            FkValuePill(value: FoodCategories.dropdownValue(form.category)) {
+        FkFormField(label: String(localized: "inventory.field.category")) {
+            FkValuePill(value: FoodCategories.displayLabel(for: FoodCategories.dropdownValue(form.category))) {
                 showCategoryPicker = true
             }
         }
     }
 
     private var storageField: some View {
-        FkFormField(label: "存放位置") {
+        FkFormField(label: String(localized: "inventory.field.storage")) {
             FkValuePill(value: form.storage.storageAreaLabel, systemImage: form.storage.sfSymbolOutline) {
                 showStoragePicker = true
             }
@@ -135,13 +135,13 @@ struct EditIngredientView: View {
     }
 
     private var shelfLifeField: some View {
-        FkFormField(label: "保质期") {
+        FkFormField(label: String(localized: "inventory.field.shelfLife")) {
             VStack(alignment: .leading, spacing: FkSpacing.sm) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: FkSpacing.sm) {
                         ForEach(form.shelfLifePresets, id: \.self) { days in
                             FkChip(
-                                label: "\(days)天",
+                                label: String(localized: "inventory.shelfLife.days \(days)"),
                                 isSelected: customShelfLife.isEmpty && form.shelfLifeDays == days
                             ) {
                                 customShelfLife = ""
@@ -149,7 +149,7 @@ struct EditIngredientView: View {
                             }
                         }
                         FkChip(
-                            label: "不过期",
+                            label: String(localized: "inventory.shelfLife.never"),
                             isSelected: form.shelfLifeDays == nil && customShelfLife.isEmpty
                         ) {
                             customShelfLife = ""
@@ -158,10 +158,10 @@ struct EditIngredientView: View {
                     }
                 }
                 HStack(spacing: FkSpacing.sm) {
-                    Text("自定义")
+                    Text(String(localized: "inventory.shelfLife.custom"))
                         .font(.fkBodyMedium)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
-                    TextField("天数", text: $customShelfLife)
+                    TextField(String(localized: "inventory.shelfLife.dayCount"), text: $customShelfLife)
                         .font(.fkTitleMedium)
                         .keyboardType(.numberPad)
                         .frame(maxWidth: 80)
@@ -176,7 +176,7 @@ struct EditIngredientView: View {
                                 form.setShelfLife(days)
                             }
                         }
-                    Text("天")
+                    Text(String(localized: "inventory.shelfLife.unitDay"))
                         .font(.fkBodyMedium)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                 }
@@ -185,7 +185,7 @@ struct EditIngredientView: View {
     }
 
     private var tagsField: some View {
-        FkFormField(label: "标签") {
+        FkFormField(label: String(localized: "inventory.field.tags")) {
             IngredientTagsEditor(tags: $form.tags)
         }
     }
@@ -205,7 +205,7 @@ struct EditIngredientView: View {
             onSaved()
             dismiss()
         } else {
-            submitError = "保存失败，请重试"
+            submitError = String(localized: "inventory.editIngredient.saveFailed")
         }
     }
 }

@@ -78,10 +78,10 @@ extension FreshnessState {
     /// Section header copy for the Expiring screen's urgency groups.
     var expiringSectionTitle: String {
         switch self {
-        case .expired: return "已过期"
-        case .urgent: return "快过期"
-        case .expiringSoon: return "即将过期"
-        case .fresh: return "新鲜"
+        case .expired: return String(localized: "component.status.expired")
+        case .urgent: return String(localized: "component.status.urgent")
+        case .expiringSoon: return String(localized: "component.status.soon")
+        case .fresh: return String(localized: "component.status.fresh")
         }
     }
 }

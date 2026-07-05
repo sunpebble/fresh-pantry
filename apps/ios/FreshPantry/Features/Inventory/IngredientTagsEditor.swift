@@ -25,7 +25,7 @@ struct IngredientTagsEditor: View {
             }
 
             HStack(spacing: FkSpacing.sm) {
-                TextField("添加标签,如 囤货、孩子的", text: $draft)
+                TextField(String(localized: "inventory.tags.addPlaceholder"), text: $draft)
                     .font(.fkBodyMedium)
                     .autocorrectionDisabled()
                     .submitLabel(.done)
@@ -38,7 +38,7 @@ struct IngredientTagsEditor: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!canAdd)
-                .accessibilityLabel("添加标签")
+                .accessibilityLabel(String(localized: "inventory.tags.add"))
             }
         }
         .padding(.vertical, FkSpacing.xs)
@@ -77,7 +77,7 @@ private struct TagChip: View {
                     .foregroundStyle(Color.fkOutline)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("删除标签 \(label)")
+            .accessibilityLabel(String(localized: "inventory.tags.remove \(label)"))
         }
         .padding(.leading, FkSpacing.md)
         .padding(.trailing, FkSpacing.sm)

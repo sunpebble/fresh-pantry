@@ -49,7 +49,7 @@ struct InventoryView: View {
                         .background(Color.fkSurface)
                 }
             }
-            .navigationTitle("库存")
+            .navigationTitle(String(localized: "inventory.title"))
         }
         // Rebuild the store whenever the active household changes (login "" → uuid,
         // switch, or leave) so the visible list re-scopes to the new household
@@ -150,7 +150,7 @@ struct InventoryView: View {
         pendingIngredientID = nil
         guard let match = store.items.first(where: { $0.id == id }) else {
             withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-                toast = "该食材已不在库存"
+                toast = String(localized: "inventory.spotlight.notFound")
             }
             return
         }
@@ -236,7 +236,7 @@ private struct InventoryContent: View {
                 Task { await store.load() }
             }
         }
-        .navigationTitle(isSelecting ? "已选 \(selectedKeys.count) 项" : "库存")
+        .navigationTitle(isSelecting ? String(localized: "inventory.selection.count \(selectedKeys.count)") : String(localized: "inventory.title"))
         .navigationBarTitleDisplayMode(isSelecting ? .inline : .large)
         .navigationDestination(item: $selectedIngredient) { ingredient in
             IngredientDetailView(ingredient: ingredient, store: store)
@@ -250,45 +250,45 @@ private struct InventoryContent: View {
         .overlay(alignment: .top) { toastBanner }
         .overlay(alignment: .bottom) { undoBanner }
         .confirmationDialog(
-            "清空全部食材",
+            String(localized: "inventory.clearAll.title"),
             isPresented: $showClearConfirm,
             titleVisibility: .visible
         ) {
-            Button("清空 \(store.items.count) 件", role: .destructive) {
+            Button(String(localized: "inventory.clearAll.confirm \(store.items.count)"), role: .destructive) {
                 Task {
                     let ok = await store.clearAll()
                     if !ok {
                         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-                            toast = "清空失败，请重试"
+                            toast = String(localized: "inventory.clearAll.failed")
                         }
                     }
                 }
             }
-            Button("取消", role: .cancel) {}
+            Button(String(localized: "inventory.action.cancel"), role: .cancel) {}
         } message: {
-            Text("将删除全部 \(store.items.count) 件食材，不计入减废统计，此操作无法撤销。")
+            Text(String(localized: "inventory.clearAll.message \(store.items.count)"))
         }
         // 去向追问 (aligned with the single-delete sheet): one choice applied to
         // every selected row, so the batch path feeds the waste stats too.
         .confirmationDialog(
-            "移除所选 \(selectedKeys.count) 件食材",
+            String(localized: "inventory.batchDelete.title \(selectedKeys.count)"),
             isPresented: $showBatchDeleteConfirm,
             titleVisibility: .visible
         ) {
-            Button("全部吃完 / 用掉了") { Task { await batchDelete(outcome: .consumed) } }
-            Button("全部捐了") { Task { await batchDelete(outcome: .donated) } }
-            Button("全部堆肥了") { Task { await batchDelete(outcome: .composted) } }
-            Button("全部没吃完,扔了") { Task { await batchDelete(outcome: .wasted) } }
-            Button("仅移除") { Task { await batchDelete(outcome: nil) } }
-            Button("取消", role: .cancel) {}
+            Button(String(localized: "inventory.batchRemoveOutcome.consumed")) { Task { await batchDelete(outcome: .consumed) } }
+            Button(String(localized: "inventory.batchRemoveOutcome.donated")) { Task { await batchDelete(outcome: .donated) } }
+            Button(String(localized: "inventory.batchRemoveOutcome.composted")) { Task { await batchDelete(outcome: .composted) } }
+            Button(String(localized: "inventory.batchRemoveOutcome.wasted")) { Task { await batchDelete(outcome: .wasted) } }
+            Button(String(localized: "inventory.removeOutcome.removeOnly")) { Task { await batchDelete(outcome: nil) } }
+            Button(String(localized: "inventory.action.cancel"), role: .cancel) {}
         } message: {
-            Text("它们怎么了?用于统计你的减废成效。删除后可撤销。")
+            Text(String(localized: "inventory.batchRemoveOutcome.message"))
         }
         // 去向追问 for the long-press 预览菜单「删除」: a single-row mirror of the
         // detail-screen delete, routed through `deleteMany` so it reuses the shared
         // 撤销 banner and feeds the waste stats.
         .confirmationDialog(
-            deletingItem.map { "「\($0.name)」要移除" } ?? "移除食材",
+            deletingItem.map { String(localized: "inventory.removeOutcome.title \($0.name)") } ?? String(localized: "inventory.removeOutcome.genericTitle"),
             isPresented: Binding(
                 get: { deletingItem != nil },
                 set: { if !$0 { deletingItem = nil } }
@@ -296,14 +296,14 @@ private struct InventoryContent: View {
             titleVisibility: .visible,
             presenting: deletingItem
         ) { item in
-            Button("吃完 / 用掉了") { Task { await deleteSingle(item, outcome: .consumed) } }
-            Button("捐了") { Task { await deleteSingle(item, outcome: .donated) } }
-            Button("堆肥了") { Task { await deleteSingle(item, outcome: .composted) } }
-            Button("没吃完,扔了") { Task { await deleteSingle(item, outcome: .wasted) } }
-            Button("仅移除") { Task { await deleteSingle(item, outcome: nil) } }
-            Button("取消", role: .cancel) {}
+            Button(String(localized: "inventory.removeOutcome.consumed")) { Task { await deleteSingle(item, outcome: .consumed) } }
+            Button(String(localized: "inventory.removeOutcome.donated")) { Task { await deleteSingle(item, outcome: .donated) } }
+            Button(String(localized: "inventory.removeOutcome.composted")) { Task { await deleteSingle(item, outcome: .composted) } }
+            Button(String(localized: "inventory.removeOutcome.wasted")) { Task { await deleteSingle(item, outcome: .wasted) } }
+            Button(String(localized: "inventory.removeOutcome.removeOnly")) { Task { await deleteSingle(item, outcome: nil) } }
+            Button(String(localized: "inventory.action.cancel"), role: .cancel) {}
         } message: { _ in
-            Text("它怎么了?用于统计你的减废成效。删除后可撤销。")
+            Text(String(localized: "inventory.batchRemoveOutcome.message"))
         }
     }
 
@@ -317,10 +317,10 @@ private struct InventoryContent: View {
     private var toolbarContent: some ToolbarContent {
         if isSelecting {
             ToolbarItem(placement: .topBarLeading) {
-                Button("取消") { exitSelection() }
+                Button(String(localized: "inventory.action.cancel")) { exitSelection() }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Button(allSelected ? "取消全选" : "全选") { toggleSelectAll() }
+                Button(allSelected ? String(localized: "inventory.intakeReview.deselectAll") : String(localized: "inventory.intakeReview.selectAll")) { toggleSelectAll() }
                     .disabled(store.displayItems.isEmpty)
             }
         } else {
@@ -330,19 +330,19 @@ private struct InventoryContent: View {
                 } label: {
                     Image(systemName: "plus")
                 }
-                .accessibilityLabel("添加食材")
+                .accessibilityLabel(String(localized: "inventory.addIngredient.title"))
             }
             ToolbarItem(placement: .topBarLeading) {
                 if !store.items.isEmpty {
                     Menu {
-                        Button("多选") { isSelecting = true }
-                        Button("清空全部食材", role: .destructive) {
+                        Button(String(localized: "inventory.action.multiSelect")) { isSelecting = true }
+                        Button(String(localized: "inventory.clearAll.menuTitle"), role: .destructive) {
                             showClearConfirm = true
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
-                    .accessibilityLabel("更多")
+                    .accessibilityLabel(String(localized: "inventory.action.more"))
                 }
             }
         }
@@ -367,14 +367,14 @@ private struct InventoryContent: View {
         if isSelecting {
             HStack(spacing: FkSpacing.sm) {
                 if InventoryStore.canMerge(selectedItems) {
-                    batchButton(title: "合并", systemImage: "arrow.triangle.merge", tint: .fkPrimary) {
+                    batchButton(title: String(localized: "inventory.action.merge"), systemImage: "arrow.triangle.merge", tint: .fkPrimary) {
                         Task { await mergeSelected() }
                     }
                 }
-                batchButton(title: "加购", systemImage: "cart.badge.plus", tint: .fkPrimary) {
+                batchButton(title: String(localized: "inventory.action.addToShoppingShort"), systemImage: "cart.badge.plus", tint: .fkPrimary) {
                     Task { await batchAddToShopping() }
                 }
-                batchButton(title: "删除", systemImage: "trash", tint: .fkDanger) {
+                batchButton(title: String(localized: "inventory.action.delete"), systemImage: "trash", tint: .fkDanger) {
                     showBatchDeleteConfirm = true
                 }
             }
@@ -414,16 +414,20 @@ private struct InventoryContent: View {
             let count = undo.removed.count
             let bannerTitle: String = {
                 if count == 1, let name = undo.removed.first?.ingredient.name {
-                    return logged ? "已记录「\(name)」" : "已删除「\(name)」"
+                    return logged
+                        ? String(localized: "inventory.removeOutcome.recorded \(name)")
+                        : String(localized: "inventory.batchDelete.deletedOne \(name)")
                 }
-                return logged ? "已记录并删除 \(count) 项" : "已删除 \(count) 项"
+                return logged
+                    ? String(localized: "inventory.batchDelete.recordedAndDeleted \(count)")
+                    : String(localized: "inventory.batchDelete.deleted \(count)")
             }()
             HStack(spacing: FkSpacing.md) {
                 Text(bannerTitle)
                     .font(.fkLabelLarge)
                     .foregroundStyle(Color.fkOnSurface)
                 Spacer(minLength: 0)
-                Button("撤销") {
+                Button(String(localized: "dashboard.expiring.undo")) {
                     Task {
                         if await store.undoBatchRemoval(undo) {
                             batchUndo = nil
@@ -432,7 +436,7 @@ private struct InventoryContent: View {
                             // departures NOT reversed): keep the handle so 撤销
                             // stays retryable, and say so instead of silently
                             // dropping the banner.
-                            withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { toast = "撤销失败，请重试" }
+                            withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { toast = String(localized: "inventory.undo.failed") }
                         }
                     }
                 }
@@ -501,7 +505,7 @@ private struct InventoryContent: View {
             // Stale selection resolved to no live rows — nothing to delete.
             exitSelection()
         } else {
-            withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { toast = "删除失败，请重试" }
+            withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { toast = String(localized: "inventory.delete.failed") }
         }
     }
 
@@ -520,7 +524,7 @@ private struct InventoryContent: View {
             // threw. A nil for an already-gone row (removed via sync / another
             // action) is NOT a failure, so only that case toasts (mirrors
             // `batchDelete`'s stale-vs-failed split).
-            withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { toast = "删除失败，请重试" }
+            withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) { toast = String(localized: "inventory.delete.failed") }
         }
     }
 
@@ -535,7 +539,9 @@ private struct InventoryContent: View {
         let count = selectedKeys.count
         exitSelection()
         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-            toast = added > 0 ? "已添加 \(added)/\(count) 项到购物清单" : "所选食材已在购物清单中"
+            toast = added > 0
+                ? String(localized: "inventory.batchShopping.added \(added) \(count)")
+                : String(localized: "inventory.batchShopping.allDuplicate")
         }
     }
 
@@ -547,7 +553,7 @@ private struct InventoryContent: View {
         let ok = await store.mergeBatch(selectedItems)
         exitSelection()
         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-            toast = ok ? "已合并 \(count) 个批次" : "合并失败"
+            toast = ok ? String(localized: "inventory.merge.success \(count)") : String(localized: "inventory.merge.failed")
         }
     }
 
@@ -556,15 +562,15 @@ private struct InventoryContent: View {
     private var categoryChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: FkSpacing.sm) {
-                FkChip(label: "全部", count: store.count(for: InventoryStore.CategoryFilter.all), isSelected: store.categoryFilter == .all) {
+                FkChip(label: String(localized: "inventory.filter.all"), count: store.count(for: InventoryStore.CategoryFilter.all), isSelected: store.categoryFilter == .all) {
                     store.categoryFilter = .all
                 }
-                FkChip(label: "不新鲜", count: store.count(for: .notFresh), isSelected: store.categoryFilter == .notFresh) {
+                FkChip(label: String(localized: "inventory.filter.notFresh"), count: store.count(for: .notFresh), isSelected: store.categoryFilter == .notFresh) {
                     store.categoryFilter = .notFresh
                 }
                 ForEach(FoodCategories.values, id: \.self) { category in
                     FkChip(
-                        label: category,
+                        label: FoodCategories.displayLabel(for: category),
                         count: store.count(for: .category(category)),
                         isSelected: store.categoryFilter == .category(category)
                     ) {
@@ -583,7 +589,7 @@ private struct InventoryContent: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: FkSpacing.sm) {
                 FkChip(
-                    label: "全部位置",
+                    label: String(localized: "inventory.filter.allLocations"),
                     count: store.count(for: InventoryStore.StorageFilter.all),
                     isSelected: store.storageFilter == .all
                 ) { store.storageFilter = .all }
@@ -613,7 +619,7 @@ private struct InventoryContent: View {
         if !options.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: FkSpacing.sm) {
-                    FkChip(label: "全部标签", isSelected: store.selectedTag == nil) {
+                    FkChip(label: String(localized: "inventory.filter.allTags"), isSelected: store.selectedTag == nil) {
                         store.selectedTag = nil
                     }
                     ForEach(options, id: \.self) { tag in
@@ -707,16 +713,16 @@ private struct InventoryContent: View {
         } else {
             card.contextMenu {
                 Button { selectedIngredient = item } label: {
-                    Label("查看详情", systemImage: "info.circle")
+                    Label(String(localized: "inventory.action.viewDetail"), systemImage: "info.circle")
                 }
                 Button { editTarget = EditTarget(ingredient: item) } label: {
-                    Label("编辑", systemImage: "pencil")
+                    Label(String(localized: "inventory.action.edit"), systemImage: "pencil")
                 }
                 Button { Task { await addToShopping(item) } } label: {
-                    Label("加入购物清单", systemImage: "cart.badge.plus")
+                    Label(String(localized: "dashboard.expiring.addToShopping"), systemImage: "cart.badge.plus")
                 }
                 Button(role: .destructive) { deletingItem = item } label: {
-                    Label("删除", systemImage: "trash")
+                    Label(String(localized: "inventory.action.delete"), systemImage: "trash")
                 }
             } preview: {
                 IngredientPreviewCard(ingredient: item)
@@ -740,7 +746,7 @@ private struct InventoryContent: View {
             HStack(spacing: FkSpacing.xs) {
                 Image(systemName: "cart.badge.plus")
                     .font(.system(size: 13, weight: .semibold))
-                Text("加购")
+                Text(String(localized: "inventory.action.addToShoppingShort"))
                     .font(.fkLabelMedium)
             }
             .foregroundStyle(Color.fkPrimaryContainer)
@@ -781,7 +787,9 @@ private struct InventoryContent: View {
     private func addToShopping(_ item: Ingredient) async {
         let added = await shoppingStore.add(name: item.name, category: item.category)
         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-            toast = added ? "已将「\(item.name)」加入购物清单" : "「\(item.name)」已在购物清单中"
+            toast = added
+                ? String(localized: "dashboard.shopping.added \(item.name)")
+                : String(localized: "dashboard.shopping.duplicate \(item.name)")
         }
     }
 
@@ -789,9 +797,9 @@ private struct InventoryContent: View {
         let searching = !store.searchQuery.trimmed.isEmpty
         return FkEmptyState(
             systemImage: store.hasActiveQuery ? "magnifyingglass" : "tray",
-            title: searching ? "没有找到「\(store.searchQuery.trimmed)」"
-                : (store.hasActiveQuery ? "该筛选下暂无食材" : "冰箱空空如也"),
-            message: store.hasActiveQuery ? "试试换个关键词或筛选条件" : "去添加一些食材吧"
+            title: searching ? String(localized: "inventory.empty.notFound \(store.searchQuery.trimmed)")
+                : (store.hasActiveQuery ? String(localized: "inventory.empty.noMatchForFilter") : String(localized: "inventory.empty.title")),
+            message: store.hasActiveQuery ? String(localized: "inventory.empty.tryDifferentFilter") : String(localized: "inventory.empty.addSome")
         )
     }
 }

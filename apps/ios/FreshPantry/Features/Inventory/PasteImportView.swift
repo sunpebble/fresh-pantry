@@ -33,15 +33,15 @@ struct PasteImportView: View {
                 }
             }
             .background(Color.fkSurface)
-            .navigationTitle("AI 解析文本")
+            .navigationTitle(String(localized: "inventory.import.pasteText"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("取消") { dismiss() }
+                    Button(String(localized: "inventory.action.cancel")) { dismiss() }
                 }
                 if let store {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button(store.isParsing ? "解析中…" : "解析") {
+                        Button(store.isParsing ? String(localized: "inventory.pasteImport.parsing") : String(localized: "inventory.pasteImport.parse")) {
                             Task { await runParse(store) }
                         }
                         .font(.fkLabelLarge)
@@ -50,7 +50,7 @@ struct PasteImportView: View {
                 }
             }
             .navigationDestination(item: $reviewRoute) { route in
-                IntakeReviewView(proposals: route.proposals, title: "确认入库") { _ in
+                IntakeReviewView(proposals: route.proposals, title: String(localized: "inventory.intakeReview.confirmTitle")) { _ in
                     onApplied()
                     dismiss()
                 }
@@ -91,7 +91,7 @@ struct PasteImportView: View {
         if let store {
             ScrollView {
                 VStack(alignment: .leading, spacing: FkSpacing.lg) {
-                    Text("粘贴一段食材清单,AI 会拆成结构化条目供你审核入库。")
+                    Text(String(localized: "inventory.pasteImport.subtitle"))
                         .font(.fkBodyMedium)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
 
@@ -127,7 +127,7 @@ struct PasteImportView: View {
             )
             .overlay(alignment: .topLeading) {
                 if store.text.isEmpty {
-                    Text("如:牛奶 2 盒、鸡蛋一打、西红柿 3 个…")
+                    Text(String(localized: "inventory.pasteImport.placeholder"))
                         .font(.fkBodyLarge)
                         .foregroundStyle(Color.fkOnSurfaceVariant.opacity(0.6))
                         .padding(.horizontal, FkSpacing.sm + 5)
@@ -150,7 +150,7 @@ struct PasteImportView: View {
                 HStack(spacing: FkSpacing.xs) {
                     Image(systemName: speech.isRecording ? "stop.circle.fill" : "mic.fill")
                         .font(.system(size: 14, weight: .semibold))
-                    Text(speech.isRecording ? "停止录音" : "语音录入")
+                    Text(speech.isRecording ? String(localized: "inventory.voice.stop") : String(localized: "inventory.voice.start"))
                         .font(.fkLabelMedium)
                 }
                 .foregroundStyle(speech.isRecording ? Color.fkOnDanger : Color.fkPrimaryContainer)
@@ -159,7 +159,7 @@ struct PasteImportView: View {
                 .background(Capsule().fill(speech.isRecording ? Color.fkDanger : Color.fkPrimarySoft))
             }
             .buttonStyle(.fkPressable)
-            .accessibilityLabel(speech.isRecording ? "停止语音录入" : "语音录入食材")
+            .accessibilityLabel(speech.isRecording ? String(localized: "inventory.voice.stopAccessibility") : String(localized: "inventory.voice.startAccessibility"))
 
             if speech.isRecording, !speech.transcript.isEmpty {
                 Text(speech.transcript)
@@ -187,8 +187,8 @@ struct PasteImportView: View {
     private var notConfigured: some View {
         FkEmptyState(
             systemImage: "wand.and.stars",
-            title: "请先在设置中配置 AI",
-            message: "在 设置 › AI 助手 填写 Base URL / API Key / 模型 后,即可粘贴文本自动解析食材。"
+            title: String(localized: "inventory.ai.notConfiguredTitle"),
+            message: String(localized: "inventory.pasteImport.notConfiguredMessage")
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

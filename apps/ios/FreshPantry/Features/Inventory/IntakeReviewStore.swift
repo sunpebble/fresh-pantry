@@ -93,7 +93,7 @@ final class IntakeReviewStore {
     /// Failure-notice mapping kept pure so it's testable without forcing a real
     /// repository to throw: only a non-persisted outcome carries a message.
     static func applyErrorMessage(for outcome: IntakeController.ApplyOutcome) -> String? {
-        outcome.persisted || outcome.limitReached ? nil : "入库失败，请重试"
+        outcome.persisted || outcome.limitReached ? nil : String(localized: "inventory.intake.failedRetry")
     }
 
     // MARK: Rules

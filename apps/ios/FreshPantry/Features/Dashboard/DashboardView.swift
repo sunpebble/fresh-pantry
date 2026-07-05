@@ -44,7 +44,7 @@ struct DashboardView: View {
                         .background(Color.fkSurface)
                 }
             }
-            .navigationTitle("首页")
+            .navigationTitle(String(localized: "dashboard.title"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -52,7 +52,7 @@ struct DashboardView: View {
                     } label: {
                         Image(systemName: "magnifyingglass")
                     }
-                    .accessibilityLabel("搜索")
+                    .accessibilityLabel(String(localized: "dashboard.search"))
                 }
             }
             .navigationDestination(for: DashboardRoute.self) { route in
@@ -309,7 +309,7 @@ private struct DashboardContent: View {
     private var recommendationSection: some View {
         if let recommendation, let recipesStore {
             VStack(alignment: .leading, spacing: FkSpacing.sm) {
-                FkSectionHeader(title: "今日推荐")
+                FkSectionHeader(title: String(localized: "dashboard.recommendation.title"))
                 Button {
                     selectedRecipe = recommendation
                 } label: {
@@ -326,7 +326,7 @@ private struct DashboardContent: View {
             }
         } else if !didLoadRecipes {
             VStack(alignment: .leading, spacing: FkSpacing.sm) {
-                FkSectionHeader(title: "今日推荐")
+                FkSectionHeader(title: String(localized: "dashboard.recommendation.title"))
                 RecipeSkeletonCard()
             }
         }
@@ -476,7 +476,7 @@ private struct DashboardContent: View {
         // near-zero — but a tap inside it must not silently no-op.
         guard let shoppingStore else {
             withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-                toast = "购物清单加载中，请稍后再试"
+                toast = String(localized: "dashboard.shopping.loading")
             }
             return
         }
@@ -485,11 +485,11 @@ private struct DashboardContent: View {
         if outcome == .added { store.noteShoppingAdded(name: item.name, category: item.category) }
         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
             switch outcome {
-            case .added: toast = "已将「\(item.name)」加入购物清单"
-            case .duplicate: toast = "「\(item.name)」已在购物清单中"
+            case .added: toast = String(localized: "dashboard.shopping.added \(item.name)")
+            case .duplicate: toast = String(localized: "dashboard.shopping.duplicate \(item.name)")
             // A read/persist failure is NOT a duplicate — claiming「已在清单中」
             // would assert a row the store never verified.
-            case .failed: toast = "添加失败，请重试"
+            case .failed: toast = String(localized: "dashboard.shopping.addFailed")
             }
         }
     }
@@ -529,11 +529,11 @@ struct MealPlanGlance: Equatable {
     /// week on any day but Monday (MealPlanView's 缺料 card scopes to its
     /// Monday-anchored visible week instead; the copy keeps the two honest).
     var subtitle: String {
-        guard upcoming > 0 else { return "规划这一周吃什么" }
+        guard upcoming > 0 else { return String(localized: "dashboard.mealPlan.empty") }
         if today > 0 {
-            return "未来 7 天已排 \(upcoming) 顿 · 今天 \(today) 顿"
+            return String(localized: "dashboard.mealPlan.upcomingWithToday \(upcoming) \(today)")
         }
-        return "未来 7 天已排 \(upcoming) 顿"
+        return String(localized: "dashboard.mealPlan.upcoming \(upcoming)")
     }
 }
 
@@ -562,13 +562,13 @@ private struct StatBar: View {
         let hour = calendar.component(.hour, from: now)
         let part: String
         switch hour {
-        case 5..<11: part = "早安"
-        case 11..<13: part = "午安"
-        case 13..<18: part = "下午好"
-        case 18..<23: part = "晚上好"
-        default: part = "夜深了"
+        case 5..<11: part = String(localized: "dashboard.greeting.morning")
+        case 11..<13: part = String(localized: "dashboard.greeting.noon")
+        case 13..<18: part = String(localized: "dashboard.greeting.afternoon")
+        case 18..<23: part = String(localized: "dashboard.greeting.evening")
+        default: part = String(localized: "dashboard.greeting.lateNight")
         }
-        return "\(part)，主厨。"
+        return String(localized: "dashboard.greeting.chef \(part)")
     }
 
     var body: some View {
@@ -579,11 +579,11 @@ private struct StatBar: View {
                     .foregroundStyle(Color.fkOnSurfaceVariant)
 
                 HStack(alignment: .top, spacing: FkSpacing.xs) {
-                    segment(value: summary.totalItems, label: "件食材", tint: .fkOnSurface)
-                    segment(value: categoryCount, label: "分类", tint: .fkOnSurface)
-                    segment(value: summary.needsAttentionCount, label: "需处理", tint: .fkWarnInk)
-                    segment(value: summary.expiredCount, label: "已过期", tint: .fkDanger)
-                    segment(value: summary.freshCount, label: "充足", tint: .fkSuccess)
+                    segment(value: summary.totalItems, label: String(localized: "dashboard.stat.items"), tint: .fkOnSurface)
+                    segment(value: categoryCount, label: String(localized: "dashboard.stat.categories"), tint: .fkOnSurface)
+                    segment(value: summary.needsAttentionCount, label: String(localized: "dashboard.stat.needsAttention"), tint: .fkWarnInk)
+                    segment(value: summary.expiredCount, label: String(localized: "dashboard.stat.expired"), tint: .fkDanger)
+                    segment(value: summary.freshCount, label: String(localized: "dashboard.stat.sufficient"), tint: .fkSuccess)
                 }
             }
         }
@@ -662,7 +662,7 @@ private struct ExpiringTile: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 16))
                             .foregroundStyle(Color.fkSuccess)
-                        Text("暂无临期")
+                        Text(String(localized: "dashboard.expiring.none"))
                             .font(.fkBodySmall)
                             .foregroundStyle(Color.fkOnSurfaceVariant)
                     }
@@ -672,7 +672,7 @@ private struct ExpiringTile: View {
                     }
                     NavigationLink(value: DashboardRoute.expiring) {
                         HStack(spacing: FkSpacing.xs) {
-                            Text("查看全部")
+                            Text(String(localized: "dashboard.expiring.viewAll"))
                                 .font(.fkLabelMedium)
                                 .foregroundStyle(Color.fkPrimary)
                             TileChevron()
@@ -689,7 +689,7 @@ private struct ExpiringTile: View {
             Image(systemName: "clock.badge.exclamationmark.fill")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Color.fkWarnInk)
-            Text("临期提醒")
+            Text(String(localized: "dashboard.expiring.title"))
                 .font(.fkTitleSmall)
                 .foregroundStyle(Color.fkOnSurface)
             if summary.needsAttentionCount > 0 {
@@ -730,7 +730,7 @@ private struct ExpiringTile: View {
                     .background(Circle().fill(Color.fkPrimarySoft))
             }
             .buttonStyle(.fkPressable)
-            .accessibilityLabel("加入购物清单")
+            .accessibilityLabel(String(localized: "dashboard.expiring.addToShopping"))
         }
     }
 }
@@ -756,7 +756,7 @@ private struct CategoryTile: View {
                     Image(systemName: "square.grid.2x2.fill")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Color.fkPrimaryContainer)
-                    Text("食材分类")
+                    Text(String(localized: "dashboard.category.title"))
                         .font(.fkTitleSmall)
                         .foregroundStyle(Color.fkOnSurface)
                     Spacer(minLength: 0)
@@ -771,7 +771,7 @@ private struct CategoryTile: View {
                         }
                         .buttonStyle(.fkPressable)
                         .accessibilityIdentifier("home.category.\(entry.category)")
-                        .accessibilityLabel("\(entry.category)，\(entry.count) 件")
+                        .accessibilityLabel(String(localized: "dashboard.category.itemCount \(entry.category) \(entry.count)"))
                     }
                 }
             }
@@ -814,15 +814,15 @@ private struct MealPlanTile: View {
         NavigationLink(value: DashboardRoute.mealPlan) {
             DashboardTileSurface {
                 VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                    StatTileHeader(systemImage: "calendar", title: "膳食计划")
+                    StatTileHeader(systemImage: "calendar", title: String(localized: "dashboard.mealPlan.title"))
                     // Reuse the (unit-tested) glance subtitle as the single source of
                     // this copy — no second wording to drift from it.
-                    Text(glance?.subtitle ?? "规划这一周吃什么")
+                    Text(glance?.subtitle ?? String(localized: "dashboard.mealPlan.empty"))
                         .font(.fkBodySmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                         .lineLimit(2)
                     if let glance, glance.missing > 0 {
-                        StatTileBadge(text: "还缺 \(glance.missing) 样", tint: .fkDanger, fill: .fkWarnSoft)
+                        StatTileBadge(text: String(localized: "dashboard.mealPlan.missing \(glance.missing)"), tint: .fkDanger, fill: .fkWarnSoft)
                     }
                 }
             }
@@ -839,13 +839,13 @@ private struct WasteTile: View {
         NavigationLink(value: DashboardRoute.wasteInsights) {
             DashboardTileSurface {
                 VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                    StatTileHeader(systemImage: "leaf.fill", title: "减废统计")
+                    StatTileHeader(systemImage: "leaf.fill", title: String(localized: "dashboard.waste.title"))
                     Text(metric)
                         .font(.fkBodySmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                         .lineLimit(2)
                     if let stats, stats.rescued > 0 {
-                        StatTileBadge(text: "抢救 \(stats.rescued)", tint: .fkSuccess, fill: .fkSuccess.opacity(0.15))
+                        StatTileBadge(text: String(localized: "dashboard.waste.rescued \(stats.rescued)"), tint: .fkSuccess, fill: .fkSuccess.opacity(0.15))
                     }
                 }
             }
@@ -854,8 +854,8 @@ private struct WasteTile: View {
     }
 
     private var metric: String {
-        guard let stats, !stats.isEmpty else { return "看看你的食材用掉率" }
-        return "本月用掉率 \(stats.useUpPercent)%"
+        guard let stats, !stats.isEmpty else { return String(localized: "dashboard.waste.emptyMetric") }
+        return String(localized: "dashboard.waste.useUpPercent \(stats.useUpPercent)")
     }
 }
 
@@ -868,7 +868,7 @@ private struct ShoppingTile: View {
         Button(action: onTap) {
             DashboardTileSurface {
                 VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                    StatTileHeader(systemImage: "cart.fill", title: "购物清单")
+                    StatTileHeader(systemImage: "cart.fill", title: String(localized: "dashboard.shoppingTile.title"))
                     Text(metric)
                         .font(.fkBodySmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
@@ -880,7 +880,9 @@ private struct ShoppingTile: View {
     }
 
     private var metric: String {
-        uncheckedCount > 0 ? "还有 \(uncheckedCount) 项待购买" : "清单已全部完成"
+        uncheckedCount > 0
+            ? String(localized: "dashboard.shoppingTile.pending \(uncheckedCount)")
+            : String(localized: "dashboard.shoppingTile.done")
     }
 }
 
@@ -893,7 +895,7 @@ private struct LowStockTile: View {
         NavigationLink(value: DashboardRoute.lowStock) {
             DashboardTileSurface {
                 VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                    StatTileHeader(systemImage: "cart.badge.plus", title: "库存不足")
+                    StatTileHeader(systemImage: "cart.badge.plus", title: String(localized: "dashboard.lowStock.title"))
                     Text(metric)
                         .font(.fkBodySmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
@@ -905,7 +907,9 @@ private struct LowStockTile: View {
     }
 
     private var metric: String {
-        count > 0 ? "\(count) 项常买缺货" : "常买项库存充足"
+        count > 0
+            ? String(localized: "dashboard.lowStock.count \(count)")
+            : String(localized: "dashboard.lowStock.sufficient")
     }
 }
 
@@ -963,7 +967,7 @@ private struct ExpiringFallbackStrip: View {
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(Color.fkDanger)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("用临期 · 今天就能做")
+                        Text(String(localized: "dashboard.fallback.title"))
                             .font(.fkLabelMedium)
                             .foregroundStyle(Color.fkDanger)
                         Text(suggestion.recipe.name)
@@ -972,7 +976,7 @@ private struct ExpiringFallbackStrip: View {
                             .lineLimit(1)
                     }
                     Spacer(minLength: FkSpacing.sm)
-                    Text("可用 \(suggestion.covered.count) 件")
+                    Text(String(localized: "dashboard.fallback.available \(suggestion.covered.count)"))
                         .font(.fkLabelSmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                     TileChevron()
@@ -1001,6 +1005,6 @@ private struct RecipeSkeletonCard: View {
                     .frame(width: 90, height: 12)
             }
         }
-        .accessibilityLabel("加载推荐中")
+        .accessibilityLabel(String(localized: "dashboard.recommendation.loading"))
     }
 }

@@ -38,7 +38,7 @@ struct LowStockView: View {
                     .background(Color.fkSurface)
             }
         }
-        .navigationTitle("库存不足")
+        .navigationTitle(String(localized: "dashboard.lowStock.title"))
         .navigationBarTitleDisplayMode(.inline)
         .overlay(alignment: .top) { feedbackBanner }
         // Rebuild the primary candidate store whenever the active household changes
@@ -104,13 +104,13 @@ struct LowStockView: View {
 
         if failed > 0 {
             withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-                feedback = added > 0 ? "部分项目添加失败，请重试" : "添加失败，请重试"
+                feedback = added > 0 ? String(localized: "inventory.lowStock.partialFailed") : String(localized: "dashboard.shopping.addFailed")
             }
             return
         }
         if added == 0 {
             withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
-                feedback = "所选项目已在购物清单中"
+                feedback = String(localized: "inventory.lowStock.allDuplicate")
             }
             return
         }
@@ -159,8 +159,8 @@ private struct LowStockContent: View {
             } else if store.items.isEmpty {
                 FkEmptyState(
                     systemImage: "checkmark.seal",
-                    title: "常买的都在库存里",
-                    message: "买过 3 次以上且当前缺货的食材会出现在这里"
+                    title: String(localized: "inventory.lowStock.emptyTitle"),
+                    message: String(localized: "inventory.lowStock.emptyMessage")
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -185,7 +185,7 @@ private struct LowStockContent: View {
             VStack(alignment: .leading, spacing: FkSpacing.xl) {
                 ForEach(Array(store.groupedByCategory.enumerated()), id: \.element.category) { sectionIndex, group in
                     VStack(alignment: .leading, spacing: FkSpacing.sm) {
-                        FkSectionHeader(title: group.category, count: group.items.count)
+                        FkSectionHeader(title: FoodCategories.displayLabel(for: group.category), count: group.items.count)
                             .padding(.horizontal, FkSpacing.lg)
 
                         LazyVStack(spacing: FkSpacing.sm) {
@@ -226,8 +226,8 @@ private struct LowStockRow: View {
     /// "该补了 · 约每7天" when due, else "约每7天" — nil when no cadence estimate.
     private var cadenceHint: String? {
         guard let prediction else { return nil }
-        let every = "约每 \(Int(prediction.avgIntervalDays.rounded())) 天"
-        return prediction.isDue ? "该补了 · \(every)" : every
+        let every = String(localized: "inventory.lowStock.everyDays \(Int(prediction.avgIntervalDays.rounded()))")
+        return prediction.isDue ? String(localized: "inventory.lowStock.dueNow \(every)") : every
     }
 
     var body: some View {
@@ -247,7 +247,7 @@ private struct LowStockRow: View {
 
             Spacer(minLength: FkSpacing.sm)
 
-            Text("买过 \(item.count) 次")
+            Text(String(localized: "inventory.lowStock.boughtCount \(item.count)"))
                 .font(.fkBodySmall)
                 .foregroundStyle(Color.fkOnSurfaceVariant)
 
@@ -294,7 +294,7 @@ private struct StickyAddBar: View {
                     Image(systemName: "cart.badge.plus")
                         .font(.system(size: 16, weight: .semibold))
                 }
-                Text("加入购物清单 (\(count))")
+                Text(String(localized: "inventory.lowStock.addToShoppingCount \(count)"))
                     .font(.fkLabelLarge)
             }
             .foregroundStyle(enabled ? Color.fkOnPrimary : Color.fkOutline)

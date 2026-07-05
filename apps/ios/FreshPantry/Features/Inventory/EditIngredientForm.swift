@@ -39,7 +39,7 @@ final class EditIngredientForm {
         original = item
         name = item.name
         quantity = item.quantity
-        unit = item.unit.trimmed.isEmpty ? "个" : item.unit
+        unit = item.unit.trimmed.isEmpty ? "个" : item.unit // i18n:ignore domain unit-default identity, not UI text
         category = FoodCategories.dropdownValue(item.category)
         storage = item.storage
         tags = item.tags
@@ -60,7 +60,7 @@ final class EditIngredientForm {
     /// picker blueprint lists), de-duplicated, current unit appended so a custom
     /// value still shows as selected. Mirrors `AddIngredientForm.unitOptions`.
     var unitOptions: [String] {
-        var options = ["个", "只", "把", "盒", "袋", "瓶", "罐", "份"]
+        var options = ["个", "只", "把", "盒", "袋", "瓶", "罐", "份"] // i18n:ignore domain unit-default identity, not UI text
         for unit in FoodKnowledge.units where !options.contains(unit) {
             options.append(unit)
         }
@@ -122,7 +122,7 @@ final class EditIngredientForm {
             id: original.id,
             name: name.trimmed,
             quantity: quantityText.isEmpty ? "1" : quantityText,
-            unit: unit.trimmed.isEmpty ? "个" : unit.trimmed,
+            unit: unit.trimmed.isEmpty ? "个" : unit.trimmed, // i18n:ignore domain unit-default identity, not UI text
             imageUrl: original.imageUrl,
             freshnessPercent: original.freshnessPercent,
             state: original.state,

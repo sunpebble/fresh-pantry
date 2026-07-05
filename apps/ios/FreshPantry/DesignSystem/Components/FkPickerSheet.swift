@@ -51,7 +51,7 @@ struct FkPickerSheet<Value: Hashable>: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("完成") { dismiss() }
+                    Button(String(localized: "component.action.done")) { dismiss() }
                         .font(.fkLabelLarge)
                 }
             }

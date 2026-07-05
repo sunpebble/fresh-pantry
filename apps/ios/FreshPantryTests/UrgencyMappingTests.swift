@@ -12,10 +12,10 @@ struct UrgencyMappingTests {
     }
 
     @Test func statusStyleLabelsMatchSpec() {
-        #expect(FreshnessState.fresh.statusStyle.label == "新鲜")
-        #expect(FreshnessState.expiringSoon.statusStyle.label == "即将过期")
-        #expect(FreshnessState.urgent.statusStyle.label == "快过期")
-        #expect(FreshnessState.expired.statusStyle.label == "已过期")
+        #expect(FreshnessState.fresh.statusStyle.label == String(localized: "component.status.fresh"))
+        #expect(FreshnessState.expiringSoon.statusStyle.label == String(localized: "component.status.soon"))
+        #expect(FreshnessState.urgent.statusStyle.label == String(localized: "component.status.urgent"))
+        #expect(FreshnessState.expired.statusStyle.label == String(localized: "component.status.expired"))
     }
 
     @Test func categoryPaletteIdMappingMatchesFlutter() {
