@@ -98,6 +98,8 @@ final class AppDependencies {
     /// Owns the single `SupabaseClient` (nil in local-only mode). The seam both
     /// auth (this slice) and the household-data sync engine (next slice) read.
     let clientProvider: SupabaseClientProvider
+    /// 内置 AI 的 worker 基址（= 现有 api 域名）。
+    private let apiBaseURL: URL
     /// App-root-resident sync session: the active household scope + per-install
     /// client id every store enqueues against. The SINGLE source of truth for
     /// `householdID` (see below). Injected once via `.environment` at the root.
@@ -188,6 +190,7 @@ final class AppDependencies {
         self.diagnostics = diagnostics
         let clientProvider = SupabaseClientProvider(config: config)
         self.clientProvider = clientProvider
+        self.apiBaseURL = config?.backend.apiBaseURL ?? BackendConfig.defaultAPIBaseURL
         self.authService = AuthService(backend: clientProvider.authBackend)
         // Shared recipe catalog: DB source (anon-readable `recipes` table) + the
         // on-disk offline cache. Browse reads cache-or-bundle instantly, then
@@ -260,6 +263,16 @@ final class AppDependencies {
         self.profileStore = ProfileStore(
             remote: self.remotePantryRepository,
             local: self.profileRepository
+        )
+    }
+
+    /// 内置 AI chat 闭包工厂；本地模式（无 Supabase 后端）返回 nil。
+    func builtInAiChatFn(responseFormat: [String: JSONValue]? = nil) -> AiChatFn? {
+        guard clientProvider.client != nil else { return nil }
+        return AiChatAccess.builtInChatFn(
+            clientProvider: clientProvider,
+            apiBaseURL: apiBaseURL,
+            responseFormat: responseFormat
         )
     }
 }
