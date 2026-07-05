@@ -84,6 +84,22 @@ describe("POST /ai/v1/chat/completions", () => {
     expect(upstream!.headers.get("authorization")).toBe("Bearer test-deepseek-key");
   });
 
+  it("非法 JSON 返回 400，不扣配额也不发出站请求", async () => {
+    await env.AI_RATE.delete(`ai:user-1:${today}`); // 本文件测试共享存储，先清计数
+    const { fetcher, calls } = stubFetch({});
+    const req = new Request(AI_PATH, {
+      method: "POST",
+      headers: { authorization: "Bearer good-token" },
+      body: "not-json",
+    });
+    const res = await handleAiChat(req, env, fetcher);
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { error: { message: string } };
+    expect(json.error.message).toBe("请求不是合法 JSON");
+    expect(calls.length).toBe(0); // 未打 Supabase 也未打 DeepSeek
+    expect(await env.AI_RATE.get(`ai:user-1:${today}`)).toBeNull(); // 配额未消耗
+  });
+
   it("超过日限额返回 429 + 中文提示，且不再请求 DeepSeek", async () => {
     await env.AI_RATE.put(`ai:user-1:${today}`, "100");
     const { fetcher, calls } = stubFetch({ [env.SUPABASE_URL]: supabaseOk });
