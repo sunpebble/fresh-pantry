@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.1.0](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.0.0...fresh_pantry-v2.1.0) (2026-07-05)
+
+
+### Features
+
+* **ios:** AI 调用点接入 Pro/内置/BYOK 三态门控 ([31b10bf](https://github.com/sunpebble/fresh-pantry/commit/31b10bf23889afbdbbbd2e686e594dc87f9dbaa9))
+* **ios:** AiChatAccess 三态传输解析 + 内置 worker chatFn + 429 文案透传 ([cd52677](https://github.com/sunpebble/fresh-pantry/commit/cd52677deea67d1f912e9adf3c0d62bed67c47ac))
+* **ios:** PaywallSheet/ProLockedView + Settings Pro 入口 ([b544347](https://github.com/sunpebble/fresh-pantry/commit/b544347d430ee0ffaee030b43f8779ea4b5245cb))
+* **ios:** ProStore(StoreKit 2 买断) + FreeTier 配额 + StoreKit 本地配置 ([17b6cfb](https://github.com/sunpebble/fresh-pantry/commit/17b6cfb400adff72a9f1594a4177f709a88c3d42))
+* **ios:** 免费版库存 50 条上限门控 ([32f607a](https://github.com/sunpebble/fresh-pantry/commit/32f607ac4f066427ef4b96ba980f9f3b50e5ac3f))
+* **ios:** 家庭共享与周派餐 Pro 门控 ([aae1c99](https://github.com/sunpebble/fresh-pantry/commit/aae1c996522570b629e34be7f0559fc36f3349b0))
+
+
+### Bug Fixes
+
+* prepare auth for production ([c7a8bbb](https://github.com/sunpebble/fresh-pantry/commit/c7a8bbbe96c2514b61b57f2a5343fb07c61fce2b))
+
 ## [2.0.0](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v1.25.0...fresh_pantry-v2.0.0) (2026-07-03)
 
 
