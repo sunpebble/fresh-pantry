@@ -16,6 +16,10 @@ packages:
     url: https://github.com/getsentry/sentry-cocoa
     from: "9.17.0"
 
+# 只挂进工程导航器(Xcode 里可视化编辑),不进任何 target 的 build phase。
+fileGroups:
+  - Products.storekit
+
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -148,6 +152,9 @@ schemes:
         FreshPantry: all
     run:
       config: Debug
+      # 本地 StoreKit 配置(freshpantry.pro 买断):模拟器/真机调试不接 App Store
+      # Connect 即可走完购买/恢复流程。仅影响 Run,测试与发布构建不受其影响。
+      storeKitConfiguration: Products.storekit
     test:
       config: Debug
       targets:

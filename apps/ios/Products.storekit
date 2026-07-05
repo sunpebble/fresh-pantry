@@ -1,0 +1,24 @@
+{
+  "identifier" : "F3A1C2D4",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "30.00",
+      "familyShareable" : true,
+      "internalID" : "F3A1C2D5",
+      "localizations" : [
+        {
+          "description" : "解锁 AI 助手、家庭共享、周派餐与不限量库存",
+          "displayName" : "Fresh Pantry Pro",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "freshpantry.pro",
+      "referenceName" : "Pro",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {},
+  "subscriptionGroups" : [],
+  "version" : { "major" : 4, "minor" : 0 }
+}

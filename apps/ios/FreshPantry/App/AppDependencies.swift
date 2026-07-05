@@ -68,6 +68,8 @@ final class AppDependencies {
     /// UserDefaults-backed 外观 preference (跟随系统/浅色/深色); drives the root
     /// `preferredColorScheme` override. Device-local, excluded from backup/sync.
     let appearanceStore: AppearanceStore
+    /// Pro 买断状态（StoreKit 2）。根 `.task` 里 `start()` 一次；Pro 门控读 `isPro`。
+    let proStore: ProStore
     /// Holds a household-invite deep link captured by `onOpenURL` until the UI
     /// presents its preview/accept flow. Always built (no backend dependency).
     let inviteRouter: InviteRouter
@@ -159,6 +161,7 @@ final class AppDependencies {
         self.dietPreferenceStore = DietPreferenceStore()
         self.aiSettingsStore = AiSettingsStore(secrets: KeychainStore())
         self.appearanceStore = AppearanceStore()
+        self.proStore = ProStore()
         self.inviteRouter = InviteRouter()
         self.recipeImportRouter = RecipeImportRouter()
         self.widgetDeepLinkRouter = WidgetDeepLinkRouter()

@@ -112,6 +112,8 @@ struct FreshPantryApp: App {
                     else { return }
                     dependencies.spotlightRouter.capture(identifier: identifier)
                 }
+                // PRO 买断状态:启动即刷 entitlement + 挂交易更新监听(常驻)。
+                .task { await dependencies.proStore.start() }
                 // Submit the first background-refresh request once on launch so
                 // iOS can schedule an opportunistic flush even before the first
                 // background transition.
