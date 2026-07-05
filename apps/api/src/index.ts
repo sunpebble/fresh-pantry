@@ -1,7 +1,7 @@
+import { handleAiChat, type Env } from "./ai";
+
 const INVITE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{10,160}$/;
 const APP_DEEP_LINK_SCHEME = "com.sunpebble.freshpantry";
-
-type Env = Record<string, never>;
 
 function json(body: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -52,10 +52,16 @@ function inviteFallback(token: string): Response {
 }
 
 export default {
-  async fetch(request: Request, _env?: Env, _ctx?: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env?: Env, _ctx?: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const method = request.method.toUpperCase();
     const isReadMethod = method === "GET" || method === "HEAD";
+
+    if (url.pathname === "/ai/v1/chat/completions") {
+      // env 在生产运行时恒有值；可选签名只是为了兼容既有直调 fetch 的测试。
+      if (!env) return new Response("Service misconfigured", { status: 500 });
+      return handleAiChat(request, env);
+    }
 
     if (url.pathname === "/health") {
       if (!isReadMethod) {

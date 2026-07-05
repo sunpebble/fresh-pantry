@@ -7,5 +7,14 @@
       "pattern": "api.freshpantry.sunpebblelabs.com",
       "custom_domain": true
     }
-  ]
+  ],
+  "kv_namespaces": [
+    // id 在部署任务里由 `wrangler kv namespace create AI_RATE` 生成后回填；本地测试不校验。
+    { "binding": "AI_RATE", "id": "PLACEHOLDER_FILLED_IN_DEPLOY_TASK" }
+  ],
+  "vars": {
+    // 客户端公开值（与 iOS Secrets.plist 同源），非机密；DEEPSEEK_API_KEY 走 wrangler secret。
+    "SUPABASE_URL": "https://nkugeupizmphbeicykpj.supabase.co",
+    "SUPABASE_ANON_KEY": "sb_publishable_qJ7jn60P7hllnl7JTcIG4Q_1a65IE9k"
+  }
 }
