@@ -20,22 +20,38 @@ STRING_LIT = re.compile(r'"(?:[^"\\\n]|\\.)*"')
 def strip_comments(code: str) -> str:
     # 块注释换成等量换行，保住行号
     code = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group().count("\n"), code, flags=re.S)
-    return re.sub(r"//[^\n]*", "", code)
+    # 行注释需感知字符串字面量，避免删除字符串内的 //（如 URL）
+    LITERAL_OR_SLASH = re.compile(r'"(?:[^"\\\n]|\\.)*"|//')
+
+    def strip_line_comment(line: str) -> str:
+        for m in LITERAL_OR_SLASH.finditer(line):
+            if m.group() == "//":
+                return line[: m.start()]
+        return line
+
+    return "\n".join(strip_line_comment(line) for line in code.split("\n"))
 
 
 def swift_offenders(dirs: list[Path]) -> list[str]:
     out = []
     for base in dirs:
-        for f in sorted(base.rglob("*.swift")):
+        # ponytail: 支持单文件参数，不止目录
+        files = [base] if base.is_file() else sorted(base.rglob("*.swift"))
+        for f in files:
             if "build" in f.parts:
                 continue
-            raw_lines = f.read_text().splitlines()
-            for i, line in enumerate(strip_comments(f.read_text()).splitlines(), 1):
+            raw_text = f.read_text()
+            raw_lines = raw_text.splitlines()
+            for i, line in enumerate(strip_comments(raw_text).splitlines(), 1):
                 if i <= len(raw_lines) and "i18n:ignore" in raw_lines[i - 1]:
                     continue
                 for m in STRING_LIT.finditer(line):
                     if CJK.search(m.group()):
-                        out.append(f"{f.relative_to(ROOT)}:{i}: {m.group()[:80]}")
+                        try:
+                            rel = f.relative_to(ROOT)
+                        except ValueError:
+                            rel = f
+                        out.append(f"{rel}:{i}: {m.group()[:80]}")
     return out
 
 
@@ -48,6 +64,7 @@ def xcstrings_offenders() -> list[str]:
         for key, entry in catalog.get("strings", {}).items():
             missing = LANGS - set(entry.get("localizations", {}))
             if missing:
+                # ponytail: 只查语言键存在，不查 state=translated；xcstrings 由我们手写，出现 stub 再收紧
                 out.append(f"{f.relative_to(ROOT)}: '{key}' 缺 {sorted(missing)}")
     return out
 
