@@ -40,8 +40,10 @@ struct PaywallSheet: View {
                                     Text("已解锁")
                                 } else if let product = proStore.product {
                                     Text("一次买断 · \(product.displayPrice)")
-                                } else {
+                                } else if proStore.isLoadingProduct || !proStore.didLoadProduct {
                                     Text("加载中…")
+                                } else {
+                                    Text("商品暂不可用")
                                 }
                             }
                             .font(.fkBodyMedium)
@@ -81,6 +83,7 @@ struct PaywallSheet: View {
                 }
             }
             .tint(.fkPrimary)
+            .task { await proStore.loadProduct() }
         }
     }
 

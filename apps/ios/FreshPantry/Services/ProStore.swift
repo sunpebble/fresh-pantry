@@ -10,15 +10,24 @@ final class ProStore {
 
     private(set) var isPro = false
     private(set) var product: Product?
+    private(set) var isLoadingProduct = false
+    private(set) var didLoadProduct = false
     private(set) var purchaseError: String?
     /// 非错误的中性提示（如 Ask to Buy 待批准），PaywallSheet 就地展示。
     private(set) var purchaseNotice: String?
     /// 预览/UI 测试注入：非 nil 时锁死 isPro，start() 不再改写。
     private let isProOverride: Bool?
+    private let productLoader: () async throws -> Product?
     private var updatesTask: Task<Void, Never>?
 
-    init(isProForPreview: Bool? = nil) {
+    init(
+        isProForPreview: Bool? = nil,
+        productLoader: @escaping () async throws -> Product? = {
+            try await Product.products(for: [ProStore.productID]).first
+        }
+    ) {
         self.isProOverride = isProForPreview
+        self.productLoader = productLoader
         if let isProForPreview { self.isPro = isProForPreview }
     }
 
@@ -26,14 +35,36 @@ final class ProStore {
     func start() async {
         guard isProOverride == nil else { return }
         await refreshEntitlement()
-        product = try? await Product.products(for: [Self.productID]).first
-        updatesTask = Task { [weak self] in
-            for await update in Transaction.updates {
-                if case .verified(let tx) = update {
-                    await tx.finish()
-                    await self?.refreshEntitlement()
+        await loadProduct()
+        if updatesTask == nil {
+            updatesTask = Task { [weak self] in
+                for await update in Transaction.updates {
+                    if case .verified(let tx) = update {
+                        await tx.finish()
+                        await self?.refreshEntitlement()
+                    }
                 }
             }
+        }
+    }
+
+    func loadProduct() async {
+        guard isProOverride == nil, product == nil, !isLoadingProduct else { return }
+        isLoadingProduct = true
+        didLoadProduct = false
+        purchaseError = nil
+        purchaseNotice = nil
+        defer {
+            isLoadingProduct = false
+            didLoadProduct = true
+        }
+        do {
+            product = try await productLoader()
+            if product == nil {
+                purchaseError = "商品暂不可用，请稍后再试"
+            }
+        } catch {
+            purchaseError = "商品信息加载失败：\(error.localizedDescription)"
         }
     }
 
@@ -52,8 +83,13 @@ final class ProStore {
     func purchase() async {
         purchaseError = nil
         purchaseNotice = nil
+        if product == nil {
+            await loadProduct()
+        }
         guard let product else {
-            purchaseError = "商品信息还没加载好，稍后再试"
+            if purchaseError == nil {
+                purchaseError = "商品信息还没加载好，稍后再试"
+            }
             return
         }
         do {
