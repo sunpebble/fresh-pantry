@@ -11,10 +11,10 @@ struct PaywallSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    featureRow("sparkles", "AI 助手", "粘贴文本一键入库、清冰箱生成菜谱")
-                    featureRow("person.2", "家庭共享", "全家共用一份库存与购物清单")
-                    featureRow("calendar", "周派餐", "按周安排每天做什么菜")
-                    featureRow("archivebox", "不限量库存", "免费版可记录 \(FreeTier.inventoryLimit) 条")
+                    featureRow("sparkles", String(localized: "paywall.feature.ai.title"), String(localized: "paywall.feature.ai.detail"))
+                    featureRow("person.2", String(localized: "paywall.feature.household.title"), String(localized: "paywall.feature.household.detail"))
+                    featureRow("calendar", String(localized: "paywall.feature.mealPlan.title"), String(localized: "paywall.feature.mealPlan.detail"))
+                    featureRow("archivebox", String(localized: "paywall.feature.inventory.title"), String(localized: "paywall.feature.inventory.detail \(FreeTier.inventoryLimit)"))
                 } header: {
                     Text("Fresh Pantry Pro")
                 }
@@ -37,13 +37,13 @@ struct PaywallSheet: View {
                             }
                             Group {
                                 if proStore.isPro {
-                                    Text("已解锁")
+                                    Text("paywall.purchase.unlocked")
                                 } else if let product = proStore.product {
-                                    Text("一次买断 · \(product.displayPrice)")
+                                    Text("paywall.purchase.buy \(product.displayPrice)")
                                 } else if proStore.isLoadingProduct || !proStore.didLoadProduct {
-                                    Text("加载中…")
+                                    Text("paywall.purchase.loading")
                                 } else {
-                                    Text("商品暂不可用")
+                                    Text("paywall.purchase.unavailable")
                                 }
                             }
                             .font(.fkBodyMedium)
@@ -55,14 +55,14 @@ struct PaywallSheet: View {
                     Button {
                         Task { await proStore.restore() }
                     } label: {
-                        Text("恢复购买")
+                        Text("paywall.restore")
                             .font(.fkBodyMedium)
                             .foregroundStyle(isPurchasing ? Color.fkOutline : Color.fkPrimary)
                     }
                     .disabled(isPurchasing)
                 } footer: {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("一次购买，长期使用，支持家庭共享。")
+                        Text("paywall.footer.note")
                         if let notice = proStore.purchaseNotice {
                             Text(notice)
                         }
@@ -75,11 +75,11 @@ struct PaywallSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(Color.fkSurface)
-            .navigationTitle("升级 Pro")
+            .navigationTitle("paywall.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("关闭") { dismiss() }
+                    Button("paywall.close") { dismiss() }
                 }
             }
             .tint(.fkPrimary)
@@ -119,9 +119,9 @@ struct ProLockedView: View {
         ContentUnavailableView {
             Label(featureName, systemImage: "lock")
         } description: {
-            Text("\(featureName)是 Pro 功能。")
+            Text("paywall.locked.description \(featureName)")
         } actions: {
-            Button("了解 Pro") { showPaywall = true }
+            Button("paywall.locked.learnMore") { showPaywall = true }
                 .buttonStyle(.borderedProminent)
                 .tint(.fkPrimary)
         }

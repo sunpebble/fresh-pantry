@@ -11,6 +11,6 @@ struct ProStoreTests {
         #expect(store.product == nil)
         #expect(store.isLoadingProduct == false)
         #expect(store.didLoadProduct == true)
-        #expect(store.purchaseError == "商品暂不可用，请稍后再试")
+        #expect(store.purchaseError == String(localized: "pro.error.productUnavailable"))
     }
 }

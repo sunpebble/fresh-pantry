@@ -18,9 +18,9 @@ enum AppearanceMode: String, CaseIterable, Sendable {
     /// 外观 picker segment label.
     var label: String {
         switch self {
-        case .system: "跟随系统"
-        case .light: "浅色"
-        case .dark: "深色"
+        case .system: String(localized: "settings.appearance.system")
+        case .light: String(localized: "settings.appearance.light")
+        case .dark: String(localized: "settings.appearance.dark")
         }
     }
 }

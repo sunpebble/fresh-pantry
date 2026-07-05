@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The 设置 tab ("我的"): a grouped form over the cream surface with the locally
-/// persisted setting groups — 临期提醒 toggles, 忌口 keyword editor, an AI 助手
-/// sub-screen, and an 关于 footer with the bundle version.
+/// persisted setting groups — 临期提醒 toggles, 忌口 keyword editor, and an 关于
+/// footer with the bundle version.
 ///
 /// Follows the established feature pattern: reads the shared stores off the
 /// injected `AppDependencies` (so settings stay consistent app-wide) and binds
@@ -19,7 +19,6 @@ struct SettingsView: View {
                 reminderStore: dependencies.reminderSettingsStore,
                 dietaryStore: dependencies.dietaryPreferencesStore,
                 dietPreferenceStore: dependencies.dietPreferenceStore,
-                aiStore: dependencies.aiSettingsStore,
                 appearanceStore: dependencies.appearanceStore,
                 auth: dependencies.authService,
                 notifications: dependencies.notificationCoordinator,
@@ -27,7 +26,7 @@ struct SettingsView: View {
                 onSelectCategory: onSelectCategory,
                 onSelectExpiringRecipes: onSelectExpiringRecipes
             )
-            .navigationTitle("设置")
+            .navigationTitle("settings.title")
         }
     }
 }
@@ -38,7 +37,6 @@ private struct SettingsContent: View {
     let reminderStore: ReminderSettingsStore
     let dietaryStore: DietaryPreferencesStore
     let dietPreferenceStore: DietPreferenceStore
-    let aiStore: AiSettingsStore
     let appearanceStore: AppearanceStore
     @Bindable var auth: AuthService
     let notifications: NotificationCoordinator
@@ -92,13 +90,13 @@ private struct SettingsContent: View {
         .sheet(isPresented: $showPaywall) {
             PaywallSheet(proStore: dependencies.proStore)
         }
-        .alert("清除常买记忆", isPresented: $showClearHistoryConfirm) {
-            Button("取消", role: .cancel) {}
-            Button("清除", role: .destructive) {
+        .alert("settings.clearHistory.confirmTitle", isPresented: $showClearHistoryConfirm) {
+            Button("settings.clearHistory.cancel", role: .cancel) {}
+            Button("settings.clearHistory.confirm", role: .destructive) {
                 Task { try? await dependencies.inventoryRepository.clearHistory() }
             }
         } message: {
-            Text("将删除所有「常买」记录（添加频次与默认分类/存储位置），此操作不可撤销。")
+            Text("settings.clearHistory.message")
         }
     }
 
@@ -160,14 +158,19 @@ private struct SettingsContent: View {
     /// the detail page hides the row instead of showing an empty value.
     private var profileFamilyLine: String? {
         guard let store = householdStore, let household = store.selectedHousehold else { return nil }
-        return "\(household.name) · \(store.isOwnerOfSelected ? "管理员" : "成员")"
+        let role = store.isOwnerOfSelected
+            ? String(localized: "settings.profile.roleOwner")
+            : String(localized: "settings.profile.roleMember")
+        return "\(household.name) · \(role)"
     }
 
     /// 同步状态行 — surfaces `ProfileStore.hasPendingUpload` so a failed profile
     /// save stays visible ("失败可见"); nil when local-only / signed out (nothing syncs).
     private var profileSyncLine: String? {
         guard case .signedIn = auth.state else { return nil }
-        return dependencies.profileStore.hasPendingUpload ? "待同步…" : "已同步"
+        return dependencies.profileStore.hasPendingUpload
+            ? String(localized: "settings.profile.syncPending")
+            : String(localized: "settings.profile.synced")
     }
 
     // MARK: 统计概览
@@ -175,9 +178,9 @@ private struct SettingsContent: View {
     private var statsSection: some View {
         Section {
             HStack(spacing: FkSpacing.sm) {
-                StatTile(value: inventoryCount, label: "件食材", systemImage: "refrigerator")
-                StatTile(value: shoppingCount, label: "项采购", systemImage: "cart")
-                StatTile(value: dependencies.favoritesStore.favoriteIDs.count, label: "个收藏", systemImage: "heart")
+                StatTile(value: inventoryCount, label: String(localized: "settings.stats.inventory"), systemImage: "refrigerator")
+                StatTile(value: shoppingCount, label: String(localized: "settings.stats.shopping"), systemImage: "cart")
+                StatTile(value: dependencies.favoritesStore.favoriteIDs.count, label: String(localized: "settings.stats.favorites"), systemImage: "heart")
             }
             .listRowInsets(EdgeInsets(top: FkSpacing.sm, leading: FkSpacing.md, bottom: FkSpacing.sm, trailing: FkSpacing.md))
         }
@@ -198,7 +201,7 @@ private struct SettingsContent: View {
             } label: {
                 SettingsLinkLabel(
                     systemImage: accountIcon,
-                    title: "账号",
+                    title: String(localized: "settings.account.title"),
                     subtitle: accountSubtitle
                 )
             }
@@ -207,15 +210,15 @@ private struct SettingsContent: View {
             } label: {
                 SettingsLinkLabel(
                     systemImage: "house.and.flag",
-                    title: "家庭共享",
+                    title: String(localized: "settings.household.title"),
                     subtitle: householdSubtitle,
                     showBadge: pendingInviteCount > 0
                 )
             }
         } header: {
-            Text("账号 · 家庭")
+            Text("settings.account.header")
         } footer: {
-            Text("登录后可创建或加入家庭,在成员间同步库存、采购与食谱。")
+            Text("settings.account.footer")
         }
         .listRowBackground(Color.fkSurfaceContainerLowest)
     }
@@ -227,12 +230,17 @@ private struct SettingsContent: View {
         switch auth.state {
         case .signedIn:
             if let household = householdStore?.selectedHousehold {
-                let base = "\(household.name) · \(householdStore?.members.count ?? 0) 名成员"
-                return pendingInviteCount > 0 ? "\(base) · \(pendingInviteCount) 条邀请" : base
+                let memberCount = householdStore?.members.count ?? 0
+                let base = "\(household.name) · " + String(localized: "settings.household.memberCount \(memberCount)")
+                return pendingInviteCount > 0
+                    ? base + " · " + String(localized: "settings.household.inviteCount \(pendingInviteCount)")
+                    : base
             }
-            return pendingInviteCount > 0 ? "\(pendingInviteCount) 条待处理邀请" : "管理家庭成员与邀请"
-        case .localOnly: return "未配置后端 · 不可用"
-        default: return "登录后创建或加入家庭"
+            return pendingInviteCount > 0
+                ? String(localized: "settings.household.pendingInvites \(pendingInviteCount)")
+                : String(localized: "settings.household.manage")
+        case .localOnly: return String(localized: "settings.household.unavailable")
+        default: return String(localized: "settings.household.signInPrompt")
         }
     }
 
@@ -247,8 +255,8 @@ private struct SettingsContent: View {
     private var accountSubtitle: String {
         switch auth.state {
         case let .signedIn(email): email
-        case .localOnly: "未配置后端 · 本地模式"
-        default: "登录以同步家庭数据"
+        case .localOnly: String(localized: "settings.account.localOnly")
+        default: String(localized: "settings.account.signInPrompt")
         }
     }
 
@@ -270,29 +278,29 @@ private struct SettingsContent: View {
                 ReminderToggleRow(
                     store: reminderStore,
                     flag: .d1,
-                    title: "提前 1 天提醒",
-                    subtitle: "高优先级 · 推送 + 角标",
+                    title: String(localized: "settings.reminder.d1.title"),
+                    subtitle: String(localized: "settings.reminder.d1.subtitle"),
                     onChange: rescheduleReminders
                 )
                 ReminderToggleRow(
                     store: reminderStore,
                     flag: .d3,
-                    title: "提前 3 天提醒",
-                    subtitle: "标准 · 仅推送",
+                    title: String(localized: "settings.reminder.d3.title"),
+                    subtitle: String(localized: "settings.reminder.d3.subtitle"),
                     onChange: rescheduleReminders
                 )
                 ReminderToggleRow(
                     store: reminderStore,
                     flag: .d7,
-                    title: "提前 7 天提醒",
-                    subtitle: "轻量 · 仅角标",
+                    title: String(localized: "settings.reminder.d7.title"),
+                    subtitle: String(localized: "settings.reminder.d7.subtitle"),
                     onChange: rescheduleReminders
                 )
                 ReminderToggleRow(
                     store: reminderStore,
                     flag: .daily,
-                    title: "每日 \(reminderTimeLabel) 汇总",
-                    subtitle: "包含临期 + 库存不足",
+                    title: String(localized: "settings.reminder.daily.title \(reminderTimeLabel)"),
+                    subtitle: String(localized: "settings.reminder.daily.subtitle"),
                     onChange: rescheduleReminders
                 )
             }
@@ -303,9 +311,9 @@ private struct SettingsContent: View {
                 QuietHoursTimeRow(store: reminderStore, onChange: rescheduleReminders)
             }
         } header: {
-            Text("临期提醒")
+            Text("settings.reminder.header")
         } footer: {
-            Text("提醒在开启系统通知权限后送达。开启「仅每日汇总」可关闭逐条临期推送、只保留一条汇总;免打扰时段内逐条提醒不再打扰。")
+            Text("settings.reminder.footer")
         }
         .listRowBackground(Color.fkSurfaceContainerLowest)
     }
@@ -325,9 +333,9 @@ private struct SettingsContent: View {
         Section {
             DietaryExclusionEditor(store: dietaryStore)
         } header: {
-            Text("忌口")
+            Text("settings.dietary.header")
         } footer: {
-            Text("含这些关键字的食材会在菜谱推荐中被过滤。")
+            Text("settings.dietary.footer")
         }
         .listRowBackground(Color.fkSurfaceContainerLowest)
     }
@@ -338,16 +346,16 @@ private struct SettingsContent: View {
         Section {
             FlowLayout(spacing: FkSpacing.sm) {
                 ForEach(DietPreferenceStore.allLabels, id: \.self) { label in
-                    FkChip(label: label, isSelected: dietPreferenceStore.isSelected(label)) {
+                    FkChip(label: DietPreferenceStore.displayLabel(for: label), isSelected: dietPreferenceStore.isSelected(label)) {
                         dietPreferenceStore.toggle(label)
                     }
                 }
             }
             .padding(.vertical, FkSpacing.xs)
         } header: {
-            Text("饮食偏好")
+            Text("settings.dietPreference.header")
         } footer: {
-            Text("根据偏好为「现有」与「今日推荐」加权排序菜谱。")
+            Text("settings.dietPreference.footer")
         }
         .listRowBackground(Color.fkSurfaceContainerLowest)
     }
@@ -361,24 +369,14 @@ private struct SettingsContent: View {
             } label: {
                 SettingsLinkLabel(
                     systemImage: "crown",
-                    title: "Fresh Pantry Pro",
-                    subtitle: dependencies.proStore.isPro ? "已解锁" : "解锁 AI、家庭共享与周派餐"
-                )
-            }
-            NavigationLink {
-                AiSettingsView(store: aiStore, isPro: dependencies.proStore.isPro)
-            } label: {
-                SettingsLinkLabel(
-                    systemImage: "sparkles",
-                    title: "AI 助手",
-                    // Pro 未配置 BYOK 时走内置通道，开箱可用——不能再引导去"配置"。
-                    subtitle: aiStore.isConfigured
-                        ? "已配置 · \(aiStore.settings.model)"
-                        : dependencies.proStore.isPro ? "已内置 · 无需配置" : "配置模型与连接"
+                    title: String(localized: "settings.pro.title"),
+                    subtitle: dependencies.proStore.isPro
+                        ? String(localized: "settings.pro.unlocked")
+                        : String(localized: "settings.pro.pitch")
                 )
             }
         } header: {
-            Text("AI 助手")
+            Text("settings.assistant.header")
         }
         .listRowBackground(Color.fkSurfaceContainerLowest)
     }
@@ -394,7 +392,7 @@ private struct SettingsContent: View {
             set: { appearanceStore.set($0) }
         )
         return Section {
-            Picker("外观", selection: binding) {
+            Picker("settings.appearance.title", selection: binding) {
                 ForEach(AppearanceMode.allCases, id: \.self) { mode in
                     Text(mode.label).tag(mode)
                 }
@@ -402,9 +400,9 @@ private struct SettingsContent: View {
             .pickerStyle(.segmented)
             .listRowInsets(EdgeInsets(top: FkSpacing.sm, leading: FkSpacing.md, bottom: FkSpacing.sm, trailing: FkSpacing.md))
         } header: {
-            Text("外观")
+            Text("settings.appearance.header")
         } footer: {
-            Text("「跟随系统」随 iOS 外观自动切换浅色与深色。")
+            Text("settings.appearance.footer")
         }
         .listRowBackground(Color.fkSurfaceContainerLowest)
     }
@@ -421,8 +419,8 @@ private struct SettingsContent: View {
             } label: {
                 SettingsLinkLabel(
                     systemImage: "leaf.fill",
-                    title: "减废成效",
-                    subtitle: "本月用掉与浪费 · 越用越省"
+                    title: String(localized: "settings.wasteInsights.title"),
+                    subtitle: String(localized: "settings.wasteInsights.subtitle")
                 )
             }
             NavigationLink {
@@ -430,8 +428,8 @@ private struct SettingsContent: View {
             } label: {
                 SettingsLinkLabel(
                     systemImage: "tray.and.arrow.up",
-                    title: "数据备份",
-                    subtitle: "导出或恢复本机数据"
+                    title: String(localized: "settings.backupLink.title"),
+                    subtitle: String(localized: "settings.backupLink.subtitle")
                 )
             }
             Button(role: .destructive) {
@@ -439,12 +437,12 @@ private struct SettingsContent: View {
             } label: {
                 SettingsLinkLabel(
                     systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90",
-                    title: "清除常买记忆",
-                    subtitle: "重置添加频次与记住的默认值"
+                    title: String(localized: "settings.clearHistory.title"),
+                    subtitle: String(localized: "settings.clearHistory.subtitle")
                 )
             }
         } header: {
-            Text("更多")
+            Text("settings.more.header")
         }
         .listRowBackground(Color.fkSurfaceContainerLowest)
     }
@@ -454,7 +452,7 @@ private struct SettingsContent: View {
     private var aboutSection: some View {
         Section {
             HStack {
-                Text("版本")
+                Text("settings.about.version")
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurface)
                 Spacer()
@@ -463,7 +461,7 @@ private struct SettingsContent: View {
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             }
             HStack {
-                Text("开源致谢")
+                Text("settings.about.openSource")
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurface)
                 Spacer()
@@ -472,7 +470,7 @@ private struct SettingsContent: View {
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             }
         } header: {
-            Text("关于 \(AppVersion.appName)")
+            Text("settings.about.header \(AppVersion.appName)")
         }
         .listRowBackground(Color.fkSurfaceContainerLowest)
     }
@@ -568,10 +566,10 @@ private struct ReminderTimeRow: View {
         )
         return DatePicker(selection: binding, displayedComponents: .hourAndMinute) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("提醒时间")
+                Text("settings.reminderTime.title")
                     .font(.fkTitleSmall)
                     .foregroundStyle(Color.fkOnSurface)
-                Text("临期提醒与每日汇总的送达时间")
+                Text("settings.reminderTime.subtitle")
                     .font(.fkBodySmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             }
@@ -598,10 +596,10 @@ private struct SummaryOnlyRow: View {
         )
         return Toggle(isOn: binding) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("仅每日汇总")
+                Text("settings.summaryOnly.title")
                     .font(.fkTitleSmall)
                     .foregroundStyle(Color.fkOnSurface)
-                Text("关闭逐条临期推送 · 每天只发一条汇总")
+                Text("settings.summaryOnly.subtitle")
                     .font(.fkBodySmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             }
@@ -626,10 +624,10 @@ private struct QuietHoursToggleRow: View {
         )
         return Toggle(isOn: binding) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("免打扰时段")
+                Text("settings.quietHours.title")
                     .font(.fkTitleSmall)
                     .foregroundStyle(Color.fkOnSurface)
-                Text("此时段内逐条临期提醒不再打扰")
+                Text("settings.quietHours.subtitle")
                     .font(.fkBodySmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             }
@@ -670,13 +668,13 @@ private struct QuietHoursTimeRow: View {
         )
         return VStack(spacing: FkSpacing.xs) {
             DatePicker(selection: startBinding, displayedComponents: .hourAndMinute) {
-                Text("开始")
+                Text("settings.quietHours.start")
                     .font(.fkTitleSmall)
                     .foregroundStyle(Color.fkOnSurface)
             }
             .datePickerStyle(.compact)
             DatePicker(selection: endBinding, displayedComponents: .hourAndMinute) {
-                Text("结束")
+                Text("settings.quietHours.end")
                     .font(.fkTitleSmall)
                     .foregroundStyle(Color.fkOnSurface)
             }
@@ -706,10 +704,10 @@ private struct NotificationPermissionRow: View {
                 .foregroundStyle(granted ? Color.fkPrimary : Color.fkOnSurfaceVariant)
                 .frame(width: FkSize.settingsIconBox)
             VStack(alignment: .leading, spacing: 2) {
-                Text("通知权限")
+                Text("settings.notificationPermission.title")
                     .font(.fkTitleSmall)
                     .foregroundStyle(Color.fkOnSurface)
-                Text(granted ? "已开启 · 提醒可送达" : "开启后临期提醒才会送达")
+                Text(granted ? "settings.notificationPermission.granted" : "settings.notificationPermission.ungranted")
                     .font(.fkBodySmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             }
@@ -718,7 +716,7 @@ private struct NotificationPermissionRow: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Color.fkPrimary)
             } else {
-                Button("开启") {
+                Button("settings.notificationPermission.enable") {
                     requesting = true
                     Task {
                         await onRequest()
@@ -810,7 +808,7 @@ struct ProfileCardModel {
     let accountFallback: String
 
     var title: String {
-        displayName.trimmed.isEmpty ? "设置头像与名称" : displayName.trimmed
+        displayName.trimmed.isEmpty ? String(localized: "settings.profile.setupPrompt") : displayName.trimmed
     }
 
     var subtitle: String {

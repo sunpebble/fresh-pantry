@@ -61,10 +61,10 @@ final class ProStore {
         do {
             product = try await productLoader()
             if product == nil {
-                purchaseError = "商品暂不可用，请稍后再试"
+                purchaseError = String(localized: "pro.error.productUnavailable")
             }
         } catch {
-            purchaseError = "商品信息加载失败：\(error.localizedDescription)"
+            purchaseError = String(localized: "pro.error.productLoadFailed \(error.localizedDescription)")
         }
     }
 
@@ -88,7 +88,7 @@ final class ProStore {
         }
         guard let product else {
             if purchaseError == nil {
-                purchaseError = "商品信息还没加载好，稍后再试"
+                purchaseError = String(localized: "pro.error.productNotReady")
             }
             return
         }
@@ -101,14 +101,14 @@ final class ProStore {
                     await refreshEntitlement()
                 }
             case .pending:
-                purchaseNotice = "购买请求已提交，批准后自动解锁"
+                purchaseNotice = String(localized: "pro.purchasePending")
             case .userCancelled:
                 break
             @unknown default:
                 break
             }
         } catch {
-            purchaseError = "购买没有完成：\(error.localizedDescription)"
+            purchaseError = String(localized: "pro.error.purchaseIncomplete \(error.localizedDescription)")
         }
     }
 
@@ -117,6 +117,6 @@ final class ProStore {
         purchaseNotice = nil
         try? await AppStore.sync()
         await refreshEntitlement()
-        if !isPro { purchaseError = "没有找到可恢复的购买" }
+        if !isPro { purchaseError = String(localized: "pro.error.nothingToRestore") }
     }
 }

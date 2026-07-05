@@ -15,7 +15,7 @@ struct DietaryExclusionEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: FkSpacing.md) {
             if store.keywords.isEmpty {
-                Text("尚未添加忌口关键字")
+                Text("settings.dietary.empty")
                     .font(.fkBodySmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             } else {
@@ -23,7 +23,7 @@ struct DietaryExclusionEditor: View {
             }
 
             HStack(spacing: FkSpacing.sm) {
-                TextField("添加忌口,如 香菜", text: $draft)
+                TextField("settings.dietary.addPlaceholder", text: $draft)
                     .font(.fkBodyMedium)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -41,7 +41,7 @@ struct DietaryExclusionEditor: View {
             }
 
             if showDuplicateNotice {
-                Text("已添加过该忌口")
+                Text("settings.dietary.duplicateNotice")
                     .font(.fkLabelSmall)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
             }
@@ -100,7 +100,7 @@ private struct DeletableChip: View {
                     .foregroundStyle(Color.fkOutline)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("删除 \(label)")
+            .accessibilityLabel(String(localized: "settings.dietary.removeChip \(label)"))
         }
         .padding(.leading, FkSpacing.md)
         .padding(.trailing, FkSpacing.sm)

@@ -93,7 +93,7 @@ final class ProfileStore {
         if let newAvatar { pendingAvatarData = newAvatar }
 
         if await flushPendingProfile() != nil {
-            errorMessage = "保存失败，修改已保留在本机，可手动重试。"
+            errorMessage = String(localized: "settings.profile.saveFailed")
         }
         isSaving = false
     }
@@ -109,7 +109,7 @@ final class ProfileStore {
         defer { isRetrying = false }
         if await flushPendingProfile() != nil {
             // Trigger-neutral wording: the same message shows for the load-time flush.
-            errorMessage = "同步未完成，修改仍保留在本机，请检查网络后重试。"
+            errorMessage = String(localized: "settings.profile.syncIncomplete")
         }
     }
 

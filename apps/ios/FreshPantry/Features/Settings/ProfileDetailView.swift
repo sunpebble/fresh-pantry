@@ -29,11 +29,11 @@ struct ProfileDetailView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color.fkSurface)
-        .navigationTitle("个人资料")
+        .navigationTitle("settings.profile.title")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("编辑") { showEditor = true }
+                Button("settings.profile.edit") { showEditor = true }
             }
         }
         .tint(.fkPrimary)
@@ -47,7 +47,7 @@ struct ProfileDetailView: View {
     private var hero: some View {
         VStack(spacing: FkSpacing.sm) {
             MemberAvatar(displayName: store.displayName, avatarURL: store.avatarURL, size: 96)
-            Text(store.displayName.trimmed.isEmpty ? "未命名" : store.displayName.trimmed)
+            Text(store.displayName.trimmed.isEmpty ? String(localized: "settings.profile.unnamed") : store.displayName.trimmed)
                 .font(.fkHeadlineSmall)
                 .foregroundStyle(Color.fkOnSurface)
             if !store.nickname.trimmed.isEmpty {
@@ -64,10 +64,10 @@ struct ProfileDetailView: View {
     private var infoCard: some View {
         FkCard {
             VStack(spacing: 0) {
-                infoRow(label: "账号", value: accountLine, systemImage: "envelope")
+                infoRow(label: String(localized: "settings.profile.accountRow"), value: accountLine, systemImage: "envelope")
                 if let familyLine {
                     rowDivider
-                    infoRow(label: "家庭", value: familyLine, systemImage: "house")
+                    infoRow(label: String(localized: "settings.profile.familyRow"), value: familyLine, systemImage: "house")
                 }
                 if syncLine != nil {
                     rowDivider
@@ -88,11 +88,11 @@ struct ProfileDetailView: View {
                     .font(.system(size: FkSize.iconSm, weight: .semibold))
                     .foregroundStyle(Color.fkPrimary)
                     .frame(width: FkSize.settingsIconBox)
-                Text("状态")
+                Text("settings.profile.statusRow")
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
                 Spacer(minLength: FkSpacing.md)
-                Text(store.hasPendingUpload ? "待同步…" : "已同步")
+                Text(store.hasPendingUpload ? "settings.profile.syncPending" : "settings.profile.synced")
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurface)
                 if store.hasPendingUpload {
@@ -114,7 +114,7 @@ struct ProfileDetailView: View {
         } label: {
             HStack(spacing: FkSpacing.xs) {
                 if store.isRetrying { ProgressView().controlSize(.small) }
-                Text(store.isRetrying ? "重试中…" : "重试")
+                Text(store.isRetrying ? "settings.profile.retrying" : "settings.profile.retry")
             }
             .font(.fkLabelMedium)
         }

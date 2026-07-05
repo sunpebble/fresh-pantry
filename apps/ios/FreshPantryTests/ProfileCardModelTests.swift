@@ -9,7 +9,7 @@ final class ProfileCardModelTests: XCTestCase {
 
     func test_title_fallsBackToPrompt_whenDisplayNameBlank() {
         let model = ProfileCardModel(displayName: "   ", nickname: "x", accountFallback: "a@b.com")
-        XCTAssertEqual(model.title, "设置头像与名称")
+        XCTAssertEqual(model.title, String(localized: "settings.profile.setupPrompt"))
     }
 
     func test_subtitle_prefersNickname_whenPresent() {

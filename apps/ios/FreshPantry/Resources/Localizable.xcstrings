@@ -1,6 +1,228 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "backup.error.invalidFile" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "备份文件无效" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This backup file isn't valid." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "バックアップファイルが無効です" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ce fichier de sauvegarde n'est pas valide." } }
+      }
+    },
+    "backup.error.unsupportedVersion" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "不支持的备份版本" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This backup version isn't supported." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "このバックアップのバージョンには対応していません" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cette version de sauvegarde n'est pas prise en charge." } }
+      }
+    },
+    "backup.export.action.subtitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "生成 JSON 备份文件" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Generate a JSON backup file" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "JSONバックアップファイルを作成します" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Générer un fichier de sauvegarde JSON" } }
+      }
+    },
+    "backup.export.action.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导出备份" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export backup" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "バックアップをエクスポート" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Exporter la sauvegarde" } }
+      }
+    },
+    "backup.export.copy.subtitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "复制备份 JSON，可粘贴到备忘录/邮件保存" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy the backup JSON, then paste it into Notes or an email to keep it" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "バックアップのJSONをコピーし、メモやメールに貼り付けて保存できます" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Copiez le JSON de sauvegarde, puis collez-le dans Notes ou un e-mail pour le conserver" } }
+      }
+    },
+    "backup.export.copy.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "复制到剪贴板" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy to clipboard" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "クリップボードにコピー" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Copier dans le presse-papiers" } }
+      }
+    },
+    "backup.export.copySuccess" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已复制 %lld 字节，粘贴到备忘录/邮件即可保存" } },
+        "en" : { "variations" : { "plural" : {
+          "one" : { "stringUnit" : { "state" : "translated", "value" : "Copied %lld byte. Paste it into Notes or an email to keep it." } },
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "Copied %lld bytes. Paste it into Notes or an email to keep it." } }
+        } } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "%lldバイトをコピーしました。メモやメールに貼り付けて保存できます" } },
+        "fr" : { "variations" : { "plural" : {
+          "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld octet copié. Collez-le dans Notes ou un e-mail pour le conserver." } },
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld octets copiés. Collez-les dans Notes ou un e-mail pour les conserver." } }
+        } } }
+      }
+    },
+    "backup.export.failure" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导出失败，请重试" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export failed. Please try again." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "エクスポートに失敗しました。もう一度お試しください。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l'exportation. Veuillez réessayer." } }
+      }
+    },
+    "backup.export.footer" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "备份包含库存、采购清单、自建食谱、膳食计划、食材去向记录、菜谱收藏、饮食偏好与忌口、提醒设置与 AI 配置；不含外观设置与可重建的食材详情缓存。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The backup includes inventory, shopping list, custom recipes, meal plans, ingredient-usage history, recipe favorites, dietary preferences and exclusions, reminder settings, and AI configuration. It excludes appearance settings and the rebuildable ingredient-detail cache." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "バックアップには在庫、買い物リスト、自作レシピ、献立プラン、食材の消費履歴、お気に入りレシピ、食事の好みと禁忌食材、リマインダー設定、AI設定が含まれます。外観設定と再構築可能な食材詳細キャッシュは含まれません。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "La sauvegarde comprend le stock, la liste de courses, les recettes personnalisées, les plans de repas, l'historique d'utilisation des ingrédients, les recettes favorites, les préférences et exclusions alimentaires, les réglages de rappel et la configuration IA. Elle exclut les réglages d'apparence et le cache des détails d'ingrédients (reconstructible)." } }
+      }
+    },
+    "backup.export.header" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导出" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "エクスポート" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Exporter" } }
+      }
+    },
+    "backup.export.share.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "分享备份文件" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Share backup file" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "バックアップファイルを共有" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Partager le fichier de sauvegarde" } }
+      }
+    },
+    "backup.import.clipboardEmpty" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "剪贴板为空，请先复制备份 JSON" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clipboard is empty. Copy the backup JSON first." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "クリップボードが空です。先にバックアップのJSONをコピーしてください" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le presse-papiers est vide. Copiez d'abord le JSON de sauvegarde." } }
+      }
+    },
+    "backup.import.failure" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入失败，请重试" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import failed. Please try again." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "インポートに失敗しました。もう一度お試しください。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l'importation. Veuillez réessayer." } }
+      }
+    },
+    "backup.import.file.subtitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "从 JSON 备份文件恢复数据" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Restore data from a JSON backup file" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "JSONバックアップファイルからデータを復元します" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Restaurer les données à partir d'un fichier de sauvegarde JSON" } }
+      }
+    },
+    "backup.import.file.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入备份" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import backup" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "バックアップをインポート" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importer une sauvegarde" } }
+      }
+    },
+    "backup.import.footer" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入会覆盖本机当前数据。无效或版本不支持的文件会被拒绝，不会破坏现有数据。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Importing overwrites your current data on this device. Invalid or unsupported files are rejected without touching your existing data." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "インポートすると、この端末の現在のデータが上書きされます。無効なファイルや対応していないバージョンは拒否され、既存データは変更されません。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "L'importation remplace les données actuelles de cet appareil. Les fichiers invalides ou dont la version n'est pas prise en charge sont rejetés sans toucher à vos données existantes." } }
+      }
+    },
+    "backup.import.header" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "インポート" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importer" } }
+      }
+    },
+    "backup.import.paste.subtitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "从复制的 JSON 文本恢复数据" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Restore data from copied JSON text" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "コピーしたJSONテキストからデータを復元します" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Restaurer les données à partir du texte JSON copié" } }
+      }
+    },
+    "backup.import.paste.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "从剪贴板导入" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import from clipboard" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "クリップボードからインポート" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importer depuis le presse-papiers" } }
+      }
+    },
+    "backup.import.readFailure" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法读取所选文件" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't read the selected file." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "選択したファイルを読み込めませんでした" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible de lire le fichier sélectionné." } }
+      }
+    },
+    "backup.import.success" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已导入" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import complete" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "インポートが完了しました" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importation terminée" } }
+      }
+    },
+    "backup.importConfirm.cancel" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "取消" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "キャンセル" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler" } }
+      }
+    },
+    "backup.importConfirm.confirm" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "インポート" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importer" } }
+      }
+    },
+    "backup.importConfirm.householdNote" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已加入家庭：导入的数据也会同步到其他成员。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You're in a shared household: the imported data will also sync to other members." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "家庭に参加中です。インポートしたデータは他のメンバーにも同期されます。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Vous faites partie d'une famille partagée : les données importées seront aussi synchronisées avec les autres membres." } }
+      }
+    },
+    "backup.importConfirm.message" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入会覆盖本机当前数据，此操作无法撤销。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Importing overwrites your current data on this device. This can't be undone." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "インポートすると、この端末の現在のデータが上書きされます。この操作は元に戻せません。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "L'importation remplace les données actuelles de cet appareil. Cette action est irréversible." } }
+      }
+    },
+    "backup.importConfirm.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "确认导入？" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import backup?" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "インポートしますか？" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importer la sauvegarde ?" } }
+      }
+    },
+    "backup.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "数据备份" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Backup" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "データバックアップ" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Sauvegarde" } }
+      }
+    },
     "error.ai.authExpired" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "登录已过期，请重新登录" } },
@@ -105,6 +327,198 @@
         "fr" : { "stringUnit" : { "state" : "translated", "value" : "Statut inattendu (%1$lld)%2$@" } }
       }
     },
+    "error.auth.signInRequired" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请先登录后再使用 AI 功能" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Please sign in before using the AI features." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "AI機能を使用するには、先にログインしてください" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Veuillez vous connecter avant d'utiliser les fonctionnalités IA." } }
+      }
+    },
+    "error.ingredientParse.emptyImage" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "图片为空" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The photo is empty." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "画像が空です" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "La photo est vide." } }
+      }
+    },
+    "error.ingredientParse.emptyText" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "文本不能为空" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The text can't be empty." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "テキストを入力してください" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le texte ne peut pas être vide." } }
+      }
+    },
+    "error.ingredientParse.invalidJsonArray" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "AI 返回不是合法 JSON 数组" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The AI's response wasn't a valid JSON array." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "AIの応答が有効なJSON配列ではありません" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "La réponse de l'IA n'était pas un tableau JSON valide." } }
+      }
+    },
+    "error.ocr.noText" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没能从这张小票上识别出文字，请确保小票清晰、光线充足后重拍。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No text was found on this receipt. Please make sure it's clear and well-lit, then try again." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "このレシートから文字を認識できませんでした。鮮明で明るい状態で撮り直してください" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun texte n'a été détecté sur ce reçu. Assurez-vous qu'il soit net et bien éclairé, puis réessayez." } }
+      }
+    },
+    "error.ocr.undecodable" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法读取这张图片，请换一张更清晰的小票照片重试。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This photo couldn't be read. Please try a clearer receipt photo." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "この画像を読み取れませんでした。もっと鮮明なレシート写真で再度お試しください" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cette photo n'a pas pu être lue. Veuillez réessayer avec une photo de reçu plus nette." } }
+      }
+    },
+    "error.ocr.visionFailed" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "识别小票文字失败：%@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't recognize the receipt text: %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "レシートの文字認識に失敗しました：%@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible de reconnaître le texte du reçu : %@" } }
+      }
+    },
+    "error.recipeParse.aiReported" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "AI 报告：%@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI reported: %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "AIからの報告：%@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "L'IA a signalé : %@" } }
+      }
+    },
+    "error.recipeParse.emptyIngredientList" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "食材清单为空" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The ingredient list is empty." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "食材リストが空です" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "La liste d'ingrédients est vide." } }
+      }
+    },
+    "error.recipeParse.emptyInstruction" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请填写改写要求" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Please enter what you'd like to change." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "改変したい内容を入力してください" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Veuillez indiquer ce que vous souhaitez modifier." } }
+      }
+    },
+    "error.recipeParse.emptyText" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "食谱文本为空" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The recipe text is empty." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "レシピのテキストが空です" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le texte de la recette est vide." } }
+      }
+    },
+    "error.recipeParse.fetchFailed" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "网页抓取失败：%@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't fetch the page: %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ページの取得に失敗しました：%@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible de récupérer la page : %@" } }
+      }
+    },
+    "error.recipeParse.fetchStatus" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "网页抓取失败 (%lld)" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't fetch the page (%lld)" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ページの取得に失敗しました (%lld)" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible de récupérer la page (%lld)" } }
+      }
+    },
+    "error.recipeParse.fetchTimeout" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "网页抓取失败：请求超时" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't fetch the page: the request timed out." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ページの取得に失敗しました：リクエストがタイムアウトしました" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible de récupérer la page : délai d'attente dépassé." } }
+      }
+    },
+    "error.recipeParse.fieldMissingOrNotInt" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "字段 %@ 缺失或非整数" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Field %@ is missing or isn't an integer." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "フィールド %@ がないか、整数ではありません" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le champ %@ est manquant ou n'est pas un entier." } }
+      }
+    },
+    "error.recipeParse.fieldMissingOrNotString" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "字段 %@ 缺失或非字符串" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Field %@ is missing or isn't a string." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "フィールド %@ がないか、文字列ではありません" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le champ %@ est manquant ou n'est pas une chaîne." } }
+      }
+    },
+    "error.recipeParse.insufficientContent" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "内容不足以抽取" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "There isn't enough content to extract a recipe." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "レシピを抽出するのに十分な内容がありません" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le contenu est insuffisant pour extraire une recette." } }
+      }
+    },
+    "error.recipeParse.invalidHttpUrl" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请填入合法的 http(s) 链接" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Please enter a valid http(s) link." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "有効な http(s) リンクを入力してください" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Veuillez saisir un lien http(s) valide." } }
+      }
+    },
+    "error.recipeParse.invalidJson" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "AI 返回不是合法 JSON" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The AI's response wasn't valid JSON." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "AIの応答が有効なJSONではありません" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "La réponse de l'IA n'était pas un JSON valide." } }
+      }
+    },
+    "error.recipeParse.invalidUrl" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请填入合法的食谱链接" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Please enter a valid recipe link." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "有効なレシピリンクを入力してください" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Veuillez saisir un lien de recette valide." } }
+      }
+    },
+    "error.recipeParse.noContent" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "网页中没有可解析的食谱内容" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This page doesn't contain any recipe content to parse." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "このページには解析できるレシピの内容が見つかりません" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cette page ne contient aucune recette exploitable." } }
+      }
+    },
+    "error.speech.permissionDenied" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "需要麦克风与语音识别权限,请在系统设置中开启。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Microphone and speech recognition access is needed. Please enable it in Settings." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "マイクと音声認識の許可が必要です。設定アプリでオンにしてください" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "L'accès au micro et à la reconnaissance vocale est requis. Veuillez l'activer dans Réglages." } }
+      }
+    },
+    "error.speech.startFailed" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法开始录音:%@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't start recording: %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "録音を開始できませんでした：%@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible de démarrer l'enregistrement : %@" } }
+      }
+    },
+    "error.speech.unavailable" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "当前语音识别不可用,请稍后再试。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Speech recognition isn't available right now. Please try again later." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "現在、音声認識をご利用いただけません。しばらくしてからもう一度お試しください" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "La reconnaissance vocale n'est pas disponible pour le moment. Veuillez réessayer plus tard." } }
+      }
+    },
     "notification.dailySummary.body" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "查看今天到期 / 已过期食材" } },
@@ -155,6 +569,1058 @@
           "one" : { "stringUnit" : { "state" : "translated", "value" : "Expire dans %lld jour" } },
           "other" : { "stringUnit" : { "state" : "translated", "value" : "Expire dans %lld jours" } }
         } } }
+      }
+    },
+    "paywall.close" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关闭" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Close" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "閉じる" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fermer" } }
+      }
+    },
+    "paywall.feature.ai.detail" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "粘贴文本一键入库、清冰箱生成菜谱" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add items from pasted text, and generate recipes from what's in your fridge" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "テキストを貼り付けるだけで在庫登録、冷蔵庫の食材からレシピ生成" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ajoutez des articles depuis un texte collé et générez des recettes à partir de votre frigo" } }
+      }
+    },
+    "paywall.feature.ai.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "AI 助手" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI Assistant" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "AIアシスタント" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Assistant IA" } }
+      }
+    },
+    "paywall.feature.household.detail" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "全家共用一份库存与购物清单" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Share one inventory and shopping list with your whole family" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "家族全員で在庫と買い物リストを共有できます" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Partagez un seul stock et une liste de courses avec toute la famille" } }
+      }
+    },
+    "paywall.feature.household.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "家庭共享" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Family Sharing" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ファミリー共有" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Partage familial" } }
+      }
+    },
+    "paywall.feature.inventory.detail" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "免费版可记录 %lld 条" } },
+        "en" : { "variations" : { "plural" : {
+          "one" : { "stringUnit" : { "state" : "translated", "value" : "The free version stores up to %lld item" } },
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "The free version stores up to %lld items" } }
+        } } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "無料版では %lld 件まで記録できます" } },
+        "fr" : { "variations" : { "plural" : {
+          "one" : { "stringUnit" : { "state" : "translated", "value" : "La version gratuite enregistre jusqu'à %lld article" } },
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "La version gratuite enregistre jusqu'à %lld articles" } }
+        } } }
+      }
+    },
+    "paywall.feature.inventory.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "不限量库存" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unlimited Inventory" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "在庫件数の上限なし" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Stock illimité" } }
+      }
+    },
+    "paywall.feature.mealPlan.detail" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "按周安排每天做什么菜" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plan what to cook each day of the week" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "1週間分の毎日の献立を計画できます" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Planifiez ce que vous cuisinez chaque jour de la semaine" } }
+      }
+    },
+    "paywall.feature.mealPlan.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "周派餐" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Weekly Meal Plan" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "週間献立" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Plan de repas hebdomadaire" } }
+      }
+    },
+    "paywall.footer.note" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "一次购买，长期使用，支持家庭共享。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pay once, use forever — family sharing included." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "一度のお支払いでずっとご利用いただけます。ファミリー共有にも対応。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Payez une fois, utilisez pour toujours — le partage familial est inclus." } }
+      }
+    },
+    "paywall.locked.description" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%@是 Pro 功能。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ is a Pro feature." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "%@ は Pro 機能です" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "%@ est une fonctionnalité Pro." } }
+      }
+    },
+    "paywall.locked.learnMore" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "了解 Pro" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Learn About Pro" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Pro について詳しく" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "En savoir plus sur Pro" } }
+      }
+    },
+    "paywall.purchase.buy" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "一次买断 · %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "One-time purchase · %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "買い切り · %@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Achat unique · %@" } }
+      }
+    },
+    "paywall.purchase.loading" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "加载中…" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading…" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "読み込み中…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Chargement…" } }
+      }
+    },
+    "paywall.purchase.unavailable" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "商品暂不可用" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This item isn't available right now." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "この商品は現在ご利用いただけません" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cet article n'est pas disponible pour le moment." } }
+      }
+    },
+    "paywall.purchase.unlocked" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已解锁" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unlocked" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "アンロック済み" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Débloqué" } }
+      }
+    },
+    "paywall.restore" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "恢复购买" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Restore Purchase" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "購入を復元" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Restaurer l'achat" } }
+      }
+    },
+    "paywall.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "升级 Pro" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Upgrade to Pro" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Pro にアップグレード" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Passer à Pro" } }
+      }
+    },
+    "pro.error.nothingToRestore" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有找到可恢复的购买" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No previous purchase was found to restore." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "復元できる購入が見つかりませんでした" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun achat précédent trouvé à restaurer." } }
+      }
+    },
+    "pro.error.productLoadFailed" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "商品信息加载失败：%@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't load item info: %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "商品情報の読み込みに失敗しました：%@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible de charger les informations de l'article : %@" } }
+      }
+    },
+    "pro.error.productNotReady" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "商品信息还没加载好，稍后再试" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Item info isn't ready yet. Please try again shortly." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "商品情報の準備がまだできていません。しばらくしてからもう一度お試しください" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les informations de l'article ne sont pas encore prêtes. Réessayez dans un instant." } }
+      }
+    },
+    "pro.error.productUnavailable" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "商品暂不可用，请稍后再试" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This item isn't available right now. Please try again later." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "この商品は現在ご利用いただけません。しばらくしてからもう一度お試しください" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cet article n'est pas disponible pour le moment. Veuillez réessayer plus tard." } }
+      }
+    },
+    "pro.error.purchaseIncomplete" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "购买没有完成：%@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The purchase didn't complete: %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "購入が完了しませんでした：%@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "L'achat ne s'est pas terminé : %@" } }
+      }
+    },
+    "pro.purchasePending" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "购买请求已提交，批准后自动解锁" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your purchase request was submitted. It unlocks automatically once approved." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "購入リクエストを送信しました。承認され次第、自動的にアンロックされます" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Votre demande d'achat a été envoyée. Le déblocage sera automatique dès son approbation." } }
+      }
+    },
+    "settings.about.header %@" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关于 %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "About %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "%@ について" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "À propos de %@" } }
+      }
+    },
+    "settings.about.openSource" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开源致谢" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Source Credits" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "オープンソース謝辞" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Remerciements open source" } }
+      }
+    },
+    "settings.about.version" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "版本" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Version" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "バージョン" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Version" } }
+      }
+    },
+    "settings.account.footer" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "登录后可创建或加入家庭,在成员间同步库存、采购与食谱。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to create or join a family and sync inventory, shopping, and recipes with your household." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ログインすると家庭を作成・参加でき、メンバー間で在庫・買い物・レシピを同期できます。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connectez-vous pour créer ou rejoindre une famille et synchroniser stock, courses et recettes entre membres." } }
+      }
+    },
+    "settings.account.header" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "账号 · 家庭" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Account & Family" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "アカウント・ファミリー" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Compte et famille" } }
+      }
+    },
+    "settings.account.localOnly" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "未配置后端 · 本地模式" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Backend not set up · local mode" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "バックエンド未設定・ローカルモード" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Backend non configuré · mode local" } }
+      }
+    },
+    "settings.account.signInPrompt" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "登录以同步家庭数据" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to sync household data" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ログインして家庭のデータを同期" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connectez-vous pour synchroniser les données familiales" } }
+      }
+    },
+    "settings.account.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "账号" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Account" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "アカウント" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Compte" } }
+      }
+    },
+    "settings.ai.save" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "保存" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Enregistrer" } }
+      }
+    },
+    "settings.appearance.dark" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "深色" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dark" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ダーク" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Sombre" } }
+      }
+    },
+    "settings.appearance.footer" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "「跟随系统」随 iOS 外观自动切换浅色与深色。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "\"System\" switches automatically between light and dark with iOS." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "「システムに従う」はiOSの外観設定に合わせて自動でライト・ダークを切り替えます。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "« Système » bascule automatiquement entre clair et sombre selon iOS." } }
+      }
+    },
+    "settings.appearance.header" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "外观" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Appearance" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "外観" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Apparence" } }
+      }
+    },
+    "settings.appearance.light" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "浅色" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Light" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ライト" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Clair" } }
+      }
+    },
+    "settings.appearance.system" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "跟随系统" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "System" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "システムに従う" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Système" } }
+      }
+    },
+    "settings.appearance.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "外观" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Appearance" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "外観" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Apparence" } }
+      }
+    },
+    "settings.assistant.header" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "AI 助手" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI Assistant" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "AIアシスタント" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Assistant IA" } }
+      }
+    },
+    "settings.backupLink.subtitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导出或恢复本机数据" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export or restore data on this device" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "この端末のデータをエクスポート・復元" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Exporter ou restaurer les données de cet appareil" } }
+      }
+    },
+    "settings.backupLink.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "数据备份" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Backup" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "データバックアップ" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Sauvegarde" } }
+      }
+    },
+    "settings.clearHistory.cancel" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "取消" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "キャンセル" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler" } }
+      }
+    },
+    "settings.clearHistory.confirm" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "清除" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "消去" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer" } }
+      }
+    },
+    "settings.clearHistory.confirmTitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "清除常买记忆" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear frequent-item memory" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "よく買う記憶を消去" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer les habitudes d'achat" } }
+      }
+    },
+    "settings.clearHistory.message" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "将删除所有「常买」记录（添加频次与默认分类/存储位置），此操作不可撤销。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This deletes all frequent-item records (add counts and remembered category/location). This can't be undone." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "「よく買う」の記録（追加回数と既定のカテゴリー・保管場所）をすべて削除します。元に戻せません。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ceci supprime tous les enregistrements d'articles fréquents (nombre d'ajouts et catégorie/emplacement mémorisés). Action irréversible." } }
+      }
+    },
+    "settings.clearHistory.subtitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重置添加频次与记住的默认值" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resets add counts and remembered defaults" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "追加回数と既定値の記憶をリセット" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réinitialise les compteurs et valeurs mémorisées" } }
+      }
+    },
+    "settings.clearHistory.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "清除常买记忆" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear frequent-item memory" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "よく買う記憶を消去" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer les habitudes d'achat" } }
+      }
+    },
+    "settings.dietPreference.footer" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "根据偏好为「现有」与「今日推荐」加权排序菜谱。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preferences weight recipe ranking in \"On Hand\" and \"Today's Picks\"." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "好みに応じて「手持ち」と「今日のおすすめ」のレシピ順位を調整します。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les préférences pondèrent le classement des recettes dans « Sur place » et « Suggestions du jour »." } }
+      }
+    },
+    "settings.dietPreference.header" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "饮食偏好" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Diet Preferences" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "食の好み" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Préférences alimentaires" } }
+      }
+    },
+    "settings.dietPreference.highProtein" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "高蛋白" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "High Protein" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "高たんぱく" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Riche en protéines" } }
+      }
+    },
+    "settings.dietPreference.homestyle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "家常菜" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Home-style" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "家庭料理" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cuisine familiale" } }
+      }
+    },
+    "settings.dietPreference.kids" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "儿童餐" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Kid-friendly" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "子ども向け" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Adapté aux enfants" } }
+      }
+    },
+    "settings.dietPreference.lowCarb" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "低碳水" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Low Carb" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "低糖質" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Faible en glucides" } }
+      }
+    },
+    "settings.dietPreference.lowFat" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "低脂" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Low Fat" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "低脂肪" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Faible en gras" } }
+      }
+    },
+    "settings.dietPreference.quick" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "快手菜" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quick Meals" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "時短レシピ" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Repas rapides" } }
+      }
+    },
+    "settings.dietPreference.vegetarian" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "素食" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Vegetarian" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ベジタリアン" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Végétarien" } }
+      }
+    },
+    "settings.dietary.addPlaceholder" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "添加忌口,如 香菜" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add an exclusion, e.g. cilantro" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "禁忌食材を追加（例：パクチー）" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ajoutez une exclusion, par ex. coriandre" } }
+      }
+    },
+    "settings.dietary.duplicateNotice" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已添加过该忌口" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This exclusion is already on your list." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "この禁忌食材はすでに追加されています" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Cette exclusion est déjà dans votre liste." } }
+      }
+    },
+    "settings.dietary.empty" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "尚未添加忌口关键字" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No exclusions added yet" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "禁忌食材のキーワードはまだ追加されていません" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucune exclusion ajoutée pour le moment" } }
+      }
+    },
+    "settings.dietary.footer" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "含这些关键字的食材会在菜谱推荐中被过滤。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ingredients matching these keywords are filtered out of recipe suggestions." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "これらのキーワードを含む食材はレシピの提案から除外されます。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les ingrédients correspondant à ces mots-clés sont exclus des suggestions de recettes." } }
+      }
+    },
+    "settings.dietary.header" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "忌口" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dietary Exclusions" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "苦手な食材" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Exclusions alimentaires" } }
+      }
+    },
+    "settings.dietary.removeChip" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除 %@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Remove %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "%@ を削除" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer %@" } }
+      }
+    },
+    "settings.household.inviteCount %lld" : {
+      "localizations" : {
+        "zh-Hans" : { "variations" : { "plural" : {
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld 条邀请" } }
+        } } },
+        "en" : { "variations" : { "plural" : {
+          "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld invite" } },
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld invites" } }
+        } } },
+        "ja" : { "variations" : { "plural" : {
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld 件の招待" } }
+        } } },
+        "fr" : { "variations" : { "plural" : {
+          "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld invitation" } },
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld invitations" } }
+        } } }
+      }
+    },
+    "settings.household.manage" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "管理家庭成员与邀请" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Manage members and invites" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "メンバーと招待を管理" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gérer les membres et invitations" } }
+      }
+    },
+    "settings.household.memberCount %lld" : {
+      "localizations" : {
+        "zh-Hans" : { "variations" : { "plural" : {
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld 名成员" } }
+        } } },
+        "en" : { "variations" : { "plural" : {
+          "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld member" } },
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld members" } }
+        } } },
+        "ja" : { "variations" : { "plural" : {
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld 名" } }
+        } } },
+        "fr" : { "variations" : { "plural" : {
+          "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld membre" } },
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld membres" } }
+        } } }
+      }
+    },
+    "settings.household.pendingInvites %lld" : {
+      "localizations" : {
+        "zh-Hans" : { "variations" : { "plural" : {
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld 条待处理邀请" } }
+        } } },
+        "en" : { "variations" : { "plural" : {
+          "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld pending invite" } },
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld pending invites" } }
+        } } },
+        "ja" : { "variations" : { "plural" : {
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld 件の保留中の招待" } }
+        } } },
+        "fr" : { "variations" : { "plural" : {
+          "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld invitation en attente" } },
+          "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld invitations en attente" } }
+        } } }
+      }
+    },
+    "settings.household.signInPrompt" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "登录后创建或加入家庭" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to create or join a family" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ログインして家庭を作成・参加" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connectez-vous pour créer ou rejoindre une famille" } }
+      }
+    },
+    "settings.household.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "家庭共享" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Family Sharing" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ファミリー共有" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Partage familial" } }
+      }
+    },
+    "settings.household.unavailable" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "未配置后端 · 不可用" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Backend not set up · unavailable" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "バックエンド未設定・利用不可" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Backend non configuré · indisponible" } }
+      }
+    },
+    "settings.more.header" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "更多" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "More" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "その他" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Plus" } }
+      }
+    },
+    "settings.notificationPermission.enable" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开启" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Turn On" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "オンにする" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Activer" } }
+      }
+    },
+    "settings.notificationPermission.granted" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已开启 · 提醒可送达" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "On · reminders can be delivered" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "オン・通知が届きます" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Activé · les rappels peuvent être livrés" } }
+      }
+    },
+    "settings.notificationPermission.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "通知权限" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Notification Permission" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "通知の許可" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Autorisation de notification" } }
+      }
+    },
+    "settings.notificationPermission.ungranted" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开启后临期提醒才会送达" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Turn on to receive expiry reminders" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "オンにすると期限リマインダーが届きます" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Activez pour recevoir les rappels de péremption" } }
+      }
+    },
+    "settings.pro.pitch" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "解锁 AI、家庭共享与周派餐" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unlock AI, family sharing, and weekly meal plans" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "AI・ファミリー共有・週間献立を解除" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Débloquez l'IA, le partage familial et les menus hebdomadaires" } }
+      }
+    },
+    "settings.pro.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Fresh Pantry Pro" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Fresh Pantry Pro" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Fresh Pantry Pro" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fresh Pantry Pro" } }
+      }
+    },
+    "settings.pro.unlocked" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已解锁" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unlocked" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "解除済み" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Débloqué" } }
+      }
+    },
+    "settings.profile.accountRow" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "账号" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Account" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "アカウント" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Compte" } }
+      }
+    },
+    "settings.profile.close" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关闭" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Close" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "閉じる" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fermer" } }
+      }
+    },
+    "settings.profile.edit" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "编辑" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Edit" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "編集" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Modifier" } }
+      }
+    },
+    "settings.profile.familyRow" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "家庭" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Family" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ファミリー" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Famille" } }
+      }
+    },
+    "settings.profile.nameLabel" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "名称" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Name" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "名前" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nom" } }
+      }
+    },
+    "settings.profile.namePlaceholder" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在家庭里显示的名字" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The name shown to your family" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "家族に表示される名前" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le nom affiché à votre famille" } }
+      }
+    },
+    "settings.profile.nicknameLabel" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "昵称(可选)" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Nickname (optional)" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ニックネーム（任意）" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Surnom (facultatif)" } }
+      }
+    },
+    "settings.profile.nicknamePlaceholder" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "留空则使用名称" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Leave blank to use your name" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "空欄の場合は名前が使われます" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Laissez vide pour utiliser votre nom" } }
+      }
+    },
+    "settings.profile.onboardingHint" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "名称会显示在家庭成员列表里，先填一个吧。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This name appears in your family's member list — go ahead and fill it in." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "この名前は家族のメンバー一覧に表示されます。まずは入力してみましょう" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ce nom apparaît dans la liste des membres de votre famille — allez-y, renseignez-le." } }
+      }
+    },
+    "settings.profile.onboardingTitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "完善个人信息" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Complete Your Profile" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "プロフィールを完成させる" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Complétez votre profil" } }
+      }
+    },
+    "settings.profile.photoLoadFailed" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "读取照片失败：%@" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't load the photo: %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "写真の読み込みに失敗しました：%@" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Impossible de charger la photo : %@" } }
+      }
+    },
+    "settings.profile.retry" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重试" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Retry" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "再試行" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réessayer" } }
+      }
+    },
+    "settings.profile.retrying" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重试中…" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Retrying…" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "再試行中…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Nouvelle tentative…" } }
+      }
+    },
+    "settings.profile.roleMember" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "成员" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Member" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "メンバー" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Membre" } }
+      }
+    },
+    "settings.profile.roleOwner" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "管理员" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Admin" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "管理者" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Administrateur" } }
+      }
+    },
+    "settings.profile.saveFailed" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存失败，修改已保留在本机，可手动重试。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save failed. Your changes are kept on this device — you can retry manually." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "保存に失敗しました。変更内容はこの端末に保持されているため、手動で再試行できます" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Échec de l'enregistrement. Vos modifications sont conservées sur cet appareil — vous pouvez réessayer manuellement." } }
+      }
+    },
+    "settings.profile.saving" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存中…" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Saving…" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "保存中…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Enregistrement…" } }
+      }
+    },
+    "settings.profile.setupPrompt" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "设置头像与名称" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Set up your avatar and name" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "アイコンと名前を設定" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Configurer l'avatar et le nom" } }
+      }
+    },
+    "settings.profile.statusRow" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "状态" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Status" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "状態" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "État" } }
+      }
+    },
+    "settings.profile.syncIncomplete" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "同步未完成，修改仍保留在本机，请检查网络后重试。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sync didn't finish. Your changes are still kept on this device — check your connection and try again." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "同期が完了しませんでした。変更内容はこの端末に保持されています。ネットワークを確認してもう一度お試しください" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "La synchronisation ne s'est pas terminée. Vos modifications sont toujours conservées sur cet appareil — vérifiez votre connexion et réessayez." } }
+      }
+    },
+    "settings.profile.syncPending" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "待同步…" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Syncing…" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "同期待ち…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Synchronisation en attente…" } }
+      }
+    },
+    "settings.profile.synced" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已同步" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Synced" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "同期済み" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Synchronisé" } }
+      }
+    },
+    "settings.profile.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "个人资料" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Profile" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "プロフィール" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Profil" } }
+      }
+    },
+    "settings.profile.unnamed" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "未命名" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Unnamed" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "名前未設定" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Sans nom" } }
+      }
+    },
+    "settings.quietHours.end" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "结束" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "End" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "終了" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Fin" } }
+      }
+    },
+    "settings.quietHours.start" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开始" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "開始" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Début" } }
+      }
+    },
+    "settings.quietHours.subtitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "此时段内逐条临期提醒不再打扰" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Individual expiry reminders stay quiet during this window" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "この時間帯は個別の期限通知が届きません" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les rappels individuels restent silencieux pendant cette période" } }
+      }
+    },
+    "settings.quietHours.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "免打扰时段" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quiet Hours" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "おやすみ時間帯" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Heures calmes" } }
+      }
+    },
+    "settings.reminder.d1.subtitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "高优先级 · 推送 + 角标" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "High priority · push + badge" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "高優先度・プッシュ通知＋バッジ" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Priorité haute · notification + badge" } }
+      }
+    },
+    "settings.reminder.d1.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "提前 1 天提醒" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Remind 1 day ahead" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "1日前に通知" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rappel 1 jour avant" } }
+      }
+    },
+    "settings.reminder.d3.subtitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "标准 · 仅推送" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Standard · push only" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "標準・プッシュ通知のみ" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Standard · notification uniquement" } }
+      }
+    },
+    "settings.reminder.d3.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "提前 3 天提醒" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Remind 3 days ahead" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "3日前に通知" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rappel 3 jours avant" } }
+      }
+    },
+    "settings.reminder.d7.subtitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "轻量 · 仅角标" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Light · badge only" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "軽量・バッジのみ" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Léger · badge uniquement" } }
+      }
+    },
+    "settings.reminder.d7.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "提前 7 天提醒" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Remind 7 days ahead" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "7日前に通知" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rappel 7 jours avant" } }
+      }
+    },
+    "settings.reminder.daily.subtitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "包含临期 + 库存不足" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Includes expiring items + low stock" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "期限間近と在庫不足を含みます" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Inclut les péremptions et le stock faible" } }
+      }
+    },
+    "settings.reminder.daily.title %@" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "每日 %@ 汇总" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Daily summary at %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "毎日 %@ にまとめて通知" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Résumé quotidien à %@" } }
+      }
+    },
+    "settings.reminder.footer" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "提醒在开启系统通知权限后送达。开启「仅每日汇总」可关闭逐条临期推送、只保留一条汇总;免打扰时段内逐条提醒不再打扰。" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reminders arrive once system notification permission is granted. Turn on \"Daily summary only\" to stop individual expiry pushes and keep just one summary; individual reminders stay quiet during quiet hours." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "システムの通知許可をオンにするとリマインダーが届きます。「まとめて通知のみ」をオンにすると個別の期限通知を止めて、まとめ通知だけになります。おやすみ時間帯は個別通知も届きません。" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les rappels arrivent une fois l'autorisation de notification système accordée. Activez « Résumé quotidien uniquement » pour arrêter les notifications individuelles et ne garder qu'un résumé ; pendant les heures calmes, les rappels individuels restent silencieux." } }
+      }
+    },
+    "settings.reminder.header" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "临期提醒" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Expiry Reminders" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "期限リマインダー" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rappels de péremption" } }
+      }
+    },
+    "settings.reminderTime.subtitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "临期提醒与每日汇总的送达时间" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delivery time for expiry reminders and the daily summary" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "期限リマインダーと毎日のまとめ通知の送信時刻" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Heure d'envoi des rappels de péremption et du résumé quotidien" } }
+      }
+    },
+    "settings.reminderTime.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "提醒时间" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reminder Time" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "通知時刻" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Heure du rappel" } }
+      }
+    },
+    "settings.stats.favorites" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "个收藏" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "favorites" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "件のお気に入り" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "favoris" } }
+      }
+    },
+    "settings.stats.inventory" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "件食材" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "items" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "個の食材" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "ingrédients" } }
+      }
+    },
+    "settings.stats.shopping" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "项采购" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "to buy" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "件の買い物" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "achats" } }
+      }
+    },
+    "settings.summaryOnly.subtitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关闭逐条临期推送 · 每天只发一条汇总" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Turns off individual expiry pushes · one summary a day" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "個別の期限通知をオフ・1日1回のまとめ通知のみ" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Désactive les notifications individuelles · un résumé par jour" } }
+      }
+    },
+    "settings.summaryOnly.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "仅每日汇总" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Daily Summary Only" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "まとめて通知のみ" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Résumé quotidien uniquement" } }
+      }
+    },
+    "settings.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "设置" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "設定" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réglages" } }
+      }
+    },
+    "settings.wasteInsights.subtitle" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "本月用掉与浪费 · 越用越省" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This month's use and waste · save more over time" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "今月の消費と廃棄・使うほどお得に" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Utilisation et gaspillage ce mois-ci · des économies avec le temps" } }
+      }
+    },
+    "settings.wasteInsights.title" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "减废成效" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Waste Insights" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "食品ロス実績" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réduction du gaspillage" } }
+      }
+    },
+    "spotlight.ingredient.expiresOn" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%@ 到期" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Expires %@" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "%@ 期限切れ" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Expire le %@" } }
       }
     },
     "tab.home" : {

@@ -27,14 +27,14 @@ struct ProfileEditView: View {
                     avatarPicker
                     FkCard {
                         VStack(alignment: .leading, spacing: FkSpacing.lg) {
-                            FkFormField(label: "名称") {
-                                FkTextFieldPill(text: $displayName, placeholder: "在家庭里显示的名字")
+                            FkFormField(label: String(localized: "settings.profile.nameLabel")) {
+                                FkTextFieldPill(text: $displayName, placeholder: String(localized: "settings.profile.namePlaceholder"))
                             }
-                            FkFormField(label: "昵称(可选)") {
-                                FkTextFieldPill(text: $nickname, placeholder: "留空则使用名称")
+                            FkFormField(label: String(localized: "settings.profile.nicknameLabel")) {
+                                FkTextFieldPill(text: $nickname, placeholder: String(localized: "settings.profile.nicknamePlaceholder"))
                             }
                             if mode == .onboarding {
-                                Text("名称会显示在家庭成员列表里,先填一个吧。")
+                                Text("settings.profile.onboardingHint")
                                     .font(.fkBodySmall)
                                     .foregroundStyle(Color.fkOnSurfaceVariant)
                             }
@@ -53,12 +53,12 @@ struct ProfileEditView: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Color.fkSurface)
-            .navigationTitle(mode == .onboarding ? "完善个人信息" : "个人资料")
+            .navigationTitle(mode == .onboarding ? String(localized: "settings.profile.onboardingTitle") : String(localized: "settings.profile.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if mode == .settings {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("关闭") { dismiss() }
+                        Button("settings.profile.close") { dismiss() }
                     }
                 }
             }
@@ -76,7 +76,7 @@ struct ProfileEditView: View {
                     guard let data = try await item?.loadTransferable(type: Data.self) else { return }
                     pickedAvatar = compressed(data)
                 } catch {
-                    photoLoadError = "读取照片失败：\(error.localizedDescription)"
+                    photoLoadError = String(localized: "settings.profile.photoLoadFailed \(error.localizedDescription)")
                 }
             }
         }
@@ -153,7 +153,7 @@ struct ProfileEditView: View {
         } label: {
             HStack(spacing: FkSpacing.sm) {
                 if store.isSaving { ProgressView().tint(Color.fkOnPrimary) } else { Image(systemName: "checkmark") }
-                Text(store.isSaving ? "保存中…" : "保存")
+                Text(store.isSaving ? String(localized: "settings.profile.saving") : String(localized: "settings.ai.save"))
             }
             .font(.fkLabelLarge)
             .foregroundStyle(Color.fkOnPrimary)

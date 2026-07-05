@@ -40,7 +40,7 @@ struct BackupView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Color.fkSurface)
-        .navigationTitle("数据备份")
+        .navigationTitle("backup.title")
         .navigationBarTitleDisplayMode(.inline)
         .tint(.fkPrimary)
         .task {
@@ -50,7 +50,6 @@ struct BackupView: View {
                 shopping: dependencies.shoppingRepository,
                 customRecipe: dependencies.customRecipeRepository,
                 mealPlan: dependencies.mealPlanRepository,
-                aiSettings: dependencies.aiSettingsStore,
                 favorites: dependencies.favoritesStore,
                 dietaryPreferences: dependencies.dietaryPreferencesStore,
                 dietPreference: dependencies.dietPreferenceStore,
@@ -66,9 +65,9 @@ struct BackupView: View {
         ) { result in
             handleImportPick(result)
         }
-        .alert("导入将覆盖现有数据", isPresented: $showImportConfirm) {
-            Button("取消", role: .cancel) { pendingImportText = nil }
-            Button("覆盖导入", role: .destructive) { confirmImport() }
+        .alert("backup.importConfirm.title", isPresented: $showImportConfirm) {
+            Button("backup.importConfirm.cancel", role: .cancel) { pendingImportText = nil }
+            Button("backup.importConfirm.confirm", role: .destructive) { confirmImport() }
         } message: {
             Text(importConfirmMessage)
         }
@@ -78,9 +77,9 @@ struct BackupView: View {
     /// 在家庭中导入时点明同步后果:导入不只是覆盖本机,还会经 outbox 上行覆盖
     /// 家庭共享数据(否则下一次远端 merge 会静默回滚刚导入的数据)。
     private var importConfirmMessage: String {
-        let base = "导入将覆盖本机当前的库存、采购、食谱、膳食计划、去向记录与偏好设置,确定继续?"
+        let base = String(localized: "backup.importConfirm.message")
         guard !dependencies.householdID.isEmpty else { return base }
-        return base + "\n\n当前已加入家庭:导入结果会同步上传并覆盖家庭共享数据。"
+        return base + "\n\n" + String(localized: "backup.importConfirm.householdNote")
     }
 
     // MARK: 导出
@@ -91,7 +90,7 @@ struct BackupView: View {
                 ShareLink(item: exportFile.url) {
                     actionRow(
                         systemImage: "square.and.arrow.up",
-                        title: "分享备份文件",
+                        title: String(localized: "backup.export.share.title"),
                         subtitle: exportFile.name,
                         busy: false
                     )
@@ -100,8 +99,8 @@ struct BackupView: View {
                 Button(action: prepareExport) {
                     actionRow(
                         systemImage: "tray.and.arrow.up",
-                        title: "导出备份",
-                        subtitle: "生成 JSON 备份文件",
+                        title: String(localized: "backup.export.action.title"),
+                        subtitle: String(localized: "backup.export.action.subtitle"),
                         busy: exporting
                     )
                 }
@@ -110,16 +109,16 @@ struct BackupView: View {
             Button(action: copyExport) {
                 actionRow(
                     systemImage: "doc.on.doc",
-                    title: "复制到剪贴板",
-                    subtitle: "复制备份 JSON,可粘贴到备忘录/邮件保存",
+                    title: String(localized: "backup.export.copy.title"),
+                    subtitle: String(localized: "backup.export.copy.subtitle"),
                     busy: exporting
                 )
             }
             .disabled(exporting)
         } header: {
-            Text("导出")
+            Text("backup.export.header")
         } footer: {
-            Text("备份包含库存、采购清单、自建食谱、膳食计划、食材去向记录、菜谱收藏、饮食偏好与忌口、提醒设置与 AI 配置;不含外观设置与可重建的食材详情缓存。")
+            Text("backup.export.footer")
         }
         .listRowBackground(Color.fkSurfaceContainerLowest)
     }
@@ -135,7 +134,7 @@ struct BackupView: View {
                 guard !Task.isCancelled else { return }
                 exportFile = try BackupFile.write(json)
             } catch {
-                status = .failure("导出失败,请重试")
+                status = .failure(String(localized: "backup.export.failure"))
             }
         }
     }
@@ -153,9 +152,9 @@ struct BackupView: View {
                 guard !Task.isCancelled else { return }
                 UIPasteboard.general.string = json
                 let bytes = json.data(using: .utf8)?.count ?? 0
-                status = .success("已复制 \(bytes) 字节,粘贴到备忘录/邮件即可保存")
+                status = .success(String(localized: "backup.export.copySuccess \(bytes)"))
             } catch {
-                status = .failure("导出失败,请重试")
+                status = .failure(String(localized: "backup.export.failure"))
             }
         }
     }
@@ -170,23 +169,23 @@ struct BackupView: View {
             } label: {
                 actionRow(
                     systemImage: "tray.and.arrow.down",
-                    title: "导入备份",
-                    subtitle: "从 JSON 备份文件恢复数据",
+                    title: String(localized: "backup.import.file.title"),
+                    subtitle: String(localized: "backup.import.file.subtitle"),
                     busy: false
                 )
             }
             Button(action: pasteImport) {
                 actionRow(
                     systemImage: "doc.on.clipboard",
-                    title: "从剪贴板导入",
-                    subtitle: "从复制的 JSON 文本恢复数据",
+                    title: String(localized: "backup.import.paste.title"),
+                    subtitle: String(localized: "backup.import.paste.subtitle"),
                     busy: false
                 )
             }
         } header: {
-            Text("导入")
+            Text("backup.import.header")
         } footer: {
-            Text("导入会覆盖本机当前数据。无效或版本不支持的文件会被拒绝,不会破坏现有数据。")
+            Text("backup.import.footer")
         }
         .listRowBackground(Color.fkSurfaceContainerLowest)
     }
@@ -199,10 +198,10 @@ struct BackupView: View {
                 pendingImportText = try readFile(at: url)
                 showImportConfirm = true
             } catch {
-                status = .failure("无法读取所选文件")
+                status = .failure(String(localized: "backup.import.readFailure"))
             }
         case .failure:
-            status = .failure("无法读取所选文件")
+            status = .failure(String(localized: "backup.import.readFailure"))
         }
     }
 
@@ -213,7 +212,7 @@ struct BackupView: View {
         guard let text = UIPasteboard.general.string,
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else {
-            status = .failure("剪贴板为空,请先复制备份 JSON")
+            status = .failure(String(localized: "backup.import.clipboardEmpty"))
             return
         }
         pendingImportText = text
@@ -231,18 +230,11 @@ struct BackupView: View {
                 // feature views already observe, so import results show without a
                 // tab re-entry.
                 dependencies.syncSession.bumpDataRevision()
-                status = .success("已导入")
+                status = .success(String(localized: "backup.import.success"))
             } catch let error as BackupService.BackupError {
                 status = .failure(message(for: error))
-            } catch BackupController.ImportError.aiSettingsPersistFailed {
-                // The Keychain write is the LAST import step: every data scope
-                // already landed (and enqueued), so refresh the lists like a
-                // success and scope the failure to the AI config alone —
-                // otherwise the UI claims a full failure over imported data.
-                dependencies.syncSession.bumpDataRevision()
-                status = .failure("数据已导入,但 AI 配置保存失败,请到 AI 设置重试")
             } catch {
-                status = .failure("导入失败,请重试")
+                status = .failure(String(localized: "backup.import.failure"))
             }
         }
     }
@@ -258,8 +250,8 @@ struct BackupView: View {
     /// Maps the typed decode error to user-facing Chinese copy.
     private func message(for error: BackupService.BackupError) -> String {
         switch error {
-        case .version: "不支持的备份版本"
-        case .format: "备份文件无效"
+        case .version: String(localized: "backup.error.unsupportedVersion")
+        case .format: String(localized: "backup.error.invalidFile")
         }
     }
 

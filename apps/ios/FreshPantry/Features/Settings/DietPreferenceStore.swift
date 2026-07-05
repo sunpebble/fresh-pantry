@@ -23,7 +23,32 @@ final class DietPreferenceStore {
     /// The 7 preset labels (single source of truth for the chips), ported from the
     /// Flutter settings screen. `nonisolated` so pure/nonisolated callers (e.g.
     /// `RecipeMatching` tests) can read this immutable constant off the main actor.
-    nonisolated static let allLabels = ["高蛋白", "低脂", "素食", "家常菜", "快手菜", "儿童餐", "低碳水"]
+    /// These Chinese literals are the STORAGE/matching identity — persisted verbatim
+    /// in UserDefaults and used as `RecipeMatching.preferenceSignals` dict keys — so
+    /// they must never be localized or renamed (would silently break existing users'
+    /// saved prefs + the boost lookup).
+    nonisolated static let allLabels = ["高蛋白", "低脂", "素食", "家常菜", "快手菜", "儿童餐", "低碳水"] // i18n:ignore data identity, not UI text
+
+    /// Localization keys for each `allLabels` preset, same order — the display-only
+    /// counterpart to the storage identity above. Indexed (not keyed by the Chinese
+    /// string) so no case list has to repeat/match those literals.
+    nonisolated private static let displayKeys = [
+        "settings.dietPreference.highProtein",
+        "settings.dietPreference.lowFat",
+        "settings.dietPreference.vegetarian",
+        "settings.dietPreference.homestyle",
+        "settings.dietPreference.quick",
+        "settings.dietPreference.kids",
+        "settings.dietPreference.lowCarb",
+    ]
+
+    /// Localized display text for a preset label, for chip rendering only. Falls
+    /// back to the raw label for any value outside the 7 presets (defensive; the
+    /// UI only ever iterates `allLabels`, so this should always hit).
+    nonisolated static func displayLabel(for label: String) -> String {
+        guard let index = allLabels.firstIndex(of: label) else { return label }
+        return String(localized: String.LocalizationValue(displayKeys[index]))
+    }
 
     private let defaults: UserDefaults
 
