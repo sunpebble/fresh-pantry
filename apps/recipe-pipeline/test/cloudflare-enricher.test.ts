@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createCloudflareEnricher, extractJson } from '../src/clean/cloudflare-enricher';
+import { createCfChat, createCloudflareEnricher, extractJson } from '../src/clean/cloudflare-enricher';
 import type { RawRecipe } from '../src/sources/types';
 
 const raw: RawRecipe = {
@@ -35,6 +35,20 @@ describe('extractJson', () => {
 });
 
 describe('createCloudflareEnricher', () => {
+  it('json_object 模式用于 DeepSeek 这类不支持 json_schema 的 OpenAI 兼容后端', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(okResponse('{"ok":true}'));
+    const chat = createCfChat({
+      baseUrl: 'https://api.deepseek.com',
+      apiKey: 'k',
+      model: 'deepseek-v4-flash',
+      responseFormat: 'json_object',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    await chat([{ role: 'user', content: 'JSON only' }], 'ignored', { type: 'object' });
+    const body = JSON.parse(fetchImpl.mock.calls[0][1].body as string);
+    expect(body.response_format).toEqual({ type: 'json_object' });
+  });
+
   it('容量错(code 3040)先重试、后成功', async () => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(capacityResponse())

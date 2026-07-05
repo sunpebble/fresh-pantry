@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { CleanRecipe } from '../clean/schema';
@@ -52,6 +52,7 @@ const chat = createCfChat({
   baseUrl: chatBaseUrl,
   apiKey: chatApiKey,
   model: config.model,
+  responseFormat: chatBaseUrl.includes('deepseek.com') ? 'json_object' : 'json_schema',
   maxTokens: config.cloudflare.maxTokens,
   log: (message) => console.log(`[i18n:cf] ${message}`),
 });
@@ -77,7 +78,10 @@ for (const lang of selectedLangs()) {
   console.log(`[i18n] ${lang}: ${Object.keys(overlays).length}/${live.length} 就绪, ${failures.length} 失败`);
 }
 
+const i18nRejectsPath = resolve(config.rejectsPath, '../i18n-rejects.json');
 if (allFailures.length > 0) {
-  await atomicWriteJson(resolve(config.rejectsPath, '../i18n-rejects.json'), allFailures);
+  await atomicWriteJson(i18nRejectsPath, allFailures);
   console.log(`[i18n] ${allFailures.length} 条失败已记入 data/i18n-rejects.json(app 内回退中文)`);
+} else {
+  await rm(i18nRejectsPath, { force: true });
 }

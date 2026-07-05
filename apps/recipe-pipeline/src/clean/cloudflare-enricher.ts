@@ -19,6 +19,7 @@ export interface CfChatOptions {
   baseUrl: string;
   apiKey: string;
   model: string;
+  responseFormat?: 'json_schema' | 'json_object';
   maxTokens?: number;
   maxRetries?: number;
   fetchImpl?: typeof fetch;
@@ -87,13 +88,16 @@ export function createCfChat(opts: CfChatOptions): (
       let status = 0;
       let body: unknown;
       try {
+        const responseFormat = opts.responseFormat === 'json_object'
+          ? { type: 'json_object' }
+          : { type: 'json_schema', json_schema: { name: schemaName, schema: jsonSchema } };
         const res = await fetchImpl(`${opts.baseUrl}/chat/completions`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${opts.apiKey}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             model: opts.model,
             messages,
-            response_format: { type: 'json_schema', json_schema: { name: schemaName, schema: jsonSchema } },
+            response_format: responseFormat,
             max_tokens: maxTokens,
           }),
         });
