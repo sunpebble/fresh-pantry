@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { recipesToSeedSQL, recipesToUpsertSQL, RECIPES_DDL, type CatalogRecipe } from '../src/db/recipe-sql';
+import { recipeI18nToSeedSQL, overlaysToRows, RECIPE_I18N_DDL } from '../src/db/recipe-i18n-sql';
+import { recipesToPruneSQL, recipesToSeedSQL, recipesToUpsertSQL, RECIPES_DDL, type CatalogRecipe } from '../src/db/recipe-sql';
 
 const recipe = (over: Partial<CatalogRecipe> = {}): CatalogRecipe => ({
   id: 'howtocook:vegetable_dish/凉拌黄瓜',
@@ -82,5 +83,32 @@ describe('recipesToSeedSQL', () => {
     expect(withData).toContain('"energyKcal":120');
     expect(withData).toContain('[null,60]');
     expect((withData.match(/::jsonb/g) ?? []).length).toBe(5); // ingredients+steps+tags+nutrition+step_durations
+  });
+
+  it('prune 只删除 howtocook 目录里不在当前种子的旧行', () => {
+    const sql = recipesToPruneSQL([recipe({ id: 'howtocook:a' }), recipe({ id: 'custom:b' })]);
+    expect(sql).toContain("id like 'howtocook:%'");
+    expect(sql).toContain("'howtocook:a'");
+    expect(sql).not.toContain("'custom:b'");
+  });
+
+  it('recipe_i18n:匿名只读 + 三语 overlay 幂等同步', () => {
+    expect(RECIPE_I18N_DDL).toContain('create table if not exists public.recipe_i18n');
+    expect(RECIPE_I18N_DDL).toContain('for select to anon, authenticated');
+    const rows = overlaysToRows('en', {
+      'howtocook:a': {
+        name: "O'Brien Salad",
+        category: 'Vegetarian',
+        description: 'Fresh.',
+        ingredients: [{ name: 'Cucumber', unit: 'g' }],
+        steps: ['Mix'],
+        tags: ['quick'],
+      },
+    });
+    const sql = recipeI18nToSeedSQL(rows);
+    expect(sql).toContain("O''Brien Salad");
+    expect(sql).toContain('on conflict (recipe_id, lang) do update');
+    expect(sql).toContain('delete from public.recipe_i18n');
+    expect(sql).toContain("t.recipe_id like 'howtocook:%'");
   });
 });

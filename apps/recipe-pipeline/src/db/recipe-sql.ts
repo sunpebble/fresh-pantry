@@ -92,6 +92,14 @@ export function recipesToUpsertSQL(recipes: CatalogRecipe[]): string {
     + `on conflict (id) do update set\n${updates};`;
 }
 
+export function recipesToPruneSQL(recipes: Pick<CatalogRecipe, 'id'>[], prefix = 'howtocook:'): string {
+  const ids = recipes.map((r) => r.id).filter((id) => id.startsWith(prefix));
+  if (!ids.length) return '';
+  return `delete from public.recipes\n`
+    + `where id like ${lit(`${prefix}%`)}\n`
+    + `  and id not in (${ids.map(lit).join(', ')});`;
+}
+
 /**
  * 完整种子迁移体:建表 + RLS + upsert。可整体交给 Supabase apply_migration,
  * 或写入 supabase/migrations/<version>_recipes_catalog.sql。

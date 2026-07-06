@@ -85,6 +85,8 @@ iOS 端流式拉取 + **磁盘缓存**(`RemoteImageCache`,见 app 侧),离线可
 - **生成种子迁移**:`npm run gen:seed` 读 `howtocook.json`,经 `src/db/recipe-sql.ts`(纯函数,
   有单测)生成幂等迁移 `supabase/migrations/<version>_recipes_catalog.sql`(`create table if not exists`
   + `insert … on conflict (id) do update`)。管线重跑→`gen:seed`→重新应用即更新 DB。
+- **生成当前目录同步迁移**:`npm run gen:catalog-sync -- supabase/migrations/<version>_recipe_catalog_i18n_sync.sql`
+  会写入当前 364 条基础菜谱 + `howtocook.i18n.{en,ja,fr}.json` 的 1092 条 `recipe_i18n` 翻译行。
 - **应用**:`supabase db push`(或 `psql -f` 该迁移文件)。迁移自包含 DDL+数据、幂等,重复应用安全。
 - **iOS 读取**:DB 为权威源 + 本地缓存 + 内置 json 兜底(离线优先)。客户端从 `recipes` 表拉取
   (列别名成 Recipe 的 JSON 键,直接解码)写本地缓存;离线读缓存,首启无网读内置 json。

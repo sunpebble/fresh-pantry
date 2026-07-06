@@ -13,7 +13,8 @@
     "images:apply": "npx tsx src/db/apply-web-images.ts",
     "images:upload": "npx tsx src/db/upload-images.ts",
     "images:rewrite-urls": "npx tsx src/db/rewrite-image-urls.ts",
-    "gen:seed": "npx tsx src/db/gen-seed.ts"
+    "gen:seed": "npx tsx src/db/gen-seed.ts",
+    "gen:catalog-sync": "npx tsx src/db/gen-catalog-sync.ts"
   },
   "dependencies": {
     "@flue/runtime": "^0.11.1",
