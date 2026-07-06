@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.1](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.2.0...fresh_pantry-v2.2.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* **ios:** 固定 UI 测试语言 ([6751404](https://github.com/sunpebble/fresh-pantry/commit/67514047e49984820956e3931635686696cf3345))
+
 ## [2.2.0](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.1.2...fresh_pantry-v2.2.0) (2026-07-05)
 
 
