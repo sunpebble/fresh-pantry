@@ -48,7 +48,7 @@ struct IngredientDetailView: View {
             .padding(.bottom, FkSpacing.huge)
         }
         .background(Color.fkSurface)
-        .navigationTitle(ingredient.name)
+        .navigationTitle(ingredient.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if detailsStore == nil {
@@ -93,7 +93,7 @@ struct IngredientDetailView: View {
         }
         .sheet(isPresented: $showConsumeSheet) {
             PartialConsumeSheet(
-                itemName: ingredient.name,
+                itemName: ingredient.displayName,
                 available: availableQuantity ?? 0,
                 unit: ingredient.unit
             ) { amount in
@@ -101,7 +101,7 @@ struct IngredientDetailView: View {
             }
         }
         .confirmationDialog(
-            String(localized: "inventory.removeOutcome.title \(ingredient.name)"),
+            String(localized: "inventory.removeOutcome.title \(ingredient.displayName)"),
             isPresented: $showOutcomePrompt,
             titleVisibility: .visible
         ) {
@@ -127,7 +127,7 @@ struct IngredientDetailView: View {
             HStack(spacing: FkSpacing.md) {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Color.fkSuccess)
-                Text(String(localized: "inventory.removeOutcome.recorded \(undo.ingredient.name)"))
+                Text(String(localized: "inventory.removeOutcome.recorded \(undo.ingredient.displayName)"))
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurface)
                 Spacer(minLength: FkSpacing.sm)
@@ -262,8 +262,8 @@ struct IngredientDetailView: View {
         let added = await shoppingStore.add(name: ingredient.name, category: ingredient.category)
         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
             toast = added
-                ? String(localized: "dashboard.shopping.added \(ingredient.name)")
-                : String(localized: "dashboard.shopping.duplicate \(ingredient.name)")
+                ? String(localized: "dashboard.shopping.added \(ingredient.displayName)")
+                : String(localized: "dashboard.shopping.duplicate \(ingredient.displayName)")
         }
     }
 
@@ -281,7 +281,7 @@ struct IngredientDetailView: View {
 
             VStack(spacing: FkSpacing.xs) {
                 HStack(spacing: FkSpacing.sm) {
-                    Text(ingredient.name)
+                    Text(ingredient.displayName)
                         .font(.fkHeadlineSmall)
                         .foregroundStyle(Color.fkOnSurface)
                     if ingredient.state != .fresh {
@@ -484,7 +484,7 @@ struct IngredientDetailView: View {
         if removed {
             dismiss()
         } else {
-            toast = String(localized: "inventory.remove.failed \(ingredient.name)")
+            toast = String(localized: "inventory.remove.failed \(ingredient.displayName)")
         }
     }
 

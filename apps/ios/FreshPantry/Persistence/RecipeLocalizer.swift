@@ -32,13 +32,11 @@ enum RecipeLocalizer {
         return nil
     }
 
-    /// 按 id 套用译文;食材/步骤按下标对齐,数量不齐则该条整体保持原文。
+    /// 按 id 套用译文;食材/步骤按下标对齐,数量不齐则数组字段保持原文。
     static func apply(_ overlay: [String: RecipeOverlayEntry]?, to recipes: [Recipe]) -> [Recipe] {
         guard let overlay else { return recipes }
         return recipes.map { recipe in
-            guard let entry = overlay[recipe.id],
-                  entry.ingredients.count == recipe.ingredients.count,
-                  entry.steps.count == recipe.steps.count else {
+            guard let entry = overlay[recipe.id] else {
                 return recipe
             }
 
@@ -46,14 +44,18 @@ enum RecipeLocalizer {
             out.name = entry.name
             out.description = entry.description
             out.category = entry.category
-            out.steps = entry.steps
+            if entry.steps.count == recipe.steps.count {
+                out.steps = entry.steps
+            }
             out.tags = entry.tags
-            out.ingredients = zip(recipe.ingredients, entry.ingredients).map { original, translated in
-                var ingredient = original
-                ingredient.name = translated.name
-                if let unit = translated.unit { ingredient.unit = unit }
-                if let note = translated.note { ingredient.note = note }
-                return ingredient
+            if entry.ingredients.count == recipe.ingredients.count {
+                out.ingredients = zip(recipe.ingredients, entry.ingredients).map { original, translated in
+                    var ingredient = original
+                    ingredient.name = translated.name
+                    if let unit = translated.unit { ingredient.unit = unit }
+                    if let note = translated.note { ingredient.note = note }
+                    return ingredient
+                }
             }
             return out
         }

@@ -229,6 +229,10 @@ struct RecipeIngredient: Equatable, Sendable, Codable {
     }
 }
 
+extension RecipeIngredient {
+    var displayName: String { FoodKnowledge.displayName(name) }
+}
+
 /// De-duplicates by case-insensitive trimmed name, keeping the FIRST occurrence.
 /// Must run at EVERY recipe entry point (matches `shoppingItemNameKey`).
 func dedupeRecipeIngredients(_ ingredients: [RecipeIngredient]) -> [RecipeIngredient] {

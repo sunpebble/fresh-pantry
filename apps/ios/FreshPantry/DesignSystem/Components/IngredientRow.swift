@@ -15,7 +15,7 @@ struct IngredientRow: View {
             )
 
             VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                Text(ingredient.name)
+                Text(ingredient.displayName)
                     .font(.fkTitleMedium)
                     .foregroundStyle(ingredient.state == .expired ? Color.fkOnSurfaceVariant : Color.fkOnSurface)
                     .lineLimit(1)

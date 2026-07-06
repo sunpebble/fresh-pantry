@@ -276,7 +276,7 @@ struct CookModeView: View {
                     VStack(spacing: 0) {
                         ForEach(Array(ingredients.enumerated()), id: \.offset) { index, ingredient in
                             HStack(spacing: FkSpacing.sm) {
-                                Text(ingredient.name)
+                                Text(ingredient.displayName)
                                     .font(.fkBodyMedium)
                                     .foregroundStyle(Color.fkOnSurface)
                                 Spacer(minLength: FkSpacing.md)

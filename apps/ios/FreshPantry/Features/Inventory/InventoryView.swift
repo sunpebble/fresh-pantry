@@ -413,7 +413,7 @@ private struct InventoryContent: View {
             // back to the "N 项" count for a true multi-row batch.
             let count = undo.removed.count
             let bannerTitle: String = {
-                if count == 1, let name = undo.removed.first?.ingredient.name {
+                if count == 1, let name = undo.removed.first?.ingredient.displayName {
                     return logged
                         ? String(localized: "inventory.removeOutcome.recorded \(name)")
                         : String(localized: "inventory.batchDelete.deletedOne \(name)")
@@ -788,8 +788,8 @@ private struct InventoryContent: View {
         let added = await shoppingStore.add(name: item.name, category: item.category)
         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
             toast = added
-                ? String(localized: "dashboard.shopping.added \(item.name)")
-                : String(localized: "dashboard.shopping.duplicate \(item.name)")
+                ? String(localized: "dashboard.shopping.added \(item.displayName)")
+                : String(localized: "dashboard.shopping.duplicate \(item.displayName)")
         }
     }
 
@@ -830,7 +830,7 @@ private struct IngredientPreviewCard: View {
                 iconScale: 0.5
             )
             VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                Text(ingredient.name)
+                Text(ingredient.displayName)
                     .font(.fkTitleMedium)
                     .foregroundStyle(Color.fkOnSurface)
                 Text("\(ingredient.quantity)\(UnitLabels.displayLabel(for: ingredient.unit)) · \(ingredient.storage.storageAreaLabel)")

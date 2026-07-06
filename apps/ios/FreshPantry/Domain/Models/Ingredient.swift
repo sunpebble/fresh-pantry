@@ -183,3 +183,7 @@ struct Ingredient: Equatable, Hashable, Sendable, Codable {
         )
     }
 }
+
+extension Ingredient {
+    var displayName: String { FoodKnowledge.displayName(name) }
+}

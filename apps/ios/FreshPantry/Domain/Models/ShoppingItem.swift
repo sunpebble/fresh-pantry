@@ -113,6 +113,10 @@ struct ShoppingItem: Hashable, Sendable, Codable {
     }
 }
 
+extension ShoppingItem {
+    var displayName: String { FoodKnowledge.displayName(name) }
+}
+
 extension Date {
     /// Current epoch milliseconds — matches Dart `millisecondsSinceEpoch` ids.
     static var nowMilliseconds: Int { Int(Date().timeIntervalSince1970 * 1000) }

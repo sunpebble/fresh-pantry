@@ -690,7 +690,7 @@ struct RecipeDetailView: View {
             }
             // Missing state reads from the dashed icon + soft row tint alone — the
             // name stays neutral so the ingredient itself isn't drowned in red.
-            Text(ingredient.name)
+            Text(ingredient.displayName)
                 .font(.fkBodyMedium)
                 .foregroundStyle(Color.fkOnSurface)
                 .lineLimit(1)

@@ -652,7 +652,7 @@ private struct ShoppingRow: View {
                     .foregroundStyle(item.isChecked ? Color.fkPrimary : Color.fkOutline)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(item.isChecked ? String(localized: "shopping.uncheck \(item.name)") : String(localized: "shopping.check \(item.name)"))
+            .accessibilityLabel(item.isChecked ? String(localized: "shopping.uncheck \(item.displayName)") : String(localized: "shopping.check \(item.displayName)"))
 
             FkCategoryAvatar(
                 imageUrl: item.imageUrl ?? "",
@@ -661,7 +661,7 @@ private struct ShoppingRow: View {
             )
 
             VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                Text(item.name)
+                Text(item.displayName)
                     .font(.fkTitleMedium)
                     .foregroundStyle(Color.fkOnSurface)
                     .strikethrough(item.isChecked, color: Color.fkOnSurfaceVariant)
@@ -811,7 +811,7 @@ private struct ShoppingDetailEditSheet: View {
         NavigationStack {
             Form {
                 Section(String(localized: "shopping.form.section")) {
-                    Text(item.name)
+                    Text(item.displayName)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                 }
                 Section(String(localized: "shopping.editQuantitySection")) {

@@ -201,7 +201,7 @@ struct AddIngredientView: View {
                                 HStack(spacing: FkSpacing.xs) {
                                     Image(systemName: item.storage.sfSymbolOutline)
                                         .font(.system(size: 12, weight: .semibold))
-                                    Text(item.name)
+                                    Text(FoodKnowledge.displayName(item.name))
                                         .font(.fkLabelMedium)
                                 }
                                 .foregroundStyle(Color.fkPrimary)

@@ -219,7 +219,7 @@ struct GlobalSearchView: View {
         HStack(spacing: FkSpacing.md) {
             FkCategoryAvatar(imageUrl: "", category: item.category, size: 36)
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.name)
+                Text(item.displayName)
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurface)
                 if !item.category.trimmed.isEmpty {

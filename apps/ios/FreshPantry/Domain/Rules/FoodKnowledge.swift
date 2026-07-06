@@ -231,6 +231,19 @@ enum FoodKnowledge {
         ("茶", "tea"), // i18n:ignore domain matching data, not UI text
     ]
 
+    private static let displayNameKeys: [(key: String, value: String)] = [
+        ("香菇", "food.name.shiitakeMushroom"), // i18n:ignore data identity lookup, not UI text
+        ("菜籽油", "food.name.rapeseedOil"), // i18n:ignore data identity lookup, not UI text
+        ("排骨", "food.name.porkRibs"), // i18n:ignore data identity lookup, not UI text
+        ("白糖", "food.name.whiteSugar"), // i18n:ignore data identity lookup, not UI text
+        ("老抽", "food.name.darkSoySauce"), // i18n:ignore data identity lookup, not UI text
+        ("菜椒", "food.name.bellPepper"), // i18n:ignore data identity lookup, not UI text
+        ("味精", "food.name.msg"), // i18n:ignore data identity lookup, not UI text
+        ("鸡精", "food.name.chickenBouillon"), // i18n:ignore data identity lookup, not UI text
+        ("盐", "food.name.salt"), // i18n:ignore data identity lookup, not UI text
+        ("醋", "food.name.vinegar"), // i18n:ignore data identity lookup, not UI text
+    ]
+
     /// Keyword match rule. Multi-character keywords match as substrings (so
     /// "猪肉末" resolves via "猪肉"), but single-character keywords must match the
     /// whole name exactly (avoids "蛋糕"→"蛋", "鱼丸"→"鱼").
@@ -246,6 +259,26 @@ enum FoodKnowledge {
         var best: String?
         var bestLen = 0
         for entry in englishNames where keyMatches(lower, entry.key) && entry.key.count > bestLen {
+            best = entry.value
+            bestLen = entry.key.count
+        }
+        return best
+    }
+
+    /// Localized display-only name for known food data. Matching and persistence keep
+    /// the original user-entered name.
+    static func displayName(_ name: String) -> String {
+        let trimmed = name.trimmed
+        guard let key = displayNameKey(for: trimmed) else { return name }
+        return Bundle.main.localizedString(forKey: key, value: trimmed, table: nil)
+    }
+
+    private static func displayNameKey(for name: String) -> String? {
+        let lower = name.lowercased()
+        if lower.isEmpty { return nil }
+        var best: String?
+        var bestLen = 0
+        for entry in displayNameKeys where keyMatches(lower, entry.key) && entry.key.count > bestLen {
             best = entry.value
             bestLen = entry.key.count
         }

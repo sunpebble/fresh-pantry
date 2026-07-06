@@ -55,7 +55,7 @@ final class RecipeLocalizerTests: XCTestCase {
         XCTAssertEqual(out.stepDurations, recipe.stepDurations)
     }
 
-    func testMissingIdOrMismatchedShapeFallsBackToOriginal() {
+    func testMissingIdFallsBackToOriginalAndMismatchedArraysKeepTopLevelTranslation() {
         let recipe = Recipe(
             id: "r1",
             name: "番茄炒蛋",
@@ -76,8 +76,15 @@ final class RecipeLocalizerTests: XCTestCase {
             ingredients: [.init(name: "tomato", unit: nil, note: nil)]
         )
 
-        XCTAssertEqual(RecipeLocalizer.apply([:], to: [recipe])[0], recipe)
-        XCTAssertEqual(RecipeLocalizer.apply(["r1": mismatched], to: [recipe])[0], recipe)
+        let missing = RecipeLocalizer.apply([:], to: [recipe])[0]
+        XCTAssertEqual(missing, recipe)
+        let partial = RecipeLocalizer.apply(["r1": mismatched], to: [recipe])[0]
+        XCTAssertEqual(partial.name, "Tomato Eggs")
+        XCTAssertEqual(partial.description, "d")
+        XCTAssertEqual(partial.category, "Meat Dishes")
+        XCTAssertEqual(partial.ingredients[0].name, "tomato")
+        XCTAssertEqual(partial.ingredients[0].unit, recipe.ingredients[0].unit)
+        XCTAssertEqual(partial.steps, recipe.steps)
         XCTAssertEqual(RecipeLocalizer.apply(nil, to: [recipe])[0], recipe)
     }
 }

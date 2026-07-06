@@ -235,7 +235,7 @@ private struct LowStockRow: View {
             FkCategoryAvatar(imageUrl: "", category: item.category, size: 40)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.name)
+                Text(FoodKnowledge.displayName(item.name))
                     .font(.fkTitleMedium)
                     .foregroundStyle(Color.fkOnSurface)
                 if let cadenceHint {

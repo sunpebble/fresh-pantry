@@ -113,8 +113,8 @@ struct ExpiringView: View {
         guard let shoppingStore else { return "" }
         let added = await shoppingStore.add(name: item.name, category: item.category)
         return added
-            ? String(localized: "dashboard.shopping.added \(item.name)")
-            : String(localized: "dashboard.shopping.duplicate \(item.name)")
+            ? String(localized: "dashboard.shopping.added \(item.displayName)")
+            : String(localized: "dashboard.shopping.duplicate \(item.displayName)")
     }
 }
 
@@ -457,7 +457,7 @@ private struct ExpiringContent: View {
             HStack(spacing: FkSpacing.md) {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Color.fkSuccess)
-                Text(String(localized: "dashboard.expiring.consumedUndo \(undo.ingredient.name)"))
+                Text(String(localized: "dashboard.expiring.consumedUndo \(undo.ingredient.displayName)"))
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurface)
                 Spacer(minLength: FkSpacing.sm)

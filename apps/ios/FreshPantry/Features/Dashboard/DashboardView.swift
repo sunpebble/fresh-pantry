@@ -485,8 +485,8 @@ private struct DashboardContent: View {
         if outcome == .added { store.noteShoppingAdded(name: item.name, category: item.category) }
         withAnimation(FkMotion.animation(FkMotion.standard, reduceMotion: reduceMotion)) {
             switch outcome {
-            case .added: toast = String(localized: "dashboard.shopping.added \(item.name)")
-            case .duplicate: toast = String(localized: "dashboard.shopping.duplicate \(item.name)")
+            case .added: toast = String(localized: "dashboard.shopping.added \(item.displayName)")
+            case .duplicate: toast = String(localized: "dashboard.shopping.duplicate \(item.displayName)")
             // A read/persist failure is NOT a duplicate — claiming「已在清单中」
             // would assert a row the store never verified.
             case .failed: toast = String(localized: "dashboard.shopping.addFailed")
@@ -708,7 +708,7 @@ private struct ExpiringTile: View {
         HStack(spacing: FkSpacing.sm) {
             FkCategoryAvatar(imageUrl: item.imageUrl, category: item.category, size: 28)
             VStack(alignment: .leading, spacing: 1) {
-                Text(item.name)
+                Text(item.displayName)
                     .font(.fkBodyMedium)
                     .foregroundStyle(item.state == .expired ? Color.fkOnSurfaceVariant : Color.fkOnSurface)
                     .lineLimit(1)
