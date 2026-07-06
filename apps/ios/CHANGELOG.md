@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.4](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.3.3...fresh_pantry-v2.3.4) (2026-07-06)
+
+
+### Bug Fixes
+
+* **recipes:** 移除观看视频入口 ([d5ae95e](https://github.com/sunpebble/fresh-pantry/commit/d5ae95eb976dafd04da634387bcc9ece968c7302))
+
 ## [2.3.3](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.3.2...fresh_pantry-v2.3.3) (2026-07-06)
 
 
