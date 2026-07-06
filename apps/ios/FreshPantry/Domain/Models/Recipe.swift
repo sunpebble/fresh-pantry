@@ -20,19 +20,24 @@ struct RecipeIngredient: Equatable, Sendable, Codable {
     var quantityMax: Double?
     var unit: String?
     var note: String?
+    /// Non-display names that can still match pantry inventory, e.g. source
+    /// Chinese names kept after applying a localized recipe overlay.
+    var matchNames: [String]
 
     init(
         name: String,
         quantity: Double? = nil,
         quantityMax: Double? = nil,
         unit: String? = nil,
-        note: String? = nil
+        note: String? = nil,
+        matchNames: [String] = []
     ) {
         self.name = name
         self.quantity = quantity
         self.quantityMax = quantityMax
         self.unit = unit
         self.note = note
+        self.matchNames = matchNames
     }
 
     /// Human-readable amount derived from the structured fields (replaces the old
@@ -82,7 +87,8 @@ struct RecipeIngredient: Equatable, Sendable, Codable {
             quantity: quantity * factor,
             quantityMax: quantityMax.map { $0 * factor },
             unit: unit,
-            note: note
+            note: note,
+            matchNames: matchNames
         )
     }
 
@@ -91,20 +97,22 @@ struct RecipeIngredient: Equatable, Sendable, Codable {
         quantity: Double?? = nil,
         quantityMax: Double?? = nil,
         unit: String?? = nil,
-        note: String?? = nil
+        note: String?? = nil,
+        matchNames: [String]? = nil
     ) -> RecipeIngredient {
         RecipeIngredient(
             name: name ?? self.name,
             quantity: quantity ?? self.quantity,
             quantityMax: quantityMax ?? self.quantityMax,
             unit: unit ?? self.unit,
-            note: note ?? self.note
+            note: note ?? self.note,
+            matchNames: matchNames ?? self.matchNames
         )
     }
 
     /// `amount` is decode-only (legacy ingestion); it is never encoded.
     private enum CodingKeys: String, CodingKey {
-        case name, quantity, quantityMax, unit, note, amount
+        case name, quantity, quantityMax, unit, note, amount, matchNames
     }
 
     /// Lossless encode: only the present keys are written — no empty strings, no
@@ -116,6 +124,9 @@ struct RecipeIngredient: Equatable, Sendable, Codable {
         try c.encodeIfPresent(quantityMax, forKey: .quantityMax)
         try c.encodeIfPresent(unit, forKey: .unit)
         try c.encodeIfPresent(note, forKey: .note)
+        if !matchNames.isEmpty {
+            try c.encode(matchNames, forKey: .matchNames)
+        }
     }
 
     /// Backward-compatible decode. Reads BOTH the new numeric shape and the
@@ -166,6 +177,20 @@ struct RecipeIngredient: Equatable, Sendable, Codable {
             }
         }
         self.note = note
+        matchNames = c.decodeLenientIfPresent([String].self, forKey: .matchNames) ?? []
+    }
+
+    var matchingNames: [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for candidate in [name] + matchNames {
+            let trimmed = candidate.trimmed
+            guard !trimmed.isEmpty else { continue }
+            if seen.insert(trimmed.lowercased()).inserted {
+                result.append(trimmed)
+            }
+        }
+        return result
     }
 
     /// Builds a lossless ingredient from a free-text amount string ("200克",

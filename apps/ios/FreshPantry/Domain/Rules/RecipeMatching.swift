@@ -21,12 +21,20 @@ enum RecipeMatching {
         inventoryNameSet(inventory.filter { $0.state != .expired })
     }
 
+    private static func matchCandidates(_ ingredient: RecipeIngredient) -> [String] {
+        ingredient.matchingNames.map { $0.trimmed.lowercased() }.filter { !$0.isEmpty }
+    }
+
+    private static func exactlyMatchesInventoryName(_ ingredient: RecipeIngredient, _ inventoryNames: Set<String>) -> Bool {
+        matchCandidates(ingredient).contains { inventoryNames.contains($0) }
+    }
+
     /// A recipe ingredient is "in stock" when its name is a substring of (or
     /// contains) any inventory name — a forgiving two-way contains match.
     static func ingredientMatchesInventory(_ ingredient: RecipeIngredient, _ inventoryNames: Set<String>) -> Bool {
-        let name = ingredient.name.trimmed.lowercased()
-        guard !name.isEmpty else { return false }
-        return inventoryNames.contains { $0.contains(name) || name.contains($0) }
+        matchCandidates(ingredient).contains { name in
+            inventoryNames.contains { $0.contains(name) || name.contains($0) }
+        }
     }
 
     /// How many of the recipe's ingredients are in stock.
@@ -85,7 +93,7 @@ enum RecipeMatching {
             let matched = matchedCount(inventoryNames, recipe)
             guard matched > 0, !recipe.ingredients.isEmpty else { return (offset, recipe, 0) }
             let base = Double(matched) / Double(recipe.ingredients.count)
-            let usesExpiring = recipe.ingredients.contains { expiringNames.contains($0.name.trimmed.lowercased()) }
+            let usesExpiring = recipe.ingredients.contains { exactlyMatchesInventoryName($0, expiringNames) }
             // 饮食偏好 boost only REORDERS in-stock recipes (matched > 0) — never
             // resurrects a score-0 recipe, so it can't bury 临期 dishes.
             return (offset, recipe, base + (usesExpiring ? 0.5 : 0) + preferenceBoost(recipe, prefs))
@@ -145,7 +153,7 @@ enum RecipeMatching {
         guard !prefs.isEmpty else { return 0 }
         let category = recipe.category.trimmed
         let tagsLower = recipe.tags.map { $0.trimmed.lowercased() }
-        let ingredientNames = recipe.ingredients.map { $0.name.trimmed.lowercased() }
+        let ingredientNames = recipe.ingredients.flatMap(matchCandidates)
         var total = 0.0
         for pref in prefs {
             guard let signal = preferenceSignals[pref] else { continue }
@@ -178,8 +186,9 @@ enum RecipeMatching {
         for recipe in recipes {
             var covered = Set<String>()
             for ingredient in recipe.ingredients {
-                let name = ingredient.name.trimmed.lowercased()
-                if expiringNames.contains(name) { covered.insert(name) }
+                for name in matchCandidates(ingredient) where expiringNames.contains(name) {
+                    covered.insert(name)
+                }
             }
             guard !covered.isEmpty else { continue }
             if best == nil || covered.count > best!.covered.count {
@@ -195,9 +204,9 @@ enum RecipeMatching {
     static func hasExcludedIngredient(_ recipe: Recipe, _ exclusions: Set<String>) -> Bool {
         guard !exclusions.isEmpty else { return false }
         return recipe.ingredients.contains { ingredient in
-            let name = ingredient.name.trimmed.lowercased()
-            guard !name.isEmpty else { return false }
-            return exclusions.contains { !$0.isEmpty && name.contains($0) }
+            matchCandidates(ingredient).contains { name in
+                exclusions.contains { !$0.isEmpty && name.contains($0) }
+            }
         }
     }
 }

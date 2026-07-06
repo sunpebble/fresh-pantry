@@ -48,6 +48,7 @@ final class RecipeLocalizerTests: XCTestCase {
         XCTAssertEqual(out.steps, ["Prep the crab", "Fry the curry", "Reduce the sauce"])
         XCTAssertEqual(out.tags, ["seafood"])
         XCTAssertEqual(out.ingredients[0].name, "mud crab")
+        XCTAssertEqual(out.ingredients[0].matchNames, ["青蟹"])
         XCTAssertEqual(out.ingredients[0].quantity, recipe.ingredients[0].quantity)
         XCTAssertEqual(out.ingredients[0].unit, "whole")
         XCTAssertEqual(out.imageUrl, recipe.imageUrl)

@@ -51,7 +51,9 @@ enum RecipeLocalizer {
             if entry.ingredients.count == recipe.ingredients.count {
                 out.ingredients = zip(recipe.ingredients, entry.ingredients).map { original, translated in
                     var ingredient = original
+                    let sourceNames = original.matchingNames
                     ingredient.name = translated.name
+                    ingredient.matchNames = sourceNames
                     if let unit = translated.unit { ingredient.unit = unit }
                     if let note = translated.note { ingredient.note = note }
                     return ingredient

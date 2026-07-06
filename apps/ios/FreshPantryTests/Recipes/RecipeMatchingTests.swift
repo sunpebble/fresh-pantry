@@ -49,6 +49,23 @@ struct RecipeMatchingTests {
         #expect(RecipeMatching.missingIngredients(names, r).map(\.name) == ["葱"])
     }
 
+    @Test func localizedIngredientsMatchSourceInventoryButMissingListStaysLocalized() {
+        let r = Recipe(
+            id: "r", name: "Tomato Eggs", category: "Vegetarian", difficulty: 1, cookingMinutes: 10,
+            description: "",
+            ingredients: [
+                RecipeIngredient(name: "tomato", quantity: 2, unit: "pieces", matchNames: ["番茄"]),
+                RecipeIngredient(name: "scallion", quantity: 1, unit: "stalk", matchNames: ["葱"]),
+            ],
+            steps: [], tags: []
+        )
+        let names = RecipeMatching.inventoryNameSet([inv("番茄")])
+
+        #expect(RecipeMatching.matchedCount(names, r) == 1)
+        #expect(RecipeMatching.missingIngredients(names, r).map(\.name) == ["scallion"])
+        #expect(RecipeMatching.missingShoppingDetails(names, r).map(\.name) == ["scallion"])
+    }
+
     @Test func expiringCountAndRanking() {
         let a = recipe("A", ["番茄", "鸡蛋"]) // uses 2 expiring
         let b = recipe("B", ["鸡蛋", "盐"])   // uses 1 expiring
