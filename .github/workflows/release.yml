@@ -10,8 +10,6 @@ permissions:
   pull-requests: write
 
 jobs:
-  # Node.js 质量门禁:跑 api:test && recipes:test。每次 push main 和 PR 均执行,
-  # 秒级反馈,确认 API/pipeline 无回归后才允许 testflight job 继续。
   quality:
     runs-on: ubuntu-latest
     steps:
@@ -19,9 +17,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: "22"
-      # 非 workspace monorepo:根 package.json 只有便捷脚本,无依赖。各子包持有
-      # 自己的 package-lock.json,故在各子包内分别 npm ci(根目录 npm ci 只装空根,
-      # vitest 不会出现 → "vitest: not found" exit 127)。
       - name: Install dependencies
         run: |
           cd apps/api && npm ci
@@ -29,9 +24,6 @@ jobs:
       - name: Run quality checks (api:test && recipes:test)
         run: npm run check
 
-  # 平时 push main 只跑这一段(便宜)。release-please 累积 Conventional Commits
-  # 到一个 Release PR;合并 Release PR 那次 push 才 release_created==true,驱动
-  # 下游 testflight。版本真源在 apps/ios/version.txt(release-please 维护)。
   release-please:
     runs-on: ubuntu-latest
     outputs:
@@ -43,167 +35,8 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  # 原生 SwiftUI app 构建 → 签名 → 上传 TestFlight。仅在产生 release 或手动触发时跑。
-  # iOS 26 / Swift 6 需要 Xcode 26,故用 macos-26 runner(若 GitHub 尚未提供该镜像,
-  # 改成带 Xcode 26 的可用 runner 即可)。私有仓 macOS 按 10x 计费,故只在发版时跑。
   testflight:
     needs: [release-please, quality]
     if: ${{ needs.release-please.outputs.release_created == 'true' || github.event_name == 'workflow_dispatch' }}
-    runs-on: macos-26
-    defaults:
-      run:
-        working-directory: apps/ios
-    env:
-      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: latest
-
-      - name: Install XcodeGen
-        run: |
-          # macOS runner ships aws/tap + azure/bicep untrusted; trust before install
-          # so brew does not warn/fail once HOMEBREW_REQUIRE_TAP_TRUST is default.
-          brew trust aws/tap azure/bicep
-          brew install xcodegen
-
-      # xcodebuild needs the key on disk for -allowProvisioningUpdates
-      - name: Write App Store Connect API key
-        run: |
-          mkdir -p private_keys
-          printf '%s\n' "${{ secrets.ASC_API_KEY_P8 }}" > "private_keys/AuthKey_${ASC_KEY_ID}.p8"
-          chmod 600 "private_keys/AuthKey_${ASC_KEY_ID}.p8"
-
-      # 与 dayroll/simmer/sleeptab 相同的签名方案:导入 org 级 Distribution 证书
-      # (action 自建一次性 keychain,post-run 自动清理),profile 由
-      # -allowProvisioningUpdates + ASC API key 云签名按需生成,无需预生成/维护 profile。
-      # 注意:App ID 的 App Group 关联须在 developer.apple.com 手动 Configure,云签名不会自动补。
-      - name: Import distribution certificate
-        uses: apple-actions/import-codesign-certs@v7
-        with:
-          p12-file-base64: ${{ secrets.DIST_CERT_P12 }}
-          p12-password: ${{ secrets.DIST_CERT_PASSWORD }}
-
-      # Secrets.plist 须在 xcodegen 之前生成,才会被收进 app bundle(否则运行时
-      # AppConfig 退化为本地模式、无 Supabase)。SENTRY_DSN 留空 → 用 AppConfig
-      # 内置默认 DSN;环境固定 production。值为已知安全字符(URL / 发布键),printf 直注。
-      - name: Generate Secrets.plist from CI secrets
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
-        run: |
-          : "${SUPABASE_URL:?SUPABASE_URL GitHub secret is required}"
-          : "${SUPABASE_PUBLISHABLE_KEY:?SUPABASE_PUBLISHABLE_KEY GitHub secret is required}"
-          printf '%s\n' \
-            '<?xml version="1.0" encoding="UTF-8"?>' \
-            '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
-            '<plist version="1.0"><dict>' > FreshPantry/Support/Secrets.plist
-          {
-            printf '<key>SUPABASE_URL</key><string>%s</string>' "$SUPABASE_URL"
-            printf '<key>SUPABASE_PUBLISHABLE_KEY</key><string>%s</string>' "$SUPABASE_PUBLISHABLE_KEY"
-            printf '<key>SENTRY_ENVIRONMENT</key><string>production</string>'
-            printf '</dict></plist>\n'
-          } >> FreshPantry/Support/Secrets.plist
-          plutil -lint FreshPantry/Support/Secrets.plist
-
-      - name: Generate Xcode project
-        run: xcodegen generate
-
-      - name: Resolve Swift packages
-        run: xcodebuild -resolvePackageDependencies -project FreshPantry.xcodeproj -scheme FreshPantry
-
-      # 发版前质量门禁:跑单元测试(Debug)。失败即终止,不进 archive/上传。
-      # 想省 macOS 分钟可删除本步骤(本地已跑测试时)。
-      # 动态取任一可用 iPhone 模拟器 UDID:runner 预装多个 iOS runtime,按设备名
-      # 选会撞「destination ambiguous」;按 UDID 选则唯一。app 最低 iOS 26,各 runtime 均满足。
-      - name: Run tests (gate)
-        run: |
-          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; c=[v for rt in d for v in d[rt] if v.get('isAvailable') and v['name'].startswith('iPhone')]; print(c[0]['udid'] if c else '')")
-          if [ -z "$UDID" ]; then echo 'no available iPhone simulator'; exit 1; fi
-          echo "Using simulator UDID: $UDID"
-          xcodebuild test \
-            -project FreshPantry.xcodeproj \
-            -scheme FreshPantry \
-            -destination "platform=iOS Simulator,id=$UDID"
-
-      - name: Compute build number (UTC timestamp, monotonic)
-        id: bn
-        run: echo "build_number=$(date -u +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
-
-      - name: Read marketing version (release-please source of truth)
-        id: ver
-        run: echo "marketing_version=$(cat version.txt)" >> "$GITHUB_OUTPUT"
-
-      # 自动签名(与其他 sunpebble app 一致):导入的 Distribution 证书作为固定签名身份,
-      # -allowProvisioningUpdates + ASC API key 云签名按需取 profile,不再新建证书撞配额。
-      - name: Archive
-        run: |
-          xcodebuild archive \
-            -project FreshPantry.xcodeproj \
-            -scheme FreshPantry \
-            -configuration Release \
-            -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -archivePath build/FreshPantry.xcarchive \
-            CODE_SIGN_STYLE=Automatic \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            MARKETING_VERSION=${{ steps.ver.outputs.marketing_version }} \
-            CURRENT_PROJECT_VERSION=${{ steps.bn.outputs.build_number }} \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$PWD/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
-
-      - name: Export IPA (clean PATH avoids Homebrew GNU rsync "Copy failed")
-        run: |
-          cat > ExportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key><string>app-store-connect</string>
-            <key>destination</key><string>export</string>
-            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
-          </dict>
-          </plist>
-          EOF
-          env PATH="/usr/bin:/bin:/usr/sbin:/sbin" xcodebuild -exportArchive \
-            -archivePath build/FreshPantry.xcarchive \
-            -exportPath build/ipa \
-            -exportOptionsPlist ExportOptions.plist \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$PWD/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
-
-      - name: Upload to TestFlight
-        uses: apple-actions/upload-testflight-build@v5
-        with:
-          app-path: apps/ios/build/ipa/FreshPantry.ipa
-          issuer-id: ${{ secrets.ASC_ISSUER_ID }}
-          api-key-id: ${{ secrets.ASC_KEY_ID }}
-          api-private-key: ${{ secrets.ASC_API_KEY_P8 }}
-          # The action signs one short-lived JWT up front; its processing-poll loop
-          # outlives the token and dies with a 401 even though the upload succeeded.
-          wait-for-processing: 'false'
-
-      # 发版优先:符号上传放在上传之后,失败仅本步骤标红(continue-on-error),
-      # 不影响已上架构建。dSYM 按 UUID 关联,无需对齐 release。org/project 与
-      # Flutter 侧一致(kunish / fresh_pantry),复用 SENTRY_AUTH_TOKEN。
-      - name: Upload dSYMs to Sentry (non-blocking)
-        continue-on-error: true
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-        run: |
-          npx --yes @sentry/cli@latest debug-files upload \
-            --org kunish --project fresh_pantry \
-            --include-sources \
-            build/FreshPantry.xcarchive/dSYMs
-
-      - name: Clean up credentials
-        if: always()
-        run: rm -rf private_keys ExportOptions.plist
+    uses: sunpebble/ci/.github/workflows/ios-testflight-fresh-pantry.yml@v1.1
+    secrets: inherit
