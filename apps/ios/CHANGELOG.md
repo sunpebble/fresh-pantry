@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.2.1...fresh_pantry-v2.3.0) (2026-07-06)
+
+
+### Features
+
+* **ios:** 不再打包菜谱 JSON ([4672d04](https://github.com/sunpebble/fresh-pantry/commit/4672d04691ab1a5d0d84620f7d77b020ffab162f))
+
 ## [2.2.1](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.2.0...fresh_pantry-v2.2.1) (2026-07-06)
 
 
