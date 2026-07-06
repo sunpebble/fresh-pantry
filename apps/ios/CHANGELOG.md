@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.3.2](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.3.1...fresh_pantry-v2.3.2) (2026-07-06)
+
+
+### Bug Fixes
+
+* **i18n:** 补齐真实库存名称本地化 ([c5ae90c](https://github.com/sunpebble/fresh-pantry/commit/c5ae90c9c567bc5476077a92d5f74b9d641a3421))
+* **ui:** avoid clipped category counts ([497108c](https://github.com/sunpebble/fresh-pantry/commit/497108cc77410e373962afb05902ba779005dfde))
+
 ## [2.3.1](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.3.0...fresh_pantry-v2.3.1) (2026-07-06)
 
 
