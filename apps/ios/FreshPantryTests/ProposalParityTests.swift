@@ -97,7 +97,8 @@ struct ProposalParityTests {
         )
         #expect(proposals[0].action == .mergeInto)
         #expect(proposals[0].mergeTargetId == "0") // index as string
-        #expect(proposals[0].mergeTargetLabel == "白糖 2袋")
+        #expect(proposals[0].mergeTargetLabel == "白糖 2\(UnitLabels.displayLabel(for: "袋"))")
+        #expect(proposals[0].unit == "袋")
     }
 
     @Test func intakePerishableAlwaysNewBatch() {
@@ -278,7 +279,8 @@ struct ProposalParityTests {
             row(name: "牛奶", unit: "瓶", quantity: "2", expiryLabel: "3天后过期", expiryDate: date(3))
         ]
         let candidates = ProposalPlanner.fuzzyMatchInventoryRows("牛奶", inventory)
-        #expect(candidates[0].displayLabel == "牛奶 2瓶 · 3天后过期")
+        #expect(candidates[0].displayLabel == "牛奶 2\(UnitLabels.displayLabel(for: "瓶")) · 3天后过期")
+        #expect(candidates[0].inventoryRowUnit == "瓶")
 
         let noLabel = [row(name: "盐", unit: "g", quantity: "100")]
         let c2 = ProposalPlanner.fuzzyMatchInventoryRows("盐", noLabel)

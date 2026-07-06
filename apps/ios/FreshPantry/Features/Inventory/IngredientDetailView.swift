@@ -314,7 +314,7 @@ struct IngredientDetailView: View {
                 statColumn(
                     label: String(localized: "inventory.detail.currentQuantity"),
                     value: ingredient.quantity,
-                    unit: ingredient.unit,
+                    unit: UnitLabels.displayLabel(for: ingredient.unit),
                     valueColor: .fkOnSurface
                 )
                 Rectangle()
@@ -534,10 +534,12 @@ private struct PartialConsumeSheet: View {
         return value
     }
 
+    private var displayUnit: String { UnitLabels.displayLabel(for: unit) }
+
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: FkSpacing.lg) {
-                Text(String(localized: "inventory.consume.remaining \(QuantityText.formatQuantity(available)) \(unit)"))
+                Text(String(localized: "inventory.consume.remaining \(QuantityText.formatQuantity(available)) \(displayUnit)"))
                     .font(.fkBodyMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
 
@@ -551,7 +553,7 @@ private struct PartialConsumeSheet: View {
                             RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
                                 .fill(Color.fkSurfaceContainer)
                         )
-                    Text(unit)
+                    Text(displayUnit)
                         .font(.fkBodyMedium)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                 }

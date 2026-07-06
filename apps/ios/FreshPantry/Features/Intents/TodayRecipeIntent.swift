@@ -24,7 +24,7 @@ struct TodayRecipeIntent: AppIntent {
             remote: remote,
             cache: RecipeCatalogCache()
         )
-        let overlay = await RecipeCatalogLoader.overlay(remote: remote)
+        let overlay = await RecipeCatalogLoader.overlay(remote: remote, cache: RecipeCatalogCache())
         let recipes = RecipeLocalizer.apply(overlay, to: catalog)
         // 读库存(尽力而为:容器打不开 / 读失败都退化为空库存 → selector 仍给得出
         // 一道菜谱库推荐,而不是报错——「今天做什么」永远该答得出来)。

@@ -1,15 +1,9 @@
 import Foundation
 
-/// Display-only localization for the Chinese unit literals used as picker
-/// option identity in `AddIngredientForm`/`EditIngredientForm`/`IntakeReviewView`
-/// (mirrors `FoodCategories.displayLabel(for:)`). The Chinese strings remain
-/// the stored/matching identity for `Ingredient.unit` — only the picker label
-/// is translated here.
-///
-/// ponytail: scope is the picker option list only. Once a unit is saved, its
-/// rendering elsewhere (inventory list, notifications, etc.) still shows the
-/// raw stored value — full cross-app unit localization is out of scope for
-/// this pass.
+/// Display-only localization for Chinese unit literals used as persisted
+/// inventory identity (mirrors `FoodCategories.displayLabel(for:)`). The raw
+/// unit remains the stored/matching value for `Ingredient.unit`; only UI labels
+/// are translated here.
 enum UnitLabels {
     private static let displayKeys: [String: String] = [
         "个": "inventory.unit.ge", // i18n:ignore data identity, not UI text

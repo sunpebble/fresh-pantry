@@ -101,12 +101,26 @@ enum RecipeCatalogLoader {
     static func overlay(
         injected: [String: RecipeOverlayEntry]? = nil,
         remote: (any RecipeCatalogFetching)?,
+        cache: RecipeCatalogCache? = nil,
         preferred: [String] = Bundle.main.preferredLocalizations
     ) async -> [String: RecipeOverlayEntry]? {
         if let injected { return injected }
-        guard let lang = RecipeLocalizer.overlayLanguage(preferred: preferred),
-              let remote, remote.isAvailable else { return nil }
-        return await remote.fetchOverlay(lang: lang)
+        guard let lang = RecipeLocalizer.overlayLanguage(preferred: preferred) else { return nil }
+        if let remote, remote.isAvailable {
+            let fresh = await remote.fetchOverlay(lang: lang)
+            if let fresh, !fresh.isEmpty {
+                if let cache {
+                    await Task.detached(priority: .utility) {
+                        cache.writeOverlay(fresh, lang: lang)
+                    }.value
+                }
+                return fresh
+            }
+        }
+        guard let cache else { return nil }
+        return await Task.detached(priority: .userInitiated) {
+            cache.readOverlay(lang: lang)
+        }.value
     }
 }
 

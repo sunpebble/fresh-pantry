@@ -699,7 +699,7 @@
       "Nettoyer le bar, l'essuyer avec du papier absorbant. Faire quelques entailles sur chaque face. Frotter le poisson avec du sel pour enlever le mucus, puis saler l'intérieur et l'extérieur avec 10 g de sel. Laisser mariner au moins 10 minutes.",
       "Ajout d'une méthode de découpe et de présentation : après la découpe, le bar peut être cuit à la vapeur debout pour une cuisson uniforme et plus facile à manger sans avoir à le retourner.",
       "Découpe",
-      "清蒸鲈鱼-预览图-2",
+      "Image de prévisualisation du bar vapeur 2",
       "Farcir l'intérieur du poisson avec du gingembre et du blanc d'oignon vert, et en parsemer également sur le corps. Utiliser la moitié de la quantité réservée. Placer des baguettes dans le plat de cuisson pour surélever le poisson et le cuire à la vapeur.",
       "Porter l'eau à ébullition, puis ajouter le poisson.",
       "Cuire à la vapeur à feu vif pendant 10 minutes.",
@@ -3836,8 +3836,8 @@
     "description": "La glace à l'Oréo est onctueuse, avec un mélange de saveur lactée et du croquant sucré des Oréo. La crème entière animale la rend légère et non grasse. Elle apporte principalement de l'énergie, des lipides et des glucides, parfaite comme petite douceur rafraîchissante. La préparation est simple : il suffit de retirer le fourrage des biscuits et de fouetter la crème. Un débutant patient peut y arriver. Comptez environ 30 minutes de préparation, puis 4 heures de congélation minimum.",
     "category": "Desserts",
     "steps": [
-      "Tourner les Oréo pour les ouvrir, retirer le fourrage (appelé '利利') et réserver.",
-      "Écraser les biscuits Oréo (les '奥奥') avec une baguette. La moitié doit devenir en poudre, l'autre moitié avoir des morceaux de moins de 0,5 cm. Réserver. (Sur Taobao, cherchez 'miettes d'Oréo' pour gagner du temps ^-^)",
+      "Ouvrir les Oréo, retirer la crème et réserver.",
+      "Écraser les biscuits Oréo avec une baguette. La moitié doit devenir une poudre, l'autre moitié doit rester en morceaux de moins de 0,5 cm. Réserver. (Sur Taobao, cherchez des miettes d'Oréo pour gagner du temps ^-^)",
       "Verser toute la crème dans un grand bol et ajouter le sucre préparé.",
       "Fouetter à vitesse élevée avec un batteur électrique jusqu'à ce que la crème forme des pics mous (0,5 cm à 1 cm) lorsqu'on soulève le batteur, et qu'elle ne coule plus comme un liquide (un peu de coulure est normal).",
       "Une fois fouettée, incorporer les miettes d'Oréo et mélanger uniformément jusqu'à ce que le fond en contienne.",
@@ -4824,12 +4824,12 @@
       "Frapper la dernière branche de menthe pour réveiller son arôme, l'insérer dans la glace pilée pour décorer."
     ],
     "tags": [
-      "饮品",
-      "酸甜",
-      "清爽",
-      "调酒",
-      "快手",
-      "夏日"
+      "Boisson",
+      "Aigre-doux",
+      "Rafraîchissant",
+      "Cocktail",
+      "Rapide",
+      "Été"
     ],
     "ingredients": [
       {
@@ -11249,7 +11249,7 @@
     ]
   },
   "howtocook:meat_dish/红烧鸡翅": {
-    "name": "Ailes de poulet braisées (红烧鸡翅)",
+    "name": "Ailes de poulet braisées à la sauce soja",
     "description": "Les ailes de poulet braisées sont un plat familial qui accompagne bien le riz. Elles sont salées et légèrement sucrées, d'une couleur rouge brillante, avec une viande tendre qui se détache facilement des os. Les ailes de poulet sont riches en protéines de haute qualité et en collagène, faciles à absorber. La difficulté est modérée ; les débutants peuvent suivre les étapes facilement. Du début à la fin, il faut environ 40 minutes.",
     "category": "Plats de viande",
     "steps": [

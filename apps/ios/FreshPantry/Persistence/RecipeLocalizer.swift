@@ -2,8 +2,8 @@ import Foundation
 
 /// 食谱译文覆盖层(id → 译文),由 DB 读取后套在共享语料上;中文界面不加载。
 /// overlay 缺某 id(远程新增、翻译失败)→ 该条保持中文原文。
-struct RecipeOverlayEntry: Decodable, Sendable {
-    struct IngredientOverlay: Decodable, Sendable {
+struct RecipeOverlayEntry: Codable, Sendable {
+    struct IngredientOverlay: Codable, Sendable {
         let name: String
         let unit: String?
         let note: String?

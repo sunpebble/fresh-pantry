@@ -133,13 +133,13 @@ final class AppDependencies {
     private static let uiTestRecipeJSON = """
     [{
       "id":"ui:curry-crab",
-      "name":"咖喱炒蟹",
-      "category":"水产",
+      "name":"Curry Fried Crab",
+      "category":"Seafood",
       "difficulty":3,
       "cookingMinutes":30,
       "description":"",
       "ingredients":[],
-      "steps":["出锅"]
+      "steps":["Serve"]
     }]
     """
 

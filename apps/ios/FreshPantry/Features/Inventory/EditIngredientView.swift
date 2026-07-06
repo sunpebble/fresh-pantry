@@ -112,7 +112,7 @@ struct EditIngredientView: View {
                 )
             }
             FkFormField(label: String(localized: "inventory.field.unit")) {
-                FkValuePill(value: form.unit) { showUnitPicker = true }
+                FkValuePill(value: UnitLabels.displayLabel(for: form.unit)) { showUnitPicker = true }
             }
             .frame(maxWidth: 140)
         }

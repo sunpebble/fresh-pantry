@@ -255,7 +255,10 @@ struct RootView: View {
                 remote: dependencies.remoteRecipeCatalog,
                 cache: dependencies.recipeCatalogCache
             )
-            let overlay = await RecipeCatalogLoader.overlay(remote: dependencies.remoteRecipeCatalog)
+            let overlay = await RecipeCatalogLoader.overlay(
+                remote: dependencies.remoteRecipeCatalog,
+                cache: dependencies.recipeCatalogCache
+            )
             let bundled = RecipeLocalizer.apply(overlay, to: catalog)
             await indexer.reindexRecipes(RecipesStore.merge(bundled: bundled, custom: custom))
         }

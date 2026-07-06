@@ -699,7 +699,7 @@
       "After cleaning the sea bass, pat dry with paper towels. Make a few cuts on both sides. Rub the fish with salt to remove the slime, then rub 10g of salt all over the inside and outside of the fish. Marinate for at least 10 minutes.",
       "Here's a tip for cutting and plating the sea bass: after scoring, the fish can stand upright while steaming, ensuring even heating and making it easier to eat without flipping.",
       "Score the fish",
-      "清蒸鲈鱼-预览图-2",
+      "Steamed sea bass preview image 2",
       "Stuff the fish belly with ginger and scallion whites, and also sprinkle some on top. Use half of the prepared amount. Place chopsticks under the fish in the steaming plate to lift it off the bottom.",
       "Heat the water until it's warm to the touch, then place the fish in the steamer.",
       "Steam over high heat for 10 minutes.",
@@ -4142,23 +4142,23 @@
     "ingredients": [
       {
         "name": "Milk",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Cornstarch",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Breadcrumbs",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Egg",
-        "unit": "个"
+        "unit": "piece"
       },
       {
         "name": "White sugar",
-        "unit": "克"
+        "unit": "g"
       }
     ]
   },
@@ -9529,8 +9529,8 @@
     ]
   },
   "howtocook:meat_dish/水煮肉片": {
-    "name": "水煮肉片 (Boiled Sliced Pork in Chili Sauce)",
-    "description": "水煮肉片 is a classic Sichuan dish with spicy and numbing flavor, tender sliced meat, and crunchy vegetables. It's excellent with rice. Pork tenderloin provides high-quality protein, combined with bean sprouts and other vegetables for balanced nutrition. The preparation process is a bit elaborate, especially the marination of the meat and making the knife-cut chilies. Beginners may need about 1 to 2 hours.",
+    "name": "Boiled Sliced Pork in Chili Sauce",
+    "description": "Boiled sliced pork in chili sauce is a classic Sichuan dish with spicy and numbing flavor, tender sliced meat, and crunchy vegetables. It is excellent with rice. Pork tenderloin provides high-quality protein, combined with bean sprouts and other vegetables for balanced nutrition. The preparation process is a bit elaborate, especially the marination of the meat and making the knife-cut chilies. Beginners may need about 1 to 2 hours.",
     "category": "Meat Dishes",
     "steps": [
       "Cut the tenderloin into small pieces, then slice into 2mm thin slices (adjust thickness to preference). Place in a bowl, wash with water twice to remove blood and impurities, drain and squeeze dry.",
@@ -10415,43 +10415,43 @@
     "ingredients": [
       {
         "name": "Pork belly or pork ribs",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Northeastern sauerkraut",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Scallion",
-        "unit": "根"
+        "unit": "stalk"
       },
       {
         "name": "Ginger",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Garlic",
-        "unit": "瓣"
+        "unit": "clove"
       },
       {
         "name": "Salt",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Light soy sauce",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Five-spice powder",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Cooking wine",
-        "unit": "毫升"
+        "unit": "ml"
       },
       {
         "name": "Star anise",
-        "unit": "颗"
+        "unit": "piece"
       }
     ]
   },
@@ -13022,7 +13022,7 @@
     "steps": [
       "Wash the green peppers, remove the stems and seeds, then cut into bite-sized pieces using a rolling cut (cut on the bias, turning the pepper as you go).",
       "Smash the garlic cloves with the side of a knife, then slice crosswise into pieces. Finely chop the ginger into mince.",
-      "Slice the pork into pieces along the grain (i.e., the knife should be parallel to the meat fibers, resulting in slices with the grain in a '川' shape).",
+      "Slice the pork along the grain, keeping the knife parallel to the meat fibers so the finished slices show clear parallel streaks.",
       "Rinse the sliced pork, place in a bowl, then add the measured light soy sauce, oyster sauce, and salt. Mix well and marinate for 10 minutes.",
       "Heat the wok without oil, add the cut green peppers. Dry-fry over high heat until they develop a 'tiger skin' appearance (blistered and slightly charred). Then add 2g salt and stir-fry for another minute. Remove and set aside.",
       "Without cleaning the wok, heat it over high heat, add 8ml oil. After 30 seconds, add the garlic and ginger, stir-fry for 15 seconds.",
@@ -21363,35 +21363,35 @@
     "ingredients": [
       {
         "name": "Japanese tofu",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Green pepper",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Carrot",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Ham sausage",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Black wood ear mushrooms",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Cornstarch",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Onion",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Garlic",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Oil",
@@ -21407,15 +21407,15 @@
       },
       {
         "name": "Salt",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Chicken bouillon",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "White sugar",
-        "unit": "克"
+        "unit": "g"
       },
       {
         "name": "Ketchup",

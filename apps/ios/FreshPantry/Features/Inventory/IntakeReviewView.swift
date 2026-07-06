@@ -329,7 +329,7 @@ private struct IntakeProposalRow: View {
                     onChanged(proposal.copyWith(quantity: $0, userEdited: true))
                 }
                 Button(action: { showUnitPicker = true }) {
-                    Text(proposal.unit)
+                    Text(UnitLabels.displayLabel(for: proposal.unit))
                         .font(.fkLabelMedium)
                         .foregroundStyle(Color.fkPrimaryContainer)
                         .padding(.horizontal, FkSpacing.sm)

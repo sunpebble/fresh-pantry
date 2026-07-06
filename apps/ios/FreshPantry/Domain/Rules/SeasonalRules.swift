@@ -69,6 +69,18 @@ enum SeasonalRules {
         seasonalIngredients[season(date, calendar: calendar)] ?? []
     }
 
+    /// Display-only localized season name for the seasonal carousel header.
+    static func localizedSeasonName(_ season: Season) -> String {
+        let key: String
+        switch season {
+        case .spring: key = "season.spring"
+        case .summer: key = "season.summer"
+        case .autumn: key = "season.autumn"
+        case .winter: key = "season.winter"
+        }
+        return String(localized: String.LocalizationValue(key))
+    }
+
     /// How many distinct in-season keywords a recipe touches (ingredients/name/tags).
     static func seasonalScore(_ recipe: Recipe, keywords: [String]) -> Int {
         guard !keywords.isEmpty else { return 0 }

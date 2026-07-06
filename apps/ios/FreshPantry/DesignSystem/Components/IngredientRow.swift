@@ -21,7 +21,7 @@ struct IngredientRow: View {
                     .lineLimit(1)
 
                 HStack(spacing: FkSpacing.sm) {
-                    Text("\(ingredient.quantity)\(ingredient.unit)")
+                    Text("\(ingredient.quantity)\(UnitLabels.displayLabel(for: ingredient.unit))")
                         .font(.fkBodySmall)
                         .foregroundStyle(Color.fkOnSurfaceVariant)
                     storageChip

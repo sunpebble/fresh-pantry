@@ -329,7 +329,10 @@ private struct MealPlanContent: View {
             remote: dependencies.remoteRecipeCatalog,
             cache: dependencies.recipeCatalogCache
         )
-        let overlay = await RecipeCatalogLoader.overlay(remote: dependencies.remoteRecipeCatalog)
+        let overlay = await RecipeCatalogLoader.overlay(
+            remote: dependencies.remoteRecipeCatalog,
+            cache: dependencies.recipeCatalogCache
+        )
         let bundled = RecipeLocalizer.apply(overlay, to: catalog)
         let custom = (try? await dependencies.customRecipeRepository.loadAllFor(scope)) ?? []
         guard scope == dependencies.householdID, !Task.isCancelled else { return }

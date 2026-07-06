@@ -53,7 +53,7 @@ enum ProposalPlanner {
             let expirySuffix = row.expiryLabel == nil ? "" : " · \(row.expiryLabel!)"
             return DeductionCandidate(
                 inventoryRowIndex: match.0,
-                displayLabel: "\(row.name) \(row.quantity)\(row.unit)\(expirySuffix)",
+                displayLabel: "\(row.name) \(row.quantity)\(UnitLabels.displayLabel(for: row.unit))\(expirySuffix)",
                 inventoryRowId: row.id,
                 inventoryRowName: row.name,
                 inventoryRowUnit: row.unit

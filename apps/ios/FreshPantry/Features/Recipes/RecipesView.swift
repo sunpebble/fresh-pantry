@@ -748,7 +748,7 @@ private struct RecipesContent: View {
                         Image(systemName: "leaf.fill")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Color.fkPrimary)
-                        Text(String(localized: "recipe.list.seasonalRecommendation \(store.currentSolarTermName())"))
+                        Text(String(localized: "recipe.list.seasonalRecommendation \(store.currentSeasonName())"))
                             .font(.fkTitleSmall)
                             .foregroundStyle(Color.fkOnSurface)
                     }

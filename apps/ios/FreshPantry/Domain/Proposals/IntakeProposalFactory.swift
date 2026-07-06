@@ -86,7 +86,7 @@ enum IntakeProposalFactory {
         let mergeTargetLabel: String?
         if let i {
             let row = inventory[i]
-            mergeTargetLabel = "\(row.name) \(row.quantity)\(row.unit)"
+            mergeTargetLabel = "\(row.name) \(row.quantity)\(UnitLabels.displayLabel(for: row.unit))"
         } else {
             mergeTargetLabel = nil
         }

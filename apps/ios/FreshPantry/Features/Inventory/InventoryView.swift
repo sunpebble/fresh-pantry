@@ -833,7 +833,7 @@ private struct IngredientPreviewCard: View {
                 Text(ingredient.name)
                     .font(.fkTitleMedium)
                     .foregroundStyle(Color.fkOnSurface)
-                Text("\(ingredient.quantity)\(ingredient.unit) · \(ingredient.storage.storageAreaLabel)")
+                Text("\(ingredient.quantity)\(UnitLabels.displayLabel(for: ingredient.unit)) · \(ingredient.storage.storageAreaLabel)")
                     .font(.fkLabelMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
                 HStack(spacing: FkSpacing.sm) {

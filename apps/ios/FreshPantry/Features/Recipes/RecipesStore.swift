@@ -102,6 +102,9 @@ final class RecipesStore {
     /// overrides a shared id in place). The parity-critical source order is never
     /// mutated by display concerns.
     private(set) var recipes: [Recipe] = []
+    /// Same merged corpus before recipe i18n is applied. Domain rules such as
+    /// seasonal Chinese keyword matching use this, while views render `recipes`.
+    private var seasonalRankSource: [Recipe] = []
     private(set) var isLoading = false
     private(set) var hasLoaded = false
 
@@ -151,7 +154,7 @@ final class RecipesStore {
     }
 
     private func overlay() async -> [String: RecipeOverlayEntry]? {
-        await RecipeCatalogLoader.overlay(injected: recipeOverlay, remote: remoteCatalog)
+        await RecipeCatalogLoader.overlay(injected: recipeOverlay, remote: remoteCatalog, cache: catalogCache)
     }
 
     // MARK: Loading
@@ -169,7 +172,9 @@ final class RecipesStore {
         async let catalogLoad = catalogRecipes()
         async let overlayLoad = overlay()
         let custom = (try? await customRepository.loadAllFor(householdID)) ?? []
-        recipes = Self.merge(bundled: RecipeLocalizer.apply(await overlayLoad, to: await catalogLoad), custom: custom)
+        let catalog = await catalogLoad
+        seasonalRankSource = Self.merge(bundled: catalog, custom: custom)
+        recipes = Self.merge(bundled: RecipeLocalizer.apply(await overlayLoad, to: catalog), custom: custom)
         customIDs = Set(custom.map(\.id))
         cookHistoryByRecipeId = (try? await cookHistoryRepository?.loadAll()) ?? [:]
         if let inventoryRepository {
@@ -198,6 +203,7 @@ final class RecipesStore {
             catalogCache.write(fresh)
         }.value
         let custom = (try? await customRepository.loadAllFor(householdID)) ?? []
+        seasonalRankSource = Self.merge(bundled: fresh, custom: custom)
         recipes = Self.merge(bundled: RecipeLocalizer.apply(await overlay(), to: fresh), custom: custom)
         customIDs = Set(custom.map(\.id))
     }
@@ -296,9 +302,10 @@ final class RecipesStore {
         }
     }
 
-    /// 当前节气名 (e.g. "芒种") — labels the 时令推荐 carousel.
-    func currentSolarTermName(now: Date = Date()) -> String {
-        SeasonalRules.currentTerm(now).name
+    /// Localized season name — labels the in-season carousel without leaking
+    /// Chinese solar-term data into non-Chinese UI.
+    func currentSeasonName(now: Date = Date()) -> String {
+        SeasonalRules.localizedSeasonName(SeasonalRules.season(now))
     }
 
     /// In-season recipes for today (ranked by distinct in-season ingredients),
@@ -306,8 +313,14 @@ final class RecipesStore {
     /// 探索 tab with no active query so it never fights the filtered list.
     func seasonalRecipes(now: Date = Date(), limit: Int = 6) -> [Recipe] {
         let exclusions = dietaryStore?.keywords ?? []
-        let eligible = recipes.filter { !RecipeMatching.hasExcludedIngredient($0, exclusions) }
+        let displayByID = Dictionary(recipes.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
+        let eligible = seasonalRankSource.filter { source in
+            guard let display = displayByID[source.id] else { return false }
+            return !RecipeMatching.hasExcludedIngredient(source, exclusions)
+                && !RecipeMatching.hasExcludedIngredient(display, exclusions)
+        }
         return SeasonalRules.rankRecipes(eligible, date: now, limit: limit)
+            .compactMap { displayByID[$0.id] }
     }
 
     /// The per-tab source list BEFORE the shared filters. `explore`/`mine` keep

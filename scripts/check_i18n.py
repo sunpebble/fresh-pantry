@@ -69,6 +69,34 @@ def xcstrings_offenders() -> list[str]:
     return out
 
 
+def _json_scalar_strings(value, path=()):
+    if isinstance(value, dict):
+        for key, child in value.items():
+            yield from _json_scalar_strings(child, path + (str(key),))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            yield from _json_scalar_strings(child, path + (str(index),))
+    elif isinstance(value, str):
+        yield path, value
+
+
+def recipe_overlay_offenders() -> list[str]:
+    """English/French recipe overlays should not contain Chinese source text.
+    Keys are recipe ids and intentionally remain Chinese; scan values only.
+    Japanese is skipped because Kanji is valid localized text there.
+    """
+    out = []
+    for lang in ("en", "fr"):
+        f = IOS / "FreshPantry" / "Resources" / f"howtocook.i18n.{lang}.json"
+        if not f.exists():
+            continue
+        data = json.loads(f.read_text())
+        for path, value in _json_scalar_strings(data):
+            if CJK.search(value):
+                out.append(f"{f.relative_to(ROOT)}:{'.'.join(path)}: {value[:80]}")
+    return out
+
+
 LOCALIZED_CALL = re.compile(r'String\(localized:\s*"([a-z][A-Za-z0-9.]*)((?: |\()[^"]*)"\)')
 TEXT_LITERAL = re.compile(r'Text\("([a-z][A-Za-z0-9.]*)"\)')
 
@@ -129,6 +157,7 @@ def main() -> int:
     offenders = swift_offenders(args or DEFAULT_DIRS)
     if not args:
         offenders += xcstrings_offenders()
+        offenders += recipe_overlay_offenders()
         offenders += interpolation_offenders(DEFAULT_DIRS)
     for line in offenders:
         print(line)

@@ -7,23 +7,33 @@ import Testing
 /// DB fetch, and local payload fallback for tests/previews.
 @MainActor
 struct RecipeCatalogTests {
-    private func recipe(id: String, name: String, category: String = "家常") -> Recipe {
+    private func recipe(
+        id: String,
+        name: String,
+        category: String = "家常",
+        ingredients: [String] = []
+    ) -> Recipe {
         Recipe(
             id: id, name: name, category: category, difficulty: 2,
-            cookingMinutes: 20, description: "", ingredients: [], steps: []
+            cookingMinutes: 20, description: "",
+            ingredients: ingredients.map { RecipeIngredient(name: $0) },
+            steps: []
         )
     }
 
     /// Deterministic stub catalog (no live SDK) for the refresh path.
     private struct StubCatalog: RecipeCatalogFetching {
         let recipes: [Recipe]
+        var overlay: [String: RecipeOverlayEntry]? = nil
         var isAvailable: Bool { true }
         func fetchAll() async -> [Recipe] { recipes }
+        func fetchOverlay(lang: String) async -> [String: RecipeOverlayEntry]? { overlay }
     }
 
     private func tempCacheURL() -> URL {
         FileManager.default.temporaryDirectory
-            .appendingPathComponent("catalog-\(UUID().uuidString).json")
+            .appendingPathComponent("catalog-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("recipe-catalog.json")
     }
 
     private func isolatedDefaults() -> UserDefaults {
@@ -40,7 +50,8 @@ struct RecipeCatalogTests {
     private func makeStore(
         bundled: [Recipe],
         cache: RecipeCatalogCache? = nil,
-        remote: (any RecipeCatalogFetching)? = nil
+        remote: (any RecipeCatalogFetching)? = nil,
+        recipeOverlay: [String: RecipeOverlayEntry]? = nil
     ) throws -> RecipesStore {
         let container = try ModelContainerFactory.makeInMemory()
         return RecipesStore(
@@ -50,7 +61,22 @@ struct RecipeCatalogTests {
             householdID: "home",
             remoteCatalog: remote,
             catalogCache: cache,
-            recipeOverlay: nil
+            recipeOverlay: recipeOverlay
+        )
+    }
+
+    private func overlayEntry(
+        name: String,
+        category: String = "Home",
+        ingredients: [String] = []
+    ) -> RecipeOverlayEntry {
+        RecipeOverlayEntry(
+            name: name,
+            description: "",
+            category: category,
+            steps: [],
+            tags: [],
+            ingredients: ingredients.map { .init(name: $0, unit: nil, note: nil) }
         )
     }
 
@@ -67,6 +93,13 @@ struct RecipeCatalogTests {
         let cache = RecipeCatalogCache(fileURL: tempCacheURL())
         cache.write([])
         #expect(cache.read() == nil) // 空数组视为无缓存,回退 bundle
+    }
+
+    @Test func overlayCacheRoundTrips() {
+        let cache = RecipeCatalogCache(fileURL: tempCacheURL())
+        #expect(cache.readOverlay(lang: "en") == nil)
+        cache.writeOverlay(["r1": overlayEntry(name: "Translated")], lang: "en")
+        #expect(cache.readOverlay(lang: "en")?["r1"]?.name == "Translated")
     }
 
     // MARK: Source precedence (cache > DB > local payload)
@@ -89,6 +122,17 @@ struct RecipeCatalogTests {
         await store.load()
         #expect(store.recipes.map(\.id) == ["remote1"])
         #expect(cache.read()?.map(\.id) == ["remote1"])
+    }
+
+    @Test func overlayFetchWritesCacheAndCacheBacksOfflineLoads() async {
+        let cache = RecipeCatalogCache(fileURL: tempCacheURL())
+        let entry = overlayEntry(name: "Cucumber Salad", ingredients: ["cucumber"])
+        let remote = StubCatalog(recipes: [], overlay: ["r1": entry])
+        let fresh = await RecipeCatalogLoader.overlay(remote: remote, cache: cache, preferred: ["en"])
+        #expect(fresh?["r1"]?.name == "Cucumber Salad")
+
+        let cached = await RecipeCatalogLoader.overlay(remote: nil, cache: cache, preferred: ["en"])
+        #expect(cached?["r1"]?.name == "Cucumber Salad")
     }
 
     @Test func loadFallsBackToLocalPayloadWhenNoCacheOrRemote() async throws {
@@ -127,5 +171,17 @@ struct RecipeCatalogTests {
         await store.refreshCatalogFromRemote()
         #expect(store.recipes.map(\.id) == ["bundle1"]) // 空抓取不覆盖
         #expect(cache.read() == nil) // 不写空缓存
+    }
+
+    @Test func seasonalRecipesRankRawCatalogButReturnLocalizedDisplay() async throws {
+        let store = try makeStore(
+            bundled: [recipe(id: "summer", name: "拍黄瓜", ingredients: ["黄瓜"])],
+            recipeOverlay: [
+                "summer": overlayEntry(name: "Cucumber Salad", category: "Vegetarian", ingredients: ["cucumber"])
+            ]
+        )
+        await store.load()
+        let now = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2026, month: 7, day: 1))!
+        #expect(store.seasonalRecipes(now: now).map(\.name) == ["Cucumber Salad"])
     }
 }

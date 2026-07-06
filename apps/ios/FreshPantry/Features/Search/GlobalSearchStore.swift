@@ -56,7 +56,11 @@ final class GlobalSearchStore {
             remote: remoteCatalog,
             cache: catalogCache
         )
-        async let overlayLoad = RecipeCatalogLoader.overlay(injected: recipeOverlay, remote: remoteCatalog)
+        async let overlayLoad = RecipeCatalogLoader.overlay(
+            injected: recipeOverlay,
+            remote: remoteCatalog,
+            cache: catalogCache
+        )
         async let customLoad = (try? await customRecipeRepository.loadAllFor(householdID)) ?? []
         inventory = await inventoryLoad
         shopping = await shoppingLoad
