@@ -1,7 +1,7 @@
 # @fresh-pantry/recipe-pipeline
 
 Flue 菜谱采集清洗管线:多源采集 → LLM 清洗增强 → 去重 → 按 id 合并 → 写回
-`apps/ios/FreshPantry/Resources/howtocook.json`。
+`apps/ios/FreshPantry/Resources/howtocook.json`(管线工作文件,不进 iOS target)。
 
 ## 用法
 1. `cp .env.example .env` 填 `ANTHROPIC_API_KEY`(或 `OPENCODE_API_KEY` +
@@ -43,7 +43,7 @@ CLI 直接调用:`flue run build-recipes --target node --payload '{"limit":3,"dr
 
 ## 联网补图(为缺图菜谱找封面)
 上游约半数家常菜本就没图。补图能力把 `imageUrl === null` 的菜谱联网搜一张成品图、
-逐张做内容校验、下载进 bundle、记录出处。核心在 `src/clean/fetch-images.ts`
+逐张做内容校验、下载到管线资源目录、记录出处。核心在 `src/clean/fetch-images.ts`
 (`acquireMissingImages` 下载+magic-byte 验真图+`ImageVerifier` 内容校验+落盘+出处;
 `applyAcquiredImages` 纯函数回写),搜索/校验都藏在注入接口后,有单测。
 
@@ -88,8 +88,8 @@ iOS 端流式拉取 + **磁盘缓存**(`RemoteImageCache`,见 app 侧),离线可
 - **生成当前目录同步迁移**:`npm run gen:catalog-sync -- supabase/migrations/<version>_recipe_catalog_i18n_sync.sql`
   会写入当前 364 条基础菜谱 + `howtocook.i18n.{en,ja,fr}.json` 的 1092 条 `recipe_i18n` 翻译行。
 - **应用**:`supabase db push`(或 `psql -f` 该迁移文件)。迁移自包含 DDL+数据、幂等,重复应用安全。
-- **iOS 读取**:DB 为权威源 + 本地缓存 + 内置 json 兜底(离线优先)。客户端从 `recipes` 表拉取
-  (列别名成 Recipe 的 JSON 键,直接解码)写本地缓存;离线读缓存,首启无网读内置 json。
+- **iOS 读取**:DB 为权威源 + 本地缓存,不再 bundle `howtocook*.json`。客户端从 `recipes` 表拉取
+  (列别名成 Recipe 的 JSON 键,直接解码)写本地缓存;翻译从 `recipe_i18n` 表按当前语言读取。
   详见 `apps/ios/.../RemoteRecipeCatalog.swift` / `RecipeCatalogCache.swift` / `RecipesStore`。
 - **图片**:`recipes.image_url` 存 Supabase Storage 公共 URL(见上「封面托管」),iOS 流式拉取 + 磁盘缓存;
   封面不随 app 打包。

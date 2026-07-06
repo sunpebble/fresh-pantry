@@ -62,9 +62,14 @@ struct MealPlanView: View {
         // Sample data is for the local-only personal scope only — a real
         // household's entries come from sync, never the seeder.
         if householdID.isEmpty {
+            let recipes = await RecipeCatalogLoader.load(
+                local: dependencies.localRecipeRepository,
+                remote: dependencies.remoteRecipeCatalog,
+                cache: dependencies.recipeCatalogCache
+            )
             await MealPlanSeeder.seedIfNeeded(
                 repository: dependencies.mealPlanRepository,
-                recipeRepository: dependencies.localRecipeRepository,
+                recipes: recipes,
                 householdID: householdID
             )
         }
@@ -304,7 +309,7 @@ private struct MealPlanContent: View {
         }
     }
 
-    /// Loads the recipe corpus (bundled + custom), the inventory match names, and
+    /// Loads the recipe corpus (DB/cache + custom), the inventory match names, and
     /// the lazily-built shopping/browse stores the 缺料 card + pushed detail need.
     /// Safe to re-run: existing stores are reloaded rather than rebuilt.
     ///
@@ -319,10 +324,13 @@ private struct MealPlanContent: View {
     /// EVERY assignment.
     private func reloadMatchContext() async {
         let scope = dependencies.householdID
-        let bundled = RecipeLocalizer.apply(
-            RecipeLocalizer.load(),
-            to: await dependencies.localRecipeRepository.loadAll()
+        let catalog = await RecipeCatalogLoader.load(
+            local: dependencies.localRecipeRepository,
+            remote: dependencies.remoteRecipeCatalog,
+            cache: dependencies.recipeCatalogCache
         )
+        let overlay = await RecipeCatalogLoader.overlay(remote: dependencies.remoteRecipeCatalog)
+        let bundled = RecipeLocalizer.apply(overlay, to: catalog)
         let custom = (try? await dependencies.customRecipeRepository.loadAllFor(scope)) ?? []
         guard scope == dependencies.householdID, !Task.isCancelled else { return }
         var byId: [String: Recipe] = [:]
@@ -809,7 +817,7 @@ private struct PlanCookSession: Identifiable {
 
 // MARK: - Recipe picker sheet
 
-/// Searchable list of bundled + custom recipes. Tapping one plans it on the
+/// Searchable list of shared + custom recipes. Tapping one plans it on the
 /// selected day (servings default 1) and dismisses. Reuses `RecipesStore` so the
 /// merged corpus + search predicate are not duplicated.
 private struct RecipePickerSheet: View {

@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// The 食谱 tab: browses the merged bundled + custom recipe corpus, with category
+/// The 食谱 tab: browses the merged shared + custom recipe corpus, with category
 /// filter chips, a name/ingredient search, a 只看收藏 toggle, and a favorite heart
 /// per card. Pull-to-refresh reloads; cards push the read-only detail screen.
 ///
 /// The view builds its `RecipesStore` from the injected `AppDependencies` — the
 /// reusable feature pattern. Unlike Inventory/Shopping there is no DEBUG seed:
-/// the bundled HowToCook corpus is real read-only data present on every install.
+/// the HowToCook catalog is real read-only data from DB/cache.
 struct RecipesView: View {
     /// Spotlight deep-link intent: the recipe id whose detail to push once the
     /// corpus is loaded. Consumed (set to nil) once applied. `RootView` owns it.
@@ -115,7 +115,7 @@ struct RecipesView: View {
         }
         // Rebuild both stores whenever the active household changes (login "" → uuid,
         // switch, or leave) so custom recipes re-scope to the new household rather
-        // than keeping the prior scope's stale rows. (The bundled corpus is scope-free.)
+        // than keeping the prior scope's stale rows. (The shared catalog is scope-free.)
         .task(id: dependencies.householdID) {
             let householdID = dependencies.householdID
             // This `.task` re-runs on every tab REAPPEAR (sidebarAdaptable

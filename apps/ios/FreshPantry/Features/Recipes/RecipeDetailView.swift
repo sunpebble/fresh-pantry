@@ -13,7 +13,7 @@ struct RecipeDetailView: View {
     /// CRUD owner for custom recipes — drives the edit form + delete. nil-safe:
     /// the edit/delete affordances only render when `isCustom` is true.
     let customStore: CustomRecipeStore?
-    /// Whether this recipe is a user-authored custom one (vs a bundled corpus
+    /// Whether this recipe is a user-authored custom one (vs a shared catalog
     /// recipe). When true, the toolbar surfaces 编辑 + 删除.
     let isCustom: Bool
 
@@ -32,7 +32,7 @@ struct RecipeDetailView: View {
     /// Live render source: the custom store's CURRENT row when one matches (the
     /// store re-publishes after an edit save, so the detail — and a re-opened
     /// edit form — always shows the saved values, never the pushed-in snapshot),
-    /// else the pushed value (bundled recipes / no custom store).
+    /// else the pushed value (shared recipes / no custom store).
     private var recipe: Recipe {
         customStore?.recipes.first { $0.id == initialRecipe.id } ?? initialRecipe
     }

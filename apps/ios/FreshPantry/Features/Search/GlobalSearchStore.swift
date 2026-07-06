@@ -7,7 +7,7 @@ import Foundation
 /// Loads ONCE on present (`load()`); a transient overlay doesn't need to track
 /// live mutations, and it is NOT a second source of truth (no persistence / sync).
 /// Matching is case-insensitive contains on the name OR category, mirroring
-/// search_provider.dart. Recipes (bundled + custom) are included; the 食材百科
+/// search_provider.dart. Recipes (shared catalog + custom) are included; the 食材百科
 /// section remains deferred — it lives inside ingredient detail.
 @Observable
 @MainActor
@@ -16,6 +16,8 @@ final class GlobalSearchStore {
     private let shoppingRepository: ShoppingRepository
     private let localRecipeRepository: LocalRecipeRepository
     private let customRecipeRepository: CustomRecipeRepository
+    private let remoteCatalog: (any RecipeCatalogFetching)?
+    private let catalogCache: RecipeCatalogCache?
     private let householdID: String
     private let recipeOverlay: [String: RecipeOverlayEntry]?
 
@@ -30,12 +32,16 @@ final class GlobalSearchStore {
         localRecipeRepository: LocalRecipeRepository,
         customRecipeRepository: CustomRecipeRepository,
         householdID: String,
-        recipeOverlay: [String: RecipeOverlayEntry]? = RecipeLocalizer.load()
+        remoteCatalog: (any RecipeCatalogFetching)? = nil,
+        catalogCache: RecipeCatalogCache? = nil,
+        recipeOverlay: [String: RecipeOverlayEntry]? = nil
     ) {
         self.inventoryRepository = inventoryRepository
         self.shoppingRepository = shoppingRepository
         self.localRecipeRepository = localRecipeRepository
         self.customRecipeRepository = customRecipeRepository
+        self.remoteCatalog = remoteCatalog
+        self.catalogCache = catalogCache
         self.householdID = householdID
         self.recipeOverlay = recipeOverlay
     }
@@ -45,11 +51,16 @@ final class GlobalSearchStore {
     func load() async {
         async let inventoryLoad = (try? await inventoryRepository.loadAllFor(householdID)) ?? []
         async let shoppingLoad = (try? await shoppingRepository.loadAllFor(householdID)) ?? []
-        async let bundledLoad = await localRecipeRepository.loadAll()
+        async let catalogLoad = RecipeCatalogLoader.load(
+            local: localRecipeRepository,
+            remote: remoteCatalog,
+            cache: catalogCache
+        )
+        async let overlayLoad = RecipeCatalogLoader.overlay(injected: recipeOverlay, remote: remoteCatalog)
         async let customLoad = (try? await customRecipeRepository.loadAllFor(householdID)) ?? []
         inventory = await inventoryLoad
         shopping = await shoppingLoad
-        let bundled = RecipeLocalizer.apply(recipeOverlay, to: await bundledLoad)
+        let bundled = RecipeLocalizer.apply(await overlayLoad, to: await catalogLoad)
         let custom = await customLoad
         recipes = RecipesStore.merge(bundled: bundled, custom: custom)
     }

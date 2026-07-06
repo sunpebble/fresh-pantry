@@ -49,6 +49,10 @@ targets:
       - path: FreshPantry
         excludes:
           - "Support/Secrets.example.plist"
+          - "Resources/howtocook.json"
+          - "Resources/howtocook.i18n.en.json"
+          - "Resources/howtocook.i18n.fr.json"
+          - "Resources/howtocook.i18n.ja.json"
           # Recipe covers now stream from Supabase Storage (disk-cached on device via
           # RemoteImageCache), NOT bundled — keeps the app ~111MB slimmer. The files
           # stay in the repo as the pipeline's upload source but are excluded from the

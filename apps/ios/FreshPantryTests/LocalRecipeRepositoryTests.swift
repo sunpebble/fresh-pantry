@@ -2,18 +2,15 @@ import Foundation
 import Testing
 @testable import FreshPantry
 
-/// Tests for the bundled HowToCook corpus loader: the shipped asset decodes to a
-/// non-empty `[Recipe]`, per-entry resilience skips malformed rows, and a
-/// non-array payload yields an empty list (never throws).
+/// Tests for the JSON payload loader: production ships no recipe JSON, while
+/// injected payloads still decode lossily for tests/previews.
 struct LocalRecipeRepositoryTests {
-    // MARK: Bundled asset
+    // MARK: Default production seam
 
-    @Test func bundledAssetDecodesToNonEmptyRecipes() async throws {
+    @Test func defaultRepositoryHasNoBundledRecipes() async throws {
         let repo = LocalRecipeRepository()
         let recipes = await repo.loadAll()
-        #expect(!recipes.isEmpty)
-        // Every decoded recipe has the id+name the merge/favorites paths require.
-        #expect(recipes.allSatisfy { !$0.id.isEmpty && !$0.name.isEmpty })
+        #expect(recipes.isEmpty)
     }
 
     @Test func loadIsCachedAcrossCalls() async throws {
@@ -21,7 +18,6 @@ struct LocalRecipeRepositoryTests {
         let first = await repo.loadAll()
         let second = await repo.loadAll()
         #expect(first.count == second.count)
-        #expect(first.count > 0)
     }
 
     // MARK: Per-entry resilience

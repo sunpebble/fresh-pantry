@@ -1,58 +1,31 @@
 import Foundation
 
-/// Read-only loader for the bundled HowToCook Chinese recipe corpus
-/// (`howtocook.json`, shipped under `Resources/`). Mirrors Flutter's
-/// `LocalRecipeRepository`: decode the JSON array ONCE, with per-entry
-/// resilience (a single malformed entry is skipped, the rest preserved), and
-/// cache the parsed `[Recipe]` for the process lifetime.
+/// Test/local payload loader for a HowToCook JSON array. Production no longer
+/// ships `howtocook.json`; the shared catalog comes from DB/cache.
 ///
 /// An `actor` so the decode-and-cache happens off the main actor and is safe
-/// under Swift 6 strict concurrency. The bundled asset is the read-only
-/// explore-tab data source; user/custom recipes come from
-/// `CustomRecipeRepository` and are merged on top by the feature store.
+/// under Swift 6 strict concurrency.
 actor LocalRecipeRepository {
-    /// Resource name of the bundled corpus (XcodeGen globs `Resources/`, so the
-    /// file ships in the app bundle as `howtocook.json`).
-    static let resourceName = "howtocook"
-    static let resourceExtension = "json"
-
-    private let bundle: Bundle
-    /// Explicit JSON payload override (tests inject a fixed corpus; production
-    /// leaves this `nil` and reads the bundled resource).
+    /// Explicit JSON payload override (tests inject a fixed corpus; production nil).
     private let payloadOverride: Data?
     private var cache: [Recipe]?
 
-    init(bundle: Bundle = .main) {
-        self.bundle = bundle
+    init() {
         self.payloadOverride = nil
     }
 
-    /// Test seam: decode this exact JSON array instead of the bundled resource.
+    /// Test seam: decode this exact JSON array.
     init(payload: Data) {
-        self.bundle = .main
         self.payloadOverride = payload
     }
 
-    /// Decodes the corpus once and caches it. Returns `[]` if the resource is
-    /// missing or its top level isn't a JSON array (mirrors the Flutter
-    /// `FormatException` → empty behavior — never throws to the caller).
+    /// Decodes the payload once and caches it. Production defaults to `[]`;
+    /// DB/cache are handled by `RecipeCatalogLoader`.
     func loadAll() -> [Recipe] {
         if let cache { return cache }
-        let recipes = payloadOverride.map(Self.decode(data:)) ?? Self.decode(from: bundle)
+        let recipes = payloadOverride.map(Self.decode(data:)) ?? []
         cache = recipes
         return recipes
-    }
-
-    /// Pure decode: load the bundled data, require a top-level array, decode each
-    /// entry independently so one bad row can't sink the corpus.
-    private static func decode(from bundle: Bundle) -> [Recipe] {
-        guard
-            let url = bundle.url(forResource: resourceName, withExtension: resourceExtension),
-            let data = try? Data(contentsOf: url)
-        else {
-            return []
-        }
-        return decode(data: data)
     }
 
     /// Per-entry resilient decode (exposed for tests against an injected payload).

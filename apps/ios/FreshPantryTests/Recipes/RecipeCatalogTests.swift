@@ -3,9 +3,8 @@ import SwiftData
 import Testing
 @testable import FreshPantry
 
-/// Tests for the DB-backed recipe catalog: the on-disk cache round-trip and the
-/// `RecipesStore` source precedence (cache > bundle) + background DB refresh,
-/// which together keep browse offline-first while sourcing from the database.
+/// Tests for the DB-backed recipe catalog: on-disk cache round-trip, first-load
+/// DB fetch, and local payload fallback for tests/previews.
 @MainActor
 struct RecipeCatalogTests {
     private func recipe(id: String, name: String, category: String = "家常") -> Recipe {
@@ -31,8 +30,8 @@ struct RecipeCatalogTests {
         UserDefaults(suiteName: "test.catalog.\(UUID().uuidString)")!
     }
 
-    /// A bundle loader seeded with `recipes` via `LocalRecipeRepository`'s
-    /// payload seam (encodes the array as the "bundled" JSON corpus).
+    /// A local loader seeded with `recipes` via `LocalRecipeRepository`'s
+    /// payload seam.
     private func bundleRepo(_ recipes: [Recipe]) -> LocalRecipeRepository {
         let data = (try? JSONEncoder().encode(recipes)) ?? Data("[]".utf8)
         return LocalRecipeRepository(payload: data)
@@ -70,23 +69,35 @@ struct RecipeCatalogTests {
         #expect(cache.read() == nil) // 空数组视为无缓存,回退 bundle
     }
 
-    // MARK: Source precedence (cache > bundle)
+    // MARK: Source precedence (cache > DB > local payload)
 
-    @Test func loadPrefersCacheOverBundle() async throws {
+    @Test func loadPrefersCacheOverLocalPayload() async throws {
         let cache = RecipeCatalogCache(fileURL: tempCacheURL())
         cache.write([recipe(id: "db1", name: "DB菜")])
         let store = try makeStore(bundled: [recipe(id: "bundle1", name: "内置菜")], cache: cache)
         await store.load()
-        #expect(store.recipes.map(\.id) == ["db1"]) // 用 DB 缓存,不用 bundle
+        #expect(store.recipes.map(\.id) == ["db1"]) // 用 DB 缓存,不用本地 payload
     }
 
-    @Test func loadFallsBackToBundleWhenNoCache() async throws {
+    @Test func loadFetchesRemoteWhenNoCache() async throws {
+        let cache = RecipeCatalogCache(fileURL: tempCacheURL())
+        let store = try makeStore(
+            bundled: [recipe(id: "local1", name: "本地菜")],
+            cache: cache,
+            remote: StubCatalog(recipes: [recipe(id: "remote1", name: "DB菜")])
+        )
+        await store.load()
+        #expect(store.recipes.map(\.id) == ["remote1"])
+        #expect(cache.read()?.map(\.id) == ["remote1"])
+    }
+
+    @Test func loadFallsBackToLocalPayloadWhenNoCacheOrRemote() async throws {
         let store = try makeStore(
             bundled: [recipe(id: "bundle1", name: "内置菜")],
             cache: RecipeCatalogCache(fileURL: tempCacheURL()) // 空,无文件
         )
         await store.load()
-        #expect(store.recipes.map(\.id) == ["bundle1"]) // 无缓存 → 内置兜底
+        #expect(store.recipes.map(\.id) == ["bundle1"]) // 测试/预览本地 payload 兜底
     }
 
     // MARK: Background DB refresh
@@ -105,7 +116,7 @@ struct RecipeCatalogTests {
         #expect(cache.read()?.map(\.id) == ["db1", "db2"])
     }
 
-    @Test func emptyRemoteFetchKeepsBundleAndDoesNotCache() async throws {
+    @Test func emptyRemoteFetchKeepsLocalPayloadAndDoesNotCache() async throws {
         let cache = RecipeCatalogCache(fileURL: tempCacheURL())
         let store = try makeStore(
             bundled: [recipe(id: "bundle1", name: "内置菜")],

@@ -3,7 +3,7 @@ import Foundation
 #if DEBUG
 /// DEBUG-only one-shot seeder so the 膳食计划 screen is demonstrable on a fresh
 /// install. Plans ~3 dishes across the current week (one marked done),
-/// referencing REAL bundled recipes pulled from `LocalRecipeRepository` so the
+/// referencing real shared catalog recipes so the
 /// covers/names are self-consistent. Only seeds when the scope is empty and the
 /// run-once flag is unset. Never compiled into release builds.
 enum MealPlanSeeder {
@@ -21,7 +21,7 @@ enum MealPlanSeeder {
     /// injectable for determinism in non-production callers.
     static func seedIfNeeded(
         repository: MealPlanRepository,
-        recipeRepository: LocalRecipeRepository,
+        recipes: [Recipe],
         householdID: String,
         today: Date = Date(),
         defaults: UserDefaults = .standard
@@ -32,15 +32,13 @@ enum MealPlanSeeder {
         let existing = (try? await repository.loadAllFor(householdID)) ?? []
         guard existing.isEmpty else { return }
 
-        let recipes = await recipeRepository.loadAll()
         let entries = sampleEntries(recipes: recipes, today: today)
         guard !entries.isEmpty else { return }
         try? await repository.saveEntries(householdID, entries)
     }
 
-    /// Builds entries by pairing the first few bundled recipes with `plan`'s
-    /// day-offsets (from this week's Monday). Returns `[]` when there is no
-    /// bundled corpus (so a stripped build never seeds empty/dirty rows).
+    /// Builds entries by pairing the first few catalog recipes with `plan`'s
+    /// day-offsets (from this week's Monday). Returns `[]` when there is no catalog.
     static func sampleEntries(recipes: [Recipe], today: Date) -> [MealPlanEntry] {
         guard !recipes.isEmpty else { return [] }
         let weekStart = MealPlanStore.weekStart(containing: today)

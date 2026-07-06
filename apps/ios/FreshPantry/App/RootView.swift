@@ -250,10 +250,13 @@ struct RootView: View {
             await indexer.reindexInventory(inventory)
         }
         if let custom = try? await dependencies.customRecipeRepository.loadAllFor(householdID) {
-            let bundled = RecipeLocalizer.apply(
-                RecipeLocalizer.load(),
-                to: await dependencies.localRecipeRepository.loadAll()
+            let catalog = await RecipeCatalogLoader.load(
+                local: dependencies.localRecipeRepository,
+                remote: dependencies.remoteRecipeCatalog,
+                cache: dependencies.recipeCatalogCache
             )
+            let overlay = await RecipeCatalogLoader.overlay(remote: dependencies.remoteRecipeCatalog)
+            let bundled = RecipeLocalizer.apply(overlay, to: catalog)
             await indexer.reindexRecipes(RecipesStore.merge(bundled: bundled, custom: custom))
         }
     }

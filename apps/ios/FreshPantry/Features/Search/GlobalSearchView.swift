@@ -67,7 +67,9 @@ struct GlobalSearchView: View {
                     shoppingRepository: dependencies.shoppingRepository,
                     localRecipeRepository: dependencies.localRecipeRepository,
                     customRecipeRepository: dependencies.customRecipeRepository,
-                    householdID: dependencies.householdID
+                    householdID: dependencies.householdID,
+                    remoteCatalog: dependencies.remoteRecipeCatalog,
+                    catalogCache: dependencies.recipeCatalogCache
                 )
                 await search.load()
                 store = search

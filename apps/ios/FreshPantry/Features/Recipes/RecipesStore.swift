@@ -3,13 +3,13 @@ import Foundation
 /// Feature store for the Recipes browse slice — the same `@Observable @MainActor`
 /// template the Inventory / Shopping stores established.
 ///
-/// Merges the read-only bundled HowToCook corpus (`LocalRecipeRepository`) with
+/// Merges the shared DB/cache recipe catalog with
 /// the user's custom recipes (`CustomRecipeRepository`), de-duping by `id` with
-/// **custom winning** (a user edit of a bundled recipe overrides the bundled
+/// **custom winning** (a user edit of a shared recipe overrides the shared
 /// copy — mirrors `recommendedRecipesProvider`'s id-dedup merge). Holds the
 /// category / search / favorites-only filter state and exposes the derived
 /// `displayRecipes`. Favorite state is delegated to the shared `FavoritesStore`.
-/// Views never decode the bundle or touch SwiftData directly.
+/// Views never decode catalog JSON or touch SwiftData directly.
 @Observable
 @MainActor
 final class RecipesStore {
@@ -69,10 +69,9 @@ final class RecipesStore {
     private let customRepository: CustomRecipeRepository
     private let favoritesStore: FavoritesStore
     private let householdID: String
-    /// DB-backed catalog source (nil = bundle-only, e.g. tests / local-only mode).
-    /// When present, `load()` shows the cache-or-bundle immediately, then refreshes
-    /// from the database in the background — offline-first with a fresh-when-online
-    /// upgrade.
+    /// DB-backed catalog source (nil = cache/local only, e.g. tests).
+    /// `load()` shows the cache immediately, fetches DB on first install, then
+    /// refreshes in the background when cached data was used.
     private let remoteCatalog: (any RecipeCatalogFetching)?
     /// On-disk cache for the DB catalog (the offline copy). nil disables caching.
     private let catalogCache: RecipeCatalogCache?
@@ -99,7 +98,7 @@ final class RecipesStore {
     /// Cook tallies keyed by recipe id, refreshed alongside `recipes`.
     private(set) var cookHistoryByRecipeId: [String: CookHistory] = [:]
 
-    /// Merged, id-deduped recipes (bundled order first, custom appended; custom
+    /// Merged, id-deduped recipes (shared catalog order first, custom appended; custom
     /// overrides a shared id in place). The parity-critical source order is never
     /// mutated by display concerns.
     private(set) var recipes: [Recipe] = []
@@ -111,7 +110,7 @@ final class RecipesStore {
     private(set) var inventoryNames: Set<String> = []
     private(set) var expiringNames: Set<String> = []
     /// Ids of the user's custom recipes (drives the 我的 tab + the detail
-    /// edit/delete affordances). Includes custom overrides of bundled ids.
+    /// edit/delete affordances). Includes custom overrides of shared catalog ids.
     private(set) var customIDs: Set<String> = []
 
     init(
@@ -125,7 +124,7 @@ final class RecipesStore {
         remoteCatalog: (any RecipeCatalogFetching)? = nil,
         catalogCache: RecipeCatalogCache? = nil,
         cookHistoryRepository: CookHistoryRepository? = nil,
-        recipeOverlay: [String: RecipeOverlayEntry]? = RecipeLocalizer.load()
+        recipeOverlay: [String: RecipeOverlayEntry]? = nil
     ) {
         self.localRepository = localRepository
         self.customRepository = customRepository
@@ -143,43 +142,34 @@ final class RecipesStore {
     /// Times the user has cooked `recipe` (0 when never / no source).
     func cookCount(_ recipe: Recipe) -> Int { cookHistoryByRecipeId[recipe.id]?.cookCount ?? 0 }
 
-    /// The catalog source for an immediate (offline-safe) load: the on-disk DB
-    /// cache when present, else the bundled corpus. The background refresh
-    /// (`refreshCatalogFromRemote`) updates the cache so subsequent loads are
-    /// DB-sourced.
     private func catalogRecipes() async -> [Recipe] {
-        if let catalogCache {
-            // Decode the ~900KB on-disk catalog OFF the main actor — a synchronous
-            // JSON decode of that size on the main thread stalls the Recipes-tab open
-            // / pull-to-refresh (a main-thread hang contributor).
-            let cached = await Task.detached(priority: .userInitiated) {
-                catalogCache.read()
-            }.value
-            if let cached, !cached.isEmpty { return localized(cached) }
-        }
-        return localized(await localRepository.loadAll())
+        await RecipeCatalogLoader.load(
+            local: localRepository,
+            remote: remoteCatalog,
+            cache: catalogCache
+        )
     }
 
-    private func localized(_ recipes: [Recipe]) -> [Recipe] {
-        RecipeLocalizer.apply(recipeOverlay, to: recipes)
+    private func overlay() async -> [String: RecipeOverlayEntry]? {
+        await RecipeCatalogLoader.overlay(injected: recipeOverlay, remote: remoteCatalog)
     }
 
     // MARK: Loading
 
-    /// Loads the catalog (DB cache or bundled seed) + custom recipes and merges
+    /// Loads the catalog (DB/cache) + custom recipes and merges
     /// them (custom wins on id), plus the inventory match corpus when an inventory
     /// source is wired. When a remote catalog is configured, kicks off a background
-    /// DB refresh that updates the cache and re-merges — the initial load stays
-    /// instant and offline-safe.
+    /// DB refresh that updates the cache and re-merges when cached data was used.
     func load() async {
         isLoading = true
         defer {
             isLoading = false
             hasLoaded = true
         }
-        let catalog = await catalogRecipes()
+        async let catalogLoad = catalogRecipes()
+        async let overlayLoad = overlay()
         let custom = (try? await customRepository.loadAllFor(householdID)) ?? []
-        recipes = Self.merge(bundled: catalog, custom: custom)
+        recipes = Self.merge(bundled: RecipeLocalizer.apply(await overlayLoad, to: await catalogLoad), custom: custom)
         customIDs = Set(custom.map(\.id))
         cookHistoryByRecipeId = (try? await cookHistoryRepository?.loadAll()) ?? [:]
         if let inventoryRepository {
@@ -195,7 +185,7 @@ final class RecipesStore {
     /// Background DB refresh: fetch the catalog from Supabase, and on a non-empty
     /// result persist it to the cache and re-merge with custom recipes so the list
     /// upgrades to the DB copy. An empty fetch (offline / not yet seeded / error)
-    /// is a no-op — the already-shown cache-or-bundle stays. Overlapping refreshes
+    /// is a no-op — the already-shown cache/local copy stays. Overlapping refreshes
     /// are coalesced.
     func refreshCatalogFromRemote() async {
         guard let remoteCatalog, let catalogCache, !isRefreshingCatalog else { return }
@@ -208,7 +198,7 @@ final class RecipesStore {
             catalogCache.write(fresh)
         }.value
         let custom = (try? await customRepository.loadAllFor(householdID)) ?? []
-        recipes = Self.merge(bundled: localized(fresh), custom: custom)
+        recipes = Self.merge(bundled: RecipeLocalizer.apply(await overlay(), to: fresh), custom: custom)
         customIDs = Set(custom.map(\.id))
     }
 
@@ -231,9 +221,9 @@ final class RecipesStore {
     /// 件临期食材" banner.
     var expiringItemCount: Int { expiringNames.count }
 
-    /// Bundled first, then custom; a custom recipe with the same id REPLACES the
-    /// bundled one in its original slot (custom wins), and a brand-new custom
-    /// recipe is appended. Keeps bundled ordering otherwise.
+    /// Shared catalog first, then custom; a custom recipe with the same id REPLACES the
+    /// shared one in its original slot (custom wins), and a brand-new custom
+    /// recipe is appended. Keeps catalog ordering otherwise.
     static func merge(bundled: [Recipe], custom: [Recipe]) -> [Recipe] {
         let customByID = Dictionary(custom.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
         var result: [Recipe] = []

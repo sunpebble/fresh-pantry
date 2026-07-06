@@ -1,7 +1,6 @@
 import Foundation
 
-/// 打包进 app 的食谱译文覆盖层(howtocook.i18n.<lang>.json,id → 译文)。
-/// 加载后套在 bundle/磁盘缓存/远程目录等共享语料上;中文界面不加载。
+/// 食谱译文覆盖层(id → 译文),由 DB 读取后套在共享语料上;中文界面不加载。
 /// overlay 缺某 id(远程新增、翻译失败)→ 该条保持中文原文。
 struct RecipeOverlayEntry: Decodable, Sendable {
     struct IngredientOverlay: Decodable, Sendable {
@@ -31,21 +30,6 @@ enum RecipeLocalizer {
             if supported.contains(code) { return code }
         }
         return nil
-    }
-
-    /// 解码 bundle 里的 overlay;界面语言是中文或文件缺失/损坏 → nil。
-    static func load(
-        bundle: Bundle = .main,
-        preferred: [String] = Bundle.main.preferredLocalizations
-    ) -> [String: RecipeOverlayEntry]? {
-        guard let lang = overlayLanguage(preferred: preferred),
-              let url = bundle.url(forResource: "howtocook.i18n.\(lang)", withExtension: "json"),
-              let data = try? Data(contentsOf: url),
-              let overlay = try? JSONDecoder().decode([String: RecipeOverlayEntry].self, from: data)
-        else {
-            return nil
-        }
-        return overlay
     }
 
     /// 按 id 套用译文;食材/步骤按下标对齐,数量不齐则该条整体保持原文。

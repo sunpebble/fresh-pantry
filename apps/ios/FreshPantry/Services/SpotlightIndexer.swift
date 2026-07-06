@@ -82,7 +82,7 @@ final class SpotlightIndexer: @unchecked Sendable {
     }
 
     /// Whole-domain rebuild of the recipe entries. The caller pre-merges
-    /// bundled + custom (`RecipesStore.merge`) so this stays a dumb projection.
+    /// shared + custom (`RecipesStore.merge`) so this stays a dumb projection.
     func reindexRecipes(_ recipes: [Recipe]) async {
         await rebuild(
             domain: Self.recipesDomain,

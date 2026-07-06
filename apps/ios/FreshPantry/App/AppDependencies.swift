@@ -32,14 +32,14 @@ final class AppDependencies {
     let customRecipeRepository: CustomRecipeRepository
     /// Weekly 膳食计划 entries (one dish per LOCAL day) for the meal-plan feature.
     let mealPlanRepository: MealPlanRepository
-    /// Read-only bundled HowToCook corpus loader (decoded once, cached). The
-    /// offline / first-launch seed; the live source is `remoteRecipeCatalog`.
+    /// Test/local JSON payload loader. Production shared recipes come from
+    /// `remoteRecipeCatalog` + `recipeCatalogCache`.
     let localRecipeRepository: LocalRecipeRepository
     /// DB-backed shared recipe catalog (Supabase `recipes` table). The live source
-    /// for browse; degrades to `recipeCatalogCache` then the bundle when offline.
+    /// for browse; degrades to `recipeCatalogCache` when offline.
     let remoteRecipeCatalog: RemoteRecipeCatalog
     /// On-disk cache of the DB catalog (offline copy). nil only when Application
-    /// Support is unavailable (keeps browse on bundle-only).
+    /// Support is unavailable.
     let recipeCatalogCache: RecipeCatalogCache?
     /// On-disk cache of the signed-in user's households + members, so the 家庭共享
     /// screen seeds offline-first instead of flashing the onboard form while the
@@ -130,6 +130,18 @@ final class AppDependencies {
     /// 诊断/可观测性门面。按构建配置分流(DEBUG→OSLog、Release+配置→Sentry、
     /// 否则→Noop)。注入到同步等关键 service;未注入处用 NoopDiagnostics 默认值。
     let diagnostics: Diagnostics
+    private static let uiTestRecipeJSON = """
+    [{
+      "id":"ui:curry-crab",
+      "name":"咖喱炒蟹",
+      "category":"水产",
+      "difficulty":3,
+      "cookingMinutes":30,
+      "description":"",
+      "ingredients":[],
+      "steps":["出锅"]
+    }]
+    """
 
     /// The active household scope. COMPUTED from `syncSession` so the session is
     /// the single source of truth (no call site writes this); the `householdID`
@@ -152,11 +164,14 @@ final class AppDependencies {
         self.favoriteRecipeRepository = FavoriteRecipeRepository(modelContainer: modelContainer)
         self.dietaryPreferenceRepository = DietaryPreferenceRepository(modelContainer: modelContainer)
         self.cookHistoryRepository = CookHistoryRepository(modelContainer: modelContainer)
+        let isUITesting = ProcessInfo.processInfo.arguments.contains("-uiTesting")
         self.profileRepository = ProfileRepository(modelContainer: modelContainer)
         self.shoppingRepository = ShoppingRepository(modelContainer: modelContainer)
         self.customRecipeRepository = CustomRecipeRepository(modelContainer: modelContainer)
         self.mealPlanRepository = MealPlanRepository(modelContainer: modelContainer)
-        self.localRecipeRepository = LocalRecipeRepository()
+        self.localRecipeRepository = isUITesting
+            ? LocalRecipeRepository(payload: Data(Self.uiTestRecipeJSON.utf8))
+            : LocalRecipeRepository()
         self.foodDetailsRepository = FoodDetailsRepository(modelContainer: modelContainer)
         self.barcodeMemoryRepository = BarcodeMemoryRepository(modelContainer: modelContainer)
         self.reminderSettingsStore = ReminderSettingsStore()
@@ -193,11 +208,10 @@ final class AppDependencies {
         self.apiBaseURL = config?.backend.apiBaseURL ?? BackendConfig.defaultAPIBaseURL
         self.authService = AuthService(backend: clientProvider.authBackend)
         // Shared recipe catalog: DB source (anon-readable `recipes` table) + the
-        // on-disk offline cache. Browse reads cache-or-bundle instantly, then
-        // refreshes from the DB in the background (see `RecipesStore`). UI tests
-        // run HERMETIC (bundle-only): a nil client disables the network refresh so
-        // the explore corpus is deterministic and can't shift mid-test.
-        let isUITesting = ProcessInfo.processInfo.arguments.contains("-uiTesting")
+        // on-disk offline cache. Browse reads cache first, fetches DB on first
+        // install, then refreshes in the background (see `RecipesStore`). UI tests
+        // run HERMETIC: a nil client disables the network refresh, while the local
+        // test payload above keeps recipe UI tests deterministic.
         self.remoteRecipeCatalog = RemoteRecipeCatalog(client: isUITesting ? nil : clientProvider.client)
         self.recipeCatalogCache = RecipeCatalogCache()
         self.householdCache = HouseholdCache()

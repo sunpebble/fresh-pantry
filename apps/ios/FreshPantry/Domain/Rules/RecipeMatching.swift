@@ -113,7 +113,7 @@ enum RecipeMatching {
     }
 
     /// Signals that map a 饮食偏好 preset label to recipe features. Because the
-    /// bundled corpus' tags/category never literally equal the 7 preset labels, a
+    /// catalog tags/category never literally equal the 7 preset labels, a
     /// label is matched via category synonyms, tag-keyword substrings, ingredient
     /// keywords, or a cooking-time bound — NOT raw tag-overlap (which would be a
     /// silent no-op).

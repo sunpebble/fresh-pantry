@@ -5,8 +5,8 @@ import XCTest
 /// matching 库存 / 购物 / 膳食计划. Before the fix the cards had NO `.contextMenu`,
 /// so a long-press did nothing.
 ///
-/// Filters the real bundled corpus to one deterministic recipe (so the card is
-/// isolated), long-presses it, and asserts the menu surfaced. The signal is the
+/// Filters the hermetic UI-test catalog to one deterministic recipe (so the card
+/// is isolated), long-presses it, and asserts the menu surfaced. The signal is the
 /// 「加入膳食计划」action — it exists ONLY inside the contextMenu (the card's own
 /// heart already carries a「收藏」label, so that one can't prove the menu opened).
 final class RecipeLongPressMenuUITests: XCTestCase {
@@ -22,7 +22,7 @@ final class RecipeLongPressMenuUITests: XCTestCase {
         app.launchArguments += ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_Hans", "-uiTesting", "-initialTab", "recipes"]
         app.launch()
 
-        // Isolate a single, always-present bundled recipe via the search field so
+        // Isolate a single, always-present test recipe via the search field so
         // exactly one card is on screen to long-press.
         let search = app.textFields["搜索菜谱或食材"]
         XCTAssertTrue(search.waitForExistence(timeout: 15), "食谱搜索框未出现")
