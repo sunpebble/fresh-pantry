@@ -18,7 +18,7 @@ final class InventoryLongPressPreviewUITests: XCTestCase {
         let app = XCUIApplication()
         // `-uiTesting`: clean in-memory store + DEBUG seed; `-initialTab inventory`
         // lands directly on the 库存 list.
-        app.launchArguments += ["-uiTesting", "-initialTab", "inventory"]
+        app.launchArguments += ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_Hans", "-uiTesting", "-initialTab", "inventory"]
         app.launch()
 
         // A deterministic seeded row (InventorySeeder.specs — same data the

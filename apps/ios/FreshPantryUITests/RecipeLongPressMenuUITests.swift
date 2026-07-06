@@ -19,7 +19,7 @@ final class RecipeLongPressMenuUITests: XCTestCase {
     func testLongPressShowsQuickActionMenu() {
         let app = XCUIApplication()
         // `-uiTesting`: hermetic stores; `-initialTab recipes` lands on the 食谱 list.
-        app.launchArguments += ["-uiTesting", "-initialTab", "recipes"]
+        app.launchArguments += ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_Hans", "-uiTesting", "-initialTab", "recipes"]
         app.launch()
 
         // Isolate a single, always-present bundled recipe via the search field so

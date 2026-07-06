@@ -25,7 +25,7 @@ final class CategoryDrillDownUITests: XCTestCase {
         let app = XCUIApplication()
         // `-uiTesting`: clean in-memory store + wiped defaults + signed-out launch,
         // so the DEBUG seeder fills deterministic sample inventory.
-        app.launchArguments += ["-uiTesting", "-initialTab", "home"]
+        app.launchArguments += ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_Hans", "-uiTesting", "-initialTab", "home"]
         app.launch()
 
         // (category, a member item, a non-member item) — all from the DEBUG seed
