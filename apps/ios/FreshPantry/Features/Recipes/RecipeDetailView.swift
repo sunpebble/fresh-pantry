@@ -74,8 +74,6 @@ struct RecipeDetailView: View {
     @State private var leftoverPromptPending = false
     @State private var showLeftoverPrompt = false
     @State private var showLeftoverSheet = false
-    /// 「观看视频」外链的 in-app Safari 呈现(item 驱动:store 实时刷新清空 videoUrl 时不会留空白 sheet)。
-    @State private var videoLink: VideoLink?
     /// Cook Mode 完成 follow-up: set when the pager's 完成 (vs its X close) was
     /// tapped, consumed on the cover's onDismiss to offer the cook deduction —
     /// the same deferred-prompt timing as `leftoverPromptPending`. The offer only
@@ -260,27 +258,6 @@ struct RecipeDetailView: View {
                 Task { await refreshInventoryContext() }
             }
         }
-        .sheet(item: $videoLink) { link in
-            NavigationStack {
-                WebVideoView(url: link.url)
-                    .ignoresSafeArea(edges: .bottom)
-                    .navigationTitle(String(localized: "recipe.detail.videoTitle"))
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            // 保留「跳出到系统浏览器」作为补充入口(弹幕/评论等完整体验)。
-                            Link(destination: link.url) {
-                                Image(systemName: "safari")
-                            }
-                            .accessibilityLabel(String(localized: "recipe.detail.openInBrowser"))
-                        }
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button(String(localized: "recipe.detail.done")) { videoLink = nil }
-                        }
-                    }
-            }
-            .presentationDetents([.medium, .large])
-        }
         .sheet(isPresented: $showPlanPicker) {
             PlanDayPickerSheet(recipeName: recipe.name) { day in
                 await addToPlan(on: day)
@@ -452,12 +429,6 @@ struct RecipeDetailView: View {
         return args[index + 1] == "cook"
     }
 
-    /// 当前菜谱的合法视频外链(trim 后非空且能构造 URL),否则 nil。按钮与 sheet 共用。
-    private var videoURL: URL? {
-        guard let raw = recipe.videoUrl?.trimmed, !raw.isEmpty else { return nil }
-        return URL(string: raw)
-    }
-
     private var palette: FkCategoryColors { FkCategoryIcon.palette(for: recipe.category) }
 
     // MARK: Hero
@@ -531,18 +502,6 @@ struct RecipeDetailView: View {
             }
             if let notes = recipe.notes?.trimmed, !notes.isEmpty {
                 tipsBlock(notes)
-            }
-            if let url = videoURL {
-                Button {
-                    videoLink = VideoLink(url: url)
-                } label: {
-                    Label(String(localized: "recipe.detail.watchVideo"), systemImage: "play.rectangle.fill")
-                        .font(.fkLabelLarge)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.fkPrimary)
-                .padding(.top, FkSpacing.xs)
-                .accessibilityLabel(String(localized: "recipe.detail.watchVideoOf \(recipe.name)"))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -928,12 +887,6 @@ struct RecipeDetailView: View {
         }
         .buttonStyle(.fkPressable)
     }
-}
-
-/// `.sheet(item:)` 需要 Identifiable;裸 URL 不符合,用 absoluteString 作 id 包装。
-private struct VideoLink: Identifiable {
-    let url: URL
-    var id: String { url.absoluteString }
 }
 
 /// `.sheet(item:)` wrapper for the AI-rewritten draft (#6) — `RecipeDraft` isn't
