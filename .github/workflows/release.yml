@@ -38,5 +38,5 @@ jobs:
   testflight:
     needs: [release-please, quality]
     if: ${{ needs.release-please.outputs.release_created == 'true' || github.event_name == 'workflow_dispatch' }}
-    uses: sunpebble/ci/.github/workflows/ios-testflight-fresh-pantry.yml@v1.1
+    uses: sunpebble/ci/.github/workflows/ios-testflight-fresh-pantry.yml@v2
     secrets: inherit
