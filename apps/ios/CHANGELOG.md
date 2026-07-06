@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.1](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.3.0...fresh_pantry-v2.3.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* **i18n:** 补齐菜谱和库存文案本地化 ([3eb41a1](https://github.com/sunpebble/fresh-pantry/commit/3eb41a1b1e4f8fd67de52ce81bc0da846402da5c))
+
 ## [2.3.0](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.2.1...fresh_pantry-v2.3.0) (2026-07-06)
 
 
