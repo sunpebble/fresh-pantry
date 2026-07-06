@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.3](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.3.2...fresh_pantry-v2.3.3) (2026-07-06)
+
+
+### Bug Fixes
+
+* **i18n:** 保留本土化食材匹配别名 ([b903faf](https://github.com/sunpebble/fresh-pantry/commit/b903faf7761d7fab46ba092efd9d2e270d4ecfa5))
+
 ## [2.3.2](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.3.1...fresh_pantry-v2.3.2) (2026-07-06)
 
 
