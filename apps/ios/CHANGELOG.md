@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.0](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.3.4...fresh_pantry-v2.4.0) (2026-07-07)
+
+
+### Features
+
+* focus home on recommendations, ingredients and recipes ([9e2c9dd](https://github.com/sunpebble/fresh-pantry/commit/9e2c9dd6bcf4208a0b5f768f66fd5ede95986425))
+
 ## [2.3.4](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.3.3...fresh_pantry-v2.3.4) (2026-07-06)
 
 
