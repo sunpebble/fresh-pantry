@@ -2014,18 +2014,28 @@
           }
         },
         "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Have %lld/%lld · missing %lld item"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Have %lld/%lld · missing %lld items"
+          "stringUnit": {
+            "state": "translated",
+            "value": "Have %1$lld/%2$lld · missing %#@missing@"
+          },
+          "substitutions": {
+            "missing": {
+              "argNum": 3,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg item"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg items"
+                    }
+                  }
                 }
               }
             }
@@ -2038,18 +2048,48 @@
           }
         },
         "fr": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld/%lld disponible · %lld manquant"
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@have@ · %#@missing@"
+          },
+          "substitutions": {
+            "have": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg/%2$lld disponible"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg/%2$lld disponibles"
+                    }
+                  }
                 }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld/%lld disponibles · %lld manquants"
+              }
+            },
+            "missing": {
+              "argNum": 3,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg manquant"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg manquants"
+                    }
+                  }
                 }
               }
             }
@@ -3550,18 +3590,28 @@
           }
         },
         "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld meal planned in the next 7 days · %lld today"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld meals planned in the next 7 days · %lld today"
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@meals@ planned in the next 7 days · %2$lld today"
+          },
+          "substitutions": {
+            "meals": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg meal"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg meals"
+                    }
+                  }
                 }
               }
             }
@@ -3574,18 +3624,28 @@
           }
         },
         "fr": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld repas prévu sur 7 jours · %lld aujourd'hui"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld repas prévus sur 7 jours · %lld aujourd'hui"
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@meals@ sur 7 jours · %2$lld aujourd'hui"
+          },
+          "substitutions": {
+            "meals": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg repas prévu"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg repas prévus"
+                    }
+                  }
                 }
               }
             }
@@ -9462,18 +9522,28 @@
           }
         },
         "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Added %lld/%lld item to the shopping list"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Added %lld/%lld items to the shopping list"
+          "stringUnit": {
+            "state": "translated",
+            "value": "Added %#@added@ to the shopping list"
+          },
+          "substitutions": {
+            "added": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg/%2$lld item"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg/%2$lld items"
+                    }
+                  }
                 }
               }
             }
@@ -9486,18 +9556,28 @@
           }
         },
         "fr": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld/%lld article ajouté à la liste de courses"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld/%lld articles ajoutés à la liste de courses"
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@added@ à la liste de courses"
+          },
+          "substitutions": {
+            "added": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg/%2$lld article ajouté"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg/%2$lld articles ajoutés"
+                    }
+                  }
                 }
               }
             }
@@ -14614,18 +14694,28 @@
           }
         },
         "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Added %lld item; %lld failed"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Added %lld items; %lld failed"
+          "stringUnit": {
+            "state": "translated",
+            "value": "Added %#@added@; %2$lld failed"
+          },
+          "substitutions": {
+            "added": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg item"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg items"
+                    }
+                  }
                 }
               }
             }
@@ -14638,18 +14728,48 @@
           }
         },
         "fr": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld article ajouté ; %lld ont échoué"
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@added@ ; %#@failed@"
+          },
+          "substitutions": {
+            "added": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg article ajouté"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg articles ajoutés"
+                    }
+                  }
                 }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld articles ajoutés ; %lld ont échoué"
+              }
+            },
+            "failed": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg a échoué"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg ont échoué"
+                    }
+                  }
                 }
               }
             }
@@ -17338,21 +17458,9 @@
           }
         },
         "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Step %lld / %lld"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Step %lld / %lld"
-                }
-              }
-            }
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step %lld / %lld"
           }
         },
         "ja": {
@@ -17362,21 +17470,9 @@
           }
         },
         "fr": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Étape %lld / %lld"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Étape %lld / %lld"
-                }
-              }
-            }
+          "stringUnit": {
+            "state": "translated",
+            "value": "Étape %lld / %lld"
           }
         }
       }
@@ -18898,18 +18994,28 @@
           }
         },
         "fr": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld/%lld disponible"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld/%lld disponibles"
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@have@"
+          },
+          "substitutions": {
+            "have": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg/%2$lld disponible"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg/%2$lld disponibles"
+                    }
+                  }
                 }
               }
             }
