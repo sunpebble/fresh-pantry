@@ -1,16 +1,17 @@
 import SwiftUI
 
-/// The 首页 tab: a data-backed home hub summarizing the household's pantry —
-/// laid out as a dense dashboard grid: a compact stat bar, a 今日推荐 card, an
-/// optional 用临期 strip, and a tile grid (临期/分类, 膳食/减废, 购物/库存不足).
+/// The 首页 tab: a focused home hub around the three things users actually come
+/// for — 推荐做什么 (今日推荐 + 用临期), 有哪些食材 (stat bar + 临期/分类 tiles) —
+/// with the secondary features (膳食/减废/库存不足) demoted to one slim link row.
+/// (购物 has its own tab, so it gets no home entry at all.)
 ///
 /// Builds its `DashboardStore` from the injected `AppDependencies` (the reusable
 /// feature pattern). In DEBUG it runs the inventory + shopping seeders (the same
 /// idempotent one-shots the other tabs use) before loading, so 首页 has data even
 /// when opened first. SwiftData is never touched here.
 struct DashboardView: View {
-    /// Switches the root tab selection — used by the 购物清单 tile to jump to the
-    /// 购物 tab. Injected by `RootView`.
+    /// Switches the root tab selection — used by `LowStockView`'s bulk-add CTA to
+    /// jump to the 购物 tab. Injected by `RootView`.
     var onSelectShopping: () -> Void = {}
     /// Drills into the 库存 tab pre-filtered to a tapped 食材分类 (canonical name).
     /// Injected by `RootView` (mirrors `onSelectShopping`).
@@ -35,7 +36,6 @@ struct DashboardView: View {
                 if let store {
                     DashboardContent(
                         store: store,
-                        onSelectShopping: onSelectShopping,
                         onSelectCategory: onSelectCategory
                     )
                 } else {
@@ -176,18 +176,13 @@ extension DashboardView {
     }
 }
 
-/// Inner content bound to a live store. Lays out the dense dashboard grid.
+/// Inner content bound to a live store. Lays out the focused home column.
 private struct DashboardContent: View {
     let store: DashboardStore
-    var onSelectShopping: () -> Void
     var onSelectCategory: (String) -> Void = { _ in }
 
     @Environment(AppDependencies.self) private var dependencies
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// View-local secondary stats for the tiles (kept out of the DashboardStore to
-    /// avoid widening its init): waste use-up + meal-plan summary.
-    @State private var wasteStats: FoodLogStats?
-    @State private var mealPlan: MealPlanGlance?
     /// Lazily-built shopping store for the 临期 tile "加购" action.
     @State private var shoppingStore: ShoppingStore?
     /// Recipe browse store (favorites + the pushed detail) for the home recipe
@@ -201,8 +196,6 @@ private struct DashboardContent: View {
     @State private var recommendationMatched = 0
     /// 用临期 fallback: the dish covering the most expiring items + covered names.
     @State private var fallback: FallbackSuggestion?
-    /// Low-stock restock candidates (count≥3 & not in stock) for the 库存不足 tile.
-    @State private var lowStockItems: [FrequentItem] = []
     /// Set once the secondary load runs, so the recipe cards can show a skeleton
     /// only on the FIRST load (not on every pull-to-refresh).
     @State private var didLoadRecipes = false
@@ -213,7 +206,7 @@ private struct DashboardContent: View {
     var body: some View {
         ScrollView {
             VStack(spacing: FkSpacing.md) {
-                StatBar(summary: store.summary, categoryCount: store.categoryCounts.count)
+                StatBar(summary: store.summary)
                     .fkEntrance(index: 0)
                     .padding(.horizontal, FkSpacing.lg)
 
@@ -230,22 +223,9 @@ private struct DashboardContent: View {
                     .fkEntrance(index: 2)
                     .padding(.horizontal, FkSpacing.lg)
 
-                HStack(alignment: .top, spacing: FkSpacing.sm) {
-                    MealPlanTile(glance: mealPlan)
-                    WasteTile(stats: wasteStats)
-                }
-                .fkEntrance(index: 3)
-                .padding(.horizontal, FkSpacing.lg)
-
-                HStack(alignment: .top, spacing: FkSpacing.sm) {
-                    ShoppingTile(
-                        uncheckedCount: store.summary.uncheckedShoppingCount,
-                        onTap: onSelectShopping
-                    )
-                    LowStockTile(count: lowStockItems.count)
-                }
-                .fkEntrance(index: 4)
-                .padding(.horizontal, FkSpacing.lg)
+                SecondaryLinksRow()
+                    .fkEntrance(index: 3)
+                    .padding(.horizontal, FkSpacing.lg)
             }
             .padding(.top, FkSpacing.sm)
             .padding(.bottom, FkSpacing.huge)
@@ -277,9 +257,9 @@ private struct DashboardContent: View {
             await store.load()
             await loadSecondaryStats()
         }
-        // Remote merge pulse: the host view reloads the main store; the
-        // secondary tiles (减废/膳食/推荐/库存不足) consume it here so both
-        // halves of the screen track merged data together.
+        // Remote merge pulse: the host view reloads the main store; the recipe
+        // suggestions (今日推荐/用临期) consume it here so both halves of the
+        // screen track merged data together.
         .onChange(of: dependencies.syncSession.dataRevision) {
             Task { await loadSecondaryStats() }
         }
@@ -356,9 +336,8 @@ private struct DashboardContent: View {
         }
     }
 
-    /// Loads the waste use-up stats, the meal-plan glance (upcoming/today/缺料),
-    /// the home recipe suggestions (今日推荐 + 用临期 fallback), the low-stock
-    /// restock candidates, and the shopping store for 临期 加购.
+    /// Loads the home recipe suggestions (今日推荐 + 用临期 fallback) and the
+    /// shopping store for 临期 加购.
     ///
     /// SCOPE GUARD: every await below is a suspension point where a household
     /// switch can land (login "" → uuid auto-select, switch, leave). A stale
@@ -386,11 +365,6 @@ private struct DashboardContent: View {
             guard scope == dependencies.householdID, !Task.isCancelled else { return }
             shoppingStore = shopping
         }
-
-        let wasteStore = WasteInsightsStore(repository: dependencies.foodLogRepository, householdID: scope)
-        await wasteStore.load()
-        guard scope == dependencies.householdID, !Task.isCancelled else { return }
-        wasteStats = wasteStore.stats()
 
         // Build the recipe browse store once — it owns the merged corpus + the
         // inventory/expiring match context the home cards and detail view need.
@@ -431,31 +405,6 @@ private struct DashboardContent: View {
         fallback = RecipeMatching.expiringFallback(eligibleForFallback, recipes.expiringNames)
             .map { FallbackSuggestion(recipe: $0.recipe, covered: coveredDisplayNames($0.recipe, $0.covered)) }
         didLoadRecipes = true
-
-        // Meal-plan glance reuses the merged corpus (no second recipe decode).
-        // The 还缺 badge derives from the SAME [today, today+7) span the glance
-        // counts — a stale past week's pending dishes must not inflate it.
-        // NOTE: this is a ROLLING window, deliberately different from
-        // MealPlanView's Monday-anchored visible week (its 缺料 card scopes to
-        // the on-screen strip); the entry tile's copy says 未来 7 天 to match.
-        let byId = Dictionary(recipes.recipes.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
-        let entries = (try? await dependencies.mealPlanRepository.loadAllFor(scope)) ?? []
-        guard scope == dependencies.householdID, !Task.isCancelled else { return }
-        let windowed = MealPlanGlance.windowedEntries(entries)
-        let missing = MealPlanMissing.missingIngredientNames(
-            entries: windowed, recipesById: byId, inventoryNames: recipes.inventoryNames
-        )
-        mealPlan = MealPlanGlance.from(entries: windowed, missingCount: missing.count)
-
-        // Low-stock restock candidates for the 库存不足 tile.
-        let lowStock = LowStockStore(
-            repository: dependencies.inventoryRepository,
-            householdID: scope,
-            foodLogRepository: dependencies.foodLogRepository
-        )
-        await lowStock.load()
-        guard scope == dependencies.householdID, !Task.isCancelled else { return }
-        lowStockItems = lowStock.items
     }
 
     /// The recipe's own ingredient display names (original case, deduped) that
@@ -495,48 +444,6 @@ private struct DashboardContent: View {
     }
 }
 
-/// Lightweight meal-plan summary for the Dashboard entry tile: dishes planned in
-/// the next 7 days, how many are today, and the shortfall count. Ports
-/// `mealPlanWeekSummaryProvider`.
-struct MealPlanGlance: Equatable {
-    let upcoming: Int
-    let today: Int
-    let missing: Int
-
-    /// Entries inside the glance span [today, today+7) — the single window both
-    /// `from` and the 还缺 badge derivation consume, so the subtitle's 已排 count
-    /// and the badge's shortfall always describe the same dishes.
-    static func windowedEntries(_ entries: [MealPlanEntry], now: Date = Date()) -> [MealPlanEntry] {
-        let today = MealPlanEntry.dateOnly(now)
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .current
-        let windowEnd = calendar.date(byAdding: .day, value: 7, to: today) ?? today
-        return entries.filter { entry in
-            let day = MealPlanEntry.dateOnly(entry.date)
-            return day >= today && day < windowEnd
-        }
-    }
-
-    static func from(entries: [MealPlanEntry], missingCount: Int, now: Date = Date()) -> MealPlanGlance {
-        let today = MealPlanEntry.dateOnly(now)
-        let windowed = windowedEntries(entries, now: now)
-        let todayCount = windowed.lazy.filter { MealPlanEntry.dateOnly($0.date) == today }.count
-        return MealPlanGlance(upcoming: windowed.count, today: todayCount, missing: missingCount)
-    }
-
-    /// Entry-card subtitle. Says 未来 7 天 — NOT 本周 — because the glance span
-    /// is the rolling [today, today+7) window above, which crosses into next
-    /// week on any day but Monday (MealPlanView's 缺料 card scopes to its
-    /// Monday-anchored visible week instead; the copy keeps the two honest).
-    var subtitle: String {
-        guard upcoming > 0 else { return String(localized: "dashboard.mealPlan.empty") }
-        if today > 0 {
-            return String(localized: "dashboard.mealPlan.upcomingWithToday \(upcoming) \(today)")
-        }
-        return String(localized: "dashboard.mealPlan.upcoming \(upcoming)")
-    }
-}
-
 /// The 用临期 fallback suggestion for the Dashboard: the dish that clears the most
 /// expiring items, plus the (original-cased) covered ingredient names for chips.
 struct FallbackSuggestion: Equatable {
@@ -547,12 +454,11 @@ struct FallbackSuggestion: Equatable {
 // MARK: - Stat bar
 
 /// Compact stat bar that replaces the tall tinted hero: a small time-of-day
-/// greeting over a single horizontal row of triage counts (件食材 / 类 / 需处理 /
-/// 过期 / 充足). Reads the already-derived `DashboardSummary`; no new logic.
+/// greeting over a single horizontal row of triage counts (件食材 / 需处理 /
+/// 过期 / 充足 — the former 类 segment duplicated the category tile below).
+/// Reads the already-derived `DashboardSummary`; no new logic.
 private struct StatBar: View {
     let summary: DashboardSummary
-    /// Distinct non-empty inventory categories (the "类" segment).
-    var categoryCount: Int = 0
 
     /// Time-of-day greeting (早安/午安/下午好/晚上好/夜深了),主厨。— ports the Flutter
     /// dashboard greeting. Computed from the local hour at render time.
@@ -580,7 +486,6 @@ private struct StatBar: View {
 
                 HStack(alignment: .top, spacing: FkSpacing.xs) {
                     segment(value: summary.totalItems, label: String(localized: "dashboard.stat.items"), tint: .fkOnSurface)
-                    segment(value: categoryCount, label: String(localized: "dashboard.stat.categories"), tint: .fkOnSurface)
                     segment(value: summary.needsAttentionCount, label: String(localized: "dashboard.stat.needsAttention"), tint: .fkWarnInk)
                     segment(value: summary.expiredCount, label: String(localized: "dashboard.stat.expired"), tint: .fkDanger)
                     segment(value: summary.freshCount, label: String(localized: "dashboard.stat.sufficient"), tint: .fkSuccess)
@@ -806,149 +711,39 @@ private struct CategoryTile: View {
     }
 }
 
-// MARK: - Stat tiles (膳食 / 减废 / 购物 / 库存不足)
+// MARK: - Secondary links row (膳食 / 减废 / 库存不足)
 
-/// 膳食计划 tile → pushes `MealPlanView`. Compact metric + 还缺 badge.
-private struct MealPlanTile: View {
-    var glance: MealPlanGlance?
-
+/// One slim row of pill links to the secondary features — replaces the former
+/// 2×2 tile grid so the home stays focused on 推荐/食材/菜谱. 购物 has no entry
+/// here at all: it owns a bottom tab. Reuses the tiles' `DashboardRoute`
+/// destinations, so widget deep links keep working unchanged.
+private struct SecondaryLinksRow: View {
     var body: some View {
-        NavigationLink(value: DashboardRoute.mealPlan) {
-            DashboardTileSurface {
-                VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                    StatTileHeader(systemImage: "calendar", title: String(localized: "dashboard.mealPlan.title"))
-                    // Reuse the (unit-tested) glance subtitle as the single source of
-                    // this copy — no second wording to drift from it.
-                    Text(glance?.subtitle ?? String(localized: "dashboard.mealPlan.empty"))
-                        .font(.fkBodySmall)
-                        .foregroundStyle(Color.fkOnSurfaceVariant)
-                        .lineLimit(2)
-                    if let glance, glance.missing > 0 {
-                        StatTileBadge(text: String(localized: "dashboard.mealPlan.missing \(glance.missing)"), tint: .fkDanger, fill: .fkWarnSoft)
-                    }
-                }
+        HStack(spacing: FkSpacing.sm) {
+            link(.mealPlan, systemImage: "calendar", title: String(localized: "dashboard.mealPlan.title"))
+            link(.wasteInsights, systemImage: "leaf.fill", title: String(localized: "dashboard.waste.title"))
+            link(.lowStock, systemImage: "cart.badge.plus", title: String(localized: "dashboard.lowStock.title"))
+        }
+    }
+
+    private func link(_ route: DashboardRoute, systemImage: String, title: String) -> some View {
+        NavigationLink(value: route) {
+            HStack(spacing: FkSpacing.xs) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.fkPrimaryContainer)
+                Text(title)
+                    .font(.fkLabelMedium)
+                    .foregroundStyle(Color.fkOnSurface)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-        }
-        .buttonStyle(.fkPressable)
-    }
-}
-
-/// 减废统计 tile → pushes `WasteInsightsView`. Compact metric + 抢救 badge.
-private struct WasteTile: View {
-    var stats: FoodLogStats?
-
-    var body: some View {
-        NavigationLink(value: DashboardRoute.wasteInsights) {
-            DashboardTileSurface {
-                VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                    StatTileHeader(systemImage: "leaf.fill", title: String(localized: "dashboard.waste.title"))
-                    Text(metric)
-                        .font(.fkBodySmall)
-                        .foregroundStyle(Color.fkOnSurfaceVariant)
-                        .lineLimit(2)
-                    if let stats, stats.rescued > 0 {
-                        StatTileBadge(text: String(localized: "dashboard.waste.rescued \(stats.rescued)"), tint: .fkSuccess, fill: .fkSuccess.opacity(0.15))
-                    }
-                }
-            }
-        }
-        .buttonStyle(.fkPressable)
-    }
-
-    private var metric: String {
-        guard let stats, !stats.isEmpty else { return String(localized: "dashboard.waste.emptyMetric") }
-        return String(localized: "dashboard.waste.useUpPercent \(stats.useUpPercent)")
-    }
-}
-
-/// 购物清单 tile → switches to the 购物 tab (not a push). Shows the unchecked count.
-private struct ShoppingTile: View {
-    let uncheckedCount: Int
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            DashboardTileSurface {
-                VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                    StatTileHeader(systemImage: "cart.fill", title: String(localized: "dashboard.shoppingTile.title"))
-                    Text(metric)
-                        .font(.fkBodySmall)
-                        .foregroundStyle(Color.fkOnSurfaceVariant)
-                        .lineLimit(2)
-                }
-            }
-        }
-        .buttonStyle(.fkPressable)
-    }
-
-    private var metric: String {
-        uncheckedCount > 0
-            ? String(localized: "dashboard.shoppingTile.pending \(uncheckedCount)")
-            : String(localized: "dashboard.shoppingTile.done")
-    }
-}
-
-/// 库存不足 tile → pushes `LowStockView` (per-item selection + bulk「加入购物清单」
-/// CTA live there). Shows the restock-candidate count.
-private struct LowStockTile: View {
-    let count: Int
-
-    var body: some View {
-        NavigationLink(value: DashboardRoute.lowStock) {
-            DashboardTileSurface {
-                VStack(alignment: .leading, spacing: FkSpacing.xs) {
-                    StatTileHeader(systemImage: "cart.badge.plus", title: String(localized: "dashboard.lowStock.title"))
-                    Text(metric)
-                        .font(.fkBodySmall)
-                        .foregroundStyle(Color.fkOnSurfaceVariant)
-                        .lineLimit(2)
-                }
-            }
-        }
-        .buttonStyle(.fkPressable)
-    }
-
-    private var metric: String {
-        count > 0
-            ? String(localized: "dashboard.lowStock.count \(count)")
-            : String(localized: "dashboard.lowStock.sufficient")
-    }
-}
-
-/// Shared header for the simple stat tiles: a tinted glyph, the title, and a
-/// trailing chevron signalling tappability.
-private struct StatTileHeader: View {
-    let systemImage: String
-    let title: String
-
-    var body: some View {
-        HStack(spacing: FkSpacing.xs) {
-            Image(systemName: systemImage)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.fkPrimaryContainer)
-            Text(title)
-                .font(.fkTitleSmall)
-                .foregroundStyle(Color.fkOnSurface)
-                .lineLimit(1)
-            Spacer(minLength: 0)
-            TileChevron()
-        }
-    }
-}
-
-/// Small capsule badge used inside the stat tiles (还缺 / 抢救).
-private struct StatTileBadge: View {
-    let text: String
-    let tint: Color
-    let fill: Color
-
-    var body: some View {
-        Text(text)
-            .font(.fkLabelSmall)
-            .foregroundStyle(tint)
             .padding(.horizontal, FkSpacing.sm)
-            .padding(.vertical, 2)
-            .background(Capsule().fill(fill))
+            .padding(.vertical, FkSpacing.sm)
+            .frame(maxWidth: .infinity)
+            .background(Capsule().fill(Color.fkSurfaceContainerLowest))
+        }
+        .buttonStyle(.fkPressable)
     }
 }
 
