@@ -3,8 +3,9 @@ import SwiftUI
 /// Read-only recipe detail: a category-tinted hero (remote cover when present),
 /// the name + meta row (category · difficulty · N 分钟), a favorite toggle, the
 /// ingredient list (name + amount), numbered cooking steps, and a "做菜" CTA that
-/// opens the cook-time deduction review (the only inventory-mutating affordance
-/// here — built additively on top of the browse-only screen).
+/// enters Cook Mode first — the cook-time deduction review (the only
+/// inventory-mutating affordance here) is offered AFTER 完成, so stock comes off
+/// when the dish is done, not when cooking starts.
 struct RecipeDetailView: View {
     /// The recipe as pushed — a frozen navigation value. Rendering goes through
     /// the live `recipe` below so an edit save refreshes this screen in place.
@@ -365,11 +366,17 @@ struct RecipeDetailView: View {
 
     // MARK: 做菜 CTA + cook flow
 
-    /// Bottom CTA that loads the live inventory, builds `[DeductionProposal]` via
-    /// `DeductionProposalFactory.forRecipe`, and presents the deduction review.
+    /// Bottom CTA that starts cooking: enters Cook Mode, whose 完成 hands off to
+    /// the existing cookDeductPrompt → `presentCook()` flow — deduction happens
+    /// at the END of cooking, never up front. A step-less recipe has nothing to
+    /// page through, so it opens the deduction review directly.
     private var cookBar: some View {
         Button {
-            Task { await presentCook() }
+            if recipe.steps.isEmpty {
+                Task { await presentCook() }
+            } else {
+                showCookMode = true
+            }
         } label: {
             HStack(spacing: FkSpacing.sm) {
                 if isPreparingCook {
