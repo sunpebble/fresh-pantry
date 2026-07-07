@@ -223,10 +223,6 @@ final class RecipesStore {
     /// Whether the match progress should render (an inventory source is present).
     var hasInventoryContext: Bool { !inventoryNames.isEmpty }
 
-    /// Count of distinct expiring/expired inventory names — drives the "优先使用 N
-    /// 件临期食材" banner.
-    var expiringItemCount: Int { expiringNames.count }
-
     /// Shared catalog first, then custom; a custom recipe with the same id REPLACES the
     /// shared one in its original slot (custom wins), and a brand-new custom
     /// recipe is appended. Keeps catalog ordering otherwise.

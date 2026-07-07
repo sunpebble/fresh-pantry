@@ -23687,58 +23687,6 @@
         }
       }
     },
-    "recipe.list.prioritizeExpiring %lld": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "优先使用 %lld 件临期食材"
-          }
-        },
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Prioritize %lld expiring item"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Prioritize %lld expiring items"
-                }
-              }
-            }
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "期限間近の食材%lld件を優先的に使用"
-          }
-        },
-        "fr": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Priorisez %lld article expirant"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Priorisez %lld articles expirants"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "recipe.list.searchPlaceholder": {
       "localizations": {
         "zh-Hans": {

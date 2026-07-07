@@ -384,12 +384,6 @@ private struct RecipesContent: View {
 
                 tagChips
 
-                // The banner is the 用临期 tab's whole premise — only surface it as a
-                // prompt on the OTHER tabs.
-                if store.expiringItemCount > 0, store.tab != .expiring {
-                    expiringBanner
-                }
-
                 seasonalCarousel
 
                 listBody
@@ -709,29 +703,6 @@ private struct RecipesContent: View {
             options.append(selected)
         }
         return options
-    }
-
-    // MARK: 临期 banner
-
-    /// "优先使用 N 件临期食材" prompt — surfaces the reduce-waste intent when the
-    /// pantry has expiring items (mirrors the Flutter `_ExpiringBanner`).
-    private var expiringBanner: some View {
-        HStack(spacing: FkSpacing.sm) {
-            Image(systemName: "flame.fill")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.fkDanger)
-            Text(String(localized: "recipe.list.prioritizeExpiring \(store.expiringItemCount)"))
-                .font(.fkLabelLarge)
-                .foregroundStyle(Color.fkOnSurface)
-            Spacer(minLength: 0)
-        }
-        .padding(FkSpacing.md)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: FkRadius.lg, style: .continuous)
-                .fill(Color.fkWarnSoft)
-        )
-        .padding(.horizontal, FkSpacing.lg)
     }
 
     // MARK: List / empty / loading
