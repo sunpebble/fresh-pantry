@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.2](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.4.1...fresh_pantry-v2.4.2) (2026-07-07)
+
+
+### Bug Fixes
+
+* **i18n:** localize seeded inventory/food-log names; add expired-days plural variation ([8fba62f](https://github.com/sunpebble/fresh-pantry/commit/8fba62f0af5f51c8374cffc6a1f4c61273d523a1))
+
 ## [2.4.1](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.4.0...fresh_pantry-v2.4.1) (2026-07-07)
 
 
