@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.5.0](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.4.2...fresh_pantry-v2.5.0) (2026-07-07)
+
+
+### Features
+
+* **recipes:** defer cook deduction until cooking finishes ([6546dff](https://github.com/sunpebble/fresh-pantry/commit/6546dff051284271be1d5b0d2aad999a74432ae8))
+
 ## [2.4.2](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.4.1...fresh_pantry-v2.4.2) (2026-07-07)
 
 
