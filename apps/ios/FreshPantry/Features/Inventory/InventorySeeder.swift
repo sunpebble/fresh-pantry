@@ -28,26 +28,28 @@ enum InventorySeeder {
         }
     }
 
-    /// Specs: (name, quantity, unit, days-until-expiry). The category / storage /
-    /// shelf life come from `FoodKnowledge`, and freshness/state from
-    /// `ExpiryCalculator`, so the data is realistic and self-consistent.
-    /// DEBUG-only demo content (never compiled into release) — i18n:ignore below,
-    /// not shipped UI text.
-    private static let specs: [(name: String, quantity: String, unit: String, daysUntilExpiry: Int)] = [
-        ("牛奶", "2", "盒", 5), // i18n:ignore DEBUG-only sample data, not UI text
-        ("菠菜", "1", "袋", -1), // i18n:ignore DEBUG-only sample data, not UI text — 已过期
-        ("鸡胸肉", "500", "g", 1), // i18n:ignore DEBUG-only sample data, not UI text — 紧急
-        ("鸡蛋", "10", "个", 20), // i18n:ignore DEBUG-only sample data, not UI text
-        ("苹果", "6", "个", 9), // i18n:ignore DEBUG-only sample data, not UI text
-        ("酱油", "1", "瓶", 300), // i18n:ignore DEBUG-only sample data, not UI text
-        ("三文鱼", "1", "盒", 2), // i18n:ignore DEBUG-only sample data, not UI text — 紧急
-        ("酸奶", "4", "杯", 11), // i18n:ignore DEBUG-only sample data, not UI text
+    /// Specs: (lookupName, nameKey, quantity, unit, days-until-expiry). `lookupName`
+    /// is the Chinese identity `FoodKnowledge` matches against (its database is
+    /// Chinese-keyed) — it drives category / storage / shelf life ONLY; the stored
+    /// name is the localized `nameKey` so the samples read in the user's own
+    /// language (same split as `ShoppingSeeder`). Units stay canonical Chinese —
+    /// `UnitLabels.displayLabel` localizes them at display time. Freshness/state
+    /// come from `ExpiryCalculator`, so the data is realistic and self-consistent.
+    private static let specs: [(lookupName: String, nameKey: String, quantity: String, unit: String, daysUntilExpiry: Int)] = [
+        ("牛奶", "food.name.milk", "2", "盒", 5), // i18n:ignore FoodKnowledge lookup key, not UI text
+        ("菠菜", "food.name.spinach", "1", "袋", -1), // i18n:ignore FoodKnowledge lookup key, not UI text — 已过期
+        ("鸡胸肉", "food.name.chickenBreast", "500", "g", 1), // i18n:ignore FoodKnowledge lookup key, not UI text — 紧急
+        ("鸡蛋", "food.name.eggs", "10", "个", 20), // i18n:ignore FoodKnowledge lookup key, not UI text
+        ("苹果", "food.name.apple", "6", "个", 9), // i18n:ignore FoodKnowledge lookup key, not UI text
+        ("酱油", "food.name.soySauce", "1", "瓶", 300), // i18n:ignore FoodKnowledge lookup key, not UI text
+        ("三文鱼", "food.name.salmon", "1", "盒", 2), // i18n:ignore FoodKnowledge lookup key, not UI text — 紧急
+        ("酸奶", "food.name.yogurt", "4", "杯", 11), // i18n:ignore FoodKnowledge lookup key, not UI text
     ]
 
     static func sampleIngredients(now: Date = Date()) -> [Ingredient] {
         let calendar = Calendar.current
         return specs.enumerated().map { offset, spec in
-            let defaults = FoodKnowledge.lookup(spec.name)
+            let defaults = FoodKnowledge.lookup(spec.lookupName)
             let category = FoodCategories.dropdownValue(defaults?.category)
             let storage = defaults?.storage ?? .fridge
             let shelfLife = defaults?.shelfLifeDays
@@ -70,8 +72,8 @@ enum InventorySeeder {
             )
 
             return Ingredient(
-                id: "seed_\(offset)_\(spec.name)",
-                name: spec.name,
+                id: "seed_\(offset)_\(spec.lookupName)",
+                name: String(localized: String.LocalizationValue(spec.nameKey)),
                 quantity: spec.quantity,
                 unit: spec.unit,
                 imageUrl: "",

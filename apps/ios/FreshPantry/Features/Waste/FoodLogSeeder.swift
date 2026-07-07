@@ -9,22 +9,25 @@ import Foundation
 enum FoodLogSeeder {
     private static let didSeedKey = "fp.foodLog.didSeedSamples.v1"
 
-    /// Specs: (name, category, outcome, daysAgo, wasExpiring). Tuned so the
-    /// headline use-up rate is a realistic ~75% with a visible 抢救临期 count and a
-    /// category breakdown that has both consumed + wasted rows.
-    private static let specs: [(name: String, category: String, outcome: FoodLogOutcome, daysAgo: Int, wasExpiring: Bool)] = [
-        ("牛奶", FoodCategories.dairyAndEggs, .consumed, 1, true), // i18n:ignore DEBUG-only sample data, not UI text
-        ("鸡蛋", FoodCategories.dairyAndEggs, .consumed, 2, false), // i18n:ignore DEBUG-only sample data, not UI text
-        ("菠菜", FoodCategories.freshProduce, .wasted, 3, true), // i18n:ignore DEBUG-only sample data, not UI text
-        ("苹果", FoodCategories.freshProduce, .consumed, 4, false), // i18n:ignore DEBUG-only sample data, not UI text
-        ("西兰花", FoodCategories.freshProduce, .consumed, 6, true), // i18n:ignore DEBUG-only sample data, not UI text
-        ("鸡胸肉", FoodCategories.meatAndSeafood, .consumed, 8, true), // i18n:ignore DEBUG-only sample data, not UI text
-        ("三文鱼", FoodCategories.meatAndSeafood, .wasted, 11, true), // i18n:ignore DEBUG-only sample data, not UI text
-        ("酸奶", FoodCategories.dairyAndEggs, .consumed, 13, false), // i18n:ignore DEBUG-only sample data, not UI text
-        ("香菜", FoodCategories.herbsAndSpices, .wasted, 16, true), // i18n:ignore DEBUG-only sample data, not UI text
-        ("番茄", FoodCategories.freshProduce, .consumed, 19, false), // i18n:ignore DEBUG-only sample data, not UI text
-        ("豆腐", FoodCategories.other, .consumed, 23, false), // i18n:ignore DEBUG-only sample data, not UI text
-        ("生菜", FoodCategories.freshProduce, .wasted, 27, true), // i18n:ignore DEBUG-only sample data, not UI text
+    /// Specs: (lookupName, nameKey, category, outcome, daysAgo, wasExpiring).
+    /// `lookupName` is the stable Chinese identity used in seed ids; the stored
+    /// name is the localized `nameKey` so the samples read in the user's own
+    /// language (same split as `ShoppingSeeder`). Tuned so the headline use-up
+    /// rate is a realistic ~75% with a visible 抢救临期 count and a category
+    /// breakdown that has both consumed + wasted rows.
+    private static let specs: [(lookupName: String, nameKey: String, category: String, outcome: FoodLogOutcome, daysAgo: Int, wasExpiring: Bool)] = [
+        ("牛奶", "food.name.milk", FoodCategories.dairyAndEggs, .consumed, 1, true), // i18n:ignore stable seed identity, not UI text
+        ("鸡蛋", "food.name.eggs", FoodCategories.dairyAndEggs, .consumed, 2, false), // i18n:ignore stable seed identity, not UI text
+        ("菠菜", "food.name.spinach", FoodCategories.freshProduce, .wasted, 3, true), // i18n:ignore stable seed identity, not UI text
+        ("苹果", "food.name.apple", FoodCategories.freshProduce, .consumed, 4, false), // i18n:ignore stable seed identity, not UI text
+        ("西兰花", "food.name.broccoli", FoodCategories.freshProduce, .consumed, 6, true), // i18n:ignore stable seed identity, not UI text
+        ("鸡胸肉", "food.name.chickenBreast", FoodCategories.meatAndSeafood, .consumed, 8, true), // i18n:ignore stable seed identity, not UI text
+        ("三文鱼", "food.name.salmon", FoodCategories.meatAndSeafood, .wasted, 11, true), // i18n:ignore stable seed identity, not UI text
+        ("酸奶", "food.name.yogurt", FoodCategories.dairyAndEggs, .consumed, 13, false), // i18n:ignore stable seed identity, not UI text
+        ("香菜", "food.name.cilantro", FoodCategories.herbsAndSpices, .wasted, 16, true), // i18n:ignore stable seed identity, not UI text
+        ("番茄", "food.name.tomato", FoodCategories.freshProduce, .consumed, 19, false), // i18n:ignore stable seed identity, not UI text
+        ("豆腐", "food.name.tofu", FoodCategories.other, .consumed, 23, false), // i18n:ignore stable seed identity, not UI text
+        ("生菜", "food.name.lettuce", FoodCategories.freshProduce, .wasted, 27, true), // i18n:ignore stable seed identity, not UI text
     ]
 
     /// Seeds samples if needed. Safe to call on every launch. `now` is injectable
@@ -53,8 +56,8 @@ enum FoodLogSeeder {
         return specs.enumerated().map { offset, spec in
             let loggedAt = calendar.date(byAdding: .day, value: -spec.daysAgo, to: now) ?? now
             return FoodLogEntry(
-                id: "seed_fl_\(offset)_\(spec.name)",
-                name: spec.name,
+                id: "seed_fl_\(offset)_\(spec.lookupName)",
+                name: String(localized: String.LocalizationValue(spec.nameKey)),
                 category: spec.category,
                 outcome: spec.outcome,
                 loggedAt: loggedAt,
