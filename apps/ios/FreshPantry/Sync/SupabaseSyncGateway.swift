@@ -14,7 +14,15 @@ import Supabase
 /// - `version` is the optimistic lock: every content write sets `version` and
 ///   gates the UPDATE on `.eq("version", expected)`. First writes
 ///   (`baseVersion <= 0`) use `upsert(ignoreDuplicates: true)` so they never
-///   downgrade an existing remote row; `versionForUpsert` never writes 0.
+///   downgrade an existing remote row; `versionForUpsert` never writes 0. A
+///   conflicted first write (DO NOTHING → empty representation) is NOT success:
+///   deterministic-id rows (favorite_recipes / dietary_preferences) collide
+///   with live rows or tombstones the pull filtered out, so it falls through
+///   to the contended-write resolution instead of silently acking a no-op.
+///   Exception: when no remote row carries the op's id, the conflict was a
+///   SECONDARY unique index (inventory's dedupe, migration 20260601035956) and
+///   the silent skip is the designed outcome — resolved by acking, not writing.
+///   This conflict check is an iOS-side fix the Dart client does not have yet.
 /// - Conflict policy = client-patch-wins at the field level; conflicts are only
 ///   REPORTED (telemetry), never block — via `MergePolicy.mergeRemotePatch`.
 /// - Soft delete only (sets `deleted_at`, never a hard delete).
@@ -129,10 +137,12 @@ actor SupabaseSyncGateway: RemoteSyncGateway {
 
     // MARK: - Versioned full-row write
 
-    /// Mirrors Dart `_pushVersionedRow`. A first write (`baseVersion <= 0`) is an
-    /// idempotent `upsert(ignoreDuplicates: true)`; a subsequent write is a
-    /// conditional UPDATE gated on the base version, falling back to a 3-way merge
-    /// on contention.
+    /// Mirrors Dart `_pushVersionedRow`, except the conflicted-first-write check
+    /// (added here; the Dart client still acks a DO-NOTHING create as success).
+    /// A first write (`baseVersion <= 0`) is an `upsert(ignoreDuplicates: true)`
+    /// that treats a conflict on its OWN id as contention, not success; a
+    /// subsequent write is a conditional UPDATE gated on the base version. Both
+    /// fall back to a 3-way merge on contention.
     private func pushVersionedRow(table: String, op: SyncOperation, codec: EntityCodec) async throws {
         let entityId = resolvedEntityId(op)
         var domain = op.patch
@@ -144,9 +154,23 @@ actor SupabaseSyncGateway: RemoteSyncGateway {
             domain["remoteVersion"] = .int(1)
             var row = codec.rowForUpsert(op.householdId, domain)
             row["client_id"] = .string(op.clientId)
-            _ = try await client.from(table)
+            let inserted: [[String: AnyJSON]] = try await client.from(table)
                 .upsert(SyncJSONBridge.toAnyObject(row), ignoreDuplicates: true)
                 .execute()
+                .value
+            if inserted.isEmpty {
+                // ON CONFLICT DO NOTHING wrote nothing. A non-UUID id was never
+                // sent (`applyLocalId` drops it), so that conflict can only be a
+                // secondary unique index (inventory's dedupe) — the documented
+                // silent skip; resolving would feed a non-uuid into a uuid filter.
+                guard ProposalApply.isUuid(entityId) else { return }
+                // A UUID-id conflict is usually a deterministic-id row (favorite /
+                // dietary) colliding with a tombstone this client never pulled.
+                // Acking would silently drop the write; resolve against the live
+                // row instead (the client-wins merge writes `deleted_at: null`,
+                // so a tombstone is revived with a version-gated UPDATE).
+                try await resolveContendedWrite(table: table, op: op, entityId: entityId, codec: codec)
+            }
             return
         }
 
@@ -177,6 +201,7 @@ actor SupabaseSyncGateway: RemoteSyncGateway {
         codec: EntityCodec
     ) async throws {
         let localPatch = op.patch
+        var recreateConflicted = false
         for _ in 0..<Self.maxConflictRetries {
             let current: [[String: AnyJSON]] = try await client.from(table)
                 .select()
@@ -187,6 +212,13 @@ actor SupabaseSyncGateway: RemoteSyncGateway {
                 .value
 
             guard let currentRow = current.first else {
+                if recreateConflicted {
+                    // The upsert conflicted yet no row carries our id: the
+                    // collision is a secondary unique index (inventory's dedupe,
+                    // migration 20260601035956), not the PK — the documented
+                    // silent skip. Ack without writing.
+                    return
+                }
                 // Row deleted / never created: recreate with an advanced version.
                 var domain = op.patch
                 domain["id"] = .string(entityId)
@@ -194,11 +226,14 @@ actor SupabaseSyncGateway: RemoteSyncGateway {
                 domain["remoteVersion"] = .int((op.baseVersion ?? 0) + 1)
                 var row = codec.rowForUpsert(op.householdId, domain)
                 row["client_id"] = .string(op.clientId)
-                _ = try await client.from(table)
+                let inserted: [[String: AnyJSON]] = try await client.from(table)
                     .upsert(SyncJSONBridge.toAnyObject(row), ignoreDuplicates: true)
                     .execute()
+                    .value
+                if inserted.isEmpty { recreateConflicted = true; continue }
                 return
             }
+            recreateConflicted = false
 
             let remoteRow = SyncJSONBridge.fromAnyObject(currentRow)
             let remoteVersion = intValue(remoteRow["version"], default: 0)
@@ -230,6 +265,116 @@ actor SupabaseSyncGateway: RemoteSyncGateway {
             if !updated.isEmpty { return }
         }
         throw SyncGatewayError.conflictUnresolved(entityId)
+    }
+
+    // MARK: - Upload PK-collision resolution
+
+    /// Resolves `uploadLocalOnly` primary-key collisions — upload rows whose
+    /// bulk `upsert(ignoreDuplicates:)` was DO-NOTHING'd on their own UUID id.
+    /// Per row: select the remote row; a TOMBSTONE is revived with the row's
+    /// content via the version-gated client-wins UPDATE (the pull filters
+    /// tombstones, so nothing else can deliver it); a LIVE row is left
+    /// untouched — remote is authoritative and the pull adopts it, preserving
+    /// the missed-version-bump bump-v1 self-heal AND never overwriting a
+    /// newer write a concurrent outbox push already landed; an ABSENT row is
+    /// the secondary-unique-index dedupe skip (documented, see
+    /// `pushVersionedRow`). Returns the row ids now safe to mark
+    /// `remoteVersion = 1`; rows whose gated revive kept missing (hot row) or
+    /// errored stay out and retry on the next sync run. Never throws.
+    func resolveUploadCollisions(
+        entityType: SyncEntityType,
+        householdId: String,
+        rows: [[String: JSONValue]],
+        clientId: String
+    ) async -> Set<String> {
+        guard let binding = Self.contentBinding(entityType) else { return [] }
+        var resolved: Set<String> = []
+        for row in rows {
+            guard case let .string(entityId) = row["id"] else { continue }
+            do {
+                if try await reviveIfTombstone(
+                    table: binding.table,
+                    codec: binding.codec,
+                    householdId: householdId,
+                    entityId: entityId,
+                    row: row,
+                    clientId: clientId
+                ) {
+                    resolved.insert(entityId)
+                }
+            } catch {
+                Self.logger.error(
+                    "upload-collision resolution failed \(entityType.rawValue, privacy: .public) id=\(entityId, privacy: .public): \(String(describing: error), privacy: .public)"
+                )
+                diagnostics.failure("sync.upload_collision", error: error, ["entityType": entityType.rawValue])
+            }
+        }
+        return resolved
+    }
+
+    /// One collided row's resolution. Only a tombstone is ever written — the
+    /// same version-gated client-wins UPDATE `resolveContendedWrite` uses to
+    /// revive one (a first write has no base to 3-way merge against, so the
+    /// row's own content IS the client-wins result). Returns whether the row
+    /// may be marked synced.
+    private func reviveIfTombstone(
+        table: String,
+        codec: EntityCodec,
+        householdId: String,
+        entityId: String,
+        row: [String: JSONValue],
+        clientId: String
+    ) async throws -> Bool {
+        for _ in 0..<Self.maxConflictRetries {
+            let current: [[String: AnyJSON]] = try await client.from(table)
+                .select()
+                .eq("household_id", value: householdId)
+                .eq("id", value: entityId)
+                .limit(1)
+                .execute()
+                .value
+            guard let currentRow = current.first else {
+                // No row carries the id: the conflict was a secondary unique
+                // index (inventory's dedupe) — the documented silent skip.
+                return true
+            }
+            let remoteRow = SyncJSONBridge.fromAnyObject(currentRow)
+            guard case .string = remoteRow["deleted_at"] else {
+                // Live row: remote is authoritative and the pull adopts it —
+                // never overwrite (a concurrent outbox push may have just
+                // landed a NEWER write here). The bump-v1 self-heal upstream
+                // covers the missed-version-bump case.
+                return true
+            }
+            let remoteVersion = intValue(remoteRow["version"], default: 0)
+            var domain = row
+            domain["remoteVersion"] = .int(remoteVersion + 1)
+            var wire = codec.rowForUpsert(householdId, domain)
+            wire["client_id"] = .string(clientId)
+            let updated: [[String: AnyJSON]] = try await client.from(table)
+                .update(SyncJSONBridge.toAnyObject(wire))
+                .eq("household_id", value: householdId)
+                .eq("id", value: entityId)
+                .eq("version", value: remoteVersion)
+                .execute()
+                .value
+            if !updated.isEmpty { return true }
+        }
+        return false
+    }
+
+    /// The content table + codec a `SyncEntityType`'s versioned rows live in.
+    private static func contentBinding(_ entityType: SyncEntityType) -> (table: String, codec: EntityCodec)? {
+        switch entityType {
+        case .inventoryItem: ("inventory_items", .inventory)
+        case .shoppingItem: ("shopping_items", .shopping)
+        case .customRecipe: ("custom_recipes", .customRecipe)
+        case .mealPlanEntry: ("meal_plan_entries", .mealPlan)
+        case .foodLogEntry: ("food_log_entries", .foodLog)
+        case .favoriteRecipe: ("favorite_recipes", .favoriteRecipe)
+        case .dietaryPreference: ("dietary_preferences", .dietaryPreference)
+        case .householdConfig: nil
+        }
     }
 
     // MARK: - Soft delete + partial-column write

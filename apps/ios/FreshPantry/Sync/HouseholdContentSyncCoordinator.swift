@@ -49,10 +49,18 @@ actor HouseholdContentSyncCoordinator {
     /// root retries via `retryIfNeeded` on reconnect / foreground. Cleared on any
     /// fresh `syncTo` / `stop` / consumed retry.
     private var needsRetry = false
+    /// In-flight pull sequences (`startSync` + `refreshDelta`). `refreshDelta`
+    /// is gated on 0 (`shouldRefreshDelta`): two concurrent pulls hold remote
+    /// snapshots of different ages, and the older one's patch — applied after
+    /// the newer one's — resurrects by id a row the newer one just tombstoned,
+    /// while the cursor has already advanced past the tombstone. A count (not
+    /// a flag) so a cancelled run's decrement can't clear a successor's mark.
+    private var activePulls = 0
 
     init(
         remote: RemotePantryRepository,
         push: SyncCoordinator,
+        gateway: SupabaseSyncGateway,
         outbox: SyncOutboxRepository,
         inventory: InventoryRepository,
         shopping: ShoppingRepository,
@@ -71,6 +79,22 @@ actor HouseholdContentSyncCoordinator {
         self.session = session
         self.diagnostics = diagnostics
 
+        // Upload rows whose bulk upsert collided on their own UUID primary key
+        // resolve through the gateway's revive-if-tombstone path: only a
+        // tombstone is ever written (the version-gated client-wins UPDATE that
+        // revives it); a live row is confirmed without a write, so a newer
+        // write a concurrent outbox push landed is never rolled back. Never
+        // throws — unresolved ids stay out of the returned set.
+        let resolveCollided: @Sendable (SyncEntityType, String, [[String: JSONValue]]) async -> Set<String> = { entityType, hid, rows in
+            let clientId = await MainActor.run { session.clientId }
+            return await gateway.resolveUploadCollisions(
+                entityType: entityType,
+                householdId: hid,
+                rows: rows,
+                clientId: clientId
+            )
+        }
+
         // The single entity registry. Each `make` binds one entity's local repo +
         // remote I/O; the generic sequence (decode→merge→save→signal) lives in
         // `EntitySync.make`. The closures capture only the (Sendable) repos +
@@ -80,57 +104,64 @@ actor HouseholdContentSyncCoordinator {
             EntitySync.make(
                 .inventoryItem,
                 load: { try await inventory.loadAllFor($0) },
-                save: { try await inventory.saveItems($0, $1) },
+                mutate: { try await inventory.mutateItems($0, $1) },
                 remoteLoad: { try await remote.loadInventory($0, since: $1) },
                 remoteUpsert: { try await remote.upsertInventory($0, $1) },
+                resolveCollided: resolveCollided,
                 watch: { await remote.watchInventory($0) }
             ),
             EntitySync.make(
                 .shoppingItem,
                 load: { try await shopping.loadAllFor($0) },
-                save: { try await shopping.saveItems($0, $1) },
+                mutate: { try await shopping.mutateItems($0, $1) },
                 remoteLoad: { try await remote.loadShopping($0, since: $1) },
                 remoteUpsert: { try await remote.upsertShopping($0, $1) },
+                resolveCollided: resolveCollided,
                 watch: { await remote.watchShopping($0) }
             ),
             EntitySync.make(
                 .customRecipe,
                 load: { try await customRecipe.loadAllFor($0) },
-                save: { try await customRecipe.saveRecipes($0, $1) },
+                mutate: { try await customRecipe.mutateRecipes($0, $1) },
                 remoteLoad: { try await remote.loadCustomRecipes($0, since: $1) },
                 remoteUpsert: { try await remote.upsertCustomRecipes($0, $1) },
+                resolveCollided: resolveCollided,
                 watch: { await remote.watchCustomRecipes($0) }
             ),
             EntitySync.make(
                 .mealPlanEntry,
                 load: { try await mealPlan.loadAllFor($0) },
-                save: { try await mealPlan.saveEntries($0, $1) },
+                mutate: { try await mealPlan.mutateEntries($0, $1) },
                 remoteLoad: { try await remote.loadMealPlanEntries($0, since: $1) },
                 remoteUpsert: { try await remote.upsertMealPlanEntries($0, $1) },
+                resolveCollided: resolveCollided,
                 watch: { await remote.watchMealPlanEntries($0) }
             ),
             EntitySync.make(
                 .foodLogEntry,
                 load: { try await foodLog.loadAllFor($0) },
-                save: { try await foodLog.saveEntries($0, $1) },
+                mutate: { try await foodLog.mutateEntries($0, $1) },
                 remoteLoad: { try await remote.loadFoodLogEntries($0, since: $1) },
                 remoteUpsert: { try await remote.upsertFoodLogEntries($0, $1) },
+                resolveCollided: resolveCollided,
                 watch: { await remote.watchFoodLogEntries($0) }
             ),
             EntitySync.make(
                 .favoriteRecipe,
                 load: { try await favoriteRecipe.loadAllFor($0) },
-                save: { try await favoriteRecipe.saveEntries($0, $1) },
+                mutate: { try await favoriteRecipe.mutateEntries($0, $1) },
                 remoteLoad: { try await remote.loadFavoriteRecipes($0, since: $1) },
                 remoteUpsert: { try await remote.upsertFavoriteRecipes($0, $1) },
+                resolveCollided: resolveCollided,
                 watch: { await remote.watchFavoriteRecipes($0) }
             ),
             EntitySync.make(
                 .dietaryPreference,
                 load: { try await dietaryPreference.loadAllFor($0) },
-                save: { try await dietaryPreference.saveEntries($0, $1) },
+                mutate: { try await dietaryPreference.mutateEntries($0, $1) },
                 remoteLoad: { try await remote.loadDietaryPreferences($0, since: $1) },
                 remoteUpsert: { try await remote.upsertDietaryPreferences($0, $1) },
+                resolveCollided: resolveCollided,
                 watch: { await remote.watchDietaryPreferences($0) }
             ),
         ]
@@ -178,7 +209,12 @@ actor HouseholdContentSyncCoordinator {
     /// exists. No-op when local-only, mid-sync, or before the first full pull.
     func refreshDelta() async {
         let householdId = activeHouseholdId
-        guard !householdId.isEmpty else { return }
+        // Check-and-increment BEFORE the first await: the guard and the mark
+        // sit in one synchronous actor section, so two refreshes racing past
+        // the gate together is impossible.
+        guard !householdId.isEmpty, Self.shouldRefreshDelta(activePulls: activePulls) else { return }
+        activePulls += 1
+        defer { activePulls -= 1 }
         let cursor = await MainActor.run { session.syncCursor(for: householdId) }
         guard let since = cursor else { return }
         let gen = generation
@@ -188,11 +224,18 @@ actor HouseholdContentSyncCoordinator {
             guard isCurrent(gen, householdId) else { return }
 
             let ctx = makeContext(householdId, gen)
+            var applied = true
             for (sync, rows) in zip(entitySyncs, loaded) {
-                await sync.applyPatch(rows, ctx)
+                applied = await sync.applyPatch(rows, ctx) && applied
             }
 
-            await advanceCursor(from: since, loaded: loaded, householdId: householdId)
+            // Only a fully-applied run may move the watermark: a bailed (stale
+            // generation) or failed apply left rows unsaved, and an advanced
+            // cursor would skip them on every future `updated_at >= since` pull.
+            // Holding back is safe — the next delta just re-pulls (idempotent).
+            if applied {
+                await advanceCursor(from: since, loaded: loaded, householdId: householdId, gen: gen)
+            }
         } catch is CancellationError {
         } catch {
             Self.logger.error("while refreshing household delta: \(error.localizedDescription, privacy: .public)")
@@ -206,6 +249,13 @@ actor HouseholdContentSyncCoordinator {
         needsRetry && !activeHouseholdId.isEmpty
     }
 
+    /// The delta-refresh gate, extracted pure for unit tests: a refresh may
+    /// only start while NO other pull is in flight (see `activePulls`). A
+    /// skipped refresh is safe — the next foreground/reconnect re-triggers it.
+    static func shouldRefreshDelta(activePulls: Int) -> Bool {
+        activePulls == 0
+    }
+
     // MARK: Sequence
 
     /// The load-bearing reconciliation sequence (each step re-checks `isCurrent`
@@ -213,6 +263,8 @@ actor HouseholdContentSyncCoordinator {
     /// apply. Never crashes — any thrown error is logged and swallowed.
     private func startSync(_ householdId: String, _ gen: Int, forceFullPull: Bool) async {
         guard isCurrent(gen, householdId) else { return }
+        activePulls += 1
+        defer { activePulls -= 1 }
         do {
             // One-shot legacy-id migration so historical fl_<ms> rows can backfill
             // into the uuid PK column. Idempotent — a no-op once everything is UUID.
@@ -257,17 +309,22 @@ actor HouseholdContentSyncCoordinator {
             let loaded = try await loadAllRemotes(householdId, since: since)
             guard isCurrent(gen, householdId) else { return }
 
+            var applied = true
             if since == nil {
                 for (sync, rows) in zip(entitySyncs, loaded) {
-                    await sync.applyFull(rows, ctx)
+                    applied = await sync.applyFull(rows, ctx) && applied
                 }
             } else {
                 for (sync, rows) in zip(entitySyncs, loaded) {
-                    await sync.applyPatch(rows, ctx)
+                    applied = await sync.applyPatch(rows, ctx) && applied
                 }
             }
 
-            await advanceCursor(from: cursor, loaded: loaded, householdId: householdId)
+            // Same watermark rule as refreshDelta: never advance past rows a
+            // stale or failed apply didn't save.
+            if applied {
+                await advanceCursor(from: cursor, loaded: loaded, householdId: householdId, gen: gen)
+            }
             diagnostics.breadcrumb("sync.pull", ["outcome": "ok", "mode": since == nil ? "full" : "delta"])
         } catch is CancellationError {
             // A household switch / stop cancelled this run — not an error.
@@ -299,7 +356,13 @@ actor HouseholdContentSyncCoordinator {
     /// Advances the stored cursor to the newest `updated_at` across every entity's
     /// pulled rows (nil when nothing advanced). Mirrors the old per-entity
     /// `SyncCursor.advance(…)` array.
-    private func advanceCursor(from cursor: Date?, loaded: [[[String: JSONValue]]], householdId: String) async {
+    ///
+    /// Generation-guarded: a run superseded mid-apply must not persist a
+    /// watermark (its applies bailed, so the rows never landed). If the bump
+    /// lands after this check, every apply already completed under the old
+    /// generation — advancing is then still correct.
+    private func advanceCursor(from cursor: Date?, loaded: [[[String: JSONValue]]], householdId: String, gen: Int) async {
+        guard isCurrent(gen, householdId) else { return }
         let advanced = loaded.compactMap { SyncCursor.advance(cursor, with: $0) }.max()
         if let advanced {
             await MainActor.run { session.setSyncCursor(advanced, for: householdId) }
@@ -316,7 +379,10 @@ actor HouseholdContentSyncCoordinator {
         subscriptionTasks = entitySyncs.map { sync in
             Task {
                 for await rows in await sync.watch(householdId) {
-                    await sync.applyFull(rows, ctx)
+                    // Result deliberately unused: realtime applies don't move
+                    // the cursor, and a failed one re-heals on the next event
+                    // or pull.
+                    _ = await sync.applyFull(rows, ctx)
                 }
             }
         }

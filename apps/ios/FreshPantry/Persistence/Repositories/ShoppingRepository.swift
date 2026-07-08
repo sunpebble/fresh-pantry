@@ -47,6 +47,12 @@ actor ShoppingRepository {
         try modelContext.save()
     }
 
+    /// Atomic load→transform→save in one actor call — the concurrent-write-safe
+    /// sync write path (see `InventoryRepository.mutateItems`).
+    func mutateItems(_ householdID: String, _ transform: @Sendable ([ShoppingItem]) -> [ShoppingItem]) throws {
+        try saveItems(householdID, transform(loadAllFor(householdID)))
+    }
+
     // MARK: Single-row writes (the offline-first optimistic path)
     //
     // The store applies a tap to its in-memory `items` SYNCHRONOUSLY (instant UI)

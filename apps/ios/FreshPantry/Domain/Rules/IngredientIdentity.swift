@@ -34,7 +34,7 @@ enum IngredientIdentity {
             if row.name.trimmed.lowercased() != normalizedName { continue }
             if row.unit.trimmed != normalizedUnit { continue }
             if row.storage != storage { continue }
-            if Double(row.quantity.trimmed) == nil { return -1 }
+            if QuantityText.numeric(row.quantity) == nil { return -1 }
             return i
         }
         return -1

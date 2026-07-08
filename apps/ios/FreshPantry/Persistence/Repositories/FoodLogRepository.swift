@@ -92,6 +92,12 @@ actor FoodLogRepository {
         try modelContext.save()
     }
 
+    /// Atomic load→transform→save in one actor call — the concurrent-write-safe
+    /// sync write path (see `InventoryRepository.mutateItems`).
+    func mutateEntries(_ householdID: String, _ transform: @Sendable ([FoodLogEntry]) -> [FoodLogEntry]) throws {
+        try saveEntries(householdID, transform(loadAllFor(householdID)))
+    }
+
     /// One-shot, idempotent: rewrites legacy `fl_<ms>` ids to lowercase UUIDs so
     /// the row can land in the Supabase `uuid` PK column. Re-encodes the payload's
     /// own `id` too. No-op for rows already on a UUID id. Returns the rewrite count.

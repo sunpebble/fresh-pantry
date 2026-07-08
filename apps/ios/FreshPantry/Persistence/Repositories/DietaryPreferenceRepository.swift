@@ -46,6 +46,12 @@ actor DietaryPreferenceRepository {
         try modelContext.save()
     }
 
+    /// Atomic load→transform→save in one actor call — the concurrent-write-safe
+    /// sync write path (see `InventoryRepository.mutateItems`).
+    func mutateEntries(_ householdID: String, _ transform: @Sendable ([DietaryPreference]) -> [DietaryPreference]) throws {
+        try saveEntries(householdID, transform(loadAllFor(householdID)))
+    }
+
     func deleteHouseholdScope(_ householdID: String) throws {
         try modelContext.delete(
             model: DietaryPreferenceRecord.self,

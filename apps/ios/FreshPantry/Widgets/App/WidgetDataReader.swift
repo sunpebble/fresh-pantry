@@ -16,7 +16,7 @@ struct WidgetDataReader {
     /// 调用,算好写进 App Group;widget 时间线只读那份快照,从不在 widget 进程调用
     /// 本类型(其内存预算约 30MB,开 13 模型容器 + 取数会被 jetsam 杀)。
     func snapshotBundle(householdID: String, now: Date) async -> WidgetSnapshotBundle {
-        async let expiring = expiringSnapshot(householdID: householdID, now: now, limit: 8)
+        async let expiring = expiringSnapshot(householdID: householdID, now: now)
         async let mealPlan = mealPlanSnapshot(householdID: householdID, now: now)
         async let shopping = shoppingSnapshot(householdID: householdID, limit: 8)
         async let waste = wasteSnapshot(householdID: householdID, now: now)
@@ -27,46 +27,40 @@ struct WidgetDataReader {
 
     // MARK: 临期
 
-    func expiringSnapshot(householdID: String, now: Date, limit: Int) async -> WidgetExpiringSnapshot {
+    /// 存储形态是候选集(见 `WidgetExpiringSnapshot` 文档):全部带到期日的项 +
+    /// 无到期日的低新鲜项,不截断不排序——widget 渲染时经 `projected(now:)` 按
+    /// 渲染时刻重算天数/分桶/计数,app 多日不开也能让 urgent→expired、
+    /// fresh→urgent 如期推进(候选含 fresh 的带日期项正为此)。计数字段存发布
+    /// 时刻的投影值。展示截断由 widget 视图 prefix 负责。
+    /// ponytail: 候选集不设上限(每项仅名字 + 日期,千级库存也只有几十 KB JSON);
+    /// 若真出现病态库存再加排序截断。
+    func expiringSnapshot(householdID: String, now: Date) async -> WidgetExpiringSnapshot {
         let repo = InventoryRepository(modelContainer: container)
         guard let inventory = try? await repo.loadAllFor(householdID) else { return .empty }
 
-        struct Tagged { let ingredient: Ingredient; let state: FreshnessState; let days: Int? }
-        let tagged: [Tagged] = inventory.map { ing in
-            let state = ExpiryCalculator.freshnessStateForExpiry(
-                freshness: ing.freshnessPercent, expiryDate: ing.expiryDate, now: now
+        // lowFreshness 与 ExpiryCalculator.freshnessStateForExpiry 的 fresh/soon 分界同口径。
+        let candidates = inventory.compactMap { ing -> WidgetExpiringSnapshot.Item? in
+            let lowFreshness = !(ing.freshnessPercent > 0.5)
+            // 无到期日且高新鲜:任何时刻都不会非鲜,不入候选。
+            guard ing.expiryDate != nil || lowFreshness else { return nil }
+            return WidgetExpiringSnapshot.Item(
+                name: ing.name,
+                daysRemaining: ing.expiryDate.map { ExpiryCalculator.daysUntilExpiry($0, now: now) },
+                expiryDate: ing.expiryDate,
+                lowFreshness: lowFreshness,
+                // 在 app 侧解析好(知识库 FoodKnowledge 不编进 widget),widget 投影
+                // 用它按渲染时刻重算 soon/fresh 分界。
+                shelfLifeDays: IngredientNormalizer.shelfLifeDays(ing)
             )
-            let days = ing.expiryDate.map { ExpiryCalculator.daysUntilExpiry($0, now: now) }
-            return Tagged(ingredient: ing, state: state, days: days)
         }
-        // 非新鲜 = 非 .fresh。注意:这里按渲染时刻 now 用 ExpiryCalculator 重算 tier
-        // (而非读 ingredient.state 的存量值)——widget 每日跨午夜刷新需让剩余天数与
-        // tier 随当天重算,即便 app 当天未运行;故刻意不复用 DashboardStore 的存量 state。
-        let nonFresh = tagged.filter { $0.state != .fresh }
-
-        // 排序:严重度(expired→urgent→soon),再最快到期优先(nil 到期日最后),稳定。
-        let order: [FreshnessState] = [.expired, .urgent, .expiringSoon, .fresh]
-        func rank(_ s: FreshnessState) -> Int { order.firstIndex(of: s) ?? order.count }
-        let sorted = nonFresh.enumerated().sorted { lhs, rhs in
-            let lr = rank(lhs.element.state), rr = rank(rhs.element.state)
-            if lr != rr { return lr < rr }
-            switch (lhs.element.days, rhs.element.days) {
-            case let (l?, r?) where l != r: return l < r
-            case (.some, nil): return true
-            case (nil, .some): return false
-            default: return lhs.offset < rhs.offset
-            }
-        }.map(\.element)
-
-        func count(_ s: FreshnessState) -> Int { nonFresh.lazy.filter { $0.state == s }.count }
-        let items = sorted.prefix(limit).map {
-            WidgetExpiringSnapshot.Item(name: $0.ingredient.name, daysRemaining: $0.days)
-        }
+        let projected = WidgetExpiringSnapshot(
+            expiredCount: 0, urgentCount: 0, soonCount: 0, items: candidates
+        ).projected(now: now)
         return WidgetExpiringSnapshot(
-            expiredCount: count(.expired),
-            urgentCount: count(.urgent),
-            soonCount: count(.expiringSoon),
-            items: Array(items)
+            expiredCount: projected.expiredCount,
+            urgentCount: projected.urgentCount,
+            soonCount: projected.soonCount,
+            items: candidates
         )
     }
 

@@ -45,3 +45,61 @@ struct IntakeReviewApplyErrorTests {
         #expect(store.applyError == nil)
     }
 }
+
+/// The review screen's quantity rules: the tap-to-edit commit gate and the
+/// merge-chip coercion for non-numeric quantities (the chip must never promise
+/// a merge that `ProposalApply` will degrade to a new row).
+@MainActor
+struct IntakeReviewQuantityRuleTests {
+    private func makeStore(_ proposals: [IntakeProposal]) throws -> IntakeReviewStore {
+        let container = try ModelContainerFactory.makeInMemory()
+        return IntakeReviewStore(
+            proposals: proposals,
+            controller: IntakeController(
+                repository: InventoryRepository(modelContainer: container),
+                householdID: "home"
+            )
+        )
+    }
+
+    private func mergeProposal(quantity: String) -> IntakeProposal {
+        IntakeProposal(
+            id: "p1", name: "米", quantity: quantity, unit: "袋",
+            category: FoodCategories.other, storage: .pantry, shelfLifeDays: nil,
+            action: .mergeInto, mergeTargetId: "0", mergeTargetLabel: "米 2袋"
+        )
+    }
+
+    @Test func sanitizedQuantityEditGatesInput() {
+        // Discarded: blank, unchanged, and numeric-but-not-positive-finite.
+        #expect(IntakeReviewStore.sanitizedQuantityEdit("  ", current: "2") == nil)
+        #expect(IntakeReviewStore.sanitizedQuantityEdit("2", current: "2") == nil)
+        #expect(IntakeReviewStore.sanitizedQuantityEdit("0", current: "2") == nil)
+        #expect(IntakeReviewStore.sanitizedQuantityEdit("-3", current: "2") == nil)
+        #expect(IntakeReviewStore.sanitizedQuantityEdit("inf", current: "2") == nil)
+        #expect(IntakeReviewStore.sanitizedQuantityEdit("nan", current: "2") == nil)
+        // Committed: positive numbers (trimmed) and free text.
+        #expect(IntakeReviewStore.sanitizedQuantityEdit(" 2.5 ", current: "2") == "2.5")
+        #expect(IntakeReviewStore.sanitizedQuantityEdit("适量", current: "2") == "适量")
+    }
+
+    @Test func updateProposalCoercesNonNumericQuantityMergeToNewRow() throws {
+        let store = try makeStore([mergeProposal(quantity: "1")])
+        store.updateProposal(store.proposals[0].copyWith(quantity: "适量", userEdited: true))
+        #expect(store.proposals[0].action == .newRow) // chip stops promising a merge
+        #expect(store.proposals[0].quantity == "适量")
+    }
+
+    @Test func toggleActionIsNoOpForNonNumericQuantity() throws {
+        let store = try makeStore([
+            mergeProposal(quantity: "适量").copyWith(action: .newRow)
+        ])
+        store.toggleAction("p1")
+        #expect(store.proposals[0].action == .newRow) // can't toggle into a false promise
+    }
+
+    @Test func isActionLockedForNonNumericQuantity() {
+        #expect(IntakeReviewStore.isActionLocked(mergeProposal(quantity: "适量")))
+        #expect(!IntakeReviewStore.isActionLocked(mergeProposal(quantity: "2")))
+    }
+}

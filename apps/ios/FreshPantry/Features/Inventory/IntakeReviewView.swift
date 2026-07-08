@@ -178,6 +178,11 @@ private struct IntakeProposalRow: View {
     @State private var editingName = false
     @State private var nameDraft = ""
     @FocusState private var nameFocused: Bool
+    /// Same tap-to-edit pattern for the 数量 — the only way to fix a non-numeric
+    /// quantity ("适量") in review, since the stepper buttons are disabled on it.
+    @State private var editingQuantity = false
+    @State private var quantityDraft = ""
+    @FocusState private var quantityFocused: Bool
 
     private let unitOptions = ["个", "只", "把", "盒", "袋", "瓶", "罐", "kg", "g", "L", "ml", "份"] // i18n:ignore identity; display via UnitLabels.displayLabel
 
@@ -267,6 +272,20 @@ private struct IntakeProposalRow: View {
         editingName = false
     }
 
+    /// Commits the edited quantity via `IntakeReviewStore.sanitizedQuantityEdit`
+    /// (blank / unchanged / non-positive-numeric edits are discarded — restore
+    /// the current quantity so a re-tap shows it, mirroring `commitName`). Free
+    /// text stays legal; a still-non-numeric quantity simply keeps the row on
+    /// the newRow apply path.
+    private func commitQuantity() {
+        if let committed = IntakeReviewStore.sanitizedQuantityEdit(quantityDraft, current: proposal.quantity) {
+            onChanged(proposal.copyWith(quantity: committed, userEdited: true))
+        } else {
+            quantityDraft = proposal.quantity
+        }
+        editingQuantity = false
+    }
+
     private var headerRow: some View {
         HStack(spacing: FkSpacing.sm) {
             Button(action: onToggleSelected) {
@@ -325,8 +344,28 @@ private struct IntakeProposalRow: View {
                 Text(String(localized: "inventory.field.quantity"))
                     .font(.fkLabelMedium)
                     .foregroundStyle(Color.fkOnSurfaceVariant)
-                FkInlineStepper(value: proposal.quantity, min: 1) {
-                    onChanged(proposal.copyWith(quantity: $0, userEdited: true))
+                if editingQuantity {
+                    TextField(String(localized: "inventory.field.quantity"), text: $quantityDraft)
+                        .font(.fkTitleSmall)
+                        .foregroundStyle(Color.fkOnSurface)
+                        .textFieldStyle(.plain)
+                        .focused($quantityFocused)
+                        .submitLabel(.done)
+                        .onSubmit { commitQuantity() }
+                        .onChange(of: quantityFocused) { _, focused in if !focused { commitQuantity() } }
+                        .frame(maxWidth: 96)
+                } else {
+                    FkInlineStepper(
+                        value: proposal.quantity,
+                        min: 1,
+                        onTapValue: {
+                            quantityDraft = proposal.quantity
+                            editingQuantity = true
+                            quantityFocused = true
+                        }
+                    ) {
+                        onChanged(proposal.copyWith(quantity: $0, userEdited: true))
+                    }
                 }
                 Button(action: { showUnitPicker = true }) {
                     Text(UnitLabels.displayLabel(for: proposal.unit))

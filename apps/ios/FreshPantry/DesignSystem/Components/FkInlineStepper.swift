@@ -12,29 +12,41 @@ struct FkInlineStepper: View {
     var min: Double = 0
     var max: Double = 9999
     var suffix: String?
+    /// Tap handler for the value label (tap-to-edit); nil keeps it inert. The
+    /// only way to FIX a non-numeric value (both step buttons are disabled).
+    var onTapValue: (() -> Void)?
     let onChanged: (String) -> Void
 
-    private var parsed: Double? { Double(value.trimmed) }
+    private var parsed: Double? { QuantityText.numeric(value) }
 
     var body: some View {
         HStack(spacing: FkSpacing.sm) {
             stepButton(systemImage: "minus", enabled: canDecrement) { bump(by: -1) }
 
-            HStack(spacing: 2) {
-                Text(value)
-                    .font(.fkTitleSmall)
-                    .foregroundStyle(Color.fkOnSurface)
-                    .monospacedDigit()
-                if let suffix {
-                    Text(suffix)
-                        .font(.fkLabelSmall)
-                        .foregroundStyle(Color.fkOnSurfaceVariant)
-                }
+            if let onTapValue {
+                Button(action: onTapValue) { valueLabel }
+                    .buttonStyle(.fkPressable)
+            } else {
+                valueLabel
             }
-            .frame(minWidth: 34)
 
             stepButton(systemImage: "plus", enabled: canIncrement) { bump(by: 1) }
         }
+    }
+
+    private var valueLabel: some View {
+        HStack(spacing: 2) {
+            Text(value)
+                .font(.fkTitleSmall)
+                .foregroundStyle(Color.fkOnSurface)
+                .monospacedDigit()
+            if let suffix {
+                Text(suffix)
+                    .font(.fkLabelSmall)
+                    .foregroundStyle(Color.fkOnSurfaceVariant)
+            }
+        }
+        .frame(minWidth: 34)
     }
 
     private var canDecrement: Bool {

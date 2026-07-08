@@ -45,6 +45,12 @@ actor MealPlanRepository {
         try modelContext.save()
     }
 
+    /// Atomic load→transform→save in one actor call — the concurrent-write-safe
+    /// sync write path (see `InventoryRepository.mutateItems`).
+    func mutateEntries(_ householdID: String, _ transform: @Sendable ([MealPlanEntry]) -> [MealPlanEntry]) throws {
+        try saveEntries(householdID, transform(loadAllFor(householdID)))
+    }
+
     // MARK: Single-row writes (the offline-first optimistic path)
     //
     // The store mutates its in-memory `entries` SYNCHRONOUSLY (instant UI) then

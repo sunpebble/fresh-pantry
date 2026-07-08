@@ -75,7 +75,14 @@ enum ProposalApply {
                 )
                 : -1
 
-            if mergeIndex < 0 {
+            // nil when there is no live target OR either quantity is non-numeric
+            // (sumQuantity's gate) — such a row degrades to an independent new
+            // row rather than summing "适量" as 0 and silently dropping it.
+            let summed: String? = mergeIndex >= 0
+                ? sumQuantity(current[mergeIndex].quantity, p.quantity)
+                : nil
+
+            guard let summed else {
                 let item = withSyncId(ingredientFromProposal(p, now: now), idGenerator: idGenerator)
                 current.append(item)
                 syncIntents.append(
@@ -86,7 +93,6 @@ enum ProposalApply {
             }
 
             let existing = current[mergeIndex]
-            let summed = sumQuantity(existing.quantity, p.quantity)
             let updatedItem = IngredientNormalizer.refreshFreshness(
                 existing.copyWith(quantity: summed),
                 now: now
@@ -139,7 +145,7 @@ enum ProposalApply {
             if !p.selected { continue }
             if p.action == .skip { continue }
             guard let chosen = chosenCandidate(p) else { continue }
-            guard let amount = Double(p.deductAmount.trimmed), amount > 0 else { continue }
+            guard let amount = QuantityText.numeric(p.deductAmount), amount > 0 else { continue }
             let index = resolveDeductionRow(current, chosen)
             if index < 0 { continue } // row gone / ambiguous -> skip wrong-row risk
             if deductByIndex[index] == nil { indexOrder.append(index) }
@@ -155,7 +161,7 @@ enum ProposalApply {
             let existing = current[index]
             // Non-numeric stock (e.g. "适量", "半盒") must not be coerced to 0 and
             // deleted — leave the row untouched rather than wiping real inventory.
-            guard let existingQty = Double(existing.quantity.trimmed) else { continue }
+            guard let existingQty = QuantityText.numeric(existing.quantity) else { continue }
             let remaining = existingQty - totalDeduct
             if remaining <= 0 {
                 removalIndices.insert(index)
@@ -262,11 +268,15 @@ enum ProposalApply {
         )
     }
 
-    /// Sums two free-text quantities, treating a non-numeric side as 0, and
-    /// formats via `formatQuantity` (≤2dp, no float artifacts).
-    static func sumQuantity(_ a: String, _ b: String) -> String {
-        let na = Double(a) ?? 0
-        let nb = Double(b) ?? 0
+    /// Sums two free-text quantities via the domain numeric gate
+    /// (`QuantityText.numeric`), formatted by `formatQuantity` (≤2dp, no float
+    /// artifacts). nil when EITHER side is non-numeric — a non-numeric quantity
+    /// never participates in arithmetic; the caller falls back to a separate
+    /// row instead of silently summing "适量" as 0.
+    static func sumQuantity(_ a: String, _ b: String) -> String? {
+        guard let na = QuantityText.numeric(a), let nb = QuantityText.numeric(b) else {
+            return nil
+        }
         return QuantityText.formatQuantity(na + nb)
     }
 

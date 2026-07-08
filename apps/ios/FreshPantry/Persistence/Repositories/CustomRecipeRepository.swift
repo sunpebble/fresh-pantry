@@ -43,4 +43,10 @@ actor CustomRecipeRepository {
         }
         try modelContext.save()
     }
+
+    /// Atomic load→transform→save in one actor call — the concurrent-write-safe
+    /// sync write path (see `InventoryRepository.mutateItems`).
+    func mutateRecipes(_ householdID: String, _ transform: @Sendable ([Recipe]) -> [Recipe]) throws {
+        try saveRecipes(householdID, transform(loadAllFor(householdID)))
+    }
 }

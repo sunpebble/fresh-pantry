@@ -444,7 +444,9 @@ final class InventoryStore {
     }
 
     /// Whether `rows` form one mergeable batch: ≥2 rows sharing normalized name +
-    /// unit + storage (mirrors the Flutter `_canMerge` gate on `mergeBatch`).
+    /// unit + storage, ALL with numeric quantities. A non-numeric row ("适量")
+    /// can never merge — the sum would coerce it to 0 and silently drop its
+    /// stock (same rule as `IngredientIdentity.resolveMergeTarget`).
     static func canMerge(_ rows: [Ingredient]) -> Bool {
         guard rows.count >= 2 else { return false }
         let first = rows[0]
@@ -454,6 +456,7 @@ final class InventoryStore {
             $0.name.trimmed.lowercased() == name
                 && $0.unit.trimmed == unit
                 && $0.storage == first.storage
+                && QuantityText.numeric($0.quantity) != nil
         }
     }
 
@@ -474,7 +477,14 @@ final class InventoryStore {
 
         let target = resolved[0].ingredient
         let sources = resolved.dropFirst().map(\.ingredient)
-        let summed = resolved.reduce(0.0) { $0 + (Double($1.ingredient.quantity.trimmed) ?? 0) }
+        // Re-gate on the LIVE rows: a sync between selection (canMerge) and
+        // apply could have turned a quantity non-numeric — bail rather than
+        // sum it as 0 and drop the stock.
+        var summed = 0.0
+        for row in resolved {
+            guard let qty = QuantityText.numeric(row.ingredient.quantity) else { return false }
+            summed += qty
+        }
         let earliest = resolved.compactMap { $0.ingredient.expiryDate }.min()
         let merged = IngredientNormalizer.refreshFreshness(
             target.copyWith(quantity: QuantityText.formatQuantity(summed), expiryDate: earliest)

@@ -137,4 +137,16 @@ struct SyncStateGateTests {
         // Stop/sign-out cleared the scope — a queued retry mark must die with it.
         #expect(!HouseholdContentSyncCoordinator.shouldRetry(needsRetry: true, activeHouseholdId: ""))
     }
+
+    // MARK: - HouseholdContentSyncCoordinator.shouldRefreshDelta
+
+    @Test func refreshDeltaRunsWhenNoPullIsInFlight() {
+        #expect(HouseholdContentSyncCoordinator.shouldRefreshDelta(activePulls: 0))
+    }
+
+    @Test func refreshDeltaSkipsWhileAnotherPullIsInFlight() {
+        // 两条并发 pull 各自持有新旧不同的远端快照:旧快照的 patch 晚落盘会按
+        // id 复活新快照刚墓碑掉的行,而 cursor 已越过墓碑 —— pull 必须单飞。
+        #expect(!HouseholdContentSyncCoordinator.shouldRefreshDelta(activePulls: 1))
+    }
 }

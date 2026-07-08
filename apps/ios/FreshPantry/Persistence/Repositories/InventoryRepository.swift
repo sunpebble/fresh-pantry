@@ -53,6 +53,13 @@ actor InventoryRepository {
         try modelContext.save()
     }
 
+    /// Atomic load→transform→save in ONE actor call — no suspension between
+    /// the read and the full-scope replace, so a concurrent write can never
+    /// land inside the window and be silently reverted (the sync-apply race).
+    func mutateItems(_ householdID: String, _ transform: @Sendable ([Ingredient]) -> [Ingredient]) throws {
+        try saveItems(householdID, transform(loadAllFor(householdID)))
+    }
+
     // MARK: Add-history (frequency memory)
 
     /// In-memory + persisted history map: name -> AddHistoryEntry.

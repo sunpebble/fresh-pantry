@@ -96,10 +96,10 @@ actor RemotePantryRepository {
         try await loadRows(from: Table.dietaryPreferences, hid: hid, since: since, decode: RemoteRowCodec.dietaryPreferenceRowFromJson)
     }
 
-    /// Shared load path: fetch household rows as `[String: AnyJSON]`, bridge each
-    /// into the codec's `[String: JSONValue]` currency, then run the per-entity
-    /// decode. A nil `since` is a full pull (non-deleted rows only); a non-nil
-    /// `since` is an incremental pull (`updated_at >= since`, tombstones included).
+    /// Shared load path: fetch household rows as `[String: AnyJSON]`, run each
+    /// through `decodeRow`. A nil `since` is a full pull (non-deleted rows only);
+    /// a non-nil `since` is an incremental pull (`updated_at >= since - overlap`,
+    /// tombstones included).
     private func loadRows(
         from table: String,
         hid: String,
@@ -111,12 +111,39 @@ actor RemotePantryRepository {
             .select()
             .eq("household_id", value: hid)
         if let since {
-            query = query.gte("updated_at", value: JSONDate.iso8601(since))
+            // Overlap window against the commit-order race: touch_updated_at
+            // stamps now() = transaction START time, so a write committing
+            // after our select can carry an updated_at older than the cursor
+            // we just advanced — a bare `gte` would then skip it forever.
+            // Re-delivered rows are idempotent through HouseholdMergePolicy.
+            // ponytail: fixed 60s window; if commit latencies ever exceed it,
+            // clamp the cursor to a server-reported pull-start time instead.
+            let overlapped = since.addingTimeInterval(-Self.deltaOverlap)
+            query = query.gte("updated_at", value: JSONDate.iso8601(overlapped))
         } else {
             query = query.is("deleted_at", value: nil)
         }
         let rows: [[String: AnyJSON]] = try await query.execute().value
-        return rows.map { decode(SyncJSONBridge.fromAnyObject($0)) }
+        return rows.map { Self.decodeRow($0, decode: decode) }
+    }
+
+    /// How far a delta pull reaches back before the cursor (see `loadRows`).
+    private static let deltaOverlap: TimeInterval = 60
+
+    /// One pulled row: bridge the SDK's `AnyJSON` into the codec currency, run
+    /// the per-entity decode, then re-stamp the raw row's `updated_at` — the
+    /// codecs drop unmapped wire columns, and without that key the sync cursor
+    /// (`SyncCursor.maxUpdatedAt`) could never advance, making incremental
+    /// pulls a permanent no-op. The key never leaks: applies decode into typed
+    /// domain models (Codable ignores it) and upserts encode from local models
+    /// (never these maps). `nonisolated static` so the whole per-row transform
+    /// is unit-testable without a live client (pinned by `SyncCursorTests`).
+    nonisolated static func decodeRow(
+        _ anyRow: [String: AnyJSON],
+        decode: ([String: JSONValue]) -> [String: JSONValue]
+    ) -> [String: JSONValue] {
+        let raw = SyncJSONBridge.fromAnyObject(anyRow)
+        return SyncCursor.stampUpdatedAt(decode(raw), from: raw)
     }
 
     // MARK: - Content upserts (bulk, local-only rows only)
@@ -125,7 +152,7 @@ actor RemotePantryRepository {
     /// Rejects any versioned row (`remoteVersion > 0`) — those must travel the
     /// gateway's conditional sync-op path so they never downgrade a remote row.
     /// Mirrors the Dart `ArgumentError` guard.
-    func upsertInventory(_ hid: String, _ rows: [[String: JSONValue]]) async throws {
+    func upsertInventory(_ hid: String, _ rows: [[String: JSONValue]]) async throws -> Set<String> {
         try await upsertRows(
             into: Table.inventory,
             hid: hid,
@@ -135,7 +162,7 @@ actor RemotePantryRepository {
         )
     }
 
-    func upsertShopping(_ hid: String, _ rows: [[String: JSONValue]]) async throws {
+    func upsertShopping(_ hid: String, _ rows: [[String: JSONValue]]) async throws -> Set<String> {
         try await upsertRows(
             into: Table.shopping,
             hid: hid,
@@ -145,7 +172,7 @@ actor RemotePantryRepository {
         )
     }
 
-    func upsertCustomRecipes(_ hid: String, _ rows: [[String: JSONValue]]) async throws {
+    func upsertCustomRecipes(_ hid: String, _ rows: [[String: JSONValue]]) async throws -> Set<String> {
         try await upsertRows(
             into: Table.customRecipes,
             hid: hid,
@@ -155,7 +182,7 @@ actor RemotePantryRepository {
         )
     }
 
-    func upsertMealPlanEntries(_ hid: String, _ rows: [[String: JSONValue]]) async throws {
+    func upsertMealPlanEntries(_ hid: String, _ rows: [[String: JSONValue]]) async throws -> Set<String> {
         try await upsertRows(
             into: Table.mealPlanEntries,
             hid: hid,
@@ -165,7 +192,7 @@ actor RemotePantryRepository {
         )
     }
 
-    func upsertFoodLogEntries(_ hid: String, _ rows: [[String: JSONValue]]) async throws {
+    func upsertFoodLogEntries(_ hid: String, _ rows: [[String: JSONValue]]) async throws -> Set<String> {
         try await upsertRows(
             into: Table.foodLogEntries,
             hid: hid,
@@ -175,7 +202,7 @@ actor RemotePantryRepository {
         )
     }
 
-    func upsertFavoriteRecipes(_ hid: String, _ rows: [[String: JSONValue]]) async throws {
+    func upsertFavoriteRecipes(_ hid: String, _ rows: [[String: JSONValue]]) async throws -> Set<String> {
         try await upsertRows(
             into: Table.favoriteRecipes,
             hid: hid,
@@ -185,7 +212,7 @@ actor RemotePantryRepository {
         )
     }
 
-    func upsertDietaryPreferences(_ hid: String, _ rows: [[String: JSONValue]]) async throws {
+    func upsertDietaryPreferences(_ hid: String, _ rows: [[String: JSONValue]]) async throws -> Set<String> {
         try await upsertRows(
             into: Table.dietaryPreferences,
             hid: hid,
@@ -199,14 +226,20 @@ actor RemotePantryRepository {
     /// reject versioned rows, build the per-entity upsert row, bridge to `AnyJSON`,
     /// and `upsert(..., ignoreDuplicates: true)` so a first write never downgrades an
     /// existing remote version.
+    ///
+    /// Returns the ids the upsert ACTUALLY INSERTED, decoded from the
+    /// representation the request already asks for (the SDK's default `Prefer:
+    /// return=representation` — no wire change). An uploaded id missing from
+    /// the result was ON-CONFLICT-DO-NOTHING'd against an existing row (live or
+    /// tombstone); the caller must not mark it synced on faith.
     private func upsertRows(
         into table: String,
         hid: String,
         rows: [[String: JSONValue]],
         method: String,
         encode: (String, [String: JSONValue]) -> [String: JSONValue]
-    ) async throws {
-        guard !rows.isEmpty else { return }
+    ) async throws -> Set<String> {
+        guard !rows.isEmpty else { return [] }
         guard !rows.contains(where: Self.hasRemoteVersion) else {
             throw RemotePantryError.invalidArgument(
                 name: "rows",
@@ -216,10 +249,14 @@ actor RemotePantryRepository {
         }
 
         let payload = rows.map { SyncJSONBridge.toAnyObject(encode(hid, $0)) }
-        try await client
+        let inserted: [[String: AnyJSON]] = try await client
             .from(table)
             .upsert(payload, ignoreDuplicates: true)
             .execute()
+            .value
+        return Set(inserted.compactMap { row in
+            if case let .string(id) = row["id"] { id } else { nil }
+        })
     }
 
     /// `row['remoteVersion'] is num && > 0` — a row that already has a server

@@ -240,6 +240,7 @@ final class AppDependencies {
             self.householdContentSync = HouseholdContentSyncCoordinator(
                 remote: remoteRepository,
                 push: coordinator,
+                gateway: gateway,
                 outbox: outbox,
                 inventory: self.inventoryRepository,
                 shopping: self.shoppingRepository,

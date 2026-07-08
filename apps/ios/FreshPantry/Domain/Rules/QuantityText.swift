@@ -17,6 +17,17 @@ enum QuantityText {
         options: [.dotMatchesLineSeparators]
     )
 
+    /// The SINGLE arithmetic gate for free-text quantities: a quantity may join
+    /// a sum/deduction iff this returns non-nil. "适量"/"半盒" → nil — callers
+    /// must branch (hide merge / fall back to a new row / skip the deduction),
+    /// NEVER coerce nil to 0: that is how stock silently vanishes. Non-finite
+    /// parses ("inf"/"nan"/"1e999") are nil too — `formatQuantity` would trap
+    /// on `Int(inf)`.
+    static func numeric(_ text: String) -> Double? {
+        guard let n = Double(text.trimmed), n.isFinite else { return nil }
+        return n
+    }
+
     /// Splits a (pre-trimmed) amount string into its leading numeric magnitude
     /// and the remaining (trimmed) text. Returns nil when there is no leading
     /// number. `magnitude` is the raw numeric token.

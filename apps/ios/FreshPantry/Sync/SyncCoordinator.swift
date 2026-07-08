@@ -267,8 +267,10 @@ actor SyncCoordinator: CoordinatorPushing {
             // LOCAL ack bookkeeping sits OUTSIDE the push do/catch: the remote
             // accepted these ops, so a SwiftData delete failure is NOT a sync
             // failure — never a strike. Log and move on; the acked ops stay
-            // queued and the next run re-pushes them idempotently (version
-            // gate + ignore-duplicates upsert) before retrying the removal.
+            // queued and the next run re-pushes them safely before retrying the
+            // removal: updates are version-gated, and a replayed create that
+            // collides with its own landed row re-asserts the same patch via
+            // the client-wins merge (content-idempotent, version bump only).
             do {
                 try await outbox.removeAcknowledged(acknowledged)
             } catch {

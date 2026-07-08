@@ -460,6 +460,60 @@ struct ProposalParityTests {
         #expect(result.syncIntents[0].operation == .create)
     }
 
+    @Test func applyIntakeNonNumericProposalQuantityFallsBackToNewRow() {
+        // 「适量」merging into "2" must NOT yield "2" — the intake would silently
+        // vanish. It degrades to an independent new row instead.
+        let inventory = [
+            row(id: "row-uuid", name: "米", unit: "袋", quantity: "2", storage: .pantry, category: "其他")
+        ]
+        let proposal = IntakeProposal(
+            id: "p7", name: "米", quantity: "适量", unit: "袋",
+            category: "其他", storage: .pantry, shelfLifeDays: nil,
+            action: .mergeInto, mergeTargetId: "0"
+        )
+        let result = ProposalApply.applyIntakeProposals(
+            [proposal], inventory: inventory, idGenerator: { "minted" }
+        )
+        #expect(result.inventory.count == 2)
+        #expect(result.inventory[0].quantity == "2") // target untouched
+        #expect(result.inventory[1].quantity == "适量") // intake preserved as its own row
+        #expect(result.syncIntents[0].operation == .create)
+    }
+
+    @Test func applyIntakeNonNumericTargetQuantityFallsBackToNewRow() {
+        // The mirror case: numeric intake, non-numeric existing stock. Merging
+        // would coerce "适量" to 0 and destroy the existing row's meaning.
+        let inventory = [
+            row(id: "row-uuid", name: "盐", unit: "g", quantity: "适量", storage: .pantry, category: "其他")
+        ]
+        let proposal = IntakeProposal(
+            id: "p8", name: "盐", quantity: "5", unit: "g",
+            category: "其他", storage: .pantry, shelfLifeDays: nil,
+            action: .mergeInto, mergeTargetId: "0"
+        )
+        let result = ProposalApply.applyIntakeProposals(
+            [proposal], inventory: inventory, idGenerator: { "minted" }
+        )
+        #expect(result.inventory.count == 2)
+        #expect(result.inventory[0].quantity == "适量") // existing stock preserved
+        #expect(result.inventory[1].quantity == "5")
+        #expect(result.syncIntents[0].operation == .create)
+    }
+
+    @Test func sumQuantityGatesNonNumericSides() {
+        #expect(ProposalApply.sumQuantity("适量", "2") == nil)
+        #expect(ProposalApply.sumQuantity("2", "适量") == nil)
+        #expect(ProposalApply.sumQuantity("1.5", "0.75") == "2.25")
+        #expect(ProposalApply.sumQuantity(" 2 ", "1") == "3") // trimmed via the gate
+        // Non-finite parses are gated too — formatQuantity would trap on Int(inf).
+        #expect(ProposalApply.sumQuantity("inf", "2") == nil)
+        #expect(ProposalApply.sumQuantity("nan", "2") == nil)
+        #expect(ProposalApply.sumQuantity("1e999", "2") == nil)
+        #expect(QuantityText.numeric("inf") == nil)
+        #expect(QuantityText.numeric("nan") == nil)
+        #expect(QuantityText.numeric(" 2.5 ") == 2.5)
+    }
+
     @Test func applyIntakeSkipsDeselected() {
         let proposal = IntakeProposal(
             id: "p5", name: "面粉", quantity: "1", unit: "袋",

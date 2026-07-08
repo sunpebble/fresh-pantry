@@ -28,18 +28,36 @@ struct InventoryStoreTests {
         return (store, log)
     }
 
+    /// Builds a store backed by a real in-memory repo AND hands back the repo, so
+    /// a test can land a concurrent sync write (an atomic `mutateItems`) in the
+    /// repo AFTER the store loaded — reproducing the load→save window the
+    /// sync-apply race exploits (the store's `items` snapshot goes stale).
+    private func makeStoreWithRepo(
+        _ items: [Ingredient],
+        household: String = "home"
+    ) async throws -> (store: InventoryStore, repo: InventoryRepository) {
+        let container = try ModelContainerFactory.makeInMemory()
+        let repo = InventoryRepository(modelContainer: container)
+        let log = FoodLogRepository(modelContainer: container)
+        try await repo.saveItems(household, items)
+        let store = InventoryStore(repository: repo, foodLogRepository: log, householdID: household)
+        await store.load()
+        return (store, repo)
+    }
+
     /// Stable, expiry-free item so its state isn't recomputed by the loader's
     /// freshness normalization (no expiry date → state preserved as given).
     private func item(
         id: String,
         name: String,
         state: FreshnessState,
+        quantity: String = "1",
         storage: IconType = .fridge,
         category: String? = nil,
         tags: [String] = []
     ) -> Ingredient {
         Ingredient(
-            id: id, name: name, quantity: "1", unit: "份", imageUrl: "",
+            id: id, name: name, quantity: quantity, unit: "份", imageUrl: "",
             freshnessPercent: 1.0, state: state, category: category,
             storage: storage, tags: tags
         )
@@ -660,5 +678,42 @@ struct InventoryStoreTests {
         ])
         #expect(!(await store.mergeBatch(store.items)))
         #expect(store.items.count == 2) // untouched
+    }
+
+    @Test func canMergeRejectsNonNumericQuantity() {
+        // 「米 适量 袋」+「米 2 袋」must NOT be mergeable — the sum would coerce
+        // "适量" to 0 and silently drop that row's stock.
+        let some = item(id: "a", name: "米", state: .fresh, quantity: "适量")
+        let two = item(id: "b", name: "米", state: .fresh, quantity: "2")
+        #expect(!InventoryStore.canMerge([some, two]))
+        #expect(InventoryStore.canMerge([two, item(id: "c", name: "米", state: .fresh, quantity: "3")]))
+    }
+
+    @Test func mergeBatchRefusesNonNumericQuantityAndLeavesRowsIntact() async throws {
+        let store = try await makeStore([
+            item(id: "a", name: "米", state: .fresh, quantity: "适量"),
+            item(id: "b", name: "米", state: .fresh, quantity: "2"),
+        ])
+        #expect(!(await store.mergeBatch(store.items)))
+        #expect(store.items.count == 2)
+        #expect(Set(store.items.map(\.quantity)) == ["适量", "2"]) // 适量+2 ≠ 2
+    }
+
+    @Test func mergeBatchReGatesLiveRowsWhenSelectionIsStale() async throws {
+        // The SELECTION passed in is numeric (canMerge passes), but the LIVE row
+        // behind id "a" has since become "适量" — the live re-gate must bail
+        // instead of summing it as 0.
+        let store = try await makeStore([
+            item(id: "a", name: "米", state: .fresh, quantity: "适量"),
+            item(id: "b", name: "米", state: .fresh, quantity: "2"),
+        ])
+        let staleSelection = [
+            item(id: "a", name: "米", state: .fresh, quantity: "1"), // stale numeric snapshot
+            item(id: "b", name: "米", state: .fresh, quantity: "2"),
+        ]
+        #expect(InventoryStore.canMerge(staleSelection)) // the UI gate passes
+        #expect(!(await store.mergeBatch(staleSelection)))
+        #expect(store.items.count == 2) // untouched
+        #expect(Set(store.items.map(\.quantity)) == ["适量", "2"])
     }
 }

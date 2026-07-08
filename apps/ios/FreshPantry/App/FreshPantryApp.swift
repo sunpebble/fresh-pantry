@@ -192,6 +192,12 @@ struct FreshPantryApp: App {
         // since a BGTask fires once. nil syncCoordinator (local-only) is a no-op.
         .backgroundTask(.appRefresh(Self.backgroundSyncTaskId)) {
             await dependencies.syncCoordinator?.pushPending()
+            // 顺手重发 widget 快照:app 长期不进前台时,临期候选集/膳食/减废
+            // 才有机会跟上库存变化(widget 自身只会重投影既有候选,不取数)。
+            await WidgetSnapshotPublisher.publish(
+                container: dependencies.modelContainer,
+                householdID: dependencies.householdID
+            )
             await MainActor.run { Self.scheduleAppRefresh() }
         }
     }

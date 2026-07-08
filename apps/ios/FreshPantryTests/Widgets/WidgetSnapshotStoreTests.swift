@@ -7,7 +7,9 @@ struct WidgetSnapshotStoreTests {
         WidgetSnapshotBundle(
             expiring: WidgetExpiringSnapshot(
                 expiredCount: 2, urgentCount: 1, soonCount: 0,
-                items: [.init(name: "牛奶", daysRemaining: -1)]
+                items: [.init(name: "牛奶", daysRemaining: -1,
+                              expiryDate: Date(timeIntervalSince1970: 1_700_000_000),
+                              lowFreshness: true)]
             ),
             mealPlan: WidgetMealPlanSnapshot(
                 items: [.init(title: "番茄炒蛋", done: false)]
@@ -30,6 +32,15 @@ struct WidgetSnapshotStoreTests {
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(WidgetSnapshotBundle.self, from: data)
         #expect(decoded == original)
+    }
+
+    // 旧版快照 JSON(项上无 expiryDate/lowFreshness)必须仍可解码(升级后首刷读旧文件)。
+    @Test func legacyExpiringItemJSONDecodes() throws {
+        let json = Data(#"{"name":"牛奶","daysRemaining":-1}"#.utf8)
+        let item = try JSONDecoder().decode(WidgetExpiringSnapshot.Item.self, from: json)
+        #expect(item.daysRemaining == -1)
+        #expect(item.expiryDate == nil)
+        #expect(item.lowFreshness == nil)
     }
 
     @Test func emptyBundleRoundTrips() throws {

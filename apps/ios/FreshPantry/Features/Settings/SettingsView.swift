@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The 设置 tab ("我的"): a grouped form over the cream surface with the locally
-/// persisted setting groups — 临期提醒 toggles, 忌口 keyword editor, and an 关于
-/// footer with the bundle version.
+/// persisted setting groups — 临期提醒 toggles, 忌口 keyword editor, an AI 助手
+/// sub-screen, and an 关于 footer with the bundle version.
 ///
 /// Follows the established feature pattern: reads the shared stores off the
 /// injected `AppDependencies` (so settings stay consistent app-wide) and binds
@@ -373,6 +373,20 @@ private struct SettingsContent: View {
                     subtitle: dependencies.proStore.isPro
                         ? String(localized: "settings.pro.unlocked")
                         : String(localized: "settings.pro.pitch")
+                )
+            }
+            NavigationLink {
+                AiSettingsView(store: dependencies.aiSettingsStore, isPro: dependencies.proStore.isPro)
+            } label: {
+                SettingsLinkLabel(
+                    systemImage: "sparkles",
+                    title: String(localized: "settings.assistant.header"),
+                    // Pro 未配置 BYOK 时走内置通道，开箱可用——不能再引导去"配置"。
+                    subtitle: dependencies.aiSettingsStore.isConfigured
+                        ? String(localized: "settings.ai.status.configured") + " · " + dependencies.aiSettingsStore.settings.model
+                        : dependencies.proStore.isPro
+                            ? String(localized: "settings.ai.status.usingBuiltIn")
+                            : String(localized: "settings.ai.configurePrompt")
                 )
             }
         } header: {

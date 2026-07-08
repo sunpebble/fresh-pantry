@@ -49,29 +49,52 @@ final class IntakeReviewStore {
     }
 
     /// Flips a proposal's action, honoring the rules above. A no-op when there's
-    /// no merge target, or when the row is a locked perishable new-batch.
+    /// no merge target, when the row is a locked perishable new-batch, or when
+    /// its quantity is non-numeric (apply would degrade the merge to a new row
+    /// anyway — never advertise an action that can't happen).
     func toggleAction(_ id: String) {
         update(id) { proposal in
             guard proposal.mergeTargetId != nil else { return proposal }
             if Self.isPerishableLocked(proposal) { return proposal }
+            if QuantityText.numeric(proposal.quantity) == nil { return proposal }
             let next: IntakeAction = proposal.action == .newRow ? .mergeInto : .newRow
             return proposal.copyWith(action: next, userEdited: true)
         }
     }
 
     /// Replaces a proposal with an edited copy, coercing the action back to a new
-    /// batch if the edit made it a perishable that's still set to merge (keeps
-    /// the rule invariant after a category change).
+    /// batch if the edit made it a perishable — or its quantity non-numeric —
+    /// while still set to merge (keeps the rule invariant after a category or
+    /// quantity edit, so the chip never promises a merge apply will refuse).
     func updateProposal(_ updated: IntakeProposal) {
         let coerced = Self.coerceActionForRules(updated)
         guard let index = proposals.firstIndex(where: { $0.id == coerced.id }) else { return }
         proposals[index] = coerced
     }
 
-    /// Whether a row's action toggle is locked (perishable new-batch). Exposed so
-    /// the row view can hide the chevron / disable the chip.
+    /// Whether a row's action toggle is locked (perishable new-batch, or a
+    /// non-numeric quantity that can never merge). Exposed so the row view can
+    /// hide the chevron / disable the chip.
     static func isActionLocked(_ proposal: IntakeProposal) -> Bool {
-        proposal.mergeTargetId == nil || isPerishableLocked(proposal)
+        proposal.mergeTargetId == nil
+            || isPerishableLocked(proposal)
+            || QuantityText.numeric(proposal.quantity) == nil
+    }
+
+    /// The commit rule for the review screen's quantity tap-to-edit, kept pure
+    /// for tests: nil = discard the edit (blank, unchanged, or a value that
+    /// parses as a number but isn't a positive finite amount — the same guard
+    /// every sibling quantity editor applies); otherwise the trimmed text to
+    /// commit. Free text ("适量") stays legal — it simply lands on the newRow
+    /// apply path.
+    static func sanitizedQuantityEdit(_ draft: String, current: String) -> String? {
+        let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed == current { return nil }
+        // Raw Double parse on purpose (not QuantityText.numeric): "inf"/"nan"
+        // parse as numbers, so they must be REJECTED here rather than falling
+        // through as free text.
+        if let n = Double(trimmed), !(n.isFinite && n > 0) { return nil }
+        return trimmed
     }
 
     // MARK: Apply
@@ -105,7 +128,8 @@ final class IntakeReviewStore {
 
     private static func coerceActionForRules(_ proposal: IntakeProposal) -> IntakeProposal {
         guard proposal.action == .mergeInto else { return proposal }
-        if IngredientIdentity.isPerishable(category: proposal.category, name: proposal.name) {
+        if IngredientIdentity.isPerishable(category: proposal.category, name: proposal.name)
+            || QuantityText.numeric(proposal.quantity) == nil {
             return proposal.copyWith(action: .newRow)
         }
         return proposal

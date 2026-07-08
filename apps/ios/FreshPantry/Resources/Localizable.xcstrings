@@ -24975,6 +24975,34 @@
         }
       }
     },
+    "settings.ai.configurePrompt": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配置模型与连接"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set up model & connection"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "モデルと接続を設定"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configurer le modèle et la connexion"
+          }
+        }
+      }
+    },
     "settings.ai.connectionConfig": {
       "localizations": {
         "zh-Hans": {
