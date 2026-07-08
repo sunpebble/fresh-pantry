@@ -59,46 +59,59 @@ final class IntakeController {
     /// On a load/persist failure nothing is mutated and `.failed` is returned —
     /// no silent partial write.
     func apply(_ proposals: [IntakeProposal]) async -> ApplyOutcome {
-        let inventory: [Ingredient]
+        // Pro state is read on the MainActor up front — the atomic transform runs
+        // on the repo actor and can't call the (non-Sendable) `isPro` closure. nil
+        // = unlimited (lower-level tests / previews).
+        let isProLimit = isPro?()
+
+        // Compute the apply against the repo's CURRENT rows AND persist the result
+        // in ONE actor hop, so a concurrent sync mutate can't land between the read
+        // and the whole-scope save and be reverted. Running `applyIntakeProposals`
+        // on `current` (not a pre-read snapshot) also honors its parity invariant:
+        // merge targets re-resolve against the truly-live inventory.
+        let applied: (outcome: ApplyOutcome, result: ProposalApply.IntakeApplyResult?)
         do {
-            inventory = try await repository.loadAllFor(householdID)
-        } catch {
-            return .failed
-        }
+            applied = try await repository.mutateItemsReturning(householdID) { current -> ([Ingredient]?, (ApplyOutcome, ProposalApply.IntakeApplyResult?)) in
+                // Pre-apply ids tell which result rows are NEW (vs merged into an
+                // existing row) for the frequency-memory bump.
+                let existingIds = Set(current.map(\.id))
 
-        // Snapshot the pre-apply ids so we can tell which result rows are NEW
-        // (vs merged into an existing row) for the frequency-memory bump.
-        let existingIds = Set(inventory.map(\.id))
+                let result = ProposalApply.applyIntakeProposals(proposals, inventory: current)
+                if result.appliedIds.isEmpty {
+                    // Nothing selected / nothing resolved — a no-op success; persist
+                    // nothing (nil rows).
+                    return (nil, (ApplyOutcome(appliedIds: [], addedItems: [], persisted: true), nil))
+                }
 
-        let result = ProposalApply.applyIntakeProposals(proposals, inventory: inventory)
-        if result.appliedIds.isEmpty {
-            // Nothing selected / nothing resolved — a no-op success.
-            return ApplyOutcome(appliedIds: [], addedItems: [], persisted: true)
-        }
+                let addedItems = result.inventory.filter { !existingIds.contains($0.id) }
+                if let isProLimit, !addedItems.isEmpty {
+                    // The last row this apply would create: 49 + 1 is allowed,
+                    // while 49 + 2 (or any write starting at 50+) is blocked.
+                    let lastCreatedRowIndex = current.count + addedItems.count - 1
+                    if FreeTier.inventoryLimitReached(isPro: isProLimit, currentCount: lastCreatedRowIndex) {
+                        return (nil, (.limitBlocked, nil)) // leave inventory untouched (persist nothing)
+                    }
+                }
 
-        let addedItems = result.inventory.filter { !existingIds.contains($0.id) }
-        if let isPro, !addedItems.isEmpty {
-            // Check the last row this apply would create: 49 + 1 is allowed,
-            // while 49 + 2 (or any write starting at 50+) is blocked.
-            let lastCreatedRowIndex = inventory.count + addedItems.count - 1
-            if FreeTier.inventoryLimitReached(isPro: isPro(), currentCount: lastCreatedRowIndex) {
-                return .limitBlocked
+                return (result.inventory, (
+                    ApplyOutcome(appliedIds: result.appliedIds, addedItems: addedItems, persisted: true),
+                    result
+                ))
             }
-        }
-
-        do {
-            try await repository.saveItems(householdID, result.inventory)
         } catch {
             return .failed
         }
+
+        // A no-op / blocked apply persisted nothing new and enqueues nothing.
+        guard let result = applied.result else { return applied.outcome }
 
         // Frequency memory: only newly-added rows count as an "addition" (a merge
-        // bumps an existing batch's quantity, not the add-history). ONE batched
-        // read+write — `recordAddition`-per-item whole-rewrote the history every
-        // call (O(N²) over the batch).
-        try? await repository.recordAdditions(addedItems)
+        // bumps an existing batch's quantity, not the add-history). It's the
+        // separate add-history table, not the racy inventory scope, so it stays
+        // outside the atomic mutate. ONE batched read+write.
+        try? await repository.recordAdditions(applied.outcome.addedItems)
 
-        // OUTBOX SEAM: enqueue one outbox op per applied intent AFTER the local
+        // OUTBOX SEAM: enqueue one outbox op per applied intent AFTER the atomic
         // save + frequency bump land. Each patch is the resulting inventory row's
         // JSON (the wire form the gateway consumes); a `.create`/`.intake` carries
         // the intent's `baseVersion` (nil for a new row, else the prior version).
@@ -109,10 +122,6 @@ final class IntakeController {
         }
         await syncWriter?.enqueueBatch(ops)
 
-        return ApplyOutcome(
-            appliedIds: result.appliedIds,
-            addedItems: addedItems,
-            persisted: true
-        )
+        return applied.outcome
     }
 }

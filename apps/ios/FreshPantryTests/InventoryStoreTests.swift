@@ -716,4 +716,101 @@ struct InventoryStoreTests {
         #expect(store.items.count == 2) // untouched
         #expect(Set(store.items.map(\.quantity)) == ["适量", "2"])
     }
+
+    // MARK: load→save 窗口竞态(并发 sync 写不得被陈旧整域 save 回退)
+
+    @Test func deleteDoesNotResurrectARowTombstonedAfterLoad() async throws {
+        // 确诊的僵尸复活序列:store.load() 后,并发 sync 用原子 mutate 给 X 落墓碑
+        // (从仓库删除)。用户此刻删另一行 Y——若整域 save 从仍含 X 的陈旧快照派生,
+        // X 会被整域重插复活;cursor 已越过墓碑,delta 重叠窗口外永不再拉,X 跨启动僵尸。
+        let (store, repo) = try await makeStoreWithRepo([
+            item(id: "x", name: "被远端删除", state: .fresh),
+            item(id: "y", name: "本地删这行", state: .fresh),
+        ])
+        // 并发 sync:X 的墓碑直接落盘(sync apply 走原子 mutate)。
+        try await repo.mutateItems("home") { $0.filter { $0.id != "x" } }
+
+        #expect(await store.delete(store.items.first { $0.id == "y" }!))
+
+        let persisted = try await repo.loadAllFor("home").map(\.id)
+        #expect(persisted.isEmpty) // X 保持删除,Y 也删除 —— 无僵尸
+    }
+
+    @Test func deleteDoesNotRevertARowAddedBySyncAfterLoad() async throws {
+        // 对称序列(丢远端写):store.load() 后,并发 sync 新增远端行 Z。用户删 Y
+        // 时的陈旧整域 save 会把 Z 一并抹掉,updated_at≤cursor 永不重投 → 跨设备永久丢。
+        let z = item(id: "z", name: "远端新增", state: .fresh)
+        let (store, repo) = try await makeStoreWithRepo([
+            item(id: "y", name: "本地删这行", state: .fresh),
+        ])
+        try await repo.mutateItems("home") { $0 + [z] }
+
+        #expect(await store.delete(store.items.first { $0.id == "y" }!))
+
+        let persisted = try await repo.loadAllFor("home").map(\.id)
+        #expect(persisted == ["z"]) // Z 幸存
+    }
+
+    @Test func updateDoesNotRevertARowAddedBySyncAfterLoad() async throws {
+        // 编辑路径同一窗口:编辑 Y 的整域 save 不得抹掉 load 后 sync 新增的 Z。
+        let z = item(id: "z", name: "远端新增", state: .fresh)
+        let (store, repo) = try await makeStoreWithRepo([
+            item(id: "y", name: "牛奶", state: .fresh),
+        ])
+        try await repo.mutateItems("home") { $0 + [z] }
+
+        let y = store.items.first { $0.id == "y" }!
+        #expect(await store.update(y, to: y.copyWith(name: "酸奶")))
+
+        let persisted = try await repo.loadAllFor("home")
+        #expect(persisted.contains { $0.id == "z" }) // Z 幸存
+        #expect(persisted.first { $0.id == "y" }?.name == "酸奶") // 编辑照常落地
+    }
+
+    @Test func deleteManyDoesNotRevertARowAddedBySyncAfterLoad() async throws {
+        // 批量删除同一窗口:删 A 的整域 save 不得抹掉 load 后 sync 新增的 Z。
+        let z = item(id: "z", name: "远端新增", state: .fresh)
+        let (store, repo) = try await makeStoreWithRepo([
+            item(id: "a", name: "A", state: .fresh),
+            item(id: "b", name: "B", state: .fresh),
+        ])
+        try await repo.mutateItems("home") { $0 + [z] }
+
+        #expect(await store.deleteMany([store.items.first { $0.id == "a" }!]) != nil)
+
+        let persisted = try await repo.loadAllFor("home").map(\.id).sorted()
+        #expect(persisted == ["b", "z"]) // A 删除,B 与并发新增 Z 都幸存
+    }
+
+    @Test func deleteDoesNotRemoveASameNameSiblingWhenTargetWasTombstoned() async throws {
+        // 目标带非空 id 但已被并发墓碑:transform 在 live 行上按 id 找不到它时,
+        // 绝不能跌到 name 兜底命中同名的另一行 —— 否则删掉用户没选的无辜兄弟。
+        let (store, repo) = try await makeStoreWithRepo([
+            item(id: "y", name: "牛奶", state: .fresh),
+            item(id: "z", name: "牛奶", state: .fresh), // 同名不同批
+        ])
+        try await repo.mutateItems("home") { $0.filter { $0.id != "y" } } // sync 墓碑 Y
+
+        #expect(await store.delete(store.items.first { $0.id == "y" }!))
+
+        let persisted = try await repo.loadAllFor("home").map(\.id)
+        #expect(persisted == ["z"]) // Y 保持删除,同名兄弟 Z 幸存(未被 name 兜底误删)
+    }
+
+    @Test func updateDoesNotClobberASameNameSiblingOrResurrectTombstonedTarget() async throws {
+        // 编辑路径更糟:name 兜底会把同名兄弟 Z 覆盖成携带被墓碑目标 id 的 next,
+        // 既丢 Z 又把墓碑 Y 复活成僵尸。非空 id 找不到 → 必须 no-op。
+        let (store, repo) = try await makeStoreWithRepo([
+            item(id: "y", name: "牛奶", state: .fresh, quantity: "1"),
+            item(id: "z", name: "牛奶", state: .fresh, quantity: "5"),
+        ])
+        try await repo.mutateItems("home") { $0.filter { $0.id != "y" } } // sync 墓碑 Y
+
+        let y = store.items.first { $0.id == "y" }!
+        _ = await store.update(y, to: y.copyWith(quantity: "9"))
+
+        let persisted = try await repo.loadAllFor("home")
+        #expect(persisted.map(\.id) == ["z"]) // 只剩 Z,Y 未被复活
+        #expect(persisted.first?.quantity == "5") // Z 保留自己的量,未被 Y 的编辑覆盖
+    }
 }

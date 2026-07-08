@@ -49,4 +49,17 @@ actor CustomRecipeRepository {
     func mutateRecipes(_ householdID: String, _ transform: @Sendable ([Recipe]) -> [Recipe]) throws {
         try saveRecipes(householdID, transform(loadAllFor(householdID)))
     }
+
+    /// Same atomic load→transform→save, threading a caller value out of the ONE
+    /// actor hop (whether a row matched, the removed row, the reconciled scope) so
+    /// the store can react without a second read. Return **nil** rows to persist
+    /// nothing (a no-match — no redundant whole-scope rewrite).
+    func mutateRecipesReturning<T: Sendable>(
+        _ householdID: String,
+        _ transform: @Sendable ([Recipe]) -> ([Recipe]?, T)
+    ) throws -> T {
+        let (rows, result) = transform(try loadAllFor(householdID))
+        if let rows { try saveRecipes(householdID, rows) }
+        return result
+    }
 }

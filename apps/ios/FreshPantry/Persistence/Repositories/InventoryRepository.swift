@@ -60,6 +60,21 @@ actor InventoryRepository {
         try saveItems(householdID, transform(loadAllFor(householdID)))
     }
 
+    /// Same atomic load→transform→save, but threads a caller value out of the ONE
+    /// actor hop — for controllers whose apply computes both the rows to persist
+    /// AND metadata (sync intents / outcome) the outbox needs afterward. The
+    /// transform returns `(rowsToSave?, result)`; return **nil** rows to persist
+    /// nothing (a blocked / no-op apply — no redundant whole-scope rewrite, and no
+    /// spurious failure if that write would have thrown).
+    func mutateItemsReturning<T: Sendable>(
+        _ householdID: String,
+        _ transform: @Sendable ([Ingredient]) -> ([Ingredient]?, T)
+    ) throws -> T {
+        let (rows, result) = transform(try loadAllFor(householdID))
+        if let rows { try saveItems(householdID, rows) }
+        return result
+    }
+
     // MARK: Add-history (frequency memory)
 
     /// In-memory + persisted history map: name -> AddHistoryEntry.

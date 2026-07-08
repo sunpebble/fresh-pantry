@@ -65,31 +65,42 @@ final class DeductionController {
     /// reduction — it's logged for diagnosis, and the entry still syncs remotely
     /// (a household pull brings it back into the local log).
     func apply(_ proposals: [DeductionProposal], now: Date = Date()) async -> ApplyOutcome {
-        let inventory: [Ingredient]
+        // Compute the deduction against the repo's CURRENT rows AND persist the
+        // reduced inventory in ONE actor hop, so a concurrent sync mutate can't
+        // land between the read and the whole-scope save and be reverted. Running
+        // `applyDeductionProposals` on `current` (not a pre-read snapshot) also
+        // honors its parity invariant: chosen rows re-resolve against the live
+        // inventory. `nil` result = nothing resolved (persisted nothing).
+        let applied: (outcome: ApplyOutcome, result: ProposalApply.DeductionApplyResult?)
         do {
-            inventory = try await inventoryRepository.loadAllFor(householdID)
+            applied = try await inventoryRepository.mutateItemsReturning(householdID) { current -> ([Ingredient]?, (ApplyOutcome, ProposalApply.DeductionApplyResult?)) in
+                let result = ProposalApply.applyDeductionProposals(proposals, inventory: current, now: now)
+                // Nothing resolved to a real deduction (all skipped / non-numeric /
+                // no match) — a no-op success; persist nothing (nil rows).
+                if result.inventory == current && result.consumedDepartures.isEmpty {
+                    return (nil, (ApplyOutcome(reducedCount: 0, consumedCount: 0, persisted: true), nil))
+                }
+                return (result.inventory, (
+                    ApplyOutcome(
+                        reducedCount: result.syncIntents.count - result.consumedDepartures.count,
+                        consumedCount: result.consumedDepartures.count,
+                        persisted: true
+                    ),
+                    result
+                ))
+            }
         } catch {
             return .failed
         }
 
-        let result = ProposalApply.applyDeductionProposals(proposals, inventory: inventory, now: now)
-
-        // Nothing resolved to a real deduction (all skipped / non-numeric / no
-        // match) — a no-op success that leaves inventory untouched.
-        if result.inventory == inventory && result.consumedDepartures.isEmpty {
-            return ApplyOutcome(reducedCount: 0, consumedCount: 0, persisted: true)
-        }
-
-        do {
-            try await inventoryRepository.saveItems(householdID, result.inventory)
-        } catch {
-            return .failed
-        }
+        guard let result = applied.result else { return applied.outcome } // no-op success
 
         // Auto-log a CONSUMED departure per emptied row (the cook flow's only
-        // waste-stats input). `wasExpiring` snapshots whether the eaten batch was
-        // already past fresh (state ∈ {expiringSoon, urgent, expired}), so the
-        // stats can credit "抢救临期". Mirrors Flutter `_logDeparture(item, consumed)`.
+        // waste-stats input) AFTER the atomic inventory save. `wasExpiring`
+        // snapshots whether the eaten batch was already past fresh (state ∈
+        // {expiringSoon, urgent, expired}), so the stats can credit "抢救临期". The
+        // food-log append is a single-row point-upsert (not a whole-scope save), so
+        // it needs no atomic-mutate treatment. Mirrors Flutter `_logDeparture`.
         var loggedEntries: [FoodLogEntry] = []
         for departure in result.consumedDepartures {
             let entry = FoodLogEntry(

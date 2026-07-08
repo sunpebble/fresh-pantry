@@ -94,7 +94,7 @@ final class InventoryStore {
         survivors.remove(at: index)
         items = survivors // optimistic — the row leaves the list this tick
         do {
-            try await repository.saveItems(householdID, survivors)
+            try await repository.mutateItems(householdID) { Self.removingFirst(matching: removed, from: $0) }
         } catch {
             items = snapshot // rollback — nothing landed
             return false
@@ -141,7 +141,7 @@ final class InventoryStore {
         survivors.remove(at: index)
         items = survivors // optimistic — the row leaves the list this tick
         do {
-            try await repository.saveItems(householdID, survivors)
+            try await repository.mutateItems(householdID) { Self.removingFirst(matching: removed, from: $0) }
         } catch {
             items = snapshot // rollback — nothing landed, nothing logged
             return .failed
@@ -200,7 +200,9 @@ final class InventoryStore {
         restored.insert(undo.ingredient, at: index)
         items = restored // optimistic — the row reappears this tick
         do {
-            try await repository.saveItems(householdID, restored)
+            try await repository.mutateItems(householdID) {
+                Self.reinserting(undo.ingredient, at: undo.originalIndex, into: $0)
+            }
         } catch {
             items = snapshot // rollback
             return false
@@ -248,7 +250,7 @@ final class InventoryStore {
         updated[index] = next
         items = updated // optimistic — the edited row updates in place this tick
         do {
-            try await repository.saveItems(householdID, updated)
+            try await repository.mutateItems(householdID) { Self.replacingFirst(matching: base, with: next, in: $0) }
         } catch {
             items = snapshot // rollback
             return false
@@ -339,7 +341,10 @@ final class InventoryStore {
         guard !removed.isEmpty else { return false }
         items = [] // optimistic — the list clears this tick
         do {
-            try await repository.saveItems(householdID, [])
+            // Clear only the rows we knew about (and enqueue-delete below); a row
+            // sync added concurrently is left — a blind `[]` save would wipe it
+            // locally without a matching soft-delete, and the next pull revives it.
+            try await repository.mutateItems(householdID) { Self.removing(removed, from: $0) }
         } catch {
             items = removed // rollback
             return false
@@ -388,8 +393,9 @@ final class InventoryStore {
         var survivors = items
         for index in ascending.reversed() { survivors.remove(at: index) }
         items = survivors // optimistic — the selected rows leave the list this tick
+        let removedIngredients = removedRows.map(\.ingredient)
         do {
-            try await repository.saveItems(householdID, survivors)
+            try await repository.mutateItems(householdID) { Self.removing(removedIngredients, from: $0) }
         } catch {
             items = snapshot // rollback — nothing landed, nothing logged
             return nil
@@ -422,7 +428,13 @@ final class InventoryStore {
         }
         items = restored // optimistic — the rows reappear this tick
         do {
-            try await repository.saveItems(householdID, restored)
+            try await repository.mutateItems(householdID) { current in
+                var next = current
+                for row in undo.removed.sorted(by: { $0.index < $1.index }) {
+                    next = Self.reinserting(row.ingredient, at: row.index, into: next)
+                }
+                return next
+            }
         } catch {
             items = snapshot // rollback
             return false
@@ -500,7 +512,9 @@ final class InventoryStore {
         }
         items = next // optimistic — the merged row + dropped sources update this tick
         do {
-            try await repository.saveItems(householdID, next)
+            try await repository.mutateItems(householdID) { current in
+                Self.removing(sources, from: Self.replacingFirst(matching: target, with: merged, in: current))
+            }
         } catch {
             items = snapshot // rollback
             return false
@@ -598,13 +612,81 @@ final class InventoryStore {
         return PinyinMatcher.matches(item.name, query: query)
     }
 
-    /// Stable identity resolution: id first (when non-empty), else the first
-    /// name-matching positional row (mirrors `inventoryIndexOf`).
+    /// Stable identity resolution against the live snapshot: id first (when
+    /// non-empty), else the first value-equal row, else the first name-matching
+    /// row (mirrors `inventoryIndexOf`).
     private func indexOf(_ target: Ingredient) -> Int? {
-        if !target.id.isEmpty, let byId = items.firstIndex(where: { $0.id == target.id }) {
-            return byId
+        Self.firstIndex(matching: target, in: items)
+    }
+
+    // MARK: Concurrent-write-safe persistence
+
+    // Every mutation persists through `repository.mutateItems` (atomic
+    // load→transform→save in ONE actor hop), NEVER a whole-scope `saveItems` of a
+    // snapshot-derived array. The in-memory `items` snapshot goes stale the moment
+    // sync's own atomic mutate lands (a tombstone, a remote insert/edit) after the
+    // store's `load()`; a blind whole-scope save from that snapshot would revert
+    // the concurrent write — resurrecting a tombstoned row (cursor already past the
+    // tombstone → zombie survives restarts) or dropping a remote insert/edit
+    // (updated_at ≤ cursor → never re-pulled → permanent cross-device loss). These
+    // transforms recompute from the repository's CURRENT rows, touching only the
+    // operation's target and leaving every other row — concurrent sync writes
+    // included — exactly as sync left it.
+
+    /// Stable identity resolution against `rows`: id first (when non-empty), else
+    /// the first value-equal row, else the first name-matching row. The building
+    /// block `indexOf` and the transform helpers share, so snapshot resolution and
+    /// persisted resolution match rule-for-rule.
+    private nonisolated static func firstIndex(matching target: Ingredient, in rows: [Ingredient]) -> Int? {
+        // A non-blank id is the stable identity — match it ALONE, never a same-name
+        // sibling. Against the repo's LIVE rows (the transform paths) a non-blank id
+        // is absent precisely when sync already tombstoned the target; falling back
+        // to a name match there would delete/overwrite an unrelated same-name batch
+        // — and an update would even resurrect the tombstoned id as a zombie. A blank
+        // id is a legacy local-only row sync never addresses, so value-then-name
+        // resolution stays safe there.
+        if !target.id.isEmpty {
+            return rows.firstIndex(where: { $0.id == target.id })
         }
-        return items.firstIndex(where: { $0 == target })
-            ?? items.firstIndex(where: { $0.name == target.name })
+        return rows.firstIndex(where: { $0 == target })
+            ?? rows.firstIndex(where: { $0.name == target.name })
+    }
+
+    /// Removes the first row matching `target`'s identity; a no-op when nothing
+    /// matches (e.g. sync already tombstoned it — it must stay gone).
+    private nonisolated static func removingFirst(matching target: Ingredient, from rows: [Ingredient]) -> [Ingredient] {
+        guard let index = firstIndex(matching: target, in: rows) else { return rows }
+        var next = rows
+        next.remove(at: index)
+        return next
+    }
+
+    /// Removes the first identity-match for EACH target (recomputed against the
+    /// shrinking array), leaving every other current row untouched.
+    private nonisolated static func removing(_ targets: [Ingredient], from rows: [Ingredient]) -> [Ingredient] {
+        var next = rows
+        for target in targets {
+            if let index = firstIndex(matching: target, in: next) { next.remove(at: index) }
+        }
+        return next
+    }
+
+    /// Replaces the first row matching `target`'s identity with `replacement`; a
+    /// no-op when nothing matches (the row was concurrently deleted — the outbox
+    /// re-asserts it and the next pull reconciles).
+    private nonisolated static func replacingFirst(matching target: Ingredient, with replacement: Ingredient, in rows: [Ingredient]) -> [Ingredient] {
+        guard let index = firstIndex(matching: target, in: rows) else { return rows }
+        var next = rows
+        next[index] = replacement
+        return next
+    }
+
+    /// Re-asserts `row` at a best-effort `index`: drops any live copy first (so the
+    /// restored values win and no duplicate id survives), then inserts. Used by the
+    /// undo paths.
+    private nonisolated static func reinserting(_ row: Ingredient, at index: Int, into rows: [Ingredient]) -> [Ingredient] {
+        var next = removingFirst(matching: row, from: rows)
+        next.insert(row, at: min(max(index, 0), next.count))
+        return next
     }
 }

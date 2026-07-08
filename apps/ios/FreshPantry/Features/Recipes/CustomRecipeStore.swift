@@ -79,26 +79,39 @@ final class CustomRecipeStore {
     /// Returns whether the write landed (false when no row matched / rolled back).
     @discardableResult
     func remove(_ id: String) async -> Bool {
-        var removed: Recipe?
-        let ok = await mutate(
-            apply: { recipes in
-                guard let match = recipes.first(where: { $0.id == id }) else { return false }
-                removed = match
-                recipes.removeAll { $0.id == id }
-                return true
-            },
-            enqueue: {
-                guard let removed else { return }
-                await self.syncWriter?.enqueue(removed, type: .customRecipe, operation: .delete, baseVersion: removed.remoteVersion)
+        isSaving = true
+        defer { isSaving = false }
+        errorMessage = nil
+
+        let snapshot = recipes
+        recipes = recipes.filter { $0.id != id } // optimistic reflect
+
+        // Atomic load→remove→save, threading the removed row (for the outbox +
+        // cover cleanup) out of the ONE actor hop — no window for a concurrent
+        // sync mutate to be reverted. `nil` removed = no matching row.
+        let outcome: (saved: [Recipe], removed: Recipe?)
+        do {
+            outcome = try await repository.mutateRecipesReturning(householdID) { current -> ([Recipe]?, (saved: [Recipe], removed: Recipe?)) in
+                guard let match = current.first(where: { $0.id == id }) else { return (nil, (current, nil)) }
+                let next = current.filter { $0.id != id }
+                return (next, (next, match))
             }
-        )
+        } catch {
+            recipes = snapshot // rollback
+            errorMessage = String(localized: "recipe.form.saveFailedRetry")
+            return false
+        }
+        guard let removed = outcome.removed else {
+            recipes = snapshot // no matching row — undo the optimistic reflect
+            return false
+        }
+        recipes = outcome.saved // reconcile to the canonical saved scope
+        await syncWriter?.enqueue(removed, type: .customRecipe, operation: .delete, baseVersion: removed.remoteVersion)
         // Nothing references the deleted row's cover anymore — clean up a local
         // `file://` orphan (delete itself ignores remote AI-cover URLs). Only
         // after a CONFIRMED persist, so a rolled-back delete keeps its cover.
-        if ok, let cover = removed?.imageUrl {
-            RecipeCoverStore.delete(cover)
-        }
-        return ok
+        if let cover = removed.imageUrl { RecipeCoverStore.delete(cover) }
+        return true
     }
 
     // MARK: Mutation seam
@@ -112,7 +125,7 @@ final class CustomRecipeStore {
     /// pre-mutation snapshot + sets `errorMessage`; on success reconciles `recipes`
     /// to the saved scope directly (no extra reload round-trip).
     private func mutate(
-        apply: (inout [Recipe]) -> Bool,
+        apply: @Sendable @escaping (inout [Recipe]) -> Bool,
         enqueue: () async -> Void
     ) async -> Bool {
         isSaving = true
@@ -123,20 +136,27 @@ final class CustomRecipeStore {
         var optimistic = recipes
         if apply(&optimistic) { recipes = optimistic } // optimistic reflect
 
-        let current = (try? await repository.loadAllFor(householdID)) ?? snapshot
-        var next = current
-        guard apply(&next) else {
-            recipes = snapshot // no matching row — undo any optimistic reflect
-            return false
-        }
+        // Atomic load→apply→save in ONE actor hop (no suspension between the
+        // canonical read and the whole-scope save), so a concurrent sync mutate
+        // can't land in the window and be reverted. `nil` = no matching row (the
+        // transform persisted the scope unchanged).
+        let saved: [Recipe]?
         do {
-            try await repository.saveRecipes(householdID, next)
+            saved = try await repository.mutateRecipesReturning(householdID) { current -> ([Recipe]?, [Recipe]?) in
+                var next = current
+                guard apply(&next) else { return (nil, nil) } // no match → persist nothing (nil rows)
+                return (next, next)
+            }
         } catch {
             recipes = snapshot // rollback
             errorMessage = String(localized: "recipe.form.saveFailedRetry")
             return false
         }
-        recipes = next // reconcile to the canonical saved scope
+        guard let saved else {
+            recipes = snapshot // no matching row — undo any optimistic reflect
+            return false
+        }
+        recipes = saved // reconcile to the canonical saved scope
         await enqueue()
         return true
     }
