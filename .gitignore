@@ -44,7 +44,3 @@ supabase/.temp/
 
 # Sentry auth token (符号上传用,绝不入库)
 **/sentry.properties
-
-# impeccable 插件的 PostToolUse hook 缓存(散落进源码树);别入库,且落进
-# apps/ios/FreshPantry/ 时会被 xcodegen 当资源打包、同名 hook.cache.json 撞车。
-**/.impeccable/

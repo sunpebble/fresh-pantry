@@ -49,9 +49,6 @@ targets:
       - path: FreshPantry
         excludes:
           - "Support/Secrets.example.plist"
-          # Editor/agent tooling caches dropped into source dirs — never bundle
-          # them (two `.impeccable/hook.cache.json` collide as app resources).
-          - "**/.impeccable/**"
           - "Resources/howtocook.json"
           - "Resources/howtocook.i18n.en.json"
           - "Resources/howtocook.i18n.fr.json"
