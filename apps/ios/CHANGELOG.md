@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.5.1](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.5.0...fresh_pantry-v2.5.1) (2026-07-08)
+
+
+### Bug Fixes
+
+* **recipes:** remove non-actionable expiring banner ([5d7697f](https://github.com/sunpebble/fresh-pantry/commit/5d7697f416e19d7517b02cf3a2bf56f142e647db))
+* **sync:** close load→save races with atomic repository mutate + single-flight pulls ([ec54166](https://github.com/sunpebble/fresh-pantry/commit/ec541669f935034f456fa3b685ccea7f28343f87))
+
 ## [2.5.0](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.4.2...fresh_pantry-v2.5.0) (2026-07-07)
 
 
