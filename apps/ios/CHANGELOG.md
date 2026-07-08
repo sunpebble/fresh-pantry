@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.5.2](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.5.1...fresh_pantry-v2.5.2) (2026-07-08)
+
+
+### Bug Fixes
+
+* **sync:** close store-layer load→save race via atomic repository mutate ([093efb3](https://github.com/sunpebble/fresh-pantry/commit/093efb3f21731518be3c030a4d53d65e5b9e6fe4))
+
 ## [2.5.1](https://github.com/sunpebble/fresh-pantry/compare/fresh_pantry-v2.5.0...fresh_pantry-v2.5.1) (2026-07-08)
 
 
