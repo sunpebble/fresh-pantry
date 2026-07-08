@@ -65,14 +65,17 @@ final class CategoryDrillDownUITests: XCTestCase {
         }
     }
 
-    /// Returns to the 首页 tab (sidebarAdaptable → bottom tab bar on iPhone).
+    /// Returns to the 首页 tab. `sidebarAdaptable` is a bottom tab bar on iPhone
+    /// (queryable via `tabBars`) but a top tab/sidebar control on iPad, where
+    /// "首页" resolves to multiple buttons — so the fallback takes `firstMatch`
+    /// rather than the ambiguous whole query (which throws "Multiple matching").
     @MainActor
     private func goHome(_ app: XCUIApplication) {
         let tabButton = app.tabBars.buttons["首页"]
         if tabButton.waitForExistence(timeout: 5) {
             tabButton.tap()
         } else {
-            app.buttons["首页"].tap()
+            app.buttons["首页"].firstMatch.tap()
         }
     }
 }

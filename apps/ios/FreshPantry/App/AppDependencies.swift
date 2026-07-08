@@ -130,11 +130,13 @@ final class AppDependencies {
     /// 诊断/可观测性门面。按构建配置分流(DEBUG→OSLog、Release+配置→Sentry、
     /// 否则→Noop)。注入到同步等关键 service;未注入处用 NoopDiagnostics 默认值。
     let diagnostics: Diagnostics
+    // 名称/分类保持中文,与 UI 测试搜索的「咖喱炒蟹」一致,并与 zh-Hans app 主体
+    // 一致(hermetic 模式无 remote i18n overlay,种子文本即是最终显示文本)。
     private static let uiTestRecipeJSON = """
     [{
       "id":"ui:curry-crab",
-      "name":"Curry Fried Crab",
-      "category":"Seafood",
+      "name":"咖喱炒蟹",
+      "category":"水产",
       "difficulty":3,
       "cookingMinutes":30,
       "description":"",

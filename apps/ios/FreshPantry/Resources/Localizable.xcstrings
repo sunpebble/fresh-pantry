@@ -17221,7 +17221,7 @@
         }
       }
     },
-    "paywall.locked.description": {
+    "paywall.locked.description %@": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
@@ -17277,7 +17277,7 @@
         }
       }
     },
-    "paywall.purchase.buy": {
+    "paywall.purchase.buy %@": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
