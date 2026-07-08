@@ -32,7 +32,6 @@ struct WidgetDataReader {
     /// 渲染时刻重算天数/分桶/计数,app 多日不开也能让 urgent→expired、
     /// fresh→urgent 如期推进(候选含 fresh 的带日期项正为此)。计数字段存发布
     /// 时刻的投影值。展示截断由 widget 视图 prefix 负责。
-    /// ponytail: 候选集不设上限(每项仅名字 + 日期,千级库存也只有几十 KB JSON);
     /// 若真出现病态库存再加排序截断。
     func expiringSnapshot(householdID: String, now: Date) async -> WidgetExpiringSnapshot {
         let repo = InventoryRepository(modelContainer: container)

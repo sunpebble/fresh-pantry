@@ -35,7 +35,6 @@ def strip_comments(code: str) -> str:
 def swift_offenders(dirs: list[Path]) -> list[str]:
     out = []
     for base in dirs:
-        # ponytail: 支持单文件参数，不止目录
         files = [base] if base.is_file() else sorted(base.rglob("*.swift"))
         for f in files:
             if "build" in f.parts:
@@ -64,7 +63,6 @@ def xcstrings_offenders() -> list[str]:
         for key, entry in catalog.get("strings", {}).items():
             missing = LANGS - set(entry.get("localizations", {}))
             if missing:
-                # ponytail: 只查语言键存在，不查 state=translated；xcstrings 由我们手写，出现 stub 再收紧
                 out.append(f"{f.relative_to(ROOT)}: '{key}' 缺 {sorted(missing)}")
     return out
 

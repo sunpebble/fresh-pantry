@@ -40,8 +40,7 @@ export async function handleAiChat(
   body.model = MODEL; // 服务端固定模型，不信任客户端
 
   // 用 Supabase 侧校验 token：免去 JWKS/HS256 双路径的密钥管理，AI 调用本身秒级，
-  // 多一次子请求可接受。ponytail: 若这次往返成为瓶颈，再换本地 JWT 校验。
-  // ponytail: 两处出站 fetch 未包 try/catch——网络层 reject 会以运行时 500 呈现，
+  // 多一次子请求可接受。
   // 客户端 AiClient 对 5xx 已有中文兜底文案；出现真实抖动再统一包装。
   const userRes = await fetcher(`${env.SUPABASE_URL}/auth/v1/user`, {
     headers: { apikey: env.SUPABASE_ANON_KEY, authorization: `Bearer ${token}` },
@@ -50,7 +49,6 @@ export async function handleAiChat(
   const user = (await userRes.json()) as { id?: string };
   if (!user.id) return aiError(401, "auth_expired", "登录已过期，请重新登录");
 
-  // ponytail: KV 日计数最终一致，突发并发可能略超限——可接受；真滥用再换 Durable Object。
   const day = new Date().toISOString().slice(0, 10).replaceAll("-", "");
   const key = `ai:${user.id}:${day}`;
   const used = Number((await env.AI_RATE.get(key)) ?? "0");

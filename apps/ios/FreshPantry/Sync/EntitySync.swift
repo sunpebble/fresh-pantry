@@ -98,7 +98,6 @@ struct EntitySync: Sendable {
                 await ctx.signalMerge()
                 return true
             },
-            // ponytail: uploadLocalOnly keeps its existing log-and-continue on
             // save failure — a missed version bump self-heals via re-upsert
             // (ignoreDuplicates: an own-live-row conflict just resolves through
             // the collision path below and re-bumps), unlike a missed apply

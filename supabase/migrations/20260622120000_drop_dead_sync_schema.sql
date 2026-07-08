@@ -1,4 +1,4 @@
--- Drop dead sync schema confirmed by the 2026-06-22 ponytail audit: these have
+-- Drop dead sync schema confirmed by the 2026-06-22 audit: these have
 -- zero client traffic and no DB-side dependents (no FK / view / function / trigger
 -- references them). Done as a NEW migration — the prior files are an append-only
 -- ledger that must stay byte-aligned with prod schema_migrations.

@@ -26,7 +26,6 @@ enum JSONDate {
     /// always encode in UTC with the `Z` suffix (the Flutter model normalizes
     /// the sync-critical timestamps — loggedAt, deletedAt — to UTC already).
     ///
-    /// ponytail: deliberately NOT `ISO8601DateFormatter` (even though this file
     /// already builds one for parsing). The formatter ROUNDS sub-millisecond
     /// fractions to the nearest ms; Dart `toIso8601String()` TRUNCATES, and the
     /// `.rounded(.down)` floor below matches it. Swapping in the formatter drifts

@@ -235,7 +235,6 @@ enum AiClient {
             throw AiError.parse(String(localized: "error.ai.parse \(error.localizedDescription)"))
         }
         guard let root = json as? [String: Any] else {
-            // ponytail: "not a JSON object" is a diagnostic detail, not user copy;
             // left untranslated like `error.localizedDescription` above.
             throw AiError.parse(String(localized: "error.ai.parse \("not a JSON object")"))
         }

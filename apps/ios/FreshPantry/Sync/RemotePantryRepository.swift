@@ -116,7 +116,6 @@ actor RemotePantryRepository {
             // after our select can carry an updated_at older than the cursor
             // we just advanced — a bare `gte` would then skip it forever.
             // Re-delivered rows are idempotent through HouseholdMergePolicy.
-            // ponytail: fixed 60s window; if commit latencies ever exceed it,
             // clamp the cursor to a server-reported pull-start time instead.
             let overlapped = since.addingTimeInterval(-Self.deltaOverlap)
             query = query.gte("updated_at", value: JSONDate.iso8601(overlapped))
