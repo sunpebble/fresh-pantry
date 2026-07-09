@@ -40,3 +40,6 @@ updates:
       # wrangler 升到支持 v5 后可移除本条。
       - dependency-name: "@cloudflare/workers-types"
         update-types: ["version-update:semver-major"]
+      # 0.18.2+ 捆绑 wrangler 4.108(peer workers-types ^5),与上条及 npm@10 ci 不同步。
+      - dependency-name: "@cloudflare/vitest-pool-workers"
+        versions: [">=0.18.2"]
